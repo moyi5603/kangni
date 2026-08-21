@@ -20,7 +20,13 @@ describe('PC activity detail', () => {
     expect(html).toContain('c-detail-info-card');
     expect(html).toContain('活动介绍');
     expect(html).toContain('发起人：');
-    expect(html).toContain('活动限额：');
+    expect(html).toContain('总名额：');
+    expect(html).toContain('类型：项目活动');
+    expect(html).toContain('分类：培训');
+    expect(html).toContain('活动时间：');
+    expect(html).toContain('报名时间：');
+    expect(html).toContain('已报名 8 人');
+    expect(html).toContain('href="tel:13800001111"');
     expect(article).toBeGreaterThan(-1);
     expect(aside).toBeGreaterThan(article);
     expect(cta).toBeGreaterThan(aside);

@@ -28,6 +28,7 @@ import {
   type ActivityType,
 } from '../model/activity';
 import {
+  canDisableCreate,
   cloneRules,
   createApprovalNode,
   duplicateYearIndexes,
@@ -39,7 +40,7 @@ import {
 } from '../model/rules';
 import { saveRules, useRules } from '../model/rulesStore';
 
-type RulesTab = 'signup' | 'moments' | 'approval';
+type RulesTab = 'signup' | 'moments' | 'approval' | 'types';
 
 type FormValues = {
   rules: ActivityTypeRule[];
@@ -537,6 +538,33 @@ export function ActivityRulesPage() {
     message.success(checked ? `已开启「${type}」精彩瞬间审核` : `已关闭「${type}」精彩瞬间审核`);
   };
 
+  const setCreateEnabled = (type: ActivityType, typeIndex: number, checked: boolean) => {
+    const currentRules = (form.getFieldValue('rules') ?? []) as ActivityTypeRule[];
+    if (!checked && !canDisableCreate(currentRules, type)) {
+      message.error('至少开放一种活动类型');
+      return;
+    }
+    form.setFieldValue(['rules', typeIndex, 'createEnabled'], checked);
+    persistRules(form);
+    message.success(checked ? `已允许新建「${type}」` : `已停止新建「${type}」`);
+  };
+
+  const typeColumns: TableColumnsType<{ type: ActivityType; typeIndex: number }> = [
+    { title: '活动类型', dataIndex: 'type' },
+    {
+      title: '允许新建',
+      render: (_, record) => (
+        <Switch
+          checked={rulesWatch?.[record.typeIndex]?.createEnabled !== false}
+          checkedChildren="开"
+          unCheckedChildren="关"
+          aria-label={`允许新建${record.type}`}
+          onChange={(checked) => setCreateEnabled(record.type, record.typeIndex, checked)}
+        />
+      ),
+    },
+  ];
+
   const momentColumns: TableColumnsType<{ type: ActivityType; typeIndex: number }> = [
     { title: '活动类型', dataIndex: 'type' },
     {
@@ -558,7 +586,7 @@ export function ActivityRulesPage() {
       <ListPageHeading
         paths={['活动', '规则设置']}
         title="规则设置"
-        subtitle="按活动类型配置报名资格、精彩瞬间审核和活动审批流。配置后立即生效。"
+        subtitle="按活动类型配置报名资格、精彩瞬间审核、活动审批流和新建可选类型。配置后立即生效。"
       />
       <Form form={form} layout="horizontal" className="edit-form" labelWrap={false} initialValues={{ rules: cloneRules(saved) }}>
         <Tabs
@@ -601,6 +629,23 @@ export function ActivityRulesPage() {
                 <div className="page-stack">
                   <ApprovalTab form={form} rules={rulesWatch} />
                 </div>
+              ),
+            },
+            {
+              key: 'types',
+              label: '类型设置',
+              forceRender: true,
+              children: (
+                <Card>
+                  <Table
+                    rowKey="type"
+                    sticky
+                    pagination={false}
+                    scroll={{ x: 480 }}
+                    dataSource={activityTypes.map((type, typeIndex) => ({ type, typeIndex }))}
+                    columns={typeColumns}
+                  />
+                </Card>
               ),
             },
           ]}

@@ -150,7 +150,6 @@ export const applicationMenus: Record<string, MenuNode[]> = {
   exam: [
     { key: 'exam-overview', icon: 'dashboard', label: '概览' },
     { key: 'exam-list', icon: 'unorderedList', label: '考试管理' },
-    { key: 'exam-tags', icon: 'tags', label: '考试标签' },
     { key: 'exam-rules', icon: 'fileText', label: '规则设置' },
   ],
   care: [

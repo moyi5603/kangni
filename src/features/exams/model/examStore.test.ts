@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { canDeleteExam, type ExamRecord } from './exam';
+import { calculateExamTotalScore, canDeleteExam, type ExamRecord } from './exam';
 import {
   __resetExamStoreForTests,
   addExamCategoryNode,
@@ -16,6 +16,17 @@ describe('canDeleteExam', () => {
   it('allows delete only when unpublished', () => {
     expect(canDeleteExam({ publishStatus: '未发布' } as ExamRecord)).toBe(true);
     expect(canDeleteExam({ publishStatus: '已发布' } as ExamRecord)).toBe(false);
+  });
+});
+
+describe('calculateExamTotalScore', () => {
+  it('sums question count multiplied by score per question', () => {
+    expect(
+      calculateExamTotalScore([
+        { questionCount: 10, scorePerQuestion: 2 },
+        { questionCount: 5, scorePerQuestion: 8 },
+      ]),
+    ).toBe(60);
   });
 });
 
@@ -70,7 +81,16 @@ describe('examStore', () => {
       creator: '测试',
       createdAt: '2026-08-20 00:00:00',
       updatedAt: '2026-08-20 00:00:00',
+      certificateId: 1,
+      questionRules: [{ id: 1, difficulty: '简单', questionCount: 10, scorePerQuestion: 2 }],
+      totalScore: 20,
+      examTimes: 2,
+      tags: '数据分析,岗位',
+      audience: '产品经理',
+      descriptionHtml: '<p>请按时完成</p>',
     });
     expect(getExam(99)?.name).toBe('单元测考试');
+    expect(getExam(99)?.totalScore).toBe(20);
+    expect(getExam(99)?.questionRules).toHaveLength(1);
   });
 });

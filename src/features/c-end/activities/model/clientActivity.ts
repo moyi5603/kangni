@@ -143,6 +143,14 @@ export function signupLimit(activity: Activity): number | undefined {
   return limits.reduce((total, limit) => total + limit, 0);
 }
 
+const OCCUPIED_SIGNUP_STATUSES = new Set(['待审核', '已通过']);
+
+export function signupOccupiedCount(activityId: number): number {
+  return getRelatedList('signups').filter(
+    (item) => item.activityId === activityId && OCCUPIED_SIGNUP_STATUSES.has(item.status),
+  ).length;
+}
+
 export type ClientSignupView = {
   signup: ClientSignup;
   activity?: Activity;

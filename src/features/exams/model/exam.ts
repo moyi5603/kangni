@@ -8,6 +8,22 @@ export type ExamPublishStatus = (typeof examPublishStatuses)[number];
 export const examStatuses = ['未开始', '进行中', '已结束'] as const;
 export type ExamStatus = (typeof examStatuses)[number];
 
+export const examDifficulties = ['简单', '中等', '困难'] as const;
+export type ExamDifficulty = (typeof examDifficulties)[number];
+
+export const examCertificates = [
+  { id: 1, name: '内部培训结业证书' },
+  { id: 2, name: '岗位技能认证证书' },
+  { id: 3, name: '合规培训证书' },
+] as const;
+
+export type ExamQuestionRule = {
+  id: number;
+  difficulty: ExamDifficulty;
+  questionCount: number;
+  scorePerQuestion: number;
+};
+
 export type ExamCategoryNode = CategoryNode;
 
 export type ExamRecord = {
@@ -24,7 +40,18 @@ export type ExamRecord = {
   creator: string;
   createdAt: string;
   updatedAt: string;
+  certificateId?: number | null;
+  questionRules?: ExamQuestionRule[];
+  totalScore?: number;
+  examTimes?: number | null;
+  tags?: string;
+  audience?: string;
+  descriptionHtml?: string;
 };
+
+export function calculateExamTotalScore(rules: Pick<ExamQuestionRule, 'questionCount' | 'scorePerQuestion'>[]): number {
+  return rules.reduce((total, rule) => total + (rule.questionCount || 0) * (rule.scorePerQuestion || 0), 0);
+}
 
 export function canDeleteExam(record: ExamRecord): boolean {
   return record.publishStatus === '未发布';

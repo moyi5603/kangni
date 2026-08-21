@@ -19,10 +19,9 @@ import {
   Upload,
 } from 'antd';
 import type { UploadFile } from 'antd';
-import dayjs, { type Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
 import { RichTextField } from '../components/RichTextField';
 import {
-  activityTypes,
   emptySignupSetting,
   isRecreationActivity,
   canSubmitApproval,
@@ -33,6 +32,14 @@ import {
   type SignupSetting,
   type Visibility,
 } from '../model/activity';
+import { firstCreatableType, isCreateEnabled, listCreatableTypeOptions } from '../model/rules';
+import { useRules } from '../model/rulesStore';
+import {
+  formatDateTimeRange,
+  toDateTimeRange,
+  validateDateTimeRange,
+  type DateTimeRange,
+} from '../model/activityForm';
 import { getActivity, upsertActivity } from '../model/activityStore';
 import { recordApprovalSubmit } from '../model/related';
 import { useCategories } from '../model/categoryStore';
@@ -50,8 +57,8 @@ type FormValues = {
   type: ActivityType;
   category: string;
   tags: string[];
-  startAt: Dayjs;
-  endAt: Dayjs;
+  activityRange?: DateTimeRange;
+  signupRange?: DateTimeRange;
   location: string;
   organizer: string;
   phone: string;
@@ -61,8 +68,6 @@ type FormValues = {
   customPeople: string[];
   visibilityMinSeniorityYears?: number;
   importFileName: string;
-  signupStartAt: Dayjs;
-  signupEndAt: Dayjs;
   signupSettings: SignupSetting[];
   itinerary: string;
   extraFeeRule: string;
@@ -110,6 +115,11 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
   const [coverList, setCoverList] = useState<UploadFile[]>([]);
   const [importList, setImportList] = useState<UploadFile[]>([]);
   const editing = mode === 'edit' ? getActivity(Number(recordId)) : undefined;
+  const typeRules = useRules();
+  const typeOptions = useMemo(
+    () => listCreatableTypeOptions(typeRules, mode === 'edit' ? editing?.type : undefined),
+    [typeRules, mode, editing?.type],
+  );
   const categoryRecords = useCategories();
   const categoryOptions = useMemo(
     () =>
@@ -140,8 +150,8 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
             type: editing.type,
             category: editing.category,
             tags: editing.tags,
-            startAt: dayjs(editing.startAt),
-            endAt: dayjs(editing.endAt),
+            activityRange: toDateTimeRange(editing.startAt, editing.endAt),
+            signupRange: toDateTimeRange(editing.signupStartAt, editing.signupEndAt),
             location: editing.location,
             organizer: editing.organizer,
             phone: editing.phone,
@@ -151,14 +161,12 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
             customPeople: editing.customPeople,
             visibilityMinSeniorityYears: editing.visibilityMinSeniorityYears,
             importFileName: editing.importFileName,
-            signupStartAt: dayjs(editing.signupStartAt),
-            signupEndAt: dayjs(editing.signupEndAt),
             signupSettings: editing.signupSettings,
             itinerary: editing.itinerary,
             extraFeeRule: editing.extraFeeRule,
           }
         : {
-            type: '公司活动',
+            type: firstCreatableType(typeRules),
             visibility: '全员',
             tags: [],
             departments: [],
@@ -170,7 +178,7 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
             itinerary: '',
             extraFeeRule: '',
           },
-    [editing],
+    [editing, typeRules],
   );
 
   useEffect(() => {
@@ -200,6 +208,17 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
 
   const save = async (submit = false) => {
     const values = await form.validateFields();
+    const selectedRule = typeRules.find((item) => item.type === values.type);
+    const keepingClosedCurrent = mode === 'edit' && values.type === editing?.type;
+    if (!keepingClosedCurrent && !isCreateEnabled(selectedRule)) {
+      form.setFields([{ name: 'type', errors: ['暂无开放的活动类型，请先在规则设置中开放'] }]);
+      return;
+    }
+    if (!values.activityRange || !values.signupRange) {
+      throw new Error('时间范围未填写完整');
+    }
+    const activityTime = formatDateTimeRange(values.activityRange);
+    const signupTime = formatDateTimeRange(values.signupRange);
     const recreation = isRecreationActivity(values.type);
     const currentStatus = editing?.auditStatus ?? '待提交';
     const activity: Activity = {
@@ -209,8 +228,8 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
       type: values.type,
       category: values.category,
       tags: values.tags ?? [],
-      startAt: values.startAt.format('YYYY-MM-DD HH:mm'),
-      endAt: values.endAt.format('YYYY-MM-DD HH:mm'),
+      startAt: activityTime.startAt,
+      endAt: activityTime.endAt,
       location: values.location,
       organizer: values.organizer,
       phone: values.phone,
@@ -221,8 +240,8 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
       visibilityMinSeniorityYears: values.visibility === '自定义人群' ? values.visibilityMinSeniorityYears : undefined,
       importFileName: values.visibility === '导入人群' ? values.importFileName || '' : '',
       importedPeople: values.visibility === '导入人群' ? editing?.importedPeople ?? [] : [],
-      signupStartAt: values.signupStartAt.format('YYYY-MM-DD HH:mm'),
-      signupEndAt: values.signupEndAt.format('YYYY-MM-DD HH:mm'),
+      signupStartAt: signupTime.startAt,
+      signupEndAt: signupTime.endAt,
       signupSettings: recreation
         ? values.signupSettings
         : values.signupSettings.map((item) => ({ type: item.type, limit: item.limit, needAudit: item.needAudit })),
@@ -312,8 +331,15 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
           >
             <Input maxLength={20} showCount />
           </Form.Item>
-          <Form.Item name="type" label="类型" rules={[{ required: true, message: '请选择类型' }]}>
-            <Radio.Group options={optionsOf(activityTypes)} />
+          <Form.Item
+            name="type"
+            label="类型"
+            extra={typeOptions.length ? undefined : '暂无开放的活动类型，请先在规则设置中开放'}
+            rules={[
+              { required: true, message: typeOptions.length ? '请选择类型' : '暂无开放的活动类型，请先在规则设置中开放' },
+            ]}
+          >
+            <Radio.Group options={typeOptions} disabled={typeOptions.length === 0} />
           </Form.Item>
           <Form.Item name="category" label="分类" rules={[{ required: true, message: '请选择分类' }]}>
             <Select options={categoryOptions} placeholder="请选择分类" />
@@ -321,25 +347,26 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
           <Form.Item name="tags" label="标签">
             <Select mode="multiple" options={tagOptions} placeholder="请选择标签" />
           </Form.Item>
-          <Form.Item name="startAt" label="活动开始时间" rules={[{ required: true, message: '请选择活动开始时间' }]}>
-            <DatePicker showTime style={{ width: '100%' }} />
-          </Form.Item>
           <Form.Item
-            name="endAt"
-            label="活动结束时间"
-            dependencies={['startAt']}
+            name="activityRange"
+            label="活动时间"
+            required
             rules={[
-              { required: true, message: '请选择活动结束时间' },
-              ({ getFieldValue }) => ({
-                validator(_, value: Dayjs) {
-                  const start = getFieldValue('startAt') as Dayjs | undefined;
-                  if (!value || !start || !value.isBefore(start)) return Promise.resolve();
-                  return Promise.reject(new Error('结束时间不得早于开始时间'));
-                },
-              }),
+              {
+                validator: async (_, value) =>
+                  validateDateTimeRange(value, {
+                    required: '请选择活动时间',
+                    order: '结束时间不得早于开始时间',
+                  }),
+              },
             ]}
           >
-            <DatePicker showTime style={{ width: '100%' }} />
+            <DatePicker.RangePicker
+              showTime={{ format: 'HH:mm' }}
+              format="YYYY-MM-DD HH:mm"
+              style={{ width: '100%' }}
+              placeholder={['开始时间', '结束时间']}
+            />
           </Form.Item>
           <Form.Item name="location" label="活动地点" rules={[{ required: true, message: '请输入活动地点' }]}>
             <Input />
@@ -398,7 +425,7 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
             </Form.Item>
           )}
           {visibility === '自定义人群' && (
-            <>
+            <Card size="small" title="须同时满足">
               <Form.Item name="customPeople" label="选择人员" rules={[{ required: true, message: '请选择人员' }]}>
                 <TreeSelect
                   treeData={orgPeoplePickerTree}
@@ -411,7 +438,7 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
                   style={{ width: '100%' }}
                 />
               </Form.Item>
-              <Form.Item label="可见司龄" required>
+              <Form.Item label="可见司龄" required extra="仅名单内且司龄达标的人可见">
                 <Space.Compact style={{ width: '100%' }}>
                   <Form.Item
                     name="visibilityMinSeniorityYears"
@@ -423,7 +450,7 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
                   <Button disabled>年</Button>
                 </Space.Compact>
               </Form.Item>
-            </>
+            </Card>
           )}
           {visibility === '导入人群' && (
             <>
@@ -454,25 +481,26 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
         </Card>
 
         <Card title="报名设置">
-          <Form.Item name="signupStartAt" label="报名开始时间" rules={[{ required: true, message: '请选择报名开始时间' }]}>
-            <DatePicker showTime style={{ width: '100%' }} />
-          </Form.Item>
           <Form.Item
-            name="signupEndAt"
-            label="报名结束时间"
-            dependencies={['signupStartAt']}
+            name="signupRange"
+            label="报名时间"
+            required
             rules={[
-              { required: true, message: '请选择报名结束时间' },
-              ({ getFieldValue }) => ({
-                validator(_, value: Dayjs) {
-                  const start = getFieldValue('signupStartAt') as Dayjs | undefined;
-                  if (!value || !start || !value.isBefore(start)) return Promise.resolve();
-                  return Promise.reject(new Error('报名结束时间不得早于开始时间'));
-                },
-              }),
+              {
+                validator: async (_, value) =>
+                  validateDateTimeRange(value, {
+                    required: '请选择报名时间',
+                    order: '报名结束时间不得早于开始时间',
+                  }),
+              },
             ]}
           >
-            <DatePicker showTime style={{ width: '100%' }} />
+            <DatePicker.RangePicker
+              showTime={{ format: 'HH:mm' }}
+              format="YYYY-MM-DD HH:mm"
+              style={{ width: '100%' }}
+              placeholder={['开始时间', '结束时间']}
+            />
           </Form.Item>
           <Form.List
             name="signupSettings"

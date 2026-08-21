@@ -267,11 +267,10 @@ describe('exam application', () => {
     expect(keys.indexOf('exam')).toBeGreaterThan(keys.indexOf('training'));
   });
 
-  it('uses four first-level menus without exam-categories', () => {
+  it('uses three first-level menus without exam-categories or exam-tags', () => {
     expect(applicationMenus['exam']).toEqual([
       { key: 'exam-overview', icon: 'dashboard', label: '概览' },
       { key: 'exam-list', icon: 'unorderedList', label: '考试管理' },
-      { key: 'exam-tags', icon: 'tags', label: '考试标签' },
       { key: 'exam-rules', icon: 'fileText', label: '规则设置' },
     ]);
   });

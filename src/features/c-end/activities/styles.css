@@ -1125,6 +1125,22 @@
   margin-top: 12px;
 }
 
+.c-detail-facts {
+  margin: 0;
+  gap: 10px;
+}
+
+.c-detail-facts a,
+.c-detail-phone {
+  color: #2563eb;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.c-detail-kv-gap {
+  margin-left: 1.25em;
+}
+
 .c-detail-kv + .c-cta,
 .c-pc-side .c-cta {
   margin-top: 16px;
@@ -2385,31 +2401,20 @@
 }
 
 .c-h5-shell .c-h5-detail .c-detail-info-card .c-meta {
-  gap: 9px;
+  gap: 10px;
   margin: 0;
   color: #52657a;
   font-size: 14px;
   line-height: 1.55;
 }
 
-.c-h5-shell .c-h5-detail .c-detail-kv {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #edf1f5;
-}
-
-.c-h5-shell .c-h5-detail .c-detail-kv div,
-.c-h5-shell .c-h5-detail .c-detail-kv a {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.c-h5-shell .c-h5-detail .c-detail-kv a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  color: #087f73;
+.c-h5-shell .c-h5-detail .c-detail-facts a,
+.c-h5-shell .c-h5-detail .c-detail-phone {
+  display: inline;
+  min-height: 0;
+  color: #2563eb;
   font-weight: 650;
+  text-decoration: none;
 }
 
 .c-h5-shell .c-h5-detail .c-detail-content-section .c-detail-section {

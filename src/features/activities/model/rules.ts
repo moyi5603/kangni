@@ -1,6 +1,6 @@
 import { activityTypes, type ActivityType } from './activity';
 
-export const RULES_MOCK_VERSION = 1;
+export const RULES_MOCK_VERSION = 2;
 
 export type AssigneeMode = 'people' | 'department';
 
@@ -18,6 +18,7 @@ export type ApprovalNode = {
 
 export type ActivityTypeRule = {
   type: ActivityType;
+  createEnabled: boolean;
   signupLadders: SignupLadder[];
   momentAuditEnabled: boolean;
   approvalEnabled: boolean;
@@ -27,11 +28,41 @@ export type ActivityTypeRule = {
 export function emptyRule(type: ActivityType): ActivityTypeRule {
   return {
     type,
+    createEnabled: true,
     signupLadders: [],
     momentAuditEnabled: false,
     approvalEnabled: false,
     approvalNodes: [],
   };
+}
+
+export type TypeRadioOption = {
+  value: ActivityType;
+  label: ActivityType;
+  disabled?: boolean;
+};
+
+export function isCreateEnabled(rule: ActivityTypeRule | undefined): boolean {
+  return rule?.createEnabled !== false;
+}
+
+export function listCreatableTypeOptions(rules: ActivityTypeRule[], currentType?: ActivityType): TypeRadioOption[] {
+  return activityTypes.flatMap((type) => {
+    const enabled = isCreateEnabled(rules.find((item) => item.type === type));
+    if (enabled) return [{ value: type, label: type }];
+    if (currentType === type) return [{ value: type, label: type, disabled: true }];
+    return [];
+  });
+}
+
+export function firstCreatableType(rules: ActivityTypeRule[]): ActivityType | undefined {
+  return activityTypes.find((type) => isCreateEnabled(rules.find((item) => item.type === type)));
+}
+
+export function canDisableCreate(rules: ActivityTypeRule[], type: ActivityType): boolean {
+  const enabledTypes = activityTypes.filter((item) => isCreateEnabled(rules.find((rule) => rule.type === item)));
+  if (enabledTypes.length > 1) return true;
+  return enabledTypes[0] !== type;
 }
 
 export function emptyLadder(): Partial<SignupLadder> {
@@ -74,6 +105,7 @@ export function prepareRulesForSave(rules: ActivityTypeRule[]): ActivityTypeRule
     return {
       ...current,
       type,
+      createEnabled: current.createEnabled !== false,
       signupLadders: sortLadders(current.signupLadders ?? []),
       approvalNodes: current.approvalEnabled ? current.approvalNodes ?? [] : [],
     };

@@ -31,6 +31,18 @@ describe('H5 activity detail engage', () => {
     expect(html).not.toContain('开场致辞很有感染力');
   });
 
+  it('shows category, times, quota and occupied seats on the info card', () => {
+    const html = renderToStaticMarkup(<H5ActivityDetail id={2} />);
+    const card = html.slice(html.indexOf('c-detail-info-card'));
+    expect(card).toContain('类型：项目活动');
+    expect(card).toContain('分类：培训');
+    expect(card).toContain('活动时间：2026-08-18 09:30 ~ 2026-08-20 17:30');
+    expect(card).toContain('报名时间：2026-08-01 09:00 ~ 2026-08-31 18:00');
+    expect(card).toContain('总名额：50 人');
+    expect(card).toContain('已报名 8 人');
+    expect(card).toContain('href="tel:13800001111"');
+  });
+
   it('lists all open-day threads on detail without view-all', () => {
     const html = renderToStaticMarkup(<H5ActivityDetail id={1} />);
     const block = html.slice(html.indexOf('id="activity-comments"'));

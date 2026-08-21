@@ -24,6 +24,7 @@ import { b2bStandards } from '../../../shared/design-system/generated/b2b-standa
 import { collectCategoryIds, findCategoryNode, subtreeIdsOf } from '../../../shared/category-tree/categoryTree';
 import {
   canDeleteExam,
+  examCertificates,
   examPublishStatuses,
   examStatuses,
   type ExamPublishStatus,
@@ -82,6 +83,11 @@ function modalFooter(_: ReactNode, extra: { OkBtn: React.FC; CancelBtn: React.FC
 function categoryNameOf(tree: ReturnType<typeof useExamCategoryTree>, categoryId: number | null): string {
   if (categoryId === null) return '-';
   return findCategoryNode(tree, categoryId)?.name ?? '-';
+}
+
+function certificateNameOf(certificateId: number | null | undefined): string {
+  if (certificateId == null) return '-';
+  return examCertificates.find((item) => item.id === certificateId)?.name ?? '-';
 }
 
 export function ExamListPage({ onNavigate }: { onNavigate: (page: string, recordId?: string) => void }) {
@@ -644,8 +650,13 @@ export function ExamListPage({ onNavigate }: { onNavigate: (page: string, record
               { label: '开考时间', children: viewingExam.startAt },
               { label: '结束时间', children: viewingExam.endAt },
               { label: '考试总时长(分)', children: viewingExam.durationMinutes },
+              { label: '总分数', children: viewingExam.totalScore ?? '-' },
               { label: '及格分数', children: viewingExam.passScore },
+              { label: '考试次数', children: viewingExam.examTimes ?? '-' },
               { label: '获得积分', children: viewingExam.points },
+              { label: '关联证书', children: certificateNameOf(viewingExam.certificateId) },
+              { label: '考试标签', children: viewingExam.tags || '-' },
+              { label: '适用岗位/人群', children: viewingExam.audience || '-' },
               {
                 label: '发布状态',
                 children: <Tag color={publishStatusColor[viewingExam.publishStatus]}>{viewingExam.publishStatus}</Tag>,
@@ -657,6 +668,14 @@ export function ExamListPage({ onNavigate }: { onNavigate: (page: string, record
               { label: '创建人', children: viewingExam.creator },
               { label: '创建时间', children: viewingExam.createdAt },
               { label: '最后修改时间', children: viewingExam.updatedAt },
+              {
+                label: '考试说明',
+                children: viewingExam.descriptionHtml ? (
+                  <div className="rich-text-preview" dangerouslySetInnerHTML={{ __html: viewingExam.descriptionHtml }} />
+                ) : (
+                  '-'
+                ),
+              },
             ]}
           />
         ) : null}

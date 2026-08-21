@@ -7,7 +7,7 @@ import { useRelated } from '../../../activities/model/related';
 import { goCEnd } from '../../../../app/navigation';
 import { useCEndToast } from '../components/CEndToast';
 import { ActivityCommentList } from '../components/ActivityCommentList';
-import { ActivityMeta } from '../components/ActivityMeta';
+import { ActivityDetailFacts } from '../components/ActivityDetailFacts';
 import { ActivitySocialTabs } from '../components/ActivitySocialTabs';
 import { DetailEngageBar } from '../components/DetailEngageBar';
 import { MomentFeed } from '../components/MomentFeed';
@@ -20,7 +20,7 @@ import {
   submitActivityComment,
   toggleCommentLike,
 } from '../model/activityComments';
-import { getPublishedActivity, signupCta, signupLimit, signupTypes } from '../model/clientActivity';
+import { getPublishedActivity, signupCta, signupOccupiedCount, signupTypes } from '../model/clientActivity';
 import { toggleFavorite, toggleLike, useActivityEngagement } from '../model/engagementStore';
 import { submitSignup, useHasSignedUp } from '../model/signupStore';
 import { PcActivityShell } from './PcActivityShell';
@@ -42,12 +42,14 @@ export function PcActivityDetail({ id }: { id: number }) {
   const toast = useCEndToast();
   const engagement = useActivityEngagement(id);
   const relatedComments = useRelated('comments', id);
+  const relatedSignups = useRelated('signups', id);
   const [modalOpen, setModalOpen] = useState(false);
   const [composer, setComposer] = useState<MomentRecord | 'create'>();
   const [socialTab, setSocialTab] = useState<'comments' | 'moments'>('comments');
   const momentItems = useClientMoments(id);
   const approvedSignup = useApprovedSignup(id);
   void relatedComments;
+  void relatedSignups;
 
   if (!activity) {
     return (
@@ -62,7 +64,7 @@ export function PcActivityDetail({ id }: { id: number }) {
     );
   }
 
-  const limit = signupLimit(activity);
+  const occupied = signupOccupiedCount(id);
   const cta = signupCta(activity, signedUp);
   const types = signupTypes(activity);
   const threads = listActivityCommentThreads(id);
@@ -92,17 +94,11 @@ export function PcActivityDetail({ id }: { id: number }) {
             <header className="c-detail-heading">
               <div className="c-detail-tags">
                 <StatusPill status={activity.activityStatus} />
-                <span className="c-pin">{activity.type}</span>
               </div>
               <h2 className="c-detail-name">{activity.title}</h2>
             </header>
             <section className="c-detail-info-card" aria-label="活动信息">
-              <ActivityMeta activity={activity} />
-              <div className="c-meta c-detail-kv">
-                <div>发起人：{activity.organizer}</div>
-                <div>联系电话：{activity.phone}</div>
-                {limit !== undefined ? <div>活动限额：{limit} 人</div> : null}
-              </div>
+              <ActivityDetailFacts activity={activity} occupied={occupied} />
             </section>
             <section className="c-detail-content-section" aria-labelledby="pc-activity-intro">
               <h2 id="pc-activity-intro" className="c-detail-name c-detail-section">

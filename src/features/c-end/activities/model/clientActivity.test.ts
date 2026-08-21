@@ -13,6 +13,7 @@ import {
   previewFavorites,
   SIGNUP_TABS,
   signupLimit,
+  signupOccupiedCount,
   signupTypes,
   toClientActivity,
   type ClientSignupView,
@@ -64,6 +65,11 @@ describe('client activity signup model', () => {
     };
 
     expect(signupLimit(activity)).toBeUndefined();
+  });
+
+  it('counts pending and approved signups as occupied seats', () => {
+    expect(signupOccupiedCount(1)).toBe(3);
+    expect(signupOccupiedCount(2)).toBe(8);
   });
 
   it('groups signups by activity status and sorts newest first', () => {
