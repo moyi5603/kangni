@@ -2,7 +2,6 @@ import { useMemo, useState, type Key, type ReactNode } from 'react';
 import { DownOutlined } from '@ant-design/icons';
 import {
   App,
-  Breadcrumb,
   Button,
   Card,
   DatePicker,
@@ -73,7 +72,7 @@ function playableVideo(url?: string) {
   return url.startsWith('data:video') || /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url);
 }
 
-export function ActivityMomentListPage({ activity, onBack }: { activity: Activity; onBack: () => void }) {
+export function ActivityMomentListPage({ activity }: { activity: Activity }) {
   const { message, modal } = App.useApp();
   const data = useMoments(activity.id);
   const [draft, setDraft] = useState<{ content: string; type?: MomentRecord['type']; status?: MomentRecord['status']; author: string; createdAt: DateRange }>({
@@ -280,21 +279,6 @@ export function ActivityMomentListPage({ activity, onBack }: { activity: Activit
 
   return (
     <div className="page-stack">
-      <div className="list-page-heading">
-        <Breadcrumb
-          separator=">"
-          items={[
-            { title: '活动' },
-            { title: <Button type="link" className="breadcrumb-link" onClick={onBack}>活动管理</Button> },
-            { title: activity.title },
-            { title: '精彩瞬间管理' },
-          ]}
-        />
-        <Flex align="baseline" gap={16} wrap="wrap">
-          <Typography.Title level={1}>精彩瞬间管理</Typography.Title>
-          <Typography.Text type="secondary">审核并管理员工提交的图文和视频瞬间。</Typography.Text>
-        </Flex>
-      </div>
       <SearchPanel
         onSearch={() => {
           setQuery(draft);

@@ -1,17 +1,6 @@
 import { useEffect, useState } from 'react';
 import { initialMedals } from './medalLibrary';
 
-export const relatedPages = [
-  'activity-prizes',
-  'activity-surveys',
-  'activity-approvals',
-  'activity-signups',
-  'activity-comments',
-  'activity-moments',
-] as const;
-
-export type RelatedPage = (typeof relatedPages)[number];
-
 export const prizeTypes = ['勋章'] as const;
 export const prizeTargetTypes = ['全部报名人员', '指定人员', '批量导入'] as const;
 export const surveyStatuses = ['草稿', '收集中', '已结束'] as const;

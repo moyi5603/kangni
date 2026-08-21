@@ -40,11 +40,9 @@ import { ExamListPage } from '../features/exams/pages/ExamListPage';
 import { ActivityListPage } from '../features/activities/pages/ActivityListPage';
 import { ActivityFormPage } from '../features/activities/pages/ActivityFormPage';
 import { ActivityDetailPage } from '../features/activities/pages/ActivityDetailPage';
-import { ActivityRelatedListPage } from '../features/activities/pages/ActivityRelatedListPage';
 import { ActivityTagListPage } from '../features/activities/pages/ActivityTagListPage';
 import { ActivityCategoryListPage } from '../features/activities/pages/ActivityCategoryListPage';
 import { ActivityRulesPage } from '../features/activities/pages/ActivityRulesPage';
-import { relatedPages, type RelatedPage } from '../features/activities/model/related';
 import { b2bStandards } from '../shared/design-system/generated/b2b-standards.generated';
 import { CEndApp } from './CEndApp';
 import { CEndPortal } from '../features/c-end/portal/CEndPortal';
@@ -137,6 +135,7 @@ function AdminApp() {
   const [application, setApplication] = useState(initial.application);
   const [page, setPage] = useState(initial.page);
   const [recordId, setRecordId] = useState(initial.recordId);
+  const [tab, setTab] = useState(initial.tab);
   const [applicationCardOpen, setApplicationCardOpen] = useState(false);
   const [menuDrawerOpen, setMenuDrawerOpen] = useState(false);
   const narrow = useNarrow();
@@ -160,8 +159,8 @@ function AdminApp() {
     background: layoutBg,
   } as CSSProperties;
 
-  const syncLocation = (nextApplication: string, nextPage: string, nextRecordId?: string) => {
-    const nextHash = toLocationHash(nextApplication, nextPage, nextRecordId);
+  const syncLocation = (nextApplication: string, nextPage: string, nextRecordId?: string, nextTab?: string) => {
+    const nextHash = toLocationHash(nextApplication, nextPage, nextRecordId, nextTab);
     if (window.location.hash !== nextHash) {
       beginSuppressHash();
       window.location.hash = nextHash;
@@ -171,6 +170,7 @@ function AdminApp() {
   const applyPage = (nextPage: string, nextRecordId?: string) => {
     setPage(nextPage);
     setRecordId(nextRecordId);
+    setTab(undefined);
     setMenuDrawerOpen(false);
     syncLocation(application, nextPage, nextRecordId);
   };
@@ -188,6 +188,7 @@ function AdminApp() {
       setApplication(nextApplication.key);
       setPage(nextApplication.defaultPage);
       setRecordId(undefined);
+      setTab(undefined);
       setApplicationCardOpen(false);
       setMenuDrawerOpen(false);
       syncLocation(nextApplication.key, nextApplication.defaultPage);
@@ -207,6 +208,7 @@ function AdminApp() {
         setApplication(next.application);
         setPage(next.page);
         setRecordId(next.recordId);
+        setTab(next.tab);
       });
     };
     window.addEventListener('hashchange', onHashChange);
@@ -359,16 +361,16 @@ function AdminApp() {
             />
           ) : page === 'activity-detail' ? (
             <ActivityDetailPage
+              key={recordId ?? 'detail'}
               recordId={recordId}
+              tab={tab}
               onBack={() => goToPage('activity-list')}
               onEdit={(id) => goToPage('activity-edit', String(id))}
-            />
-          ) : relatedPages.includes(page as RelatedPage) ? (
-            <ActivityRelatedListPage
-              key={`${page}-${recordId ?? ''}`}
-              page={page as RelatedPage}
-              recordId={recordId}
-              onBack={() => goToPage('activity-list')}
+              onCopy={(id) => goToPage('activity-create', String(id))}
+              onTabChange={(nextTab) => {
+                setTab(nextTab);
+                syncLocation(application, 'activity-detail', recordId, nextTab);
+              }}
             />
           ) : page === 'training-courseware' ? (
             <CoursewareListPage />

@@ -6,6 +6,7 @@ import {
   getDirectApplications,
   parseCEndHash,
   parseLocationHash,
+  toLocationHash,
   toCEndPortalHash,
   toH5CourseListHash,
   toH5CourseDetailHash,
@@ -246,6 +247,53 @@ describe('skills-contest application', () => {
     const keys = getDirectApplications(4).map((item) => item.key);
     expect(keys).toEqual(['workbench', 'organization', 'products', 'orders']);
     expect(keys).not.toContain('skills-contest');
+  });
+});
+
+describe('activity detail tab hash', () => {
+  it('parses the tab segment of activity-detail hash', () => {
+    expect(parseLocationHash('#/activities/activity-detail/3/signups')).toEqual({
+      application: 'activities',
+      page: 'activity-detail',
+      recordId: '3',
+      tab: 'signups',
+    });
+  });
+
+  it('keeps three-segment activity-detail hash without tab', () => {
+    expect(parseLocationHash('#/activities/activity-detail/3')).toEqual({
+      application: 'activities',
+      page: 'activity-detail',
+      recordId: '3',
+    });
+  });
+
+  it('writes tab as fourth segment in toLocationHash', () => {
+    expect(toLocationHash('activities', 'activity-detail', '3', 'comments')).toBe('#/activities/activity-detail/3/comments');
+    expect(toLocationHash('activities', 'activity-detail', '3')).toBe('#/activities/activity-detail/3');
+    expect(toLocationHash('activities', 'activity-list')).toBe('#/activities/activity-list');
+  });
+
+  it('redirects legacy related-page hashes to activity-detail tabs', () => {
+    expect(parseLocationHash('#/activities/activity-signups/3')).toEqual({
+      application: 'activities',
+      page: 'activity-detail',
+      recordId: '3',
+      tab: 'signups',
+    });
+    expect(parseLocationHash('#/activities/activity-moments/7')).toEqual({
+      application: 'activities',
+      page: 'activity-detail',
+      recordId: '7',
+      tab: 'moments',
+    });
+  });
+
+  it('falls back to activities defaultPage for legacy related hash without recordId', () => {
+    expect(parseLocationHash('#/activities/activity-signups')).toEqual({
+      application: 'activities',
+      page: 'activity-overview',
+    });
   });
 });
 

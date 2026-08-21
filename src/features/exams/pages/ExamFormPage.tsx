@@ -1,42 +1,37 @@
-import { useEffect, useMemo } from 'react';
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { useEffect, useMemo, useState } from 'react';
+import { PlusOutlined } from '@ant-design/icons';
 import {
   App,
   Breadcrumb,
   Button,
   Card,
-  Col,
   DatePicker,
   Empty,
   Flex,
   Form,
   Input,
   InputNumber,
-  Row,
   Select,
   Space,
+  Table,
   TreeSelect,
   Typography,
 } from 'antd';
+import type { TableColumnsType } from 'antd';
 import dayjs from 'dayjs';
 import { RichTextField } from '../../activities/components/RichTextField';
+import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import type { CategoryNode } from '../../../shared/category-tree/categoryTree';
 import {
   calculateExamTotalScore,
   examCertificates,
   examDifficulties,
-  type ExamDifficulty,
+  type ExamQuestionRule,
   type ExamRecord,
 } from '../model/exam';
 import { getExam, upsertExam, useExamCategoryTree } from '../model/examStore';
 
 type Props = { mode: 'create' | 'edit'; recordId?: string; onBack: () => void };
-
-type QuestionRuleFormValue = {
-  difficulty?: ExamDifficulty;
-  questionCount?: number;
-  scorePerQuestion?: number;
-};
 
 type FormValues = {
   name: string;
@@ -45,7 +40,7 @@ type FormValues = {
   durationMinutes: number;
   points: number;
   certificateId?: number | null;
-  questionRules?: QuestionRuleFormValue[];
+  questionRules?: ExamQuestionRule[];
   passScore: number;
   examTimes: number;
   tags?: string;
@@ -64,23 +59,101 @@ function toTreeData(
   }));
 }
 
+function QuestionRulesTable({
+  value = [],
+  onChange,
+}: {
+  value?: ExamQuestionRule[];
+  onChange?: (value: ExamQuestionRule[]) => void;
+}) {
+  const updateRule = (id: number, patch: Partial<ExamQuestionRule>) => {
+    onChange?.(value.map((rule) => (rule.id === id ? { ...rule, ...patch } : rule)));
+  };
+
+  const removeRule = (id: number) => {
+    onChange?.(value.filter((rule) => rule.id !== id));
+  };
+
+  const columns: TableColumnsType<ExamQuestionRule> = [
+    {
+      title: '试题难度',
+      dataIndex: 'difficulty',
+      width: 180,
+      render: (_, record) => (
+        <Select
+          value={record.difficulty}
+          aria-label="选择试题难度"
+          options={examDifficulties.map((item) => ({ value: item, label: item }))}
+          onChange={(difficulty) => updateRule(record.id, { difficulty })}
+          style={{ width: '100%' }}
+        />
+      ),
+    },
+    {
+      title: '试题数量',
+      dataIndex: 'questionCount',
+      width: 180,
+      render: (_, record) => (
+        <InputNumber
+          min={1}
+          precision={0}
+          value={record.questionCount}
+          aria-label="输入试题数量"
+          onChange={(nextValue) => updateRule(record.id, { questionCount: Number(nextValue ?? 0) })}
+          style={{ width: '100%' }}
+        />
+      ),
+    },
+    {
+      title: '每题分数',
+      dataIndex: 'scorePerQuestion',
+      width: 180,
+      render: (_, record) => (
+        <InputNumber
+          min={1}
+          precision={0}
+          value={record.scorePerQuestion}
+          aria-label="输入每题分数"
+          onChange={(nextValue) => updateRule(record.id, { scorePerQuestion: Number(nextValue ?? 0) })}
+          style={{ width: '100%' }}
+        />
+      ),
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 80,
+      render: (_, record) => (
+        <Button type="link" danger aria-label={`删除${record.difficulty}规则`} onClick={() => removeRule(record.id)}>
+          删除
+        </Button>
+      ),
+    },
+  ];
+
+  return (
+    <Table
+      rowKey="id"
+      size="middle"
+      pagination={false}
+      dataSource={value}
+      columns={columns}
+      locale={{ emptyText: <Empty description="暂无出题配置，请点击「添加出题规则」" /> }}
+      scroll={{ x: 720 }}
+    />
+  );
+}
+
 export function ExamFormPage({ mode, recordId, onBack }: Props) {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const tree = useExamCategoryTree();
   const [form] = Form.useForm<FormValues>();
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
   const editing = mode === 'edit' ? getExam(Number(recordId)) : undefined;
   const title = mode === 'edit' ? '编辑考试' : '新增考试';
   const watchedQuestionRules = Form.useWatch('questionRules', form) ?? [];
-  const totalScore = useMemo(
-    () =>
-      calculateExamTotalScore(
-        watchedQuestionRules.map((rule) => ({
-          questionCount: Number(rule?.questionCount ?? 0),
-          scorePerQuestion: Number(rule?.scorePerQuestion ?? 0),
-        })),
-      ),
-    [watchedQuestionRules],
-  );
+  const totalScore = useMemo(() => calculateExamTotalScore(watchedQuestionRules), [watchedQuestionRules]);
 
   useEffect(() => {
     if (mode === 'edit' && !editing) {
@@ -98,6 +171,7 @@ export function ExamFormPage({ mode, recordId, onBack }: Props) {
         examTimes: 1,
         questionRules: [],
       });
+      setDirty(false);
       return;
     }
     if (!editing) return;
@@ -115,19 +189,53 @@ export function ExamFormPage({ mode, recordId, onBack }: Props) {
       audience: editing.audience ?? '',
       descriptionHtml: editing.descriptionHtml ?? '',
     });
+    setDirty(false);
   }, [mode, editing, form]);
 
+  const leave = () => {
+    if (!b2bStandards.form.unsavedChangesGuard || !dirty) {
+      onBack();
+      return;
+    }
+    modal.confirm({
+      title: '确认离开？',
+      content: '未保存的修改将丢失。',
+      okText: '确认',
+      cancelText: '取消',
+      onOk: onBack,
+    });
+  };
+
+  const addQuestionRule = () => {
+    const nextRules: ExamQuestionRule[] = [
+      ...watchedQuestionRules,
+      { id: Date.now(), difficulty: '简单', questionCount: 10, scorePerQuestion: 2 },
+    ];
+    form.setFieldValue('questionRules', nextRules);
+    setDirty(true);
+  };
+
+  const clearQuestionRules = () => {
+    if (!watchedQuestionRules.length) return;
+    modal.confirm({
+      title: '确认清空出题规则？',
+      content: '清空后需要重新添加规则才能保存考试。',
+      okText: '确认',
+      cancelText: '取消',
+      onOk: () => {
+        form.setFieldValue('questionRules', []);
+        setDirty(true);
+      },
+    });
+  };
+
   const save = async () => {
-    const values = await form.validateFields();
+    if (saving) return;
+    const values = await form.validateFields().catch(() => null);
+    if (!values) return;
+    setSaving(true);
     const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
-    const questionRules = (values.questionRules ?? [])
-      .filter((rule) => rule?.difficulty && rule.questionCount != null && rule.scorePerQuestion != null)
-      .map((rule, index) => ({
-        id: editing?.questionRules?.[index]?.id ?? Date.now() + index,
-        difficulty: rule.difficulty ?? '简单',
-        questionCount: Number(rule.questionCount),
-        scorePerQuestion: Number(rule.scorePerQuestion),
-      }));
+    const questionRules = values.questionRules ?? [];
     const record: ExamRecord = {
       id: mode === 'edit' && editing ? editing.id : Date.now(),
       name: values.name.trim(),
@@ -151,6 +259,8 @@ export function ExamFormPage({ mode, recordId, onBack }: Props) {
       descriptionHtml: values.descriptionHtml ?? '',
     };
     upsertExam(record);
+    setDirty(false);
+    setSaving(false);
     message.success(mode === 'edit' ? '已保存考试' : '已创建考试');
     onBack();
   };
@@ -163,7 +273,7 @@ export function ExamFormPage({ mode, recordId, onBack }: Props) {
           { title: '考试' },
           {
             title: (
-              <Button type="link" className="breadcrumb-link" onClick={onBack}>
+              <Button type="link" className="breadcrumb-link" onClick={leave}>
                 考试管理
               </Button>
             ),
@@ -173,218 +283,169 @@ export function ExamFormPage({ mode, recordId, onBack }: Props) {
       />
       <Flex align="baseline" gap={16} wrap="wrap">
         <Typography.Title level={1}>{title}</Typography.Title>
-        <Typography.Text type="secondary">按截图配置考试基础信息、试题规则、分数次数与适用人群。</Typography.Text>
+        <Typography.Text type="secondary">完善考试基础信息、试题规则、分数次数与说明后保存。</Typography.Text>
       </Flex>
 
-      <Form form={form} layout="horizontal" className="edit-form" requiredMark labelWrap={false} validateTrigger="onBlur">
+      <Form
+        form={form}
+        layout="horizontal"
+        className="edit-form"
+        requiredMark
+        labelWrap={false}
+        validateTrigger="onBlur"
+        scrollToFirstError={{ focus: true }}
+        onValuesChange={() => setDirty(true)}
+      >
         <Card title="基本信息">
-          <Row gutter={[16, 0]}>
-            <Col xs={24} lg={12}>
-              <Form.Item
-                name="name"
-                label="考试名称"
-                rules={[
-                  { required: true, whitespace: true, message: '请输入考试名称' },
-                  { max: 50, message: '不超过 50 个字' },
-                ]}
-              >
-                <Input maxLength={50} showCount placeholder="请输入考试名称，不超过50个字" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} lg={12}>
-              <Form.Item name="categoryId" label="考试分类" rules={[{ required: true, message: '请选择考试分类' }]}>
-                <TreeSelect
-                  allowClear
-                  treeData={toTreeData(tree)}
-                  placeholder="请选择考试分类"
-                  treeDefaultExpandAll
-                  showSearch={{ treeNodeFilterProp: 'title' }}
-                  style={{ width: '100%' }}
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={24} lg={12}>
-              <Form.Item
-                name="range"
-                label="考试时间"
-                rules={[
-                  { required: true, message: '请选择开考与结束时间' },
-                  {
-                    validator: async (_, value) => {
-                      if (!value?.[0] || !value?.[1]) return;
-                      if (!value[1].isAfter(value[0])) throw new Error('结束时间必须晚于开考时间');
-                    },
-                  },
-                ]}
-              >
-                <DatePicker.RangePicker showTime style={{ width: '100%' }} placeholder={['开始时间', '结束时间']} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} lg={12}>
-              <Form.Item name="durationMinutes" label="考试时长" rules={[{ required: true, message: '请输入考试时长' }]}>
-                <InputNumber min={1} precision={0} addonAfter="分钟" placeholder="请输入时长" style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} lg={12}>
-              <Form.Item name="points" label="获得积分" rules={[{ required: true, message: '请输入获得积分' }]}>
-                <InputNumber min={0} precision={0} addonAfter="分" style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} lg={12}>
-              <Form.Item name="certificateId" label="关联证书" extra="可不选，学员通过考试后获得对应证书。">
-                <Select
-                  allowClear
-                  placeholder="请选择关联证书（可不选）"
-                  options={examCertificates.map((item) => ({ value: item.id, label: item.name }))}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
+          <Form.Item
+            name="name"
+            label="考试名称"
+            rules={[
+              { required: true, whitespace: true, message: '请输入考试名称' },
+              { max: 50, message: '不超过 50 个字' },
+            ]}
+          >
+            <Input maxLength={50} showCount placeholder="请输入考试名称，不超过50个字" />
+          </Form.Item>
+
+          <Form.Item name="categoryId" label="考试分类" rules={[{ required: true, message: '请选择考试分类' }]}>
+            <TreeSelect
+              allowClear
+              treeData={toTreeData(tree)}
+              placeholder="请选择考试分类"
+              treeDefaultExpandAll
+              showSearch={{ treeNodeFilterProp: 'title' }}
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="range"
+            label="考试时间"
+            rules={[
+              { required: true, message: '请选择开考与结束时间' },
+              {
+                validator: async (_, value) => {
+                  if (!value?.[0] || !value?.[1]) return;
+                  if (!value[1].isAfter(value[0])) throw new Error('结束时间必须晚于开考时间');
+                },
+              },
+            ]}
+          >
+            <DatePicker.RangePicker showTime style={{ width: '100%' }} placeholder={['开始时间', '结束时间']} />
+          </Form.Item>
+
+          <Form.Item name="durationMinutes" label="考试时长" rules={[{ required: true, message: '请输入考试时长' }]}>
+            <InputNumber min={1} precision={0} addonAfter="分钟" placeholder="请输入时长" style={{ width: '100%' }} />
+          </Form.Item>
+
+          <Form.Item name="points" label="获得积分" rules={[{ required: true, message: '请输入获得积分' }]}>
+            <InputNumber min={0} precision={0} addonAfter="分" style={{ width: '100%' }} />
+          </Form.Item>
+
+          <Form.Item name="certificateId" label="关联证书" extra="可不选，学员通过考试后获得对应证书。">
+            <Select
+              allowClear
+              placeholder="请选择关联证书（可不选）"
+              options={examCertificates.map((item) => ({ value: item.id, label: item.name }))}
+            />
+          </Form.Item>
         </Card>
 
         <Card
-          title="试题配置"
+          title={
+            <span>
+              试题配置
+              <Typography.Text type="danger"> *</Typography.Text>
+            </span>
+          }
           extra={<Typography.Text type="secondary">总分：{totalScore} 分</Typography.Text>}
         >
-          <Form.List name="questionRules">
-            {(fields, { add, remove }) => (
-              <Flex vertical gap={12}>
-                {fields.length ? (
-                  <Flex vertical gap={8}>
-                    <Row gutter={[16, 0]}>
-                      <Col xs={24} lg={7}>
-                        <Typography.Text type="secondary">试题难度</Typography.Text>
-                      </Col>
-                      <Col xs={24} lg={7}>
-                        <Typography.Text type="secondary">试题数量</Typography.Text>
-                      </Col>
-                      <Col xs={24} lg={7}>
-                        <Typography.Text type="secondary">每题分数</Typography.Text>
-                      </Col>
-                      <Col xs={24} lg={3}>
-                        <Typography.Text type="secondary">操作</Typography.Text>
-                      </Col>
-                    </Row>
-                    {fields.map((field) => (
-                      <Row key={field.key} gutter={[16, 0]} align="middle">
-                        <Col xs={24} lg={7}>
-                          <Form.Item
-                            name={[field.name, 'difficulty']}
-                            rules={[{ required: true, message: '请选择试题难度' }]}
-                            style={{ marginBottom: 0 }}
-                          >
-                            <Select
-                              placeholder="请选择试题难度"
-                              options={examDifficulties.map((value) => ({ value, label: value }))}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} lg={7}>
-                          <Form.Item
-                            name={[field.name, 'questionCount']}
-                            rules={[{ required: true, message: '请输入试题数量' }]}
-                            style={{ marginBottom: 0 }}
-                          >
-                            <InputNumber min={1} precision={0} placeholder="请输入试题数量" style={{ width: '100%' }} />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} lg={7}>
-                          <Form.Item
-                            name={[field.name, 'scorePerQuestion']}
-                            rules={[{ required: true, message: '请输入每题分数' }]}
-                            style={{ marginBottom: 0 }}
-                          >
-                            <InputNumber min={1} precision={0} placeholder="请输入每题分数" style={{ width: '100%' }} />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} lg={3}>
-                          <Button
-                            type="text"
-                            danger
-                            icon={<DeleteOutlined />}
-                            aria-label={`删除第 ${field.name + 1} 条出题规则`}
-                            onClick={() => remove(field.name)}
-                          />
-                        </Col>
-                      </Row>
-                    ))}
-                  </Flex>
-                ) : (
-                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无出题配置" />
-                )}
-                <div>
-                  <Button
-                    type="dashed"
-                    icon={<PlusOutlined />}
-                    onClick={() => add({ difficulty: '简单', questionCount: 10, scorePerQuestion: 2 })}
-                  >
-                    添加出题规则
-                  </Button>
-                </div>
-              </Flex>
-            )}
-          </Form.List>
+          <div className="table-toolbar">
+            <Space>
+              <Button type="primary" icon={<PlusOutlined />} onClick={addQuestionRule}>
+                添加出题规则
+              </Button>
+              <Button onClick={clearQuestionRules}>清空规则</Button>
+            </Space>
+          </div>
+          <Form.Item
+            name="questionRules"
+            rules={[
+              {
+                validator: async (_, value: ExamQuestionRule[] | undefined) => {
+                  if (!value?.length) throw new Error('请至少添加一条出题规则');
+                  if (value.some((rule) => !rule.difficulty || !rule.questionCount || !rule.scorePerQuestion)) {
+                    throw new Error('请完整填写每条出题规则');
+                  }
+                },
+              },
+            ]}
+          >
+            <QuestionRulesTable />
+          </Form.Item>
         </Card>
 
         <Card title="分数与次数控制">
-          <Row gutter={[16, 0]}>
-            <Col xs={24} lg={8}>
-              <Form.Item label="总分数">
-                <InputNumber value={totalScore} disabled addonAfter="分" style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} lg={8}>
-              <Form.Item
-                name="passScore"
-                label="及格分数"
-                rules={[
-                  { required: true, message: '请输入及格分数' },
-                  {
-                    validator: async (_, value) => {
-                      if (value == null || totalScore === 0) return;
-                      if (Number(value) > totalScore) throw new Error('及格分数不能高于总分数');
-                    },
-                  },
-                ]}
-              >
-                <InputNumber min={0} precision={0} placeholder="请输入及格分数" style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} lg={8}>
-              <Form.Item name="examTimes" label="考试次数" rules={[{ required: true, message: '请输入考试次数' }]}>
-                <InputNumber min={1} precision={0} placeholder="请输入考试次数" style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-          </Row>
+          <Form.Item label="总分数">
+            <InputNumber value={totalScore} disabled addonAfter="分" style={{ width: '100%' }} />
+          </Form.Item>
+
+          <Form.Item
+            name="passScore"
+            label="及格分数"
+            rules={[
+              { required: true, message: '请输入及格分数' },
+              {
+                validator: async (_, value) => {
+                  if (value == null || totalScore === 0) return;
+                  if (Number(value) > totalScore) throw new Error('及格分数不能高于总分数');
+                },
+              },
+            ]}
+          >
+            <InputNumber min={0} precision={0} placeholder="请输入及格分数" style={{ width: '100%' }} />
+          </Form.Item>
+
+          <Form.Item name="examTimes" label="考试次数" rules={[{ required: true, message: '请输入考试次数' }]}>
+            <InputNumber min={1} precision={0} placeholder="请输入考试次数" style={{ width: '100%' }} />
+          </Form.Item>
         </Card>
 
         <Card title="标签与适用人群">
-          <Row gutter={[16, 0]}>
-            <Col xs={24} lg={12}>
-              <Form.Item name="tags" label="考试标签">
-                <Input placeholder="为考试打标签，多个标签用逗号分隔，如：数据分析、岗位、进阶、产品经理" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} lg={12}>
-              <Form.Item name="audience" label="适用岗位/人群">
-                <Input placeholder="适合的岗位或人群，如：产品经理、运营、数据方向的同学" />
-              </Form.Item>
-            </Col>
-          </Row>
+          <Form.Item name="tags" label="考试标签" rules={[{ max: 500, message: '考试标签不超过 500 个字' }]}>
+            <Input.TextArea
+              rows={3}
+              maxLength={500}
+              showCount
+              placeholder="为考试打标签，多个标签用逗号分隔，如：数据分析、岗位、进阶、产品经理"
+            />
+          </Form.Item>
+
+          <Form.Item name="audience" label="适用岗位/人群" rules={[{ max: 500, message: '适用岗位/人群不超过 500 个字' }]}>
+            <Input.TextArea
+              rows={3}
+              maxLength={500}
+              showCount
+              placeholder="适合的岗位或人群，如：产品经理、运营、数据方向的同学"
+            />
+          </Form.Item>
         </Card>
 
         <Card title="考试说明">
-          <Form.Item name="descriptionHtml" label="考试说明" labelCol={{ flex: '112px' }}>
+          <Form.Item name="descriptionHtml" extra="选填，支持图文排版">
             <RichTextField ariaLabel="考试说明" placeholder="请输入考试说明" />
           </Form.Item>
         </Card>
 
         <div className="sticky-form-actions">
           <Space>
-            <Button type="primary" onClick={() => void save()}>
+            <Button type="primary" loading={saving} onClick={() => void save()}>
               保存
             </Button>
-            <Button onClick={onBack}>取消</Button>
+            <Button disabled={saving} onClick={leave}>
+              取消
+            </Button>
           </Space>
         </div>
       </Form>

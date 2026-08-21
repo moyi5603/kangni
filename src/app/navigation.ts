@@ -1,5 +1,3 @@
-import { relatedPages } from '../features/activities/model/related';
-
 export const APPLICATION_CATEGORIES = ['通用', '员工与组织', '业务经营', '平台能力'] as const;
 
 export type ApplicationCategory = (typeof APPLICATION_CATEGORIES)[number];
@@ -354,11 +352,11 @@ export function goAdminWorkbench() {
   window.location.hash = '#/workbench/dashboard';
 }
 
-export function parseLocationHash(hash: string): { application: string; page: string; recordId?: string } {
+export function parseLocationHash(hash: string): { application: string; page: string; recordId?: string; tab?: string } {
   const fallback = { application: 'workbench', page: 'dashboard' };
   const path = hash.replace(/^#\/?/, '').trim();
   if (!path) return fallback;
-  const [applicationKey, pageKey, recordId] = path.split('/');
+  const [applicationKey, pageKey, recordId, tab] = path.split('/');
   const application = getApplication(applicationKey);
   if (!application) return fallback;
   const menus = applicationMenus[application.key] ?? [];
@@ -371,25 +369,31 @@ export function parseLocationHash(hash: string): { application: string; page: st
     'course-comments',
     'exam-create',
     'exam-edit',
-    ...relatedPages,
   ];
   if (pageKey && (isLeafMenuKey(menus, pageKey) || extraPages.includes(pageKey))) {
-    return { application: application.key, page: pageKey, recordId };
+    return tab ? { application: application.key, page: pageKey, recordId, tab } : { application: application.key, page: pageKey, recordId };
+  }
+  const legacyRelatedTabs: Record<string, string> = {
+    'activity-signups': 'signups',
+    'activity-comments': 'comments',
+    'activity-approvals': 'approvals',
+    'activity-surveys': 'surveys',
+    'activity-moments': 'moments',
+    'activity-prizes': 'prizes',
+  };
+  if (application.key === 'activities' && pageKey && pageKey in legacyRelatedTabs && recordId) {
+    return { application: 'activities', page: 'activity-detail', recordId, tab: legacyRelatedTabs[pageKey] };
   }
   return { application: application.key, page: application.defaultPage };
 }
 
-export function toLocationHash(application: string, page: string, recordId?: string): string {
+export function toLocationHash(application: string, page: string, recordId?: string, tab?: string): string {
+  if (recordId && tab) return `#/${application}/${page}/${recordId}/${tab}`;
   return recordId ? `#/${application}/${page}/${recordId}` : `#/${application}/${page}`;
 }
 
 export function siderSelectedKey(page: string): string {
-  if (
-    page === 'activity-create' ||
-    page === 'activity-edit' ||
-    page === 'activity-detail' ||
-    relatedPages.includes(page as (typeof relatedPages)[number])
-  ) {
+  if (page === 'activity-create' || page === 'activity-edit' || page === 'activity-detail') {
     return 'activity-list';
   }
   if (page === 'course-create' || page === 'course-edit' || page === 'course-comments') {

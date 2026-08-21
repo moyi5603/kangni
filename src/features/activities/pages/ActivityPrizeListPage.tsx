@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { PlusOutlined } from '@ant-design/icons';
 import {
   App,
-  Breadcrumb,
   Button,
   Card,
   Drawer,
@@ -17,7 +16,6 @@ import {
   Table,
   Tooltip,
   TreeSelect,
-  Typography,
   Upload,
 } from 'antd';
 import type { TableColumnsType, UploadFile } from 'antd';
@@ -94,7 +92,7 @@ function MedalSelect({
   );
 }
 
-export function ActivityPrizeListPage({ activity, onBack }: { activity: Activity; onBack: () => void }) {
+export function ActivityPrizeListPage({ activity }: { activity: Activity }) {
   const { message } = App.useApp();
   const data = useRelated('prizes', activity.id);
   const signups = useRelated('signups', activity.id);
@@ -295,21 +293,6 @@ export function ActivityPrizeListPage({ activity, onBack }: { activity: Activity
 
   return (
     <div className="page-stack">
-      <div className="list-page-heading">
-        <Breadcrumb
-          separator=">"
-          items={[
-            { title: '活动' },
-            { title: <Button type="link" className="breadcrumb-link" onClick={onBack}>活动管理</Button> },
-            { title: activity.title },
-            { title: '奖品发放' },
-          ]}
-        />
-        <Flex align="baseline" gap={16} wrap="wrap">
-          <Typography.Title level={1}>奖品发放</Typography.Title>
-          <Typography.Text type="secondary">按人员发放奖励。仅已结束且已发布的活动可以发放。</Typography.Text>
-        </Flex>
-      </div>
       <SearchPanel
         onSearch={() => {
           setQuery(draft);

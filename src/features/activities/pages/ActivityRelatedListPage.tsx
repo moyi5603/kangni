@@ -3,7 +3,6 @@ import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import {
   App,
   Avatar,
-  Breadcrumb,
   Button,
   Card,
   DatePicker,
@@ -35,7 +34,6 @@ import {
   withDisabledPeople,
   type Activity,
 } from '../model/activity';
-import { getActivity } from '../model/activityStore';
 import { downloadSignupImportTemplate, parseSignupImportCsv } from '../model/signupImport';
 import {
   patchRelated,
@@ -44,25 +42,13 @@ import {
   useRelated,
   type ApprovalRecord,
   type CommentRecord,
-  type RelatedPage,
   type SignupRecord,
   type SurveyRecord,
 } from '../model/related';
 import { commentReplyLabel, removeCommentsAndDescendants } from '../model/commentTree';
 import { employeeAvatarColor, employeeAvatarLetter } from '../model/employeeAvatar';
-import { ActivityMomentListPage } from './ActivityMomentListPage';
-import { ActivityPrizeListPage } from './ActivityPrizeListPage';
 
 type DateRange = [Dayjs | null, Dayjs | null] | null;
-
-const pageMeta: Record<RelatedPage, { title: string; subtitle: string; noun: string }> = {
-  'activity-prizes': { title: '奖品发放', subtitle: '按人员发放勋章，并查看发放记录。', noun: '发放记录' },
-  'activity-surveys': { title: '满意度调查', subtitle: '配置并查看该活动的满意度问卷。', noun: '问卷' },
-  'activity-approvals': { title: '审批记录', subtitle: '查看该活动的审批流转记录。', noun: '审批记录' },
-  'activity-signups': { title: '报名管理', subtitle: '查询、添加和导入该活动的报名人员。', noun: '报名' },
-  'activity-comments': { title: '评论管理', subtitle: '查看并删除该活动下的评论，无需审核。', noun: '评论' },
-  'activity-moments': { title: '精彩瞬间管理', subtitle: '审核并管理员工提交的图文和视频瞬间。', noun: '瞬间' },
-};
 
 const statusColor: Record<string, string> = {
   待发放: 'warning',
@@ -108,74 +94,7 @@ function modalFooter(_: ReactNode, extra: { OkBtn: React.FC; CancelBtn: React.FC
   );
 }
 
-function RelatedHeading({
-  activity,
-  title,
-  subtitle,
-  onBack,
-}: {
-  activity: Activity;
-  title: string;
-  subtitle: string;
-  onBack: () => void;
-}) {
-  return (
-    <div className="list-page-heading">
-      <Breadcrumb
-        separator=">"
-        items={[
-          { title: '活动' },
-          { title: <Button type="link" className="breadcrumb-link" onClick={onBack}>活动管理</Button> },
-          { title: activity.title },
-          { title },
-        ]}
-      />
-      <Flex align="baseline" gap={16} wrap="wrap">
-        <Typography.Title level={1}>{title}</Typography.Title>
-        <Typography.Text type="secondary">{subtitle}</Typography.Text>
-      </Flex>
-    </div>
-  );
-}
-
-function MissingActivity({ onBack }: { onBack: () => void }) {
-  return (
-    <div className="page-stack">
-      <Breadcrumb
-        separator=">"
-        items={[
-          { title: '活动' },
-          { title: <Button type="link" className="breadcrumb-link" onClick={onBack}>活动管理</Button> },
-          { title: '记录不存在' },
-        ]}
-      />
-      <Empty description="活动不存在或已删除">
-        <Button onClick={onBack}>返回活动管理</Button>
-      </Empty>
-    </div>
-  );
-}
-
-export function ActivityRelatedListPage({
-  page,
-  recordId,
-  onBack,
-}: {
-  page: RelatedPage;
-  recordId?: string;
-  onBack: () => void;
-}) {
-  const activity = getActivity(Number(recordId));
-  if (!activity || Number.isNaN(Number(recordId))) return <MissingActivity onBack={onBack} />;
-  if (page === 'activity-prizes') return <ActivityPrizeListPage activity={activity} onBack={onBack} />;
-  if (page === 'activity-surveys') return <SurveyList activity={activity} onBack={onBack} />;
-  if (page === 'activity-approvals') return <ApprovalList activity={activity} onBack={onBack} />;
-  if (page === 'activity-signups') return <SignupList activity={activity} onBack={onBack} />;
-  if (page === 'activity-comments') return <CommentList activity={activity} onBack={onBack} />;
-  return <ActivityMomentListPage activity={activity} onBack={onBack} />;
-}
-
-function SurveyList({ activity, onBack }: { activity: Activity; onBack: () => void }) {
+export function SurveyList({ activity }: { activity: Activity }) {
   const { message } = App.useApp();
   const data = useRelated('surveys', activity.id);
   const [draft, setDraft] = useState<{ title: string; status?: SurveyRecord['status']; collectAt: DateRange }>({ title: '', collectAt: null });
@@ -197,7 +116,6 @@ function SurveyList({ activity, onBack }: { activity: Activity; onBack: () => vo
       }),
     [data, query],
   );
-  const meta = pageMeta['activity-surveys'];
   const openEditor = (record?: SurveyRecord, nextMode: 'create' | 'edit' | 'view' = record ? 'view' : 'create') => {
     setMode(nextMode);
     setCurrent(record);
@@ -255,9 +173,6 @@ function SurveyList({ activity, onBack }: { activity: Activity; onBack: () => vo
   ];
   return (
     <RelatedTable
-      activity={activity}
-      meta={meta}
-      onBack={onBack}
       query={
         <SearchPanel
           onSearch={() => {
@@ -364,9 +279,8 @@ function SurveyList({ activity, onBack }: { activity: Activity; onBack: () => vo
   );
 }
 
-function ApprovalList({ activity, onBack }: { activity: Activity; onBack: () => void }) {
+export function ApprovalList({ activity }: { activity: Activity }) {
   const data = useRelated('approvals', activity.id);
-  const meta = pageMeta['activity-approvals'];
   const columns: TableColumnsType<ApprovalRecord> = [
     { title: '审批动作', dataIndex: 'action', width: 110 },
     { title: '处理人', dataIndex: 'operator', width: 120 },
@@ -375,9 +289,6 @@ function ApprovalList({ activity, onBack }: { activity: Activity; onBack: () => 
   ];
   return (
     <RelatedTable
-      activity={activity}
-      meta={meta}
-      onBack={onBack}
       query={null}
       toolbar={null}
       batch={null}
@@ -402,7 +313,7 @@ function ApprovalList({ activity, onBack }: { activity: Activity; onBack: () => 
   );
 }
 
-function SignupList({ activity, onBack }: { activity: Activity; onBack: () => void }) {
+export function SignupList({ activity }: { activity: Activity }) {
   const { message, modal } = App.useApp();
   const data = useRelated('signups', activity.id);
   const configuredTypes = useMemo(() => activitySignupTypes(activity), [activity]);
@@ -446,7 +357,6 @@ function SignupList({ activity, onBack }: { activity: Activity; onBack: () => vo
       ),
     [data, query],
   );
-  const meta = pageMeta['activity-signups'];
   const selected = data.filter((item) => selectedRowKeys.includes(item.id));
   const hasFilter = Boolean(query.name || query.phone || query.signupType || query.department || query.status || query.createdAt);
   const openAdd = () => {
@@ -538,7 +448,7 @@ function SignupList({ activity, onBack }: { activity: Activity; onBack: () => vo
     const usedPhones = new Set(data.map((item) => item.phone));
     parsed.rows.forEach((row) => {
       if (!allowed.has(row.signupType)) {
-        skipped.push(`${row.name} 的报名类型不在该活动中`);
+        skipped.push(`${row.name} 的分组名称不在该活动中`);
         return;
       }
       if (usedNames.has(row.name) || usedPhones.has(row.phone) || created.some((item) => item.name === row.name || item.phone === row.phone)) {
@@ -579,7 +489,7 @@ function SignupList({ activity, onBack }: { activity: Activity; onBack: () => vo
   const columns: TableColumnsType<SignupRecord> = [
     { title: '姓名', dataIndex: 'name', width: 110 },
     { title: '手机号', dataIndex: 'phone', width: 130 },
-    { title: '报名类型', dataIndex: 'signupType', width: 120 },
+    { title: '分组名称', dataIndex: 'signupType', width: 120 },
     { title: '部门', dataIndex: 'department', width: 120 },
     { title: '状态', dataIndex: 'status', width: 110, render: (value: string) => <Tag color={statusColor[value]}>{value}</Tag> },
     { title: '报名时间', dataIndex: 'createdAt', width: 180 },
@@ -616,9 +526,6 @@ function SignupList({ activity, onBack }: { activity: Activity; onBack: () => vo
   ];
   return (
     <RelatedTable
-      activity={activity}
-      meta={meta}
-      onBack={onBack}
       query={
         <SearchPanel
           onSearch={() => {
@@ -639,7 +546,7 @@ function SignupList({ activity, onBack }: { activity: Activity; onBack: () => vo
           <SearchField label="手机号">
             <Input allowClear placeholder="请输入手机号" value={draft.phone} onChange={(event) => setDraft((currentDraft) => ({ ...currentDraft, phone: event.target.value }))} />
           </SearchField>
-          <SearchField label="报名类型">
+          <SearchField label="分组名称">
             <Select allowClear placeholder="全部类型" value={draft.signupType} onChange={(value) => setDraft((currentDraft) => ({ ...currentDraft, signupType: value }))} options={typeOptions} />
           </SearchField>
           <SearchField label="部门">
@@ -730,8 +637,8 @@ function SignupList({ activity, onBack }: { activity: Activity; onBack: () => vo
             destroyOnHidden
           >
             <Form form={addForm} layout="horizontal" className="edit-form" requiredMark labelWrap={false} validateTrigger="onBlur">
-              <Form.Item name="signupType" label="报名类型" rules={[{ required: true, message: '请选择报名类型' }]}>
-                <Select options={optionsOf(configuredTypes)} placeholder="请选择报名类型" />
+              <Form.Item name="signupType" label="分组名称" rules={[{ required: true, message: '请选择分组名称' }]}>
+                <Select options={optionsOf(configuredTypes)} placeholder="请选择分组名称" />
               </Form.Item>
               <Form.Item name="people" label="选择人员" rules={[{ required: true, type: 'array', min: 1, message: '请选择人员' }]}>
                 <TreeSelect
@@ -762,7 +669,7 @@ function SignupList({ activity, onBack }: { activity: Activity; onBack: () => vo
             destroyOnHidden
           >
             <Form layout="horizontal" className="edit-form" requiredMark labelWrap={false}>
-              <Form.Item label="导入文件" extra="支持 csv。请按模板填写姓名、手机号、部门、报名类型，类型须为该活动已配置的报名类型。" required>
+              <Form.Item label="导入文件" extra="支持 csv。请按模板填写姓名、手机号、部门、分组名称，类型须为该活动已配置的分组名称。" required>
                 <Space>
                   <Upload
                     accept=".csv,.xlsx"
@@ -786,7 +693,7 @@ function SignupList({ activity, onBack }: { activity: Activity; onBack: () => vo
   );
 }
 
-function CommentList({ activity, onBack }: { activity: Activity; onBack: () => void }) {
+export function CommentList({ activity }: { activity: Activity }) {
   const { message, modal } = App.useApp();
   const data = useRelated('comments', activity.id);
   const [draft, setDraft] = useState<{ content: string; author: string; createdAt: DateRange }>({
@@ -806,7 +713,6 @@ function CommentList({ activity, onBack }: { activity: Activity; onBack: () => v
       ),
     [data, query],
   );
-  const meta = pageMeta['activity-comments'];
   const deleteOne = (record: CommentRecord) => {
     modal.confirm({
       title: `确认删除「${record.author}」的评论？`,
@@ -867,9 +773,6 @@ function CommentList({ activity, onBack }: { activity: Activity; onBack: () => v
   ];
   return (
     <RelatedTable
-      activity={activity}
-      meta={meta}
-      onBack={onBack}
       query={
         <SearchPanel
           onSearch={() => {
@@ -945,18 +848,12 @@ function CommentList({ activity, onBack }: { activity: Activity; onBack: () => v
 }
 
 function RelatedTable({
-  activity,
-  meta,
-  onBack,
   query,
   toolbar,
   batch,
   table,
   modal,
 }: {
-  activity: Activity;
-  meta: { title: string; subtitle: string; noun: string };
-  onBack: () => void;
   query: ReactNode;
   toolbar: ReactNode;
   batch: ReactNode;
@@ -965,7 +862,6 @@ function RelatedTable({
 }) {
   return (
     <div className="page-stack">
-      <RelatedHeading activity={activity} title={meta.title} subtitle={meta.subtitle} onBack={onBack} />
       {query}
       <Card>
         {toolbar ? <div className="table-toolbar">{toolbar}</div> : null}

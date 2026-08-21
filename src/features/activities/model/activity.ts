@@ -1,3 +1,5 @@
+import { defaultSignupFields, type SignupField } from './signupFields';
+
 const basketballImg = '/activities/basketball.jpg';
 const checkupImg = '/activities/checkup.jpg';
 const onboardingImg = '/activities/onboarding.jpg';
@@ -5,7 +7,8 @@ const openDayImg = '/activities/open-day.jpg';
 const shareImg = '/activities/share.jpg';
 const webinarImg = '/activities/webinar.jpg';
 
-export const ACTIVITY_MOCK_VERSION = 13;
+export const ACTIVITY_MOCK_VERSION = 14;
+export type { SignupField } from './signupFields';
 export const activityTypes = ['公司活动', '疗休养活动', '体检活动', '项目活动'] as const;
 export const visibilityOptions = ['全员', '按部门', '自定义人群', '导入人群'] as const;
 
@@ -193,6 +196,7 @@ export type Activity = {
   signupStartAt: string;
   signupEndAt: string;
   signupSettings: SignupSetting[];
+  signupFields: SignupField[];
   itinerary: string;
   extraFeeRule: string;
   auditStatus: AuditStatus;
@@ -219,6 +223,7 @@ const defaults: Pick<
   | 'signupStartAt'
   | 'signupEndAt'
   | 'signupSettings'
+  | 'signupFields'
   | 'itinerary'
   | 'extraFeeRule'
   | 'pinned'
@@ -237,6 +242,7 @@ const defaults: Pick<
   signupStartAt: '2026-08-01 09:00',
   signupEndAt: '2026-08-31 18:00',
   signupSettings: [{ type: '个人报名', limit: 50, needAudit: true }],
+  signupFields: defaultSignupFields(),
   itinerary: '',
   extraFeeRule: '',
   pinned: false,

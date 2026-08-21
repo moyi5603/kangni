@@ -47,6 +47,20 @@ html, body, #root, .ant-app {
 .advanced-form-page { padding-bottom: 72px; }
 .sticky-form-actions { position: sticky; z-index: 5; bottom: 0; margin-top: 16px; padding: 14px 16px; background: rgba(255,255,255,.96); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 -4px 16px rgba(0,0,0,.06); }
 .signup-setting-card { margin-bottom: 16px; }
+.signup-fields-editor { display: flex; align-items: stretch; gap: 16px; width: 100%; }
+.signup-fields-selected { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.signup-fields-list { display: flex; flex-direction: column; gap: 8px; }
+.signup-field-row { padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px; background: #fff; }
+.signup-field-main { display: flex; align-items: center; gap: 12px; }
+.signup-field-name { max-width: 200px; }
+.signup-field-name-text { min-width: 96px; font-weight: 500; }
+.signup-field-required { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; color: #747677; }
+.signup-field-options { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 8px; padding-left: 12px; }
+.signup-field-option { width: 280px; }
+.signup-fields-divider { height: auto; margin: 0; }
+.signup-fields-palette { width: 220px; flex: none; display: flex; flex-direction: column; gap: 12px; }
+.signup-fields-palette-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.signup-fields-palette-grid .ant-btn { display: inline-flex; align-items: center; }
 .cover-upload-trigger { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: transparent; cursor: pointer; color: #747677; }
 .rich-text { width: 100%; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden; background: #fff; }
 .rich-text-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--border-color); background: #fafafa; }

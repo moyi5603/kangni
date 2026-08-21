@@ -21,6 +21,7 @@ import {
 import type { UploadFile } from 'antd';
 import dayjs from 'dayjs';
 import { RichTextField } from '../components/RichTextField';
+import { SignupFieldsEditor } from '../components/SignupFieldsEditor';
 import {
   emptySignupSetting,
   isRecreationActivity,
@@ -29,9 +30,11 @@ import {
   orgPeoplePickerTree,
   type Activity,
   type ActivityType,
+  type SignupField,
   type SignupSetting,
   type Visibility,
 } from '../model/activity';
+import { defaultSignupFields, validateSignupFields } from '../model/signupFields';
 import { firstCreatableType, isCreateEnabled, listCreatableTypeOptions } from '../model/rules';
 import { useRules } from '../model/rulesStore';
 import {
@@ -69,6 +72,7 @@ type FormValues = {
   visibilityMinSeniorityYears?: number;
   importFileName: string;
   signupSettings: SignupSetting[];
+  signupFields: SignupField[];
   itinerary: string;
   extraFeeRule: string;
 };
@@ -109,82 +113,95 @@ function toFileList(coverUrl: string): UploadFile[] {
   return [{ uid: '-1', name: '活动封面', status: 'done', url: coverUrl, thumbUrl: coverUrl }];
 }
 
+function activityToFormValues(activity: Activity): Partial<FormValues> {
+  return {
+    coverUrl: activity.coverUrl,
+    title: activity.title,
+    type: activity.type,
+    category: activity.category,
+    tags: activity.tags,
+    activityRange: toDateTimeRange(activity.startAt, activity.endAt),
+    signupRange: toDateTimeRange(activity.signupStartAt, activity.signupEndAt),
+    location: activity.location,
+    organizer: activity.organizer,
+    phone: activity.phone,
+    detailHtml: activity.detailHtml,
+    visibility: activity.visibility,
+    departments: activity.departments,
+    customPeople: activity.customPeople,
+    visibilityMinSeniorityYears: activity.visibilityMinSeniorityYears,
+    importFileName: activity.importFileName,
+    signupSettings: activity.signupSettings,
+    signupFields: activity.signupFields,
+    itinerary: activity.itinerary,
+    extraFeeRule: activity.extraFeeRule,
+  };
+}
+
 export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPageProps) {
   const { message, modal } = App.useApp();
   const [form] = Form.useForm<FormValues>();
   const [coverList, setCoverList] = useState<UploadFile[]>([]);
   const [importList, setImportList] = useState<UploadFile[]>([]);
   const editing = mode === 'edit' ? getActivity(Number(recordId)) : undefined;
+  const copySource = mode === 'create' && recordId ? getActivity(Number(recordId)) : undefined;
   const typeRules = useRules();
   const typeOptions = useMemo(
-    () => listCreatableTypeOptions(typeRules, mode === 'edit' ? editing?.type : undefined),
-    [typeRules, mode, editing?.type],
+    () => listCreatableTypeOptions(typeRules, mode === 'edit' ? editing?.type : copySource?.type),
+    [typeRules, mode, editing?.type, copySource?.type],
   );
   const categoryRecords = useCategories();
   const categoryOptions = useMemo(
     () =>
       categoryRecords
-        .filter((item) => item.status === '启用' || item.name === editing?.category)
+        .filter((item) => item.status === '启用' || item.name === (editing?.category ?? copySource?.category))
         .map((item) => ({ value: item.name, label: item.name })),
-    [categoryRecords, editing],
+    [categoryRecords, editing, copySource],
   );
   const tagRecords = useTags();
   const tagOptions = useMemo(
     () =>
       tagRecords
-        .filter((tag) => tag.status === '启用' || (editing?.tags ?? []).includes(tag.name))
+        .filter((tag) => tag.status === '启用' || (editing?.tags ?? copySource?.tags ?? []).includes(tag.name))
         .map((tag) => ({ value: tag.name, label: tag.name })),
-    [tagRecords, editing],
+    [tagRecords, editing, copySource],
   );
   const visibility = Form.useWatch('visibility', form);
   const activityType = Form.useWatch('type', form);
   const title = mode === 'edit' ? '编辑活动' : '新建活动';
-  const isRecreation = isRecreationActivity(activityType ?? editing?.type ?? '公司活动');
+  const isRecreation = isRecreationActivity(activityType ?? editing?.type ?? copySource?.type ?? '公司活动');
 
   const initialValues = useMemo<Partial<FormValues>>(
     () =>
       editing
-        ? {
-            coverUrl: editing.coverUrl,
-            title: editing.title,
-            type: editing.type,
-            category: editing.category,
-            tags: editing.tags,
-            activityRange: toDateTimeRange(editing.startAt, editing.endAt),
-            signupRange: toDateTimeRange(editing.signupStartAt, editing.signupEndAt),
-            location: editing.location,
-            organizer: editing.organizer,
-            phone: editing.phone,
-            detailHtml: editing.detailHtml,
-            visibility: editing.visibility,
-            departments: editing.departments,
-            customPeople: editing.customPeople,
-            visibilityMinSeniorityYears: editing.visibilityMinSeniorityYears,
-            importFileName: editing.importFileName,
-            signupSettings: editing.signupSettings,
-            itinerary: editing.itinerary,
-            extraFeeRule: editing.extraFeeRule,
-          }
-        : {
-            type: firstCreatableType(typeRules),
-            visibility: '全员',
-            tags: [],
-            departments: [],
-            customPeople: [],
-            importFileName: '',
-            detailHtml: '',
-            coverUrl: '',
-            signupSettings: [emptySignupSetting()],
-            itinerary: '',
-            extraFeeRule: '',
-          },
-    [editing, typeRules],
+        ? activityToFormValues(editing)
+        : copySource
+          ? activityToFormValues(copySource)
+          : {
+              type: firstCreatableType(typeRules),
+              visibility: '全员',
+              tags: [],
+              departments: [],
+              customPeople: [],
+              importFileName: '',
+              detailHtml: '',
+              coverUrl: '',
+              signupSettings: [emptySignupSetting()],
+              signupFields: defaultSignupFields(),
+              itinerary: '',
+              extraFeeRule: '',
+            },
+    [editing, copySource, typeRules],
   );
 
   useEffect(() => {
-    setCoverList(toFileList(editing?.coverUrl ?? ''));
-    setImportList(editing?.importFileName ? [{ uid: '-2', name: editing.importFileName, status: 'done' }] : []);
-  }, [editing]);
+    setCoverList(toFileList(editing?.coverUrl ?? copySource?.coverUrl ?? ''));
+    setImportList(
+      (editing?.importFileName ?? copySource?.importFileName)
+        ? [{ uid: '-2', name: editing?.importFileName ?? copySource?.importFileName ?? '', status: 'done' }]
+        : [],
+    );
+  }, [editing, copySource]);
 
   const leave = () => {
     if (!form.isFieldsTouched()) {
@@ -239,12 +256,13 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
       customPeople: values.visibility === '自定义人群' ? values.customPeople ?? [] : [],
       visibilityMinSeniorityYears: values.visibility === '自定义人群' ? values.visibilityMinSeniorityYears : undefined,
       importFileName: values.visibility === '导入人群' ? values.importFileName || '' : '',
-      importedPeople: values.visibility === '导入人群' ? editing?.importedPeople ?? [] : [],
+      importedPeople: values.visibility === '导入人群' ? editing?.importedPeople ?? copySource?.importedPeople ?? [] : [],
       signupStartAt: signupTime.startAt,
       signupEndAt: signupTime.endAt,
       signupSettings: recreation
         ? values.signupSettings
         : values.signupSettings.map((item) => ({ type: item.type, limit: item.limit, needAudit: item.needAudit })),
+      signupFields: values.signupFields ?? defaultSignupFields(),
       itinerary: recreation ? values.itinerary : '',
       extraFeeRule: recreation ? values.extraFeeRule : '',
       auditStatus: submit ? '待审核' : currentStatus,
@@ -507,7 +525,7 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
             rules={[
               {
                 validator: async (_, value: SignupSetting[]) => {
-                  if (!value?.length) throw new Error('请至少添加一条报名设置');
+                  if (!value?.length) throw new Error('请至少添加一条分组设置');
                 },
               },
             ]}
@@ -515,16 +533,16 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
             {(fields, { add, remove }, { errors }) => (
               <>
                 {fields.map((field, index) => (
-                  <Card key={field.key} size="small" className="signup-setting-card" title={`报名设置 ${index + 1}`}>
+                  <Card key={field.key} size="small" className="signup-setting-card" title={`分组设置 ${index + 1}`}>
                     <Form.Item
                       name={[field.name, 'type']}
-                      label="报名类型"
+                      label="分组名称"
                       rules={[
-                        { required: true, whitespace: true, message: '请输入报名类型' },
-                        { max: 10, message: '报名类型不超过 10 个字' },
+                        { required: true, whitespace: true, message: '请输入分组名称' },
+                        { max: 10, message: '分组名称不超过 10 个字' },
                       ]}
                     >
-                      <Input maxLength={10} showCount placeholder="请输入报名类型名称" />
+                      <Input maxLength={10} showCount placeholder="请输入分组名称" />
                     </Form.Item>
                     <Form.Item name={[field.name, 'limit']} label="报名人数" rules={[{ required: true, message: '请输入报名人数' }]}>
                       <InputNumber min={1} precision={0} style={{ width: '100%' }} />
@@ -548,20 +566,38 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
                     </Form.Item>
                     {fields.length > 1 && (
                       <Button danger onClick={() => remove(field.name)}>
-                        删除此报名设置
+                        删除此分组设置
                       </Button>
                     )}
                   </Card>
                 ))}
                 <Form.Item>
                   <Button type="dashed" block icon={<PlusOutlined />} onClick={() => add(emptySignupSetting())}>
-                    添加报名设置
+                    添加分组设置
                   </Button>
                 </Form.Item>
                 <Form.ErrorList errors={errors} />
               </>
             )}
           </Form.List>
+        </Card>
+
+        <Card title="报名参与人填写项">
+          <Form.Item
+            name="signupFields"
+            label="填写项"
+            extra="姓名、手机号为系统默认必填项；单选/多选字段至少保留 2 个选项。"
+            rules={[
+              {
+                validator: async (_, value: SignupField[]) => {
+                  const error = validateSignupFields(value ?? []);
+                  if (error) throw new Error(error);
+                },
+              },
+            ]}
+          >
+            <SignupFieldsEditor />
+          </Form.Item>
         </Card>
 
         <div className="sticky-form-actions">

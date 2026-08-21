@@ -43,16 +43,6 @@ import {
 import { ActivityReviewModal } from '../components/ActivityReviewModal';
 import { patchActivities, submitActivitiesForApproval, useActivities } from '../model/activityStore';
 import { useCategories } from '../model/categoryStore';
-import { type RelatedPage } from '../model/related';
-
-const relatedActionItems: { page: RelatedPage; label: string }[] = [
-  { page: 'activity-prizes', label: '奖品发放' },
-  { page: 'activity-surveys', label: '满意度调查' },
-  { page: 'activity-approvals', label: '审批记录' },
-  { page: 'activity-signups', label: '报名管理' },
-  { page: 'activity-comments', label: '评论管理' },
-  { page: 'activity-moments', label: '精彩瞬间管理' },
-];
 
 type DateRange = [Dayjs | null, Dayjs | null] | null;
 
@@ -392,12 +382,6 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
                   label: record.pinned ? '取消置顶' : '置顶',
                   onClick: () => togglePin(record),
                 },
-                { type: 'divider' },
-                ...relatedActionItems.map((item) => ({
-                  key: item.page,
-                  label: item.label,
-                  onClick: () => onNavigate(item.page, String(record.id)),
-                })),
               ],
             }}
           >
