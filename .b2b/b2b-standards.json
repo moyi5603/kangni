@@ -45,14 +45,14 @@
       "colorTextSecondary": "#747677",
       "colorTextTertiary": "#A2A3A5",
       "colorTextQuaternary": "#C8C8C9",
-      "colorBgLayout": "#F5F6F8",
+      "colorBgLayout": "#E5E6EB",
       "borderRadius": 6,
       "fontSize": 14,
       "controlHeight": 32,
       "wireframe": false
     },
     "components": {
-      "Layout": { "headerBg": "#FFFFFF", "siderBg": "#FFFFFF", "bodyBg": "#F5F6F8", "headerHeight": 50 },
+      "Layout": { "headerBg": "#FFFFFF", "siderBg": "#FFFFFF", "bodyBg": "#E5E6EB", "headerHeight": 50 },
       "Menu": { "itemHeight": 40, "itemBorderRadius": 6, "itemMarginInline": 8 },
       "Table": { "cellPaddingBlock": 12, "cellPaddingInline": 12 },
       "Form": { "itemMarginBottom": 20 },
@@ -94,7 +94,7 @@
     "xl": 32
   },
   "border": {
-    "color": "#E8E9EB",
+    "color": "#C9CDD4",
     "width": 1,
     "style": "solid"
   },

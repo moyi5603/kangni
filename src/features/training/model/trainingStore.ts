@@ -39,6 +39,45 @@ let coursewareCategories: CoursewareCategoryNode[] = [...initialCoursewareCatego
 let learningRecords = [...initialLearningRecords];
 const listeners = new Set<() => void>();
 
+const COMMENT_CONFIG_STORAGE_KEY = 'kangni.training.courseCommentConfigs.v1';
+
+function loadPersistedCommentConfigs(): Record<string, CourseCommentConfig> {
+  if (typeof localStorage === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(COMMENT_CONFIG_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, Partial<CourseCommentConfig>>;
+    const next: Record<string, CourseCommentConfig> = {};
+    for (const [id, value] of Object.entries(parsed)) {
+      next[id] = normalizeCourseCommentConfig(value);
+    }
+    return next;
+  } catch {
+    return {};
+  }
+}
+
+let persistedCommentConfigs: Record<string, CourseCommentConfig> = loadPersistedCommentConfigs();
+
+function savePersistedCommentConfigs() {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(COMMENT_CONFIG_STORAGE_KEY, JSON.stringify(persistedCommentConfigs));
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
+function applyPersistedCommentConfigs() {
+  if (!Object.keys(persistedCommentConfigs).length) return;
+  courses = courses.map((course) => {
+    const saved = persistedCommentConfigs[String(course.id)];
+    return saved ? { ...course, commentConfig: saved } : course;
+  });
+}
+
+applyPersistedCommentConfigs();
+
 function emit() {
   listeners.forEach((listener) => listener());
 }
@@ -52,6 +91,7 @@ function syncMockData() {
   coursewareCategories = [...initialCoursewareCategories];
   learningRecords = [...initialLearningRecords];
   mockVersion = TRAINING_MOCK_VERSION;
+  applyPersistedCommentConfigs();
   emit();
 }
 
@@ -65,6 +105,7 @@ if (import.meta.hot) {
     coursewareCategories = [...mod.initialCoursewareCategories];
     learningRecords = [...mod.initialLearningRecords];
     mockVersion = mod.TRAINING_MOCK_VERSION;
+    applyPersistedCommentConfigs();
     emit();
   });
 }
@@ -250,13 +291,31 @@ export function getCourseCommentConfig(courseId: number): CourseCommentConfig {
 export function updateCourseCommentConfig(courseId: number, commentConfig: CourseCommentConfig): boolean {
   const current = getCourse(courseId);
   if (!current) return false;
-  upsertCourse({ ...current, commentConfig: normalizeCourseCommentConfig(commentConfig) });
+  const normalized = normalizeCourseCommentConfig(commentConfig);
+  upsertCourse({ ...current, commentConfig: normalized });
+  persistedCommentConfigs = { ...persistedCommentConfigs, [String(courseId)]: normalized };
+  savePersistedCommentConfigs();
   return true;
 }
 
+/** Rebuild courses from mock seed while keeping persisted comment configs (HMR / version sync). */
+export function rebuildCoursesFromMockKeepingCommentConfigs() {
+  courses = [...initialCourses];
+  applyPersistedCommentConfigs();
+  emit();
+}
+
 export function useCourseCommentConfig(courseId: number): CourseCommentConfig {
-  const list = useCourses();
-  return normalizeCourseCommentConfig(list.find((item) => item.id === courseId)?.commentConfig);
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    syncMockData();
+    const onChange = () => setTick((value) => value + 1);
+    listeners.add(onChange);
+    return () => {
+      listeners.delete(onChange);
+    };
+  }, []);
+  return getCourseCommentConfig(courseId);
 }
 
 export function removeCourse(id: number): boolean {

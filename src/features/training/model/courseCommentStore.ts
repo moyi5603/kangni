@@ -51,8 +51,48 @@ let comments = [...initialComments];
 let snapshot = comments;
 const listeners = new Set<() => void>();
 
+const COMMENTS_STORAGE_KEY = 'kangni.training.courseComments.v1';
+
+function loadPersistedComments(): CourseCommentRecord[] | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(COMMENTS_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CourseCommentRecord[];
+    if (!Array.isArray(parsed)) return null;
+    return parsed.filter(
+      (item): item is CourseCommentRecord =>
+        Boolean(item) &&
+        typeof item.id === 'number' &&
+        typeof item.courseId === 'number' &&
+        typeof item.author === 'string' &&
+        typeof item.text === 'string' &&
+        typeof item.createdAt === 'string' &&
+        (item.status === '已通过' || item.status === '待审核' || item.status === '已驳回'),
+    );
+  } catch {
+    return null;
+  }
+}
+
+function savePersistedComments() {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(COMMENTS_STORAGE_KEY, JSON.stringify(comments));
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
+const persisted = loadPersistedComments();
+if (persisted) {
+  comments = persisted;
+  snapshot = comments;
+}
+
 function emit() {
   snapshot = comments;
+  savePersistedComments();
   listeners.forEach((listener) => listener());
 }
 
@@ -185,6 +225,19 @@ export function rejectCourseComments(ids: number[]): number {
 }
 
 export function resetCourseComments() {
+  comments = [...initialComments];
+  emit();
+}
+
+/** 清空持久化并恢复种子（测试/演示重置用）。 */
+export function clearCourseCommentsStorage() {
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.removeItem(COMMENTS_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  }
   comments = [...initialComments];
   emit();
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type Key } from 'react';
+import { useEffect, useMemo, useState, type Key, type ReactNode } from 'react';
 import { HolderOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   App,
@@ -99,6 +99,15 @@ function moveItem<T>(list: T[], from: number, to: number): T[] {
   const [item] = next.splice(from, 1);
   next.splice(to, 0, item);
   return next;
+}
+
+function pickerModalFooter(_: ReactNode, extra: { OkBtn: React.FC; CancelBtn: React.FC }) {
+  return (
+    <Space>
+      <extra.OkBtn />
+      <extra.CancelBtn />
+    </Space>
+  );
 }
 
 export function CourseFormPage({ mode, recordId, onBack }: CourseFormPageProps) {
@@ -212,6 +221,8 @@ export function CourseFormPage({ mode, recordId, onBack }: CourseFormPageProps) 
     setPickerExpandedKeys(undefined);
     setPickerOpen(true);
   };
+
+  const closePicker = () => setPickerOpen(false);
 
   const confirmPicker = () => {
     const selected = pickerKeys.map(Number);
@@ -562,17 +573,12 @@ export function CourseFormPage({ mode, recordId, onBack }: CourseFormPageProps) 
         title="添加课件"
         open={pickerOpen}
         onOk={confirmPicker}
-        onCancel={() => setPickerOpen(false)}
+        onCancel={closePicker}
         okText="确认"
         cancelText="取消"
         width={960}
         destroyOnHidden
-        footer={(_, { OkBtn, CancelBtn }) => (
-          <Space>
-            <OkBtn />
-            <CancelBtn />
-          </Space>
-        )}
+        footer={pickerModalFooter}
       >
         <div className="list-with-sidebar" style={{ alignItems: 'stretch', minHeight: 420 }}>
           <div className="list-sidebar-slot" style={{ width: 240 }}>

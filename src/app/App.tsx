@@ -145,6 +145,7 @@ function AdminApp() {
   const directApplications = getDirectApplications(b2bStandards.layout.applicationDirectVisibleMax);
   const trail = findMenuTrail(sideNodes, page);
   const currentPage = trail.at(-1);
+  const layoutBg = b2bStandards.theme.token.colorBgLayout;
   const layoutStyle = {
     '--header-height': `${b2bStandards.theme.components.Layout.headerHeight}px`,
     '--content-max-width': `${b2bStandards.product.contentMaxWidth}px`,
@@ -153,6 +154,10 @@ function AdminApp() {
     '--logo-width': `${b2bStandards.layout.logoWidth}px`,
     '--border-color': b2bStandards.border.color,
     '--spacing-md': `${b2bStandards.spacing.md}px`,
+    /* Pin layout gray: beat antd css-in-js + keep --ant-layout-body-bg in sync. */
+    '--admin-color-bg-layout': layoutBg,
+    '--ant-layout-body-bg': layoutBg,
+    background: layoutBg,
   } as CSSProperties;
 
   const syncLocation = (nextApplication: string, nextPage: string, nextRecordId?: string) => {
@@ -325,7 +330,7 @@ function AdminApp() {
           </Flex>
         </div>
       </Header>
-      <Layout className="app-body">
+      <Layout className="app-body" style={{ background: layoutBg, ['--ant-layout-body-bg' as string]: layoutBg }}>
         {narrow ? null : (
           <Sider
             width={b2bStandards.layout.sidebarWidth}
@@ -336,7 +341,7 @@ function AdminApp() {
             {renderSideMenu()}
           </Sider>
         )}
-        <Content className="app-content">
+        <Content className="app-content" style={{ background: layoutBg }}>
           {page === 'activity-list' ? (
             <ActivityListPage onNavigate={goToPage} />
           ) : page === 'activity-tags' ? (

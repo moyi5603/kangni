@@ -49,7 +49,7 @@ export const b2bStandards = {
       "colorTextSecondary": "#747677",
       "colorTextTertiary": "#A2A3A5",
       "colorTextQuaternary": "#C8C8C9",
-      "colorBgLayout": "#F5F6F8",
+      "colorBgLayout": "#E5E6EB",
       "borderRadius": 6,
       "fontSize": 14,
       "controlHeight": 32,
@@ -59,7 +59,7 @@ export const b2bStandards = {
       "Layout": {
         "headerBg": "#FFFFFF",
         "siderBg": "#FFFFFF",
-        "bodyBg": "#F5F6F8",
+        "bodyBg": "#E5E6EB",
         "headerHeight": 50
       },
       "Menu": {
@@ -148,7 +148,7 @@ export const b2bStandards = {
     "xl": 32
   },
   "border": {
-    "color": "#E8E9EB",
+    "color": "#C9CDD4",
     "width": 1,
     "style": "solid"
   },

@@ -12,7 +12,7 @@ export const antdTheme = {
     "colorTextSecondary": "#747677",
     "colorTextTertiary": "#A2A3A5",
     "colorTextQuaternary": "#C8C8C9",
-    "colorBgLayout": "#F5F6F8",
+    "colorBgLayout": "#E5E6EB",
     "borderRadius": 6,
     "fontSize": 14,
     "controlHeight": 32,
@@ -22,7 +22,7 @@ export const antdTheme = {
     "Layout": {
       "headerBg": "#FFFFFF",
       "siderBg": "#FFFFFF",
-      "bodyBg": "#F5F6F8",
+      "bodyBg": "#E5E6EB",
       "headerHeight": 50
     },
     "Menu": {

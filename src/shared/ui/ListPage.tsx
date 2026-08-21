@@ -43,7 +43,7 @@ export function SearchPanel({
     '--search-action-row-1': visibleFields.length + 1,
   } as CSSProperties;
   return (
-    <Card className="search-card">
+    <Card className="search-card" variant="borderless">
       <div className="search-fields" style={actionRows}>
         {visibleFields}
         <div className="search-actions">
@@ -84,7 +84,7 @@ export function ListTableCard({
   children: ReactNode;
 }) {
   return (
-    <Card className="list-table-card">
+    <Card className="list-table-card" variant="borderless">
       {tabs && activeTab !== undefined && onTabChange ? (
         <Tabs className="list-table-card-tabs" items={tabs} activeKey={activeTab} onChange={onTabChange} />
       ) : null}

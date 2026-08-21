@@ -1,8 +1,23 @@
-:root { font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif; color: #171a1d; background: #f5f6f8; }
+:root {
+  --admin-color-bg-layout: #e5e6eb;
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: #171a1d;
+  background: var(--admin-color-bg-layout);
+}
 * { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; }
-.app-shell { min-height: 100vh; background: #f5f6f8; }
-.app-body { padding-top: var(--header-height); min-height: 100vh; background: #f5f6f8; }
+html, body, #root, .ant-app {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100%;
+  background: var(--admin-color-bg-layout);
+}
+/* Beat antd Layout css-in-js (same single-class specificity, later inject). */
+.ant-layout.app-shell,
+.ant-layout.app-body {
+  min-height: 100vh;
+  background: var(--admin-color-bg-layout);
+}
+.app-body { padding-top: var(--header-height); }
 .app-sider { position: sticky !important; top: var(--header-height); height: calc(100vh - var(--header-height)); border-right: 1px solid var(--border-color); }
 .brand { width: var(--logo-width); flex: 0 0 var(--logo-width); height: var(--header-height); display: flex; align-items: center; gap: 10px; white-space: nowrap; overflow: hidden; }
 .brand-mark { width: 28px; height: 28px; flex: 0 0 28px; border-radius: 6px; background: #1677ff; }
@@ -27,7 +42,7 @@ body { margin: 0; min-width: 320px; }
 .header-icon { font-size: 18px; }
 .sider-trigger { margin-right: 4px; }
 .current-application { display: none; padding: 0 8px; font-weight: 600; }
-.app-content { padding: var(--page-gutter); min-width: 0; }
+.app-content { padding: var(--page-gutter); min-width: 0; background: var(--admin-color-bg-layout); }
 .page-stack { display: flex; flex-direction: column; gap: 16px; max-width: var(--content-max-width); margin: 0 auto; }
 .advanced-form-page { padding-bottom: 72px; }
 .sticky-form-actions { position: sticky; z-index: 5; bottom: 0; margin-top: 16px; padding: 14px 16px; background: rgba(255,255,255,.96); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 -4px 16px rgba(0,0,0,.06); }

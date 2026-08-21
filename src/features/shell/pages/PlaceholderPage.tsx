@@ -11,7 +11,7 @@ export function PlaceholderPage({ breadcrumbItems, title, applicationLabel }: Pl
     <div className="page-stack">
       <Breadcrumb separator=">" items={breadcrumbItems} />
       <Typography.Title level={1}>{title}</Typography.Title>
-      <Card>
+      <Card variant="borderless">
         <Typography.Text type="secondary">
           当前应用「{applicationLabel}」。本页先占位，后续再补列表与详情。
         </Typography.Text>

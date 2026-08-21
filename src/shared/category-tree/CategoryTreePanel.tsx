@@ -341,11 +341,13 @@ export function CategoryTreePanel({
 
   return (
     <Card
+      variant="borderless"
       style={{
         width: '100%',
         flexShrink: 0,
         display: 'flex',
         flexDirection: 'column',
+        height: maxHeight,
         maxHeight,
       }}
       styles={{

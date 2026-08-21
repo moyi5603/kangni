@@ -4,6 +4,7 @@ import { updateCourseCommentConfig } from './trainingStore';
 import {
   approveCourseComment,
   approveCourseComments,
+  clearCourseCommentsStorage,
   deleteCourseComment,
   deleteCourseComments,
   listApprovedComments,
@@ -17,7 +18,7 @@ import {
 
 describe('course comment store', () => {
   afterEach(() => {
-    resetCourseComments();
+    clearCourseCommentsStorage();
     updateCourseCommentConfig(1, defaultCourseCommentConfig());
   });
 
