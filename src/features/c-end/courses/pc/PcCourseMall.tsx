@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { goH5CourseList, toPcCourseDetailHash } from '../../../../app/navigation';
 import { useCourseCategoryTree } from '../../../training/model/trainingStore';
+import { PcCategoryCascade } from '../../activities/pc/PcCategoryCascade';
+import { PcMallHero } from '../../activities/pc/PcMallHero';
 import { PcActivityShell } from '../../activities/pc/PcActivityShell';
 import {
   filterClientCourses,
@@ -57,8 +59,50 @@ export function PcCourseMall() {
     setL3Id('all');
   };
 
+  const hot = useMemo(
+    () => [...published].sort((left, right) => right.views - left.views).slice(0, 3),
+    [published],
+  );
+
   return (
     <PcActivityShell className="is-course" title="课程" onPhone={goH5CourseList}>
+      <PcMallHero
+        tone="course"
+        kicker="员工学堂"
+        title="今日精选学习"
+        stats={[
+          { label: '已上架', value: `${published.length}` },
+          { label: '分类', value: `${categoryTree.length}` },
+          { label: '本页课程', value: `${list.length}` },
+        ]}
+      />
+      {hot.length > 0 ? (
+        <section className="c-pc-section c-pc-mall-feature" aria-labelledby="pc-course-hot">
+          <div className="c-pc-section-head">
+            <h2 id="pc-course-hot" className="c-section-title">
+              热门课程
+            </h2>
+          </div>
+          <ul className="c-pc-mall-feature-list">
+            {hot.map((course, index) => (
+              <li key={course.id}>
+                <a className="c-pc-mall-feature-card" href={toPcCourseDetailHash(course.id)}>
+                  <span className="c-pc-mall-feature-rank">{index + 1}</span>
+                  <span className={`c-cover c-pc-course-cover is-${course.cover}`} aria-hidden>
+                    <span className="c-pc-course-cover-art" />
+                  </span>
+                  <span className="c-pc-mall-feature-copy">
+                    <strong>{course.title}</strong>
+                    <em>
+                      {course.tag} · {course.views} 次观看
+                    </em>
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       <section id={CATALOG_ID} className="c-pc-section c-catalog">
         <div className="c-pc-section-head">
           <h2 className="c-section-title">发现课程</h2>
@@ -86,70 +130,17 @@ export function PcCourseMall() {
               搜索
             </button>
           </form>
-          <div className="c-tabs" role="tablist" aria-label="课程分类">
-            <button
-              className={`c-tab${l1Id == null ? ' is-active' : ''}`}
-              type="button"
-              role="tab"
-              aria-selected={l1Id == null}
-              onClick={() => selectL1(null)}
-            >
-              全部
-            </button>
-            {categoryTree.map((node) => {
-              const active = node.id === l1Id;
-              return (
-                <button
-                  key={node.id}
-                  className={`c-tab${active ? ' is-active' : ''}`}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => selectL1(node.id)}
-                >
-                  {node.name}
-                </button>
-              );
-            })}
-          </div>
-          {secondTabs.length > 0 ? (
-            <div className="c-tabs" role="tablist" aria-label="二级分类">
-              {secondTabs.map((tab) => {
-                const active = tab.id === l2Id;
-                return (
-                  <button
-                    key={String(tab.id)}
-                    className={`c-tab${active ? ' is-active' : ''}`}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() => selectL2(tab.id)}
-                  >
-                    {tab.name}
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
-          {thirdOptions.length > 0 ? (
-            <div className="c-tabs" role="tablist" aria-label="三级分类">
-              {thirdOptions.map((tab) => {
-                const active = tab.id === l3Id;
-                return (
-                  <button
-                    key={String(tab.id)}
-                    className={`c-tab${active ? ' is-active' : ''}`}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() => setL3Id(tab.id)}
-                  >
-                    {tab.name}
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
+          <PcCategoryCascade
+            l1Id={l1Id}
+            l1Options={[{ id: null, name: '全部' }, ...categoryTree.map((node) => ({ id: node.id, name: node.name }))]}
+            onL1Change={selectL1}
+            l2Id={l2Id}
+            l2Options={secondTabs}
+            onL2Change={selectL2}
+            l3Id={l3Id}
+            l3Options={thirdOptions}
+            onL3Change={setL3Id}
+          />
         </div>
         {list.length === 0 ? (
           <p className="c-empty">暂无课程</p>

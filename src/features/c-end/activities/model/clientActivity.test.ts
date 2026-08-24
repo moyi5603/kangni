@@ -12,6 +12,7 @@ import {
   homeMineMode,
   previewFavorites,
   SIGNUP_TABS,
+  signupCta,
   signupLimit,
   signupOccupiedCount,
   signupTypes,
@@ -285,6 +286,29 @@ describe('signup store user records', () => {
     expect(first).not.toBe(second);
     expect(first).toHaveLength(1);
     expect(getUserSignups('13900000000')).toEqual([]);
+  });
+});
+
+describe('signupCta cancel window', () => {
+  const now = Date.parse('2026-08-21T12:00:00');
+  const open = {
+    ...baseActivity,
+    activityStatus: '进行中' as const,
+    signupStartAt: '2026-08-01 09:00',
+    signupEndAt: '2026-08-31 18:00',
+  };
+
+  it('lets a signed-up user cancel before the signup deadline', () => {
+    expect(signupCta(open, true, now, { allowCancel: true })).toEqual({ label: '取消报名', enabled: true, action: 'cancel' });
+  });
+
+  it('keeps signed-up list labels as 已报名', () => {
+    expect(signupCta(open, true, now, { allowCancel: false })).toEqual({ label: '已报名', enabled: false });
+  });
+
+  it('blocks cancel after the signup deadline', () => {
+    const closed = { ...open, signupEndAt: '2026-08-20 18:00' };
+    expect(signupCta(closed, true, now, { allowCancel: true })).toEqual({ label: '已报名', enabled: false });
   });
 });
 

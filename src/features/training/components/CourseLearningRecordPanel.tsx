@@ -1,14 +1,13 @@
 import { useMemo, useState } from 'react';
 import { App, Button, Card, Empty, Input, Progress, Select, Space, Table, Tag } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { ListPageHeading, SearchField, SearchPanel } from '../../../shared/ui/ListPage';
+import { SearchField, SearchPanel } from '../../../shared/ui/ListPage';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import { learningStatuses, type LearningRecord, type LearningStatus } from '../model/training';
-import { useCourses, useLearningRecords } from '../model/trainingStore';
+import { useLearningRecords } from '../model/trainingStore';
 
 type RecordQuery = {
   employee: string;
-  course?: string;
   status?: LearningStatus;
 };
 
@@ -20,31 +19,25 @@ const statusColor: Record<LearningStatus, string> = {
   已完成: 'success',
 };
 
-function optionsOf(values: readonly string[]) {
-  return values.map((value) => ({ value, label: value }));
-}
-
-export function LearningRecordListPage() {
+export function CourseLearningRecordPanel({ courseName }: { courseName: string }) {
   const { message } = App.useApp();
   const data = useLearningRecords();
-  const courses = useCourses();
   const [draft, setDraft] = useState<RecordQuery>(emptyQuery);
   const [query, setQuery] = useState<RecordQuery>(emptyQuery);
   const filtered = useMemo(
     () =>
       data.filter(
         (item) =>
+          item.course === courseName &&
           (!query.employee || item.employee.includes(query.employee)) &&
-          (!query.course || item.course === query.course) &&
           (!query.status || item.status === query.status),
       ),
-    [data, query],
+    [data, courseName, query],
   );
 
   const columns: TableColumnsType<LearningRecord> = [
     { title: '员工姓名', dataIndex: 'employee', width: 120 },
     { title: '所属部门', dataIndex: 'department', width: 140 },
-    { title: '课程名称', dataIndex: 'course' },
     {
       title: '学习进度',
       dataIndex: 'progress',
@@ -74,7 +67,6 @@ export function LearningRecordListPage() {
 
   return (
     <div className="page-stack">
-      <ListPageHeading paths={['课程', '学习记录']} title="学习记录" subtitle="查看员工课程学习进度与完成情况。" />
       <SearchPanel
         onSearch={() => {
           setQuery(draft);
@@ -90,16 +82,7 @@ export function LearningRecordListPage() {
             allowClear
             placeholder="请输入员工姓名"
             value={draft.employee}
-            onChange={(event) => setDraft((currentDraft) => ({ ...currentDraft, employee: event.target.value }))}
-          />
-        </SearchField>
-        <SearchField label="课程名称">
-          <Select
-            allowClear
-            placeholder="全部课程"
-            value={draft.course}
-            onChange={(value) => setDraft((currentDraft) => ({ ...currentDraft, course: value }))}
-            options={courses.map((item) => ({ value: item.name, label: item.name }))}
+            onChange={(event) => setDraft((current) => ({ ...current, employee: event.target.value }))}
           />
         </SearchField>
         <SearchField label="学习状态">
@@ -107,8 +90,8 @@ export function LearningRecordListPage() {
             allowClear
             placeholder="全部状态"
             value={draft.status}
-            onChange={(value) => setDraft((currentDraft) => ({ ...currentDraft, status: value }))}
-            options={optionsOf(learningStatuses)}
+            onChange={(value) => setDraft((current) => ({ ...current, status: value }))}
+            options={learningStatuses.map((value) => ({ value, label: value }))}
           />
         </SearchField>
       </SearchPanel>
@@ -118,14 +101,18 @@ export function LearningRecordListPage() {
           sticky
           columns={columns}
           dataSource={filtered}
-          scroll={{ x: 980 }}
+          scroll={{ x: 800 }}
           pagination={{
             pageSize: b2bStandards.table.pageSize,
             pageSizeOptions: [...b2bStandards.table.pageSizeOptions],
             showSizeChanger: b2bStandards.table.showSizeChanger,
             showTotal: (total) => `共 ${total} 条`,
           }}
-          locale={{ emptyText: <Empty description={b2bStandards.table.emptyText} /> }}
+          locale={{
+            emptyText: (
+              <Empty description={query.employee || query.status ? '没有符合条件的学习记录' : '暂无学习记录'} />
+            ),
+          }}
         />
       </Card>
     </div>

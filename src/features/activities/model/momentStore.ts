@@ -270,6 +270,23 @@ export function getMoment(id: number): MomentRecord | undefined {
   return item ? cloneMoment(item) : undefined;
 }
 
+export function getMoments(): MomentRecord[] {
+  return moments.map(cloneMoment);
+}
+
+export function useAllMoments(): MomentRecord[] {
+  const [list, setList] = useState<MomentRecord[]>(() => getMoments());
+  useEffect(() => {
+    const onChange = () => setList(getMoments());
+    onChange();
+    listeners.add(onChange);
+    return () => {
+      listeners.delete(onChange);
+    };
+  }, []);
+  return list;
+}
+
 export function isMomentAuditEnabled(activityType: Activity['type']): boolean {
   return getRules().find((item) => item.type === activityType)?.momentAuditEnabled ?? false;
 }

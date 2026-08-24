@@ -6,11 +6,10 @@ export type SignupImportRow = {
 };
 
 const PHONE = /^1\d{10}$/;
+const DEFAULT_SIGNUP_TYPE = '个人报名';
 
-export function downloadSignupImportTemplate(signupTypes: string[]) {
-  const first = signupTypes[0] || '个人报名';
-  const second = signupTypes[1] || first;
-  const lines = ['姓名,手机号,部门,分组名称', `周工,13800001005,总装车间,${first}`, `林销,13800001008,华南大区,${second}`];
+export function downloadSignupImportTemplate() {
+  const lines = ['姓名,手机号,部门', '周工,13800001005,总装车间', '林销,13800001008,华南大区'];
   const blob = new Blob([`\uFEFF${lines.join('\n')}\n`], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -22,7 +21,10 @@ export function downloadSignupImportTemplate(signupTypes: string[]) {
   URL.revokeObjectURL(url);
 }
 
-export function parseSignupImportCsv(text: string): { rows: SignupImportRow[]; errors: string[] } {
+export function parseSignupImportCsv(
+  text: string,
+  defaultSignupType = DEFAULT_SIGNUP_TYPE,
+): { rows: SignupImportRow[]; errors: string[] } {
   const lines = text
     .replace(/^\uFEFF/, '')
     .split(/\r?\n/)
@@ -36,8 +38,8 @@ export function parseSignupImportCsv(text: string): { rows: SignupImportRow[]; e
     department: header.indexOf('部门'),
     signupType: header.indexOf('分组名称'),
   };
-  if (index.name < 0 || index.phone < 0 || index.department < 0 || index.signupType < 0) {
-    return { rows: [], errors: ['表头须包含：姓名、手机号、部门、分组名称'] };
+  if (index.name < 0 || index.phone < 0 || index.department < 0) {
+    return { rows: [], errors: ['表头须包含：姓名、手机号、部门'] };
   }
   const rows: SignupImportRow[] = [];
   const errors: string[] = [];
@@ -47,7 +49,8 @@ export function parseSignupImportCsv(text: string): { rows: SignupImportRow[]; e
     const name = cells[index.name] ?? '';
     const phone = cells[index.phone] ?? '';
     const department = cells[index.department] ?? '';
-    const signupType = cells[index.signupType] ?? '';
+    const signupType =
+      index.signupType >= 0 ? (cells[index.signupType] ?? '').trim() || defaultSignupType : defaultSignupType;
     if (!name) {
       errors.push(`第 ${rowNum} 行缺少姓名`);
       return;
@@ -58,10 +61,6 @@ export function parseSignupImportCsv(text: string): { rows: SignupImportRow[]; e
     }
     if (!department) {
       errors.push(`第 ${rowNum} 行缺少部门`);
-      return;
-    }
-    if (!signupType) {
-      errors.push(`第 ${rowNum} 行缺少分组名称`);
       return;
     }
     rows.push({ name, phone, department, signupType });

@@ -1,4 +1,11 @@
-import { goAdminWorkbench, toCEndHash, toH5CourseListHash, toPcCourseListHash } from '../../../app/navigation';
+import {
+  goAdminWorkbench,
+  toCEndHash,
+  toH5CourseListHash,
+  toH5ExamListHash,
+  toPcCourseListHash,
+  toPcExamListHash,
+} from '../../../app/navigation';
 import './styles.css';
 
 const entries = [
@@ -6,6 +13,8 @@ const entries = [
   { title: '活动 H5', hint: '员工活动 · 手机', href: toCEndHash('h5') },
   { title: '课程 PC', hint: '课程列表 · 宽屏门户', href: toPcCourseListHash() },
   { title: '课程 H5', hint: '课程列表 · 手机', href: toH5CourseListHash() },
+  { title: '考试 PC', hint: '考试列表 · 宽屏门户', href: toPcExamListHash() },
+  { title: '考试 H5', hint: '考试列表 · 手机', href: toH5ExamListHash() },
 ] as const;
 
 export function CEndPortal() {

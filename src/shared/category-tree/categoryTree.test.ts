@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canAddCategoryChild,
+  categoryDepthOf,
   collectCategoryIds,
   filterCategoryTree,
   findCategoryNode,
@@ -33,5 +35,15 @@ describe('categoryTree helpers', () => {
     expect(filtered.map((node) => node.name)).toEqual(['根B']);
     expect(filtered[0]?.children?.map((node) => node.name)).toEqual(['子1']);
     expect(filterCategoryTree(tree, '不存在').length).toBe(0);
+  });
+
+  it('caps category trees at 3 levels', () => {
+    expect(categoryDepthOf(tree, 20)).toBe(1);
+    expect(categoryDepthOf(tree, 21)).toBe(2);
+    expect(categoryDepthOf(tree, 211)).toBe(3);
+    expect(canAddCategoryChild(tree, null)).toBe(true);
+    expect(canAddCategoryChild(tree, 20)).toBe(true);
+    expect(canAddCategoryChild(tree, 21)).toBe(true);
+    expect(canAddCategoryChild(tree, 211)).toBe(false);
   });
 });

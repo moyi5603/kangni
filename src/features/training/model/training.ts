@@ -105,6 +105,14 @@ export function canDeleteCourseware(record: CoursewareRecord): boolean {
   return record.publishStatus === '草稿';
 }
 
+export function formatCoursewareDuration(seconds: number | null | undefined): string {
+  if (seconds == null || seconds <= 0) return '—';
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  if (m <= 0) return `${s}秒`;
+  return `${m}分${String(s).padStart(2, '0')}秒`;
+}
+
 export type CoursewareCategoryNode = {
   id: number;
   name: string;

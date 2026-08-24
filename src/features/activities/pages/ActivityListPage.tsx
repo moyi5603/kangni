@@ -342,8 +342,8 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
       width: 220,
       render: (_, record) => (
         <Space>
-          <Button type="link" aria-label={`查看 ${record.title}`} onClick={() => openDetail(record)}>
-            查看
+          <Button type="link" aria-label={`详情 ${record.title}`} onClick={() => openDetail(record)}>
+            详情
           </Button>
           <Button type="link" aria-label={`编辑 ${record.title}`} onClick={() => openEditor(record)}>
             编辑

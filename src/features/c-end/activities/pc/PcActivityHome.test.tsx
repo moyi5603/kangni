@@ -140,7 +140,7 @@ describe('PC activity home', () => {
     expect(mine).toContain('进行中');
     expect(mine).toContain('已通过');
     expect(mine).toContain('未开始');
-    expect(mine).toContain('待审核');
+    expect(mine).not.toContain('待审核');
     expect(mine).toContain('c-signup-status-row');
     expect(mine).toContain('查看全部');
     expect(mine).not.toContain('<h2 class="c-section-title">我的收藏</h2>');

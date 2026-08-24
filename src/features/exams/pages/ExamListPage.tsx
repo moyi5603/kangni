@@ -3,7 +3,6 @@ import { DownOutlined, FolderOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   App,
   Button,
-  Descriptions,
   Dropdown,
   Empty,
   Flex,
@@ -24,7 +23,6 @@ import { b2bStandards } from '../../../shared/design-system/generated/b2b-standa
 import { collectCategoryIds, findCategoryNode, subtreeIdsOf } from '../../../shared/category-tree/categoryTree';
 import {
   canDeleteExam,
-  examCertificates,
   examPublishStatuses,
   examStatuses,
   type ExamPublishStatus,
@@ -85,11 +83,6 @@ function categoryNameOf(tree: ReturnType<typeof useExamCategoryTree>, categoryId
   return findCategoryNode(tree, categoryId)?.name ?? '-';
 }
 
-function certificateNameOf(certificateId: number | null | undefined): string {
-  if (certificateId == null) return '-';
-  return examCertificates.find((item) => item.id === certificateId)?.name ?? '-';
-}
-
 export function ExamListPage({ onNavigate }: { onNavigate: (page: string, recordId?: string) => void }) {
   const { message, modal } = App.useApp();
   const screens = Grid.useBreakpoint();
@@ -108,8 +101,6 @@ export function ExamListPage({ onNavigate }: { onNavigate: (page: string, record
   const [createParentId, setCreateParentId] = useState<number | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editCategoryId, setEditCategoryId] = useState<number | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [detailRecord, setDetailRecord] = useState<ExamRecord | null>(null);
   const [expandedKeys, setExpandedKeys] = useState<Key[]>();
   const [createForm] = Form.useForm<{ name: string }>();
   const [editForm] = Form.useForm<{ name: string }>();
@@ -132,7 +123,6 @@ export function ExamListPage({ onNavigate }: { onNavigate: (page: string, record
   const hasActiveQuery = Boolean(query.name || query.examStatus || query.publishStatus || selectedCategoryKey !== null);
 
   const selectedRows = data.filter((item) => selectedRowKeys.includes(item.id));
-  const viewingExam = detailRecord ? data.find((item) => item.id === detailRecord.id) ?? detailRecord : null;
   const createParentName = createParentId == null ? null : findCategoryNode(categoryTree, createParentId)?.name;
 
   const clearSelection = () => setSelectedRowKeys([]);
@@ -190,6 +180,10 @@ export function ExamListPage({ onNavigate }: { onNavigate: (page: string, record
     const values = await createForm.validateFields();
     const name = values.name.trim();
     const created = addExamCategoryNode(name, createParentId);
+    if (!created) {
+      message.warning('分类最多支持 3 级');
+      return;
+    }
     const fallbackExpanded = [-1, ...collectCategoryIds(categoryTree), created.id] as Key[];
     setExpandedKeys((keys) => {
       const base = keys ?? fallbackExpanded;
@@ -245,8 +239,7 @@ export function ExamListPage({ onNavigate }: { onNavigate: (page: string, record
   };
 
   const openDetail = (record: ExamRecord) => {
-    setDetailRecord(record);
-    setDetailOpen(true);
+    onNavigate('exam-detail', String(record.id));
   };
 
   const openEditExam = (record: ExamRecord) => {
@@ -298,7 +291,6 @@ export function ExamListPage({ onNavigate }: { onNavigate: (page: string, record
           return;
         }
         setSelectedRowKeys((keys) => keys.filter((key) => key !== record.id));
-        if (detailRecord?.id === record.id) setDetailOpen(false);
         message.success(`已删除「${record.name}」`);
       },
     });
@@ -348,11 +340,6 @@ export function ExamListPage({ onNavigate }: { onNavigate: (page: string, record
       render: (_, record) => {
         const isPublished = record.publishStatus === '已发布';
         const moreItems = [
-          {
-            key: 'set-category',
-            label: '设置分类',
-            onClick: () => openSetCategory([record.id]),
-          },
           ...(canDeleteExam(record)
             ? [
                 {
@@ -382,11 +369,13 @@ export function ExamListPage({ onNavigate }: { onNavigate: (page: string, record
                 发布
               </Button>
             )}
-            <Dropdown trigger={['click']} menu={{ items: moreItems }}>
-              <Button type="link" aria-label={`更多操作 ${record.name}`}>
-                更多 <DownOutlined />
-              </Button>
-            </Dropdown>
+            {moreItems.length > 0 ? (
+              <Dropdown trigger={['click']} menu={{ items: moreItems }}>
+                <Button type="link" aria-label={`更多操作 ${record.name}`}>
+                  更多 <DownOutlined />
+                </Button>
+              </Dropdown>
+            ) : null}
           </Space>
         );
       },
@@ -406,7 +395,7 @@ export function ExamListPage({ onNavigate }: { onNavigate: (page: string, record
   return (
     <div className="page-stack">
       <ListPageHeading
-        paths={['考试', '考试管理']}
+        paths={['考试练习', '考试', '考试管理']}
         title="考试管理"
         subtitle="维护考试场次与发布状态，按分类筛选和管理。"
       />
@@ -614,71 +603,6 @@ export function ExamListPage({ onNavigate }: { onNavigate: (page: string, record
           onChange={(value) => setPendingCategoryId(value ?? null)}
           options={categorySelectOptions}
         />
-      </Modal>
-
-      <Modal
-        title="考试详情"
-        open={detailOpen && Boolean(viewingExam)}
-        onCancel={() => setDetailOpen(false)}
-        footer={
-          <Space>
-            {viewingExam ? (
-              <Button
-                onClick={() => {
-                  setDetailOpen(false);
-                  openEditExam(viewingExam);
-                }}
-              >
-                编辑
-              </Button>
-            ) : null}
-            <Button type="primary" onClick={() => setDetailOpen(false)}>
-              关闭
-            </Button>
-          </Space>
-        }
-        width={b2bStandards.form.modalWidth}
-        destroyOnHidden
-      >
-        {viewingExam ? (
-          <Descriptions
-            column={1}
-            bordered
-            items={[
-              { label: '考试名称', children: viewingExam.name },
-              { label: '分类名称', children: categoryNameOf(categoryTree, viewingExam.categoryId) },
-              { label: '开考时间', children: viewingExam.startAt },
-              { label: '结束时间', children: viewingExam.endAt },
-              { label: '考试总时长(分)', children: viewingExam.durationMinutes },
-              { label: '总分数', children: viewingExam.totalScore ?? '-' },
-              { label: '及格分数', children: viewingExam.passScore },
-              { label: '考试次数', children: viewingExam.examTimes ?? '-' },
-              { label: '获得积分', children: viewingExam.points },
-              { label: '关联证书', children: certificateNameOf(viewingExam.certificateId) },
-              { label: '考试标签', children: viewingExam.tags || '-' },
-              { label: '适用岗位/人群', children: viewingExam.audience || '-' },
-              {
-                label: '发布状态',
-                children: <Tag color={publishStatusColor[viewingExam.publishStatus]}>{viewingExam.publishStatus}</Tag>,
-              },
-              {
-                label: '考试状态',
-                children: <Tag color={examStatusColor[viewingExam.examStatus]}>{viewingExam.examStatus}</Tag>,
-              },
-              { label: '创建人', children: viewingExam.creator },
-              { label: '创建时间', children: viewingExam.createdAt },
-              { label: '最后修改时间', children: viewingExam.updatedAt },
-              {
-                label: '考试说明',
-                children: viewingExam.descriptionHtml ? (
-                  <div className="rich-text-preview" dangerouslySetInnerHTML={{ __html: viewingExam.descriptionHtml }} />
-                ) : (
-                  '-'
-                ),
-              },
-            ]}
-          />
-        ) : null}
       </Modal>
     </div>
   );

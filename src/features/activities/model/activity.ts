@@ -1,4 +1,10 @@
-import { defaultSignupFields, type SignupField } from './signupFields';
+import {
+  addSignupField,
+  defaultSignupFields,
+  setSignupFieldCompanion,
+  setSignupFieldGroups,
+  type SignupField,
+} from './signupFields';
 
 const basketballImg = '/activities/basketball.jpg';
 const checkupImg = '/activities/checkup.jpg';
@@ -7,7 +13,7 @@ const openDayImg = '/activities/open-day.jpg';
 const shareImg = '/activities/share.jpg';
 const webinarImg = '/activities/webinar.jpg';
 
-export const ACTIVITY_MOCK_VERSION = 14;
+export const ACTIVITY_MOCK_VERSION = 15;
 export type { SignupField } from './signupFields';
 export const activityTypes = ['公司活动', '疗休养活动', '体检活动', '项目活动'] as const;
 export const visibilityOptions = ['全员', '按部门', '自定义人群', '导入人群'] as const;
@@ -248,6 +254,25 @@ const defaults: Pick<
   pinned: false,
 };
 
+function fieldsWith(...keys: string[]): SignupField[] {
+  return keys.reduce((fields, key) => addSignupField(fields, key), defaultSignupFields());
+}
+
+function groupSignupFields(
+  groups: Array<{ name: string; limit: number }>,
+  extraKeys: string[] = [],
+): SignupField[] {
+  let fields = addSignupField(defaultSignupFields(), '分组选择');
+  fields = setSignupFieldGroups(fields, '分组选择', groups);
+  return extraKeys.reduce((current, key) => addSignupField(current, key), fields);
+}
+
+function companionSignupFields(max: number, collect: Array<'姓名' | '手机号' | '身份证号'>, extraKeys: string[] = []): SignupField[] {
+  let fields = addSignupField(defaultSignupFields(), '同行人');
+  fields = setSignupFieldCompanion(fields, '同行人', max, collect);
+  return extraKeys.reduce((current, key) => addSignupField(current, key), fields);
+}
+
 function detailBlock(image: string, alt: string, intro: string, items: string[], note: string): string {
   const list = items.map((item) => `<li>${item}</li>`).join('');
   return `<h2>活动介绍</h2><p>${intro}</p><p><img src="${image}" alt="${alt}" width="960" height="540"></p><h2>日程与须知</h2><ul>${list}</ul><blockquote>${note}</blockquote>`;
@@ -257,11 +282,12 @@ const openSignup = { signupStartAt: '2026-08-01 09:00', signupEndAt: '2026-09-30
 const closedSignup = { signupStartAt: '2026-06-01 09:00', signupEndAt: '2026-07-15 18:00' };
 const futureSignup = { signupStartAt: '2026-09-05 09:00', signupEndAt: '2026-09-30 18:00' };
 
-function recreationExtras(): Pick<Activity, 'itinerary' | 'extraFeeRule' | 'signupSettings'> {
+function recreationExtras(): Pick<Activity, 'itinerary' | 'extraFeeRule' | 'signupSettings' | 'signupFields'> {
   return {
     itinerary: '<p>集合后统一乘车前往，入住与行程以行前通知为准。返程当天中午前办理退房。</p>',
     extraFeeRule: '<p>员工活动费用由公司承担。带家属的住宿、门票与餐费需自理，现场不支持退费。</p>',
     signupSettings: [{ type: '个人报名', limit: 40, needAudit: true, minSeniorityYears: 1 }],
+    signupFields: companionSignupFields(2, ['姓名', '手机号', '身份证号'], ['身份证号']),
   };
 }
 
@@ -305,6 +331,8 @@ export const initialActivities: Activity[] = [
     activityStatus: '已结束',
     createdAt: '2026-03-20 10:12:00',
     publishedAt: '2026-03-22 09:00:00',
+    signupSettings: [{ type: '个人报名', limit: 80, needAudit: false }],
+    signupFields: companionSignupFields(3, ['姓名', '手机号'], ['性别', '年龄']),
   },
   {
     ...defaults,
@@ -332,10 +360,14 @@ export const initialActivities: Activity[] = [
     pinned: true,
     createdAt: '2026-07-28 14:05:00',
     publishedAt: '2026-08-01 11:20:00',
-    signupSettings: [
-      { type: '个人报名', limit: 40, needAudit: true },
-      { type: '团体报名', limit: 10, needAudit: false },
-    ],
+    signupSettings: [{ type: '个人报名', limit: 50, needAudit: true }],
+    signupFields: groupSignupFields(
+      [
+        { name: '技术组', limit: 30 },
+        { name: '业务组', limit: 20 },
+      ],
+      ['部门', '岗位'],
+    ),
   },
   {
     ...defaults,
@@ -374,6 +406,13 @@ export const initialActivities: Activity[] = [
     itinerary: '<p>12 日下午小组赛与半决赛；13 日下午决赛、颁奖和合影。集合地点为总部球馆南门。</p>',
     extraFeeRule: '<p>员工参赛免费。带家属观赛需另缴餐费和纪念品费用，现场不支持退费。</p>',
     signupSettings: [{ type: '个人报名', limit: 50, needAudit: true, minSeniorityYears: 1 }],
+    signupFields: groupSignupFields(
+      [
+        { name: '研发中心队', limit: 25 },
+        { name: '生产中心队', limit: 25 },
+      ],
+      ['工号'],
+    ),
     detailHtml: detailBlock(
       basketballImg,
       '部门篮球联赛赛场',
@@ -430,6 +469,8 @@ export const initialActivities: Activity[] = [
     activityStatus: '未开始',
     createdAt: '2026-08-15 08:50:00',
     publishedAt: '2026-08-16 10:00:00',
+    signupSettings: [{ type: '个人报名', limit: 200, needAudit: false }],
+    signupFields: fieldsWith('身份证号', '年龄', '部门'),
   },
   {
     ...defaults,
@@ -458,6 +499,8 @@ export const initialActivities: Activity[] = [
     activityStatus: '未开始',
     createdAt: '2026-08-18 09:20:00',
     publishedAt: '',
+    signupSettings: [{ type: '个人报名', limit: 30, needAudit: true, minSeniorityYears: 3 }],
+    signupFields: fieldsWith('工号', '岗位'),
   },
   {
     ...defaults,
@@ -496,6 +539,8 @@ export const initialActivities: Activity[] = [
     endAt: '2026-09-12 21:00',
     coverUrl: openDayImg,
     publishedAt: '2026-08-12 09:30:00',
+    signupSettings: [{ type: '个人报名', limit: 120, needAudit: false }],
+    signupFields: companionSignupFields(2, ['姓名', '手机号'], ['性别']),
     detailHtml: detailBlock(openDayImg, '中秋员工晚会', '中秋节员工晚会含节目汇演、抽奖和家书环节，欢迎携家属观演。', ['18:00 签到入场', '18:30 节目演出', '20:30 抽奖与合影'], '请提前在线上领取电子门票。'),
   }),
   publishedClient({

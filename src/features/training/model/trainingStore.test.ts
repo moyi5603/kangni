@@ -22,13 +22,13 @@ import { canDeleteCourse, initialCourses, initialCourseware, initialCoursewareCa
 describe('addCoursewareCategory', () => {
   it('adds a root category', () => {
     const created = addCoursewareCategory('新分类甲');
-    expect(created.name).toBe('新分类甲');
+    expect(created?.name).toBe('新分类甲');
     expect(isCoursewareCategoryNameTaken('新分类甲', null)).toBe(true);
   });
 
   it('adds a child under an existing parent', () => {
     const created = addCoursewareCategory('新子分类', 10);
-    expect(created.name).toBe('新子分类');
+    expect(created?.name).toBe('新子分类');
     expect(isCoursewareCategoryNameTaken('新子分类', 10)).toBe(true);
     expect(isCoursewareCategoryNameTaken('新子分类', null)).toBe(false);
   });
@@ -62,9 +62,14 @@ describe('courseware category actions', () => {
 });
 
 describe('course category actions', () => {
+  it('rejects a fourth-level category', () => {
+    expect(addCourseCategoryNode('四级', 211)).toBeNull();
+    expect(addCoursewareCategory('四级', 211)).toBeNull();
+  });
+
   it('adds a child under an existing parent', () => {
     const created = addCourseCategoryNode('新岗位子类', 10);
-    expect(created.name).toBe('新岗位子类');
+    expect(created?.name).toBe('新岗位子类');
     expect(isCourseCategoryNameTaken('新岗位子类', 10)).toBe(true);
     expect(isCourseCategoryNameTaken('新岗位子类', null)).toBe(false);
   });

@@ -93,18 +93,19 @@ describe('PC my signups', () => {
     expect(html).toContain('已结束');
     expect(html).toContain('已驳回');
     expect(html).toContain('中秋员工晚会');
-    expect(html).not.toContain('年度体检安排');
+    expect(html).toContain('年度体检安排');
     expect(html).not.toContain('新员工入职训练营');
     expect(html).not.toContain('春季员工开放日');
     expect(html).not.toContain('秋季消防演练');
     expect(html).not.toContain('活动已失效');
   });
 
-  it('shows pending demo signups when that tab is selected', () => {
+  it('shows no pending demo signups when that tab is selected', () => {
     loadDemoSignups();
     const html = renderToStaticMarkup(<PcMySignups initialTab="pending" />);
 
-    expect(html).toContain('年度体检安排');
+    expect(html).toContain('暂无待审核活动');
+    expect(html).not.toContain('年度体检安排');
     expect(html).not.toContain('中秋员工晚会');
     expect(html).not.toContain('新员工入职训练营');
     expect(html).not.toContain('春季员工开放日');

@@ -10,6 +10,7 @@ import {
 } from './exam';
 import {
   collectCategoryIds,
+  canAddCategoryChild,
   findCategoryNode,
   findCategorySiblingContext,
   insertCategory,
@@ -55,6 +56,14 @@ export function useExamCategoryTree() {
   useEffect(() => {
     return subscribe(() => setTick((n) => n + 1));
   }, []);
+  return examCategoryTree;
+}
+
+export function getExams() {
+  return exams;
+}
+
+export function getExamCategoryTree() {
   return examCategoryTree;
 }
 
@@ -110,7 +119,8 @@ export function isExamCategoryNameTaken(name: string, parentId: number | null, e
   return isSiblingNameTaken(examCategoryTree, name, parentId, excludeId);
 }
 
-export function addExamCategoryNode(name: string, parentId: number | null = null): ExamCategoryNode {
+export function addExamCategoryNode(name: string, parentId: number | null = null): ExamCategoryNode | null {
+  if (!canAddCategoryChild(examCategoryTree, parentId)) return null;
   const node: ExamCategoryNode = { id: Date.now(), name };
   if (parentId == null) examCategoryTree = [...examCategoryTree, node];
   else examCategoryTree = insertCategory(examCategoryTree, parentId, node);

@@ -7,6 +7,7 @@ import {
   loadDemoSignups,
   resetClientSignups,
   submitSignup,
+  cancelSignup,
 } from './signupStore';
 
 describe('signup store', () => {
@@ -41,12 +42,31 @@ describe('signup store', () => {
 
   it('still rejects duplicate signups for one activity', () => {
     expect(submitSignup(9003, '个人报名')).toBe('ok');
-    expect(submitSignup(9003, '团体报名')).toBe('duplicate');
+    expect(submitSignup(9003, '个人报名')).toBe('duplicate');
   });
 
   it('writes new signups as approved', () => {
     expect(submitSignup(9004, '个人报名')).toBe('ok');
     expect(getUserSignups().find((signup) => signup.activityId === 9004)?.status).toBe('已通过');
+  });
+
+  it('writes editable profile fields from the signup answers', () => {
+    expect(
+      submitSignup(9004, '个人报名', {
+        姓名: '陈改名',
+        手机号: '13900000000',
+        部门: '研发中心',
+        岗位: '产品经理',
+      }),
+    ).toBe('ok');
+    const row = getRelatedList('signups').find((item) => item.activityId === 9004 && item.accountPhone === DEMO_SIGNUP_USER.phone);
+    expect(row).toMatchObject({
+      name: '陈改名',
+      phone: '13900000000',
+      department: '研发中心',
+      answers: { 岗位: '产品经理' },
+    });
+    expect(getUserSignups().some((item) => item.activityId === 9004)).toBe(true);
   });
 
   it('writes into related.signups so admin lists can see the row', () => {
@@ -62,13 +82,14 @@ describe('signup store', () => {
     });
   });
 
-  it('uses needAudit from the activity signup type', () => {
-    expect(getActivity(2)?.signupSettings.some((item) => item.type === '个人报名' && item.needAudit)).toBe(true);
+  it('uses needAudit from the activity signup setting', () => {
+    expect(getActivity(2)?.signupSettings).toEqual([{ type: '个人报名', limit: 50, needAudit: true }]);
     expect(submitSignup(2, '个人报名')).toBe('ok');
     expect(getUserSignups().find((item) => item.activityId === 2)?.status).toBe('待审核');
     resetClientSignups();
-    expect(submitSignup(2, '团体报名')).toBe('ok');
-    expect(getUserSignups().find((item) => item.activityId === 2)?.status).toBe('已通过');
+    expect(getActivity(6)?.signupSettings.some((item) => item.needAudit === false)).toBe(true);
+    expect(submitSignup(6, '个人报名')).toBe('ok');
+    expect(getUserSignups().find((item) => item.activityId === 6)?.status).toBe('已通过');
   });
 
   it('hides cancelled rows and allows signing up again', () => {
@@ -82,6 +103,20 @@ describe('signup store', () => {
     );
     expect(getUserSignups().some((item) => item.activityId === 9006)).toBe(false);
     expect(submitSignup(9006, '个人报名')).toBe('ok');
+  });
+
+  it('cancels before the signup deadline and frees the seat', () => {
+    loadDemoSignups();
+    expect(cancelSignup(2, Date.parse('2026-08-21T12:00:00'))).toBe('ok');
+    expect(getUserSignups().some((item) => item.activityId === 2)).toBe(false);
+    expect(getRelatedList('signups').find((item) => item.id === 4)?.status).toBe('已取消');
+    expect(submitSignup(2, '个人报名')).toBe('ok');
+  });
+
+  it('refuses cancel after the signup deadline', () => {
+    loadDemoSignups();
+    expect(cancelSignup(2, Date.parse('2026-09-01T12:00:00'))).toBe('closed');
+    expect(getUserSignups().some((item) => item.activityId === 2)).toBe(true);
   });
 
   it('reflects admin status patches on the client list', () => {
@@ -110,7 +145,7 @@ describe('signup store', () => {
 
     expect(list).toHaveLength(5);
     expect(byId[2]?.status).toBe('已通过');
-    expect(byId[6]?.status).toBe('待审核');
+    expect(byId[6]?.status).toBe('已通过');
     expect(byId[9]?.status).toBe('已通过');
     expect(byId[1]?.status).toBe('已通过');
     expect(byId[12]?.status).toBe('已驳回');

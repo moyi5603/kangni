@@ -21,7 +21,7 @@ describe('related signups seed and subscribe', () => {
     expect(byActivity[6]).toMatchObject({
       id: 15,
       signupType: '个人报名',
-      status: '待审核',
+      status: '已通过',
       createdAt: '2026-08-17 16:00:00',
     });
     expect(byActivity[9]).toMatchObject({

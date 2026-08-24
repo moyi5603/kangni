@@ -45,7 +45,6 @@ import {
   removeCourseware,
   removeCoursewareCategory,
   renameCoursewareCategory,
-  setCoursewareCategory,
   setCoursewarePublishStatus,
   upsertCourseware,
   useCourseware,
@@ -107,9 +106,6 @@ export function CoursewareListPage() {
   const [selectedCategoryKey, setSelectedCategoryKey] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<CoursewareType | 'all'>('all');
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
-  const [setCategoryOpen, setSetCategoryOpen] = useState(false);
-  const [categoryTargetIds, setCategoryTargetIds] = useState<number[]>([]);
-  const [pendingCategoryId, setPendingCategoryId] = useState<number | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [createParentId, setCreateParentId] = useState<number | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -122,8 +118,6 @@ export function CoursewareListPage() {
   const [expandedKeys, setExpandedKeys] = useState<Key[]>();
   const [createForm] = Form.useForm<{ name: string }>();
   const [editForm] = Form.useForm<{ name: string }>();
-
-  const allCategoryIds = useMemo(() => collectCategoryIds(categoryTree), [categoryTree]);
 
   const filtered = useMemo(() => {
     return data.filter((item) => {
@@ -204,6 +198,10 @@ export function CoursewareListPage() {
     const values = await createForm.validateFields();
     const name = values.name.trim();
     const created = addCoursewareCategory(name, createParentId);
+    if (!created) {
+      message.warning('分类最多支持 3 级');
+      return;
+    }
     const fallbackExpanded = [-1, ...collectCategoryIds(categoryTree), created.id] as Key[];
     setExpandedKeys((keys) => {
       const base = keys ?? fallbackExpanded;
@@ -225,20 +223,6 @@ export function CoursewareListPage() {
       status,
     );
     message.success(`已${status === '已发布' ? '发布' : '撤销'} ${targets.length} 个课件`);
-    clearSelection();
-  };
-
-  const openSetCategory = (ids: number[]) => {
-    setCategoryTargetIds(ids);
-    setPendingCategoryId(null);
-    setSetCategoryOpen(true);
-  };
-
-  const confirmSetCategory = () => {
-    setCoursewareCategory(categoryTargetIds, pendingCategoryId);
-    message.success(`已更新 ${categoryTargetIds.length} 个课件的分类`);
-    setSetCategoryOpen(false);
-    setCategoryTargetIds([]);
     clearSelection();
   };
 
@@ -411,11 +395,6 @@ export function CoursewareListPage() {
       render: (_, record) => {
         const isPublished = record.publishStatus === '已发布';
         const moreItems = [
-          {
-            key: 'set-category',
-            label: '设置分类',
-            onClick: () => openSetCategory([record.id]),
-          },
           ...(canDeleteCourseware(record)
             ? [
                 {
@@ -445,14 +424,13 @@ export function CoursewareListPage() {
                 发布
               </Button>
             )}
-            <Dropdown
-              trigger={['click']}
-              menu={{ items: moreItems }}
-            >
-              <Button type="link" aria-label={`更多操作 ${record.name}`}>
-                更多 <DownOutlined />
-              </Button>
-            </Dropdown>
+            {moreItems.length ? (
+              <Dropdown trigger={['click']} menu={{ items: moreItems }}>
+                <Button type="link" aria-label={`更多操作 ${record.name}`}>
+                  更多 <DownOutlined />
+                </Button>
+              </Dropdown>
+            ) : null}
           </Space>
         );
       },
@@ -465,13 +443,6 @@ export function CoursewareListPage() {
   ];
   const categoryPanelMaxHeight = isSmallScreen ? '52vh' : 'calc(100vh - 220px)';
   const sidebarWidth = b2bStandards.layout.sidebarWidth + b2bStandards.spacing.md;
-  const categorySelectOptions = [
-    { value: null as unknown as number, label: '无分类' },
-    ...allCategoryIds.map((id) => {
-      const node = findCategoryNode(categoryTree, id);
-      return { value: id, label: node?.name ?? String(id) };
-    }),
-  ];
 
   return (
     <div className="page-stack">
@@ -546,7 +517,6 @@ export function CoursewareListPage() {
                   <Space>
                     <Button onClick={() => batchPublish('已发布')}>发布</Button>
                     <Button onClick={() => batchPublish('草稿')}>撤销</Button>
-                    <Button onClick={() => openSetCategory(selectedRows.map((item) => item.id))}>设置分类</Button>
                     <Button onClick={clearSelection}>取消选择</Button>
                   </Space>
                 </Flex>
@@ -664,34 +634,6 @@ export function CoursewareListPage() {
             <Input maxLength={10} showCount placeholder="请输入分类名称" />
           </Form.Item>
         </Form>
-      </Modal>
-
-      {/* 设置分类弹窗 */}
-      <Modal
-        title={`设置分类 · 已选 ${categoryTargetIds.length} 项`}
-        open={setCategoryOpen}
-        onOk={confirmSetCategory}
-        footer={modalFooter}
-        onCancel={() => {
-          setSetCategoryOpen(false);
-          setCategoryTargetIds([]);
-        }}
-        okText="确认"
-        cancelText="取消"
-        width={b2bStandards.form.modalWidth}
-        destroyOnHidden
-      >
-        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-          将覆盖已选课件的当前分类，保存后立即生效。
-        </Typography.Text>
-        <Select
-          allowClear
-          placeholder="请选择分类"
-          style={{ width: '100%' }}
-          value={pendingCategoryId}
-          onChange={(value) => setPendingCategoryId(value ?? null)}
-          options={categorySelectOptions}
-        />
       </Modal>
 
       {/* 课件详情抽屉 */}

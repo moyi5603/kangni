@@ -133,6 +133,10 @@ export function listComments(courseId: number): CourseCommentRecord[] {
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt) || right.id - left.id);
 }
 
+export function listAllCourseComments(): CourseCommentRecord[] {
+  return comments.slice().sort((left, right) => right.createdAt.localeCompare(left.createdAt) || right.id - left.id);
+}
+
 export function listApprovedComments(courseId: number): CourseCommentRecord[] {
   return listComments(courseId).filter((item) => item.status === '已通过');
 }
@@ -245,6 +249,11 @@ export function clearCourseCommentsStorage() {
 export function useCourseComments(courseId: number) {
   const list = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   return useMemo(() => listComments(courseId), [list, courseId]);
+}
+
+export function useAllCourseComments() {
+  const list = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  return useMemo(() => listAllCourseComments(), [list]);
 }
 
 export function useVisibleCourseComments(courseId: number, viewerName: string = DEMO_SIGNUP_USER.name) {

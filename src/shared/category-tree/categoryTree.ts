@@ -4,6 +4,29 @@ export type CategoryNode = {
   children?: CategoryNode[];
 };
 
+export const CATEGORY_MAX_DEPTH = 3;
+
+export function categoryDepthOf(nodes: CategoryNode[], id: number, depth = 1): number | null {
+  for (const node of nodes) {
+    if (node.id === id) return depth;
+    if (node.children?.length) {
+      const found = categoryDepthOf(node.children, id, depth + 1);
+      if (found != null) return found;
+    }
+  }
+  return null;
+}
+
+export function canAddCategoryChild(
+  nodes: CategoryNode[],
+  parentId: number | null,
+  maxDepth = CATEGORY_MAX_DEPTH,
+): boolean {
+  if (parentId == null) return maxDepth >= 1;
+  const depth = categoryDepthOf(nodes, parentId);
+  return depth != null && depth < maxDepth;
+}
+
 export function collectCategoryIds(nodes: CategoryNode[]): number[] {
   const ids: number[] = [];
   function walk(list: CategoryNode[]) {

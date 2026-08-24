@@ -1,35 +1,29 @@
 import { useEffect, useMemo, useState } from 'react';
-import { PlusOutlined } from '@ant-design/icons';
 import {
   App,
   Breadcrumb,
   Button,
   Card,
   DatePicker,
-  Empty,
   Flex,
   Form,
   Input,
   InputNumber,
   Select,
   Space,
-  Table,
   TreeSelect,
   Typography,
 } from 'antd';
-import type { TableColumnsType } from 'antd';
 import dayjs from 'dayjs';
 import { RichTextField } from '../../activities/components/RichTextField';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import type { CategoryNode } from '../../../shared/category-tree/categoryTree';
-import {
-  calculateExamTotalScore,
-  examCertificates,
-  examDifficulties,
-  type ExamQuestionRule,
-  type ExamRecord,
-} from '../model/exam';
+import { type ExamRecord } from '../model/exam';
+import { useCertificates } from '../model/certificateStore';
 import { getExam, upsertExam, useExamCategoryTree } from '../model/examStore';
+import { resolvePaperTotals } from '../model/paper';
+import { usePapers } from '../model/paperStore';
+import { useQuestions } from '../model/questionStore';
 
 type Props = { mode: 'create' | 'edit'; recordId?: string; onBack: () => void };
 
@@ -40,7 +34,7 @@ type FormValues = {
   durationMinutes: number;
   points: number;
   certificateId?: number | null;
-  questionRules?: ExamQuestionRule[];
+  paperId?: number | null;
   passScore: number;
   examTimes: number;
   tags?: string;
@@ -59,101 +53,21 @@ function toTreeData(
   }));
 }
 
-function QuestionRulesTable({
-  value = [],
-  onChange,
-}: {
-  value?: ExamQuestionRule[];
-  onChange?: (value: ExamQuestionRule[]) => void;
-}) {
-  const updateRule = (id: number, patch: Partial<ExamQuestionRule>) => {
-    onChange?.(value.map((rule) => (rule.id === id ? { ...rule, ...patch } : rule)));
-  };
-
-  const removeRule = (id: number) => {
-    onChange?.(value.filter((rule) => rule.id !== id));
-  };
-
-  const columns: TableColumnsType<ExamQuestionRule> = [
-    {
-      title: '试题难度',
-      dataIndex: 'difficulty',
-      width: 180,
-      render: (_, record) => (
-        <Select
-          value={record.difficulty}
-          aria-label="选择试题难度"
-          options={examDifficulties.map((item) => ({ value: item, label: item }))}
-          onChange={(difficulty) => updateRule(record.id, { difficulty })}
-          style={{ width: '100%' }}
-        />
-      ),
-    },
-    {
-      title: '试题数量',
-      dataIndex: 'questionCount',
-      width: 180,
-      render: (_, record) => (
-        <InputNumber
-          min={1}
-          precision={0}
-          value={record.questionCount}
-          aria-label="输入试题数量"
-          onChange={(nextValue) => updateRule(record.id, { questionCount: Number(nextValue ?? 0) })}
-          style={{ width: '100%' }}
-        />
-      ),
-    },
-    {
-      title: '每题分数',
-      dataIndex: 'scorePerQuestion',
-      width: 180,
-      render: (_, record) => (
-        <InputNumber
-          min={1}
-          precision={0}
-          value={record.scorePerQuestion}
-          aria-label="输入每题分数"
-          onChange={(nextValue) => updateRule(record.id, { scorePerQuestion: Number(nextValue ?? 0) })}
-          style={{ width: '100%' }}
-        />
-      ),
-    },
-    {
-      title: '操作',
-      key: 'action',
-      width: 80,
-      render: (_, record) => (
-        <Button type="link" danger aria-label={`删除${record.difficulty}规则`} onClick={() => removeRule(record.id)}>
-          删除
-        </Button>
-      ),
-    },
-  ];
-
-  return (
-    <Table
-      rowKey="id"
-      size="middle"
-      pagination={false}
-      dataSource={value}
-      columns={columns}
-      locale={{ emptyText: <Empty description="暂无出题配置，请点击「添加出题规则」" /> }}
-      scroll={{ x: 720 }}
-    />
-  );
-}
-
 export function ExamFormPage({ mode, recordId, onBack }: Props) {
   const { message, modal } = App.useApp();
   const tree = useExamCategoryTree();
+  const certificates = useCertificates();
+  const papers = usePapers();
+  const questions = useQuestions();
   const [form] = Form.useForm<FormValues>();
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const editing = mode === 'edit' ? getExam(Number(recordId)) : undefined;
   const title = mode === 'edit' ? '编辑考试' : '新增考试';
-  const watchedQuestionRules = Form.useWatch('questionRules', form) ?? [];
-  const totalScore = useMemo(() => calculateExamTotalScore(watchedQuestionRules), [watchedQuestionRules]);
+  const watchedPaperId = Form.useWatch('paperId', form);
+  const enabledPapers = useMemo(() => papers.filter((item) => item.status === '启用'), [papers]);
+  const selectedPaper = enabledPapers.find((item) => item.id === watchedPaperId) ?? papers.find((item) => item.id === watchedPaperId);
+  const totalScore = selectedPaper ? resolvePaperTotals({ ...selectedPaper, questions }).totalScore : 0;
 
   useEffect(() => {
     if (mode === 'edit' && !editing) {
@@ -169,7 +83,7 @@ export function ExamFormPage({ mode, recordId, onBack }: Props) {
         passScore: 60,
         durationMinutes: 60,
         examTimes: 1,
-        questionRules: [],
+        paperId: undefined,
       });
       setDirty(false);
       return;
@@ -182,7 +96,7 @@ export function ExamFormPage({ mode, recordId, onBack }: Props) {
       durationMinutes: editing.durationMinutes,
       points: editing.points,
       certificateId: editing.certificateId ?? null,
-      questionRules: editing.questionRules ?? [],
+      paperId: editing.paperId ?? undefined,
       passScore: editing.passScore,
       examTimes: editing.examTimes ?? 1,
       tags: editing.tags ?? '',
@@ -206,36 +120,12 @@ export function ExamFormPage({ mode, recordId, onBack }: Props) {
     });
   };
 
-  const addQuestionRule = () => {
-    const nextRules: ExamQuestionRule[] = [
-      ...watchedQuestionRules,
-      { id: Date.now(), difficulty: '简单', questionCount: 10, scorePerQuestion: 2 },
-    ];
-    form.setFieldValue('questionRules', nextRules);
-    setDirty(true);
-  };
-
-  const clearQuestionRules = () => {
-    if (!watchedQuestionRules.length) return;
-    modal.confirm({
-      title: '确认清空出题规则？',
-      content: '清空后需要重新添加规则才能保存考试。',
-      okText: '确认',
-      cancelText: '取消',
-      onOk: () => {
-        form.setFieldValue('questionRules', []);
-        setDirty(true);
-      },
-    });
-  };
-
   const save = async () => {
     if (saving) return;
     const values = await form.validateFields().catch(() => null);
     if (!values) return;
     setSaving(true);
     const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
-    const questionRules = values.questionRules ?? [];
     const record: ExamRecord = {
       id: mode === 'edit' && editing ? editing.id : Date.now(),
       name: values.name.trim(),
@@ -251,8 +141,9 @@ export function ExamFormPage({ mode, recordId, onBack }: Props) {
       createdAt: editing?.createdAt ?? now,
       updatedAt: now,
       certificateId: values.certificateId ?? null,
-      questionRules,
-      totalScore: calculateExamTotalScore(questionRules),
+      paperId: values.paperId ?? null,
+      questionRules: [],
+      totalScore,
       examTimes: values.examTimes,
       tags: values.tags?.trim() ?? '',
       audience: values.audience?.trim() ?? '',
@@ -270,6 +161,7 @@ export function ExamFormPage({ mode, recordId, onBack }: Props) {
       <Breadcrumb
         separator=">"
         items={[
+          { title: '考试练习' },
           { title: '考试' },
           {
             title: (
@@ -283,7 +175,7 @@ export function ExamFormPage({ mode, recordId, onBack }: Props) {
       />
       <Flex align="baseline" gap={16} wrap="wrap">
         <Typography.Title level={1}>{title}</Typography.Title>
-        <Typography.Text type="secondary">完善考试基础信息、试题规则、分数次数与说明后保存。</Typography.Text>
+        <Typography.Text type="secondary">完善考试基础信息、关联试卷、分数次数与说明后保存。</Typography.Text>
       </Flex>
 
       <Form
@@ -347,7 +239,7 @@ export function ExamFormPage({ mode, recordId, onBack }: Props) {
             <Select
               allowClear
               placeholder="请选择关联证书（可不选）"
-              options={examCertificates.map((item) => ({ value: item.id, label: item.name }))}
+              options={certificates.map((item) => ({ value: item.id, label: item.name }))}
             />
           </Form.Item>
         </Card>
@@ -361,28 +253,13 @@ export function ExamFormPage({ mode, recordId, onBack }: Props) {
           }
           extra={<Typography.Text type="secondary">总分：{totalScore} 分</Typography.Text>}
         >
-          <div className="table-toolbar">
-            <Space>
-              <Button type="primary" icon={<PlusOutlined />} onClick={addQuestionRule}>
-                添加出题规则
-              </Button>
-              <Button onClick={clearQuestionRules}>清空规则</Button>
-            </Space>
-          </div>
-          <Form.Item
-            name="questionRules"
-            rules={[
-              {
-                validator: async (_, value: ExamQuestionRule[] | undefined) => {
-                  if (!value?.length) throw new Error('请至少添加一条出题规则');
-                  if (value.some((rule) => !rule.difficulty || !rule.questionCount || !rule.scorePerQuestion)) {
-                    throw new Error('请完整填写每条出题规则');
-                  }
-                },
-              },
-            ]}
-          >
-            <QuestionRulesTable />
+          <Form.Item name="paperId" label="选择试卷" rules={[{ required: true, message: '请选择试卷' }]}>
+            <Select
+              showSearch
+              optionFilterProp="label"
+              placeholder="请选择试卷"
+              options={enabledPapers.map((item) => ({ value: item.id, label: item.name }))}
+            />
           </Form.Item>
         </Card>
 

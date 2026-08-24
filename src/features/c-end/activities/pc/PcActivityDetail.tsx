@@ -4,7 +4,7 @@ import { canSubmitMoment, type MomentRecord } from '../../../activities/model/mo
 import { useActivities } from '../../../activities/model/activityStore';
 import { useApprovedSignup, useClientMoments } from '../../../activities/model/momentStore';
 import { useRelated } from '../../../activities/model/related';
-import { goCEnd } from '../../../../app/navigation';
+import { goCEnd, goCEndSignup } from '../../../../app/navigation';
 import { useCEndToast } from '../components/CEndToast';
 import { ActivityCommentList } from '../components/ActivityCommentList';
 import { ActivityDetailFacts } from '../components/ActivityDetailFacts';
@@ -20,12 +20,13 @@ import {
   submitActivityComment,
   toggleCommentLike,
 } from '../model/activityComments';
+import { needsSignupForm, prefillSignupAnswers } from '../../../activities/model/signupFields';
 import { getPublishedActivity, signupCta, signupOccupiedCount, signupTypes } from '../model/clientActivity';
 import { toggleFavorite, toggleLike, useActivityEngagement } from '../model/engagementStore';
-import { submitSignup, useHasSignedUp } from '../model/signupStore';
+import { cancelSignup, DEMO_SIGNUP_USER, submitSignup, useHasSignedUp } from '../model/signupStore';
 import { PcActivityShell } from './PcActivityShell';
+import { CancelSignupDialog } from '../components/CancelSignupDialog';
 import { PcMomentModal } from './PcMomentModal';
-import { PcSignupModal } from './PcSignupModal';
 
 function withoutLeadingIntroductionHeading(html: string): string {
   const heading = /^(\s*)<h([1-6])(?:\s[^>]*)?>([\s\S]*?)<\/h\2\s*>/i.exec(html);
@@ -43,7 +44,7 @@ export function PcActivityDetail({ id }: { id: number }) {
   const engagement = useActivityEngagement(id);
   const relatedComments = useRelated('comments', id);
   const relatedSignups = useRelated('signups', id);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
   const [composer, setComposer] = useState<MomentRecord | 'create'>();
   const [socialTab, setSocialTab] = useState<'comments' | 'moments'>('comments');
   const momentItems = useClientMoments(id);
@@ -65,7 +66,7 @@ export function PcActivityDetail({ id }: { id: number }) {
   }
 
   const occupied = signupOccupiedCount(id);
-  const cta = signupCta(activity, signedUp);
+  const cta = signupCta(activity, signedUp, Date.now(), { allowCancel: true });
   const types = signupTypes(activity);
   const threads = listActivityCommentThreads(id);
   const detailHtml = withoutLeadingIntroductionHeading(activity.detailHtml);
@@ -74,10 +75,25 @@ export function PcActivityDetail({ id }: { id: number }) {
     canSubmitMoment(activity.activityStatus, approvedSignup),
   );
 
-  const confirm = (type: string) => {
-    const result = submitSignup(activity.id, type);
-    setModalOpen(false);
+  const confirm = (type: string, answers: Record<string, string>) => {
+    const result = submitSignup(activity.id, type, answers);
     toast.show(result === 'ok' ? '报名成功' : '已报名');
+  };
+
+  const openSignup = () => {
+    if (needsSignupForm(activity.signupFields) || types.length !== 1) {
+      goCEndSignup('pc', activity.id);
+      return;
+    }
+    confirm(
+      types[0],
+      prefillSignupAnswers(activity.signupFields, {
+        姓名: DEMO_SIGNUP_USER.name,
+        手机号: DEMO_SIGNUP_USER.phone,
+        部门: DEMO_SIGNUP_USER.department,
+        岗位: DEMO_SIGNUP_USER.position,
+      }),
+    );
   };
 
   return (
@@ -163,12 +179,30 @@ export function PcActivityDetail({ id }: { id: number }) {
               });
             }}
           />
-          <button className="c-cta" type="button" disabled={!cta.enabled} onClick={() => setModalOpen(true)}>
+          <button
+            className="c-cta"
+            type="button"
+            disabled={!cta.enabled}
+            onClick={() => {
+              if (!cta.enabled) return;
+              if (cta.action === 'cancel') setCancelOpen(true);
+              else openSignup();
+            }}
+          >
             {cta.label}
           </button>
         </aside>
       </div>
-      {modalOpen ? <PcSignupModal types={types} onCancel={() => setModalOpen(false)} onConfirm={confirm} /> : null}
+      {cancelOpen ? (
+        <CancelSignupDialog
+          onCancel={() => setCancelOpen(false)}
+          onConfirm={() => {
+            const result = cancelSignup(activity.id);
+            setCancelOpen(false);
+            toast.show(result === 'ok' ? '已取消报名' : result === 'closed' ? '报名已截止，无法取消' : '取消失败');
+          }}
+        />
+      ) : null}
       {composer ? (
         <PcMomentModal
           activity={activity}

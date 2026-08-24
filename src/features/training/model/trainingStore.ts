@@ -21,6 +21,7 @@ import {
 } from './training';
 import {
   collectCategoryIds,
+  canAddCategoryChild,
   findCategoryNode,
   findCategorySiblingContext,
   insertCategory,
@@ -208,7 +209,8 @@ export function isCoursewareCategoryNameTaken(name: string, parentId: number | n
   return isSiblingNameTaken(coursewareCategories, name, parentId, excludeId);
 }
 
-export function addCoursewareCategory(name: string, parentId: number | null = null): CoursewareCategoryNode {
+export function addCoursewareCategory(name: string, parentId: number | null = null): CoursewareCategoryNode | null {
+  if (!canAddCategoryChild(coursewareCategories, parentId)) return null;
   const node: CoursewareCategoryNode = { id: Date.now(), name };
   if (parentId == null) {
     coursewareCategories = [...coursewareCategories, node];
@@ -368,7 +370,8 @@ export function isCourseCategoryNameTaken(name: string, parentId: number | null,
   return isSiblingNameTaken(courseCategoryTree, name, parentId, excludeId);
 }
 
-export function addCourseCategoryNode(name: string, parentId: number | null = null): CourseCategoryNode {
+export function addCourseCategoryNode(name: string, parentId: number | null = null): CourseCategoryNode | null {
+  if (!canAddCategoryChild(courseCategoryTree, parentId)) return null;
   const node: CourseCategoryNode = { id: Date.now(), name };
   if (parentId == null) {
     courseCategoryTree = [...courseCategoryTree, node];

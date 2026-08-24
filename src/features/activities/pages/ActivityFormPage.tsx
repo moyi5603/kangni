@@ -23,7 +23,6 @@ import dayjs from 'dayjs';
 import { RichTextField } from '../components/RichTextField';
 import { SignupFieldsEditor } from '../components/SignupFieldsEditor';
 import {
-  emptySignupSetting,
   isRecreationActivity,
   canSubmitApproval,
   orgDepartmentTree,
@@ -31,7 +30,6 @@ import {
   type Activity,
   type ActivityType,
   type SignupField,
-  type SignupSetting,
   type Visibility,
 } from '../model/activity';
 import { defaultSignupFields, validateSignupFields } from '../model/signupFields';
@@ -63,6 +61,10 @@ type FormValues = {
   activityRange?: DateTimeRange;
   signupRange?: DateTimeRange;
   location: string;
+  signupTotalLimit?: number;
+  needAudit: boolean;
+  hasSeniorityLimit: boolean;
+  minSeniorityYears?: number;
   organizer: string;
   phone: string;
   detailHtml: string;
@@ -71,7 +73,6 @@ type FormValues = {
   customPeople: string[];
   visibilityMinSeniorityYears?: number;
   importFileName: string;
-  signupSettings: SignupSetting[];
   signupFields: SignupField[];
   itinerary: string;
   extraFeeRule: string;
@@ -114,6 +115,7 @@ function toFileList(coverUrl: string): UploadFile[] {
 }
 
 function activityToFormValues(activity: Activity): Partial<FormValues> {
+  const primary = activity.signupSettings[0];
   return {
     coverUrl: activity.coverUrl,
     title: activity.title,
@@ -123,6 +125,10 @@ function activityToFormValues(activity: Activity): Partial<FormValues> {
     activityRange: toDateTimeRange(activity.startAt, activity.endAt),
     signupRange: toDateTimeRange(activity.signupStartAt, activity.signupEndAt),
     location: activity.location,
+    signupTotalLimit: activity.signupSettings.reduce((sum, item) => sum + (item.limit ?? 0), 0) || undefined,
+    needAudit: primary?.needAudit ?? true,
+    hasSeniorityLimit: primary?.minSeniorityYears != null,
+    minSeniorityYears: primary?.minSeniorityYears,
     organizer: activity.organizer,
     phone: activity.phone,
     detailHtml: activity.detailHtml,
@@ -131,7 +137,6 @@ function activityToFormValues(activity: Activity): Partial<FormValues> {
     customPeople: activity.customPeople,
     visibilityMinSeniorityYears: activity.visibilityMinSeniorityYears,
     importFileName: activity.importFileName,
-    signupSettings: activity.signupSettings,
     signupFields: activity.signupFields,
     itinerary: activity.itinerary,
     extraFeeRule: activity.extraFeeRule,
@@ -168,6 +173,8 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
   );
   const visibility = Form.useWatch('visibility', form);
   const activityType = Form.useWatch('type', form);
+  const hasSeniorityLimit = Form.useWatch('hasSeniorityLimit', form);
+  const signupTotalLimit = Form.useWatch('signupTotalLimit', form);
   const title = mode === 'edit' ? '编辑活动' : '新建活动';
   const isRecreation = isRecreationActivity(activityType ?? editing?.type ?? copySource?.type ?? '公司活动');
 
@@ -186,7 +193,9 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
               importFileName: '',
               detailHtml: '',
               coverUrl: '',
-              signupSettings: [emptySignupSetting()],
+              signupTotalLimit: undefined,
+              needAudit: true,
+              hasSeniorityLimit: false,
               signupFields: defaultSignupFields(),
               itinerary: '',
               extraFeeRule: '',
@@ -259,9 +268,14 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
       importedPeople: values.visibility === '导入人群' ? editing?.importedPeople ?? copySource?.importedPeople ?? [] : [],
       signupStartAt: signupTime.startAt,
       signupEndAt: signupTime.endAt,
-      signupSettings: recreation
-        ? values.signupSettings
-        : values.signupSettings.map((item) => ({ type: item.type, limit: item.limit, needAudit: item.needAudit })),
+      signupSettings: [
+        {
+          type: editing?.signupSettings[0]?.type?.trim() || copySource?.signupSettings[0]?.type?.trim() || '个人报名',
+          limit: values.signupTotalLimit,
+          needAudit: values.needAudit,
+          minSeniorityYears: values.hasSeniorityLimit ? values.minSeniorityYears : undefined,
+        },
+      ],
       signupFields: values.signupFields ?? defaultSignupFields(),
       itinerary: recreation ? values.itinerary : '',
       extraFeeRule: recreation ? values.extraFeeRule : '',
@@ -366,6 +380,27 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
             <Select mode="multiple" options={tagOptions} placeholder="请选择标签" />
           </Form.Item>
           <Form.Item
+            name="signupRange"
+            label="报名时间"
+            required
+            rules={[
+              {
+                validator: async (_, value) =>
+                  validateDateTimeRange(value, {
+                    required: '请选择报名时间',
+                    order: '报名结束时间不得早于开始时间',
+                  }),
+              },
+            ]}
+          >
+            <DatePicker.RangePicker
+              showTime={{ format: 'HH:mm' }}
+              format="YYYY-MM-DD HH:mm"
+              style={{ width: '100%' }}
+              placeholder={['开始时间', '结束时间']}
+            />
+          </Form.Item>
+          <Form.Item
             name="activityRange"
             label="活动时间"
             required
@@ -388,6 +423,13 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
           </Form.Item>
           <Form.Item name="location" label="活动地点" rules={[{ required: true, message: '请输入活动地点' }]}>
             <Input />
+          </Form.Item>
+          <Form.Item
+            name="signupTotalLimit"
+            label="报名总人数"
+            rules={[{ required: true, message: '请输入报名总人数' }]}
+          >
+            <InputNumber min={1} precision={0} style={{ width: '100%' }} addonAfter="人" />
           </Form.Item>
           <Form.Item name="organizer" label="发起人" rules={[{ required: true, message: '请选择发起人' }]}>
             <TreeSelect
@@ -498,105 +540,46 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
           )}
         </Card>
 
-        <Card title="报名设置">
-          <Form.Item
-            name="signupRange"
-            label="报名时间"
-            required
-            rules={[
-              {
-                validator: async (_, value) =>
-                  validateDateTimeRange(value, {
-                    required: '请选择报名时间',
-                    order: '报名结束时间不得早于开始时间',
-                  }),
-              },
-            ]}
-          >
-            <DatePicker.RangePicker
-              showTime={{ format: 'HH:mm' }}
-              format="YYYY-MM-DD HH:mm"
-              style={{ width: '100%' }}
-              placeholder={['开始时间', '结束时间']}
-            />
+        <Card title="活动设置">
+          <Form.Item name="needAudit" label="是否审核报名" valuePropName="checked">
+            <Switch checkedChildren="需要审核" unCheckedChildren="无需审核" />
           </Form.Item>
-          <Form.List
-            name="signupSettings"
-            rules={[
-              {
-                validator: async (_, value: SignupSetting[]) => {
-                  if (!value?.length) throw new Error('请至少添加一条分组设置');
-                },
-              },
-            ]}
-          >
-            {(fields, { add, remove }, { errors }) => (
-              <>
-                {fields.map((field, index) => (
-                  <Card key={field.key} size="small" className="signup-setting-card" title={`分组设置 ${index + 1}`}>
-                    <Form.Item
-                      name={[field.name, 'type']}
-                      label="分组名称"
-                      rules={[
-                        { required: true, whitespace: true, message: '请输入分组名称' },
-                        { max: 10, message: '分组名称不超过 10 个字' },
-                      ]}
-                    >
-                      <Input maxLength={10} showCount placeholder="请输入分组名称" />
-                    </Form.Item>
-                    <Form.Item name={[field.name, 'limit']} label="报名人数" rules={[{ required: true, message: '请输入报名人数' }]}>
-                      <InputNumber min={1} precision={0} style={{ width: '100%' }} />
-                    </Form.Item>
-                    {isRecreation && (
-                      <Form.Item label="司龄要求" required>
-                        <Space.Compact style={{ width: '100%' }}>
-                          <Form.Item
-                            name={[field.name, 'minSeniorityYears']}
-                            noStyle
-                            rules={[{ required: true, message: '请输入司龄要求' }]}
-                          >
-                            <InputNumber min={0} precision={0} style={{ width: '100%' }} placeholder="大于等于" />
-                          </Form.Item>
-                          <Button disabled>年</Button>
-                        </Space.Compact>
-                      </Form.Item>
-                    )}
-                    <Form.Item name={[field.name, 'needAudit']} label="是否审核" valuePropName="checked">
-                      <Switch checkedChildren="需要审核" unCheckedChildren="无需审核" />
-                    </Form.Item>
-                    {fields.length > 1 && (
-                      <Button danger onClick={() => remove(field.name)}>
-                        删除此分组设置
-                      </Button>
-                    )}
-                  </Card>
-                ))}
-                <Form.Item>
-                  <Button type="dashed" block icon={<PlusOutlined />} onClick={() => add(emptySignupSetting())}>
-                    添加分组设置
-                  </Button>
+          <Form.Item name="hasSeniorityLimit" label="报名是否有司龄限制" valuePropName="checked">
+            <Switch checkedChildren="有限制" unCheckedChildren="无限制" />
+          </Form.Item>
+          {hasSeniorityLimit ? (
+            <Form.Item label="司龄要满" required>
+              <Space.Compact style={{ width: '100%' }}>
+                <Form.Item
+                  name="minSeniorityYears"
+                  noStyle
+                  rules={[{ required: true, message: '请输入司龄年限' }]}
+                >
+                  <InputNumber min={0} precision={0} style={{ width: '100%' }} placeholder="请输入" />
                 </Form.Item>
-                <Form.ErrorList errors={errors} />
-              </>
-            )}
-          </Form.List>
+                <Button disabled>年</Button>
+              </Space.Compact>
+            </Form.Item>
+          ) : null}
         </Card>
 
-        <Card title="报名参与人填写项">
+        <Card title="报名信息收集">
           <Form.Item
             name="signupFields"
             label="填写项"
-            extra="姓名、手机号为系统默认必填项；单选/多选字段至少保留 2 个选项。"
+            dependencies={['signupTotalLimit']}
             rules={[
               {
                 validator: async (_, value: SignupField[]) => {
-                  const error = validateSignupFields(value ?? []);
+                  const error = validateSignupFields(value ?? [], {
+                    signupTotalLimit: form.getFieldValue('signupTotalLimit'),
+                  });
                   if (error) throw new Error(error);
                 },
               },
             ]}
           >
-            <SignupFieldsEditor />
+            <SignupFieldsEditor signupTotalLimit={typeof signupTotalLimit === 'number' ? signupTotalLimit : undefined} />
           </Form.Item>
         </Card>
 

@@ -1,9 +1,8 @@
 import { useMemo, useState, type Key, type ReactNode } from 'react';
-import { DownOutlined, FolderOutlined, PlusOutlined } from '@ant-design/icons';
+import { DownOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   App,
   Button,
-  Descriptions,
   Dropdown,
   Empty,
   Flex,
@@ -13,7 +12,6 @@ import {
   Modal,
   Select,
   Space,
-  Switch,
   Table,
   Tag,
   Tooltip,
@@ -27,8 +25,6 @@ import {
   canDeleteCourse,
   courseStatuses,
   courseTypes,
-  defaultCourseCommentConfig,
-  type CourseCommentConfig,
   type CourseRecord,
   type CourseStatus,
   type CourseType,
@@ -43,10 +39,7 @@ import {
   removeCourse,
   removeCourseCategoryNode,
   renameCourseCategory,
-  setCourseCategory,
   setCourseStatus,
-  getCourseCommentConfig,
-  updateCourseCommentConfig,
   useCourseCategoryTree,
   useCourses,
 } from '../model/trainingStore';
@@ -101,23 +94,13 @@ export function CourseListPage({ onNavigate }: { onNavigate: (page: string, reco
   const [selectedCategoryKey, setSelectedCategoryKey] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<CourseType | 'all'>('all');
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
-  const [setCategoryOpen, setSetCategoryOpen] = useState(false);
-  const [categoryTargetIds, setCategoryTargetIds] = useState<number[]>([]);
-  const [pendingCategoryId, setPendingCategoryId] = useState<number | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [createParentId, setCreateParentId] = useState<number | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editCategoryId, setEditCategoryId] = useState<number | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [detailRecord, setDetailRecord] = useState<CourseRecord | null>(null);
-  const [commentConfigOpen, setCommentConfigOpen] = useState(false);
-  const [commentConfigCourse, setCommentConfigCourse] = useState<CourseRecord | null>(null);
-  const [commentConfigDraft, setCommentConfigDraft] = useState<CourseCommentConfig>(defaultCourseCommentConfig);
   const [expandedKeys, setExpandedKeys] = useState<Key[]>();
   const [createForm] = Form.useForm<{ name: string }>();
   const [editForm] = Form.useForm<{ name: string }>();
-
-  const allCategoryIds = useMemo(() => collectCategoryIds(categoryTree), [categoryTree]);
 
   const filtered = useMemo(() => {
     return data.filter((item) => {
@@ -135,7 +118,6 @@ export function CourseListPage({ onNavigate }: { onNavigate: (page: string, reco
   const hasActiveQuery = Boolean(query.name || query.status || selectedCategoryKey !== null || activeTab !== 'all');
 
   const selectedRows = data.filter((item) => selectedRowKeys.includes(item.id));
-  const viewingCourse = detailRecord ? data.find((item) => item.id === detailRecord.id) ?? detailRecord : null;
   const createParentName = createParentId == null ? null : findCategoryNode(categoryTree, createParentId)?.name;
 
   const clearSelection = () => setSelectedRowKeys([]);
@@ -193,6 +175,10 @@ export function CourseListPage({ onNavigate }: { onNavigate: (page: string, reco
     const values = await createForm.validateFields();
     const name = values.name.trim();
     const created = addCourseCategoryNode(name, createParentId);
+    if (!created) {
+      message.warning('分类最多支持 3 级');
+      return;
+    }
     const fallbackExpanded = [-1, ...collectCategoryIds(categoryTree), created.id] as Key[];
     setExpandedKeys((keys) => {
       const base = keys ?? fallbackExpanded;
@@ -233,41 +219,12 @@ export function CourseListPage({ onNavigate }: { onNavigate: (page: string, reco
     });
   };
 
-  const openSetCategory = (ids: number[]) => {
-    setCategoryTargetIds(ids);
-    setPendingCategoryId(null);
-    setSetCategoryOpen(true);
-  };
-
-  const confirmSetCategory = () => {
-    setCourseCategory(categoryTargetIds, pendingCategoryId);
-    message.success(`已更新 ${categoryTargetIds.length} 个课程的分类`);
-    setSetCategoryOpen(false);
-    setCategoryTargetIds([]);
-    clearSelection();
-  };
-
   const openDetail = (record: CourseRecord) => {
-    setDetailRecord(record);
-    setDetailOpen(true);
+    onNavigate('course-detail', String(record.id));
   };
 
   const openEditCourse = (record: CourseRecord) => {
     onNavigate('course-edit', String(record.id));
-  };
-
-  const openCommentConfig = (record: CourseRecord) => {
-    setCommentConfigCourse(record);
-    setCommentConfigDraft(getCourseCommentConfig(record.id));
-    setCommentConfigOpen(true);
-  };
-
-  const saveCommentConfig = () => {
-    if (!commentConfigCourse) return;
-    updateCourseCommentConfig(commentConfigCourse.id, commentConfigDraft);
-    message.success(`已保存「${commentConfigCourse.name}」评论配置`);
-    setCommentConfigOpen(false);
-    setCommentConfigCourse(null);
   };
 
   const openCreateCourse = () => {
@@ -315,7 +272,6 @@ export function CourseListPage({ onNavigate }: { onNavigate: (page: string, reco
           return;
         }
         setSelectedRowKeys((keys) => keys.filter((key) => key !== record.id));
-        if (detailRecord?.id === record.id) setDetailOpen(false);
         message.success(`已删除「${record.name}」`);
       },
     });
@@ -380,39 +336,16 @@ export function CourseListPage({ onNavigate }: { onNavigate: (page: string, reco
       width: 260,
       render: (_, record) => {
         const isPublished = record.status === '已发布';
-        const moreItems = [
-          {
-            key: 'quiz',
-            label: '设置答题',
-            onClick: () => message.info(`「${record.name}」设置答题待开发`),
-          },
-          {
-            key: 'comment-config',
-            label: '评论配置',
-            onClick: () => openCommentConfig(record),
-          },
-          {
-            key: 'view-comments',
-            label: '评论管理',
-            onClick: () => onNavigate('course-comments', String(record.id)),
-          },
-          { type: 'divider' as const },
-          {
-            key: 'set-category',
-            label: '设置分类',
-            onClick: () => openSetCategory([record.id]),
-          },
-          ...(canDeleteCourse(record)
-            ? [
-                {
-                  key: 'delete',
-                  label: '删除',
-                  danger: true as const,
-                  onClick: () => deleteOne(record),
-                },
-              ]
-            : []),
-        ];
+        const moreItems = canDeleteCourse(record)
+          ? [
+              {
+                key: 'delete',
+                label: '删除',
+                danger: true as const,
+                onClick: () => deleteOne(record),
+              },
+            ]
+          : [];
 
         return (
           <Space>
@@ -431,11 +364,13 @@ export function CourseListPage({ onNavigate }: { onNavigate: (page: string, reco
                 发布
               </Button>
             )}
-            <Dropdown trigger={['click']} menu={{ items: moreItems }}>
-              <Button type="link" aria-label={`更多操作 ${record.name}`}>
-                更多 <DownOutlined />
-              </Button>
-            </Dropdown>
+            {moreItems.length ? (
+              <Dropdown trigger={['click']} menu={{ items: moreItems }}>
+                <Button type="link" aria-label={`更多操作 ${record.name}`}>
+                  更多 <DownOutlined />
+                </Button>
+              </Dropdown>
+            ) : null}
           </Space>
         );
       },
@@ -445,13 +380,6 @@ export function CourseListPage({ onNavigate }: { onNavigate: (page: string, reco
   const tabItems = [{ key: 'all', label: '全部' }, ...courseTypes.map((t) => ({ key: t, label: t }))];
   const categoryPanelMaxHeight = isSmallScreen ? '52vh' : 'calc(100vh - 220px)';
   const sidebarWidth = b2bStandards.layout.sidebarWidth + b2bStandards.spacing.md;
-  const categorySelectOptions = [
-    { value: null as unknown as number, label: '无分类' },
-    ...allCategoryIds.map((id) => {
-      const node = findCategoryNode(categoryTree, id);
-      return { value: id, label: node?.name ?? String(id) };
-    }),
-  ];
 
   return (
     <div className="page-stack">
@@ -526,9 +454,6 @@ export function CourseListPage({ onNavigate }: { onNavigate: (page: string, reco
                   <Space>
                     <Button onClick={() => batchChangeStatus('已发布')}>批量发布</Button>
                     <Button onClick={() => batchChangeStatus('已下架')}>批量撤销</Button>
-                    <Button icon={<FolderOutlined />} onClick={() => openSetCategory(selectedRows.map((item) => item.id))}>
-                      设置分类
-                    </Button>
                     <Button onClick={clearSelection}>取消选择</Button>
                   </Space>
                 </Flex>
@@ -630,127 +555,6 @@ export function CourseListPage({ onNavigate }: { onNavigate: (page: string, reco
             <Input maxLength={10} showCount placeholder="请输入分类名称" />
           </Form.Item>
         </Form>
-      </Modal>
-
-      <Modal
-        title={`设置分类 · 已选 ${categoryTargetIds.length} 项`}
-        open={setCategoryOpen}
-        footer={modalFooter}
-        onOk={confirmSetCategory}
-        onCancel={() => {
-          setSetCategoryOpen(false);
-          setCategoryTargetIds([]);
-        }}
-        okText="确认"
-        cancelText="取消"
-        width={b2bStandards.form.modalWidth}
-        destroyOnHidden
-      >
-        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-          将覆盖已选课程的当前分类，保存后立即生效。
-        </Typography.Text>
-        <Select
-          allowClear
-          placeholder="请选择分类"
-          style={{ width: '100%' }}
-          value={pendingCategoryId}
-          onChange={(value) => setPendingCategoryId(value ?? null)}
-          options={categorySelectOptions}
-        />
-      </Modal>
-
-      <Modal
-        title="评论配置"
-        open={commentConfigOpen && Boolean(commentConfigCourse)}
-        onCancel={() => {
-          setCommentConfigOpen(false);
-          setCommentConfigCourse(null);
-        }}
-        okText="保存"
-        cancelText="取消"
-        footer={modalFooter}
-        onOk={saveCommentConfig}
-        width={480}
-        destroyOnHidden
-      >
-        <div className="comment-config-list">
-          {(
-            [
-              {
-                key: 'commentEnabled',
-                title: '评论',
-                desc: '允许用户发表评论',
-              },
-              {
-                key: 'commentAuditEnabled',
-                title: '评论审核',
-                desc: '评论是否需要审核（仅对当前设置后产生的数据生效）',
-              },
-              {
-                key: 'likeEnabled',
-                title: '点赞',
-                desc: '允许用户点赞',
-              },
-              {
-                key: 'favoriteEnabled',
-                title: '收藏',
-                desc: '允许用户收藏',
-              },
-            ] as const
-          ).map((item) => (
-            <div className="comment-config-item" key={item.key}>
-              <div className="comment-config-copy">
-                <Typography.Text strong>{item.title}</Typography.Text>
-                <Typography.Text type="secondary">{item.desc}</Typography.Text>
-              </div>
-              <Switch
-                checked={commentConfigDraft[item.key]}
-                checkedChildren="开"
-                unCheckedChildren="关"
-                aria-label={item.title}
-                onChange={(checked) => setCommentConfigDraft((prev) => ({ ...prev, [item.key]: checked }))}
-              />
-            </div>
-          ))}
-        </div>
-      </Modal>
-
-      <Modal
-        title="课程详情"
-        open={detailOpen && Boolean(viewingCourse)}
-        onCancel={() => setDetailOpen(false)}
-        footer={
-          <Space>
-            <Button type="primary" onClick={() => setDetailOpen(false)}>
-              关闭
-            </Button>
-          </Space>
-        }
-        width={b2bStandards.form.modalWidth}
-        destroyOnHidden
-      >
-        {viewingCourse ? (
-          <Descriptions
-            column={1}
-            bordered
-            items={[
-              { label: '课程名称', children: viewingCourse.name },
-              { label: '课程类型', children: <Tag color={typeColor[viewingCourse.type]}>{viewingCourse.type}</Tag> },
-              { label: '分类名称', children: categoryNameOf(categoryTree, viewingCourse.categoryId) },
-              { label: '课程标签', children: viewingCourse.tags || '—' },
-              { label: '适用岗位/人群', children: viewingCourse.audience || '—' },
-              { label: '学习过程', children: viewingCourse.learningMode },
-              { label: '课件数', children: `${viewingCourse.catalog.length} 个` },
-              {
-                label: '发布状态',
-                children: <Tag color={statusColor[viewingCourse.status]}>{viewingCourse.status}</Tag>,
-              },
-              { label: '创建人', children: viewingCourse.creator },
-              { label: '创建时间', children: viewingCourse.createdAt },
-              { label: '最后修改时间', children: viewingCourse.updatedAt },
-            ]}
-          />
-        ) : null}
       </Modal>
     </div>
   );

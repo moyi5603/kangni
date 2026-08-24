@@ -78,6 +78,12 @@ describe('H5 activity detail engage', () => {
     expect(html).toContain('陈产品 回复 王芳');
   });
 
+  it('lets a signed-up user cancel before the deadline', () => {
+    const html = renderToStaticMarkup(<H5ActivityDetail id={2} />);
+    expect(html).toContain('取消报名');
+    expect(html).not.toMatch(/class="c-cta"[^>]*>已报名</);
+  });
+
   it('shows full comments when CEndApp opens an activity', () => {
     const html = renderToStaticMarkup(<CEndApp surface="h5" activityId={1} />);
     expect(html).toContain('纪念品柜台要排队。');

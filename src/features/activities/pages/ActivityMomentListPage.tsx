@@ -243,8 +243,8 @@ export function ActivityMomentListPage({ activity }: { activity: Activity }) {
       width: 220,
       render: (_, record) => (
         <Space>
-          <Button type="link" aria-label={`查看 ${excerpt(record.content)}`} onClick={() => openDetail(record)}>
-            查看
+          <Button type="link" aria-label={`详情 ${excerpt(record.content)}`} onClick={() => openDetail(record)}>
+            详情
           </Button>
           {isPending(record.status) ? (
             <>

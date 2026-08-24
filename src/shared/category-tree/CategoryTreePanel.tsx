@@ -3,7 +3,7 @@ import { EllipsisOutlined, MinusSquareOutlined, PlusOutlined, PlusSquareOutlined
 import { Button, Card, ConfigProvider, Dropdown, Empty, Flex, Input, Tree, Typography } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import { b2bStandards } from '../design-system/generated/b2b-standards.generated';
-import { collectCategoryIds, filterCategoryTree, type CategoryNode } from './categoryTree';
+import { CATEGORY_MAX_DEPTH, collectCategoryIds, filterCategoryTree, type CategoryNode } from './categoryTree';
 
 const TREE_INDENT = 24;
 const TREE_ROW_H = 36;
@@ -186,6 +186,7 @@ export function CategoryTreePanel({
   getSiblingIndex,
   maxHeight,
   readOnly = false,
+  maxDepth = CATEGORY_MAX_DEPTH,
 }: {
   tree: CategoryNode[];
   selectedKey: number | null;
@@ -202,6 +203,7 @@ export function CategoryTreePanel({
   getSiblingIndex?: (id: number) => { index: number; total: number } | null;
   maxHeight: string;
   readOnly?: boolean;
+  maxDepth?: number;
 }) {
   const [categorySearch, setCategorySearch] = useState('');
   const categorySearchTrimmed = categorySearch.trim();
@@ -285,14 +287,18 @@ export function CategoryTreePanel({
                         onEdit?.(categoryId);
                       },
                     },
-                    {
-                      key: 'add-child',
-                      label: '添加子分类',
-                      onClick: ({ domEvent }) => {
-                        domEvent.stopPropagation();
-                        onCreateChild?.(categoryId);
-                      },
-                    },
+                    ...(lined.depth + 1 < maxDepth
+                      ? [
+                          {
+                            key: 'add-child',
+                            label: '添加子分类',
+                            onClick: ({ domEvent }: { domEvent: React.MouseEvent }) => {
+                              domEvent.stopPropagation();
+                              onCreateChild?.(categoryId);
+                            },
+                          },
+                        ]
+                      : []),
                     {
                       key: 'move-up',
                       label: '上移',

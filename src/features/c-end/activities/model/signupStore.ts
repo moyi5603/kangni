@@ -7,7 +7,12 @@ import {
   type SignupRecord,
 } from '../../../activities/model/related';
 
-export const DEMO_SIGNUP_USER = { name: '陈产品', phone: '13800001111' } as const;
+export const DEMO_SIGNUP_USER = {
+  name: '陈产品',
+  phone: '13800001111',
+  department: '职能中心',
+  position: '产品经理',
+} as const;
 
 export type ClientSignupStatus = '待审核' | '已通过' | '已驳回';
 
@@ -36,7 +41,7 @@ export const DEMO_CLIENT_SIGNUPS: readonly ClientSignup[] = [
     name: DEMO_SIGNUP_USER.name,
     phone: DEMO_SIGNUP_USER.phone,
     type: '个人报名',
-    status: '待审核',
+    status: '已通过',
     createdAt: '2026-08-17 16:00:00',
   },
   {
@@ -84,7 +89,8 @@ function toClientSignup(record: SignupRecord): ClientSignup {
 
 function visibleRows(phone: string): SignupRecord[] {
   return getRelatedList('signups').filter(
-    (item) => item.phone === phone && isClientStatus(item.status),
+    (item) =>
+      (item.accountPhone ?? item.phone) === phone && isClientStatus(item.status),
   );
 }
 
@@ -112,29 +118,64 @@ export function getUserSignups(phone: string = DEMO_SIGNUP_USER.phone): ClientSi
   return visibleRows(phone).map(toClientSignup);
 }
 
-export function submitSignup(activityId: number, type: string): 'ok' | 'duplicate' | 'no-type' {
+export function submitSignup(
+  activityId: number,
+  type: string,
+  answers: Record<string, string> = {},
+): 'ok' | 'duplicate' | 'no-type' {
   const trimmed = type.trim();
   if (!trimmed) return 'no-type';
   if (hasSignedUp(activityId)) return 'duplicate';
+  const extras: Record<string, string> = {};
+  for (const [key, value] of Object.entries(answers)) {
+    if (key === '姓名' || key === '手机号' || key === '部门') continue;
+    if (value.trim()) extras[key] = value.trim();
+  }
   patchRelated('signups', (list) => [
     {
       id: nextSignupId(list),
       activityId,
-      name: DEMO_SIGNUP_USER.name,
-      phone: DEMO_SIGNUP_USER.phone,
+      name: answers['姓名']?.trim() || DEMO_SIGNUP_USER.name,
+      phone: answers['手机号']?.trim() || DEMO_SIGNUP_USER.phone,
       signupType: trimmed,
-      department: '职能中心',
+      department: answers['部门']?.trim() || DEMO_SIGNUP_USER.department,
       status: signupStatusFor(activityId, trimmed),
       createdAt: formatSignupTime(),
+      accountPhone: DEMO_SIGNUP_USER.phone,
+      answers: Object.keys(extras).length ? extras : undefined,
     },
     ...list,
   ]);
   return 'ok';
 }
 
+export function cancelSignup(activityId: number, now = Date.now()): 'ok' | 'missing' | 'closed' {
+  if (!hasSignedUp(activityId)) return 'missing';
+  const activity = getActivity(activityId);
+  if (!activity) return 'missing';
+  if (activity.activityStatus === '已结束') return 'closed';
+  const match = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(activity.signupEndAt);
+  if (!match) return 'closed';
+  const [, year, month, day, hour, minute] = match;
+  const end = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute)).getTime();
+  if (now > end) return 'closed';
+  patchRelated('signups', (list) =>
+    list.map((item) =>
+      item.activityId === activityId &&
+      (item.accountPhone ?? item.phone) === DEMO_SIGNUP_USER.phone &&
+      isClientStatus(item.status)
+        ? { ...item, status: '已取消' }
+        : item,
+    ),
+  );
+  return 'ok';
+}
+
 export function loadDemoSignups() {
   patchRelated('signups', (list) => {
-    const others = list.filter((item) => item.phone !== DEMO_SIGNUP_USER.phone);
+    const others = list.filter(
+      (item) => item.phone !== DEMO_SIGNUP_USER.phone && item.accountPhone !== DEMO_SIGNUP_USER.phone,
+    );
     const demo = DEMO_CLIENT_SIGNUPS.map((item) => ({
       id: DEMO_RELATED_IDS[item.activityId],
       activityId: item.activityId,
@@ -150,7 +191,9 @@ export function loadDemoSignups() {
 }
 
 export function resetClientSignups() {
-  patchRelated('signups', (list) => list.filter((item) => item.phone !== DEMO_SIGNUP_USER.phone));
+  patchRelated('signups', (list) =>
+    list.filter((item) => item.phone !== DEMO_SIGNUP_USER.phone && item.accountPhone !== DEMO_SIGNUP_USER.phone),
+  );
 }
 
 function getSignupSnapshot(): SignupRecord[] {
@@ -162,7 +205,7 @@ export function useHasSignedUp(activityId: number): boolean {
   return snapshot.some(
     (item) =>
       item.activityId === activityId &&
-      item.phone === DEMO_SIGNUP_USER.phone &&
+      (item.accountPhone ?? item.phone) === DEMO_SIGNUP_USER.phone &&
       isClientStatus(item.status),
   );
 }
@@ -172,7 +215,7 @@ export function useUserSignups(phone: string = DEMO_SIGNUP_USER.phone): ClientSi
   return useMemo(
     () =>
       snapshot
-        .filter((item) => item.phone === phone && isClientStatus(item.status))
+        .filter((item) => (item.accountPhone ?? item.phone) === phone && isClientStatus(item.status))
         .map(toClientSignup),
     [snapshot, phone],
   );

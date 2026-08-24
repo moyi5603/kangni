@@ -1,28 +1,11 @@
 import { useMemo, useState, type Key, type ReactNode } from 'react';
-import {
-  App,
-  Avatar,
-  Breadcrumb,
-  Button,
-  Card,
-  DatePicker,
-  Empty,
-  Flex,
-  Input,
-  Space,
-  Table,
-  Tag,
-  Typography,
-} from 'antd';
+import { App, Avatar, Button, Card, DatePicker, Empty, Flex, Input, Space, Table, Tag, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { SearchField, SearchPanel } from '../../../shared/ui/ListPage';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
-import {
-  employeeAvatarColor,
-  employeeAvatarLetter,
-} from '../../activities/model/employeeAvatar';
+import { employeeAvatarColor, employeeAvatarLetter } from '../../activities/model/employeeAvatar';
 import {
   approveCourseComment,
   approveCourseComments,
@@ -33,7 +16,6 @@ import {
   useCourseComments,
   type CourseCommentRecord,
 } from '../model/courseCommentStore';
-import { getCourse } from '../model/trainingStore';
 
 type DateRange = [Dayjs | null, Dayjs | null] | null;
 
@@ -62,11 +44,9 @@ function modalFooter(_: ReactNode, extra: { OkBtn: React.FC; CancelBtn: React.FC
   );
 }
 
-export function CourseCommentListPage({ recordId, onBack }: { recordId?: string; onBack: () => void }) {
+export function CourseCommentPanel({ courseId }: { courseId: number }) {
   const { message, modal } = App.useApp();
-  const courseId = Number(recordId);
-  const course = getCourse(courseId);
-  const data = useCourseComments(Number.isNaN(courseId) ? 0 : courseId);
+  const data = useCourseComments(courseId);
   const [draft, setDraft] = useState<CommentQuery>(emptyQuery);
   const [query, setQuery] = useState<CommentQuery>(emptyQuery);
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
@@ -81,30 +61,6 @@ export function CourseCommentListPage({ recordId, onBack }: { recordId?: string;
       ),
     [data, query],
   );
-
-  if (!course || Number.isNaN(courseId)) {
-    return (
-      <div className="page-stack">
-        <Breadcrumb
-          separator=">"
-          items={[
-            { title: '课程' },
-            {
-              title: (
-                <Button type="link" className="breadcrumb-link" onClick={onBack}>
-                  课程管理
-                </Button>
-              ),
-            },
-            { title: '记录不存在' },
-          ]}
-        />
-        <Empty description="课程不存在或已删除">
-          <Button onClick={onBack}>返回课程管理</Button>
-        </Empty>
-      </div>
-    );
-  }
 
   const selectedPendingIds = filtered
     .filter((item) => selectedRowKeys.includes(item.id) && item.status === '待审核')
@@ -159,25 +115,6 @@ export function CourseCommentListPage({ recordId, onBack }: { recordId?: string;
         }
       },
     });
-  };
-
-  const deleteSelected = () => {
-    const ids = [...new Set(selectedRowKeys)].map(Number);
-    const removed = deleteCourseComments(ids);
-    message.success(`已删除 ${removed} 条评论`);
-    setSelectedRowKeys([]);
-  };
-
-  const approveSelected = () => {
-    const count = approveCourseComments(selectedApprovableIds);
-    message.success(`已通过 ${count} 条评论`);
-    setSelectedRowKeys((keys) => keys.filter((key) => !selectedApprovableIds.includes(Number(key))));
-  };
-
-  const rejectSelected = () => {
-    const count = rejectCourseComments(selectedPendingIds);
-    message.success(`已驳回 ${count} 条评论`);
-    setSelectedRowKeys((keys) => keys.filter((key) => !selectedPendingIds.includes(Number(key))));
   };
 
   const statusColor: Record<CourseCommentRecord['status'], string> = {
@@ -235,30 +172,6 @@ export function CourseCommentListPage({ recordId, onBack }: { recordId?: string;
 
   return (
     <div className="page-stack">
-      <div className="list-page-heading">
-        <Breadcrumb
-          separator=">"
-          items={[
-            { title: '课程' },
-            {
-              title: (
-                <Button type="link" className="breadcrumb-link" onClick={onBack}>
-                  课程管理
-                </Button>
-              ),
-            },
-            { title: course.name },
-            { title: '评论管理' },
-          ]}
-        />
-        <Flex align="baseline" gap={16} wrap="wrap">
-          <Typography.Title level={1}>评论管理</Typography.Title>
-          <Typography.Text type="secondary">
-            查看、审核并删除「{course.name}」下的评论。待审核/已驳回仅作者本人可见，通过后全员可见。
-          </Typography.Text>
-        </Flex>
-      </div>
-
       <SearchPanel
         onSearch={() => {
           setQuery(draft);
@@ -313,7 +226,11 @@ export function CourseCommentListPage({ recordId, onBack }: { recordId?: string;
                       okText: '确认',
                       cancelText: '取消',
                       footer: modalFooter,
-                      onOk: approveSelected,
+                      onOk: () => {
+                        const count = approveCourseComments(selectedApprovableIds);
+                        message.success(`已通过 ${count} 条评论`);
+                        setSelectedRowKeys((keys) => keys.filter((key) => !selectedApprovableIds.includes(Number(key))));
+                      },
                     })
                   }
                 >
@@ -329,7 +246,11 @@ export function CourseCommentListPage({ recordId, onBack }: { recordId?: string;
                       okText: '确认',
                       cancelText: '取消',
                       footer: modalFooter,
-                      onOk: rejectSelected,
+                      onOk: () => {
+                        const count = rejectCourseComments(selectedPendingIds);
+                        message.success(`已驳回 ${count} 条评论`);
+                        setSelectedRowKeys((keys) => keys.filter((key) => !selectedPendingIds.includes(Number(key))));
+                      },
                     })
                   }
                 >
@@ -344,7 +265,12 @@ export function CourseCommentListPage({ recordId, onBack }: { recordId?: string;
                     okText: '确认',
                     cancelText: '取消',
                     footer: modalFooter,
-                    onOk: deleteSelected,
+                    onOk: () => {
+                      const ids = [...new Set(selectedRowKeys)].map(Number);
+                      const removed = deleteCourseComments(ids);
+                      message.success(`已删除 ${removed} 条评论`);
+                      setSelectedRowKeys([]);
+                    },
                   })
                 }
               >

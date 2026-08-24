@@ -23,7 +23,7 @@ describe('hasApprovedSignup', () => {
     loadDemoSignups();
     expect(hasApprovedSignup(2)).toBe(true);
     expect(hasApprovedSignup(9)).toBe(true);
-    expect(hasApprovedSignup(6)).toBe(false);
+    expect(hasApprovedSignup(6)).toBe(true);
     expect(hasApprovedSignup(1)).toBe(true);
   });
 

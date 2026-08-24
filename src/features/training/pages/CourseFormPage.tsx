@@ -24,6 +24,7 @@ import {
 import type { TableColumnsType, UploadFile } from 'antd';
 import dayjs from 'dayjs';
 import { RichTextField } from '../../activities/components/RichTextField';
+import { CourseCommentConfigFields } from '../components/CourseCommentConfigFields';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import { CategoryTreePanel } from '../../../shared/category-tree/CategoryTreePanel';
 import { subtreeIdsOf, type CategoryNode } from '../../../shared/category-tree/categoryTree';
@@ -31,7 +32,9 @@ import {
   courseTypes,
   learningModes,
   defaultCourseCommentConfig,
+  formatCoursewareDuration,
   type CourseCatalogItem,
+  type CourseCommentConfig,
   type CourseRecord,
   type CourseType,
   type CoursewareRecord,
@@ -49,6 +52,7 @@ type CourseFormPageProps = {
   mode: 'create' | 'edit';
   recordId?: string;
   onBack: () => void;
+  onViewDetail?: (id: number) => void;
 };
 
 type FormValues = {
@@ -61,6 +65,7 @@ type FormValues = {
   learningMode: LearningMode;
   catalog: CourseCatalogItem[];
   introHtml: string;
+  commentConfig: CourseCommentConfig;
 };
 
 function optionsOf(values: readonly string[]) {
@@ -85,14 +90,6 @@ function toCategoryTreeData(nodes: CategoryNode[]): { title: string; value: numb
   }));
 }
 
-function formatDuration(seconds: number | null | undefined): string {
-  if (seconds == null || seconds <= 0) return '—';
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  if (m <= 0) return `${s}秒`;
-  return `${m}分${String(s).padStart(2, '0')}秒`;
-}
-
 function moveItem<T>(list: T[], from: number, to: number): T[] {
   if (to < 0 || to >= list.length || from === to) return list;
   const next = [...list];
@@ -110,7 +107,7 @@ function pickerModalFooter(_: ReactNode, extra: { OkBtn: React.FC; CancelBtn: Re
   );
 }
 
-export function CourseFormPage({ mode, recordId, onBack }: CourseFormPageProps) {
+export function CourseFormPage({ mode, recordId, onBack, onViewDetail }: CourseFormPageProps) {
   const { message, modal } = App.useApp();
   const [form] = Form.useForm<FormValues>();
   const [coverList, setCoverList] = useState<UploadFile[]>([]);
@@ -152,6 +149,7 @@ export function CourseFormPage({ mode, recordId, onBack }: CourseFormPageProps) 
         learningMode: editing.learningMode,
         catalog: editing.catalog,
         introHtml: editing.introHtml,
+        commentConfig: editing.commentConfig ?? defaultCourseCommentConfig(),
       });
       setCoverList(toFileList(editing.cover));
       setDirty(false);
@@ -166,23 +164,33 @@ export function CourseFormPage({ mode, recordId, onBack }: CourseFormPageProps) 
       learningMode: '不限制',
       catalog: [],
       introHtml: '',
+      commentConfig: defaultCourseCommentConfig(),
     });
     setCoverList([]);
     setDirty(false);
   }, [mode, editing, form]);
 
-  const leave = () => {
+  const confirmLeave = (proceed: () => void, okText = '确认') => {
     if (!dirty) {
-      onBack();
+      proceed();
       return;
     }
     modal.confirm({
       title: '确认离开？',
       content: '未保存的修改将丢失。',
-      okText: '确认',
+      okText,
       cancelText: '取消',
-      onOk: onBack,
+      onOk: proceed,
     });
+  };
+
+  const leave = () => {
+    confirmLeave(onBack);
+  };
+
+  const viewDetail = () => {
+    if (!editing || !onViewDetail) return;
+    confirmLeave(() => onViewDetail(editing.id), '查看详情');
   };
 
   const save = async () => {
@@ -203,7 +211,7 @@ export function CourseFormPage({ mode, recordId, onBack }: CourseFormPageProps) 
       learningMode: values.learningMode,
       catalog: values.catalog,
       introHtml: values.introHtml ?? '',
-      commentConfig: editing?.commentConfig ?? defaultCourseCommentConfig(),
+      commentConfig: values.commentConfig ?? defaultCourseCommentConfig(),
       status: editing?.status ?? '草稿',
       creator: editing?.creator ?? '陈产品',
       createdAt: editing?.createdAt ?? stamp,
@@ -342,7 +350,7 @@ export function CourseFormPage({ mode, recordId, onBack }: CourseFormPageProps) 
       title: '课件时长',
       key: 'duration',
       width: 100,
-      render: (_, record) => formatDuration(coursewareMap.get(record.coursewareId)?.estimatedDurationSeconds),
+      render: (_, record) => formatCoursewareDuration(coursewareMap.get(record.coursewareId)?.estimatedDurationSeconds),
     },
     {
       title: '学时',
@@ -405,11 +413,20 @@ export function CourseFormPage({ mode, recordId, onBack }: CourseFormPageProps) 
           { title },
         ]}
       />
-      <Flex align="baseline" gap={16} wrap="wrap">
-        <Typography.Title level={1}>{title}</Typography.Title>
-        <Typography.Text type="secondary">
-          完善课程基础信息、学习规则、课件目录与介绍后保存。
-        </Typography.Text>
+      <Flex className="detail-title-row" justify="space-between" align="flex-start" gap={16} wrap="wrap">
+        <Flex align="baseline" gap={16} wrap="wrap">
+          <Typography.Title level={1}>{title}</Typography.Title>
+          <Typography.Text type="secondary">
+            {mode === 'edit'
+              ? '修改课程字段后保存。含学习记录 Tab 的完整详情请点击「查看详情」。'
+              : '完善课程基础信息、学习规则、课件目录与介绍后保存。'}
+          </Typography.Text>
+        </Flex>
+        {mode === 'edit' && editing && onViewDetail ? (
+          <Button aria-label={`查看详情 ${editing.name}`} onClick={viewDetail}>
+            查看详情
+          </Button>
+        ) : null}
       </Flex>
 
       <Form
@@ -556,6 +573,12 @@ export function CourseFormPage({ mode, recordId, onBack }: CourseFormPageProps) 
         <Card title="课程介绍">
           <Form.Item name="introHtml" extra="选填，支持图文排版">
             <RichTextField ariaLabel="课程介绍" placeholder="请输入课程介绍" />
+          </Form.Item>
+        </Card>
+
+        <Card title="评论配置">
+          <Form.Item name="commentConfig">
+            <CourseCommentConfigFields />
           </Form.Item>
         </Card>
 

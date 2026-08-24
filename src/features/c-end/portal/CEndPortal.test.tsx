@@ -15,6 +15,10 @@ describe('C-end portal', () => {
     expect(html).toContain('href="#/c/course"');
     expect(html).toContain('>课程 H5<');
     expect(html).toContain('href="#/c/h5/courses"');
+    expect(html).toContain('>考试 PC<');
+    expect(html).toContain('href="#/c/exam"');
+    expect(html).toContain('>考试 H5<');
+    expect(html).toContain('href="#/c/h5/exams"');
     expect(html).toContain('返回后台');
   });
 });

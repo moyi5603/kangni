@@ -1,5 +1,5 @@
 import { useMemo, useState, type Key, type ReactNode } from 'react';
-import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
+import { PlusOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons';
 import {
   App,
   Avatar,
@@ -35,6 +35,12 @@ import {
   type Activity,
 } from '../model/activity';
 import { downloadSignupImportTemplate, parseSignupImportCsv } from '../model/signupImport';
+import {
+  downloadSignupExport,
+  formatSignupAnswerValue,
+  formatSignupAnswersSummary,
+  resolveSignupRecordAnswers,
+} from '../model/signupAnswers';
 import {
   patchRelated,
   signupStatuses,
@@ -97,25 +103,11 @@ function modalFooter(_: ReactNode, extra: { OkBtn: React.FC; CancelBtn: React.FC
 export function SurveyList({ activity }: { activity: Activity }) {
   const { message } = App.useApp();
   const data = useRelated('surveys', activity.id);
-  const [draft, setDraft] = useState<{ title: string; status?: SurveyRecord['status']; collectAt: DateRange }>({ title: '', collectAt: null });
-  const [query, setQuery] = useState(draft);
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<'create' | 'edit' | 'view'>('create');
   const [current, setCurrent] = useState<SurveyRecord>();
   const [form] = Form.useForm();
-  const filtered = useMemo(
-    () =>
-      data.filter((item) => {
-        const inCollect =
-          !query.collectAt?.[0] && !query.collectAt?.[1]
-            ? true
-            : !(query.collectAt[1] && dayjs(item.collectStartAt).isAfter(query.collectAt[1].endOf('day'))) &&
-              !(query.collectAt[0] && dayjs(item.collectEndAt).isBefore(query.collectAt[0]));
-        return (!query.title || item.title.includes(query.title)) && (!query.status || item.status === query.status) && inCollect;
-      }),
-    [data, query],
-  );
   const openEditor = (record?: SurveyRecord, nextMode: 'create' | 'edit' | 'view' = record ? 'view' : 'create') => {
     setMode(nextMode);
     setCurrent(record);
@@ -165,7 +157,7 @@ export function SurveyList({ activity }: { activity: Activity }) {
       width: 140,
       render: (_, record) => (
         <Space>
-          <Button type="link" aria-label={`查看 ${record.title}`} onClick={() => openEditor(record, 'view')}>查看</Button>
+          <Button type="link" aria-label={`详情 ${record.title}`} onClick={() => openEditor(record, 'view')}>详情</Button>
           <Button type="link" aria-label={`编辑 ${record.title}`} onClick={() => openEditor(record, 'edit')}>编辑</Button>
         </Space>
       ),
@@ -173,34 +165,8 @@ export function SurveyList({ activity }: { activity: Activity }) {
   ];
   return (
     <RelatedTable
-      query={
-        <SearchPanel
-          onSearch={() => {
-            setQuery(draft);
-            message.success('查询完成');
-          }}
-          onReset={() => {
-            const empty = { title: '', collectAt: null as DateRange };
-            setDraft(empty);
-            setQuery(empty);
-          }}
-        >
-          <SearchField label="问卷标题">
-            <Input allowClear placeholder="请输入问卷标题" value={draft.title} onChange={(event) => setDraft((currentDraft) => ({ ...currentDraft, title: event.target.value }))} />
-          </SearchField>
-          <SearchField label="状态">
-            <Select allowClear placeholder="全部状态" value={draft.status} onChange={(value) => setDraft((currentDraft) => ({ ...currentDraft, status: value }))} options={optionsOf(surveyStatuses)} />
-          </SearchField>
-          <SearchField label="收集时间">
-            <DatePicker.RangePicker showTime style={{ width: '100%' }} value={draft.collectAt} onChange={(value) => setDraft((currentDraft) => ({ ...currentDraft, collectAt: value }))} />
-          </SearchField>
-        </SearchPanel>
-      }
-      toolbar={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>
-          新建问卷
-        </Button>
-      }
+      query={null}
+      toolbar={null}
       batch={
         selectedRowKeys.length ? (
           <Flex className="batch-toolbar" justify="space-between" align="center">
@@ -230,7 +196,7 @@ export function SurveyList({ activity }: { activity: Activity }) {
           sticky
           rowSelection={{ selectedRowKeys, preserveSelectedRowKeys: true, onChange: setSelectedRowKeys }}
           columns={columns}
-          dataSource={filtered}
+          dataSource={data}
           scroll={{ x: 960 }}
           pagination={{
             pageSize: b2bStandards.table.pageSize,
@@ -238,7 +204,7 @@ export function SurveyList({ activity }: { activity: Activity }) {
             showSizeChanger: b2bStandards.table.showSizeChanger,
             showTotal: (total) => `共 ${total} 条`,
           }}
-          locale={{ emptyText: <Empty description={query.title || query.status || query.collectAt ? '没有符合条件的问卷' : b2bStandards.table.emptyText} /> }}
+          locale={{ emptyText: <Empty description={b2bStandards.table.emptyText} /> }}
         />
       }
       modal={
@@ -316,20 +282,16 @@ export function ApprovalList({ activity }: { activity: Activity }) {
 export function SignupList({ activity }: { activity: Activity }) {
   const { message, modal } = App.useApp();
   const data = useRelated('signups', activity.id);
-  const configuredTypes = useMemo(() => activitySignupTypes(activity), [activity]);
-  const typeOptions = useMemo(() => {
-    const types = [...configuredTypes];
-    data.forEach((item) => {
-      if (item.signupType && !types.includes(item.signupType)) types.push(item.signupType);
-    });
-    return optionsOf(types);
-  }, [configuredTypes, data]);
+  const signupFields = useMemo(() => activity.signupFields ?? [], [activity.signupFields]);
+  const defaultSignupType = useMemo(
+    () => activitySignupTypes(activity)[0] || '个人报名',
+    [activity],
+  );
   const signedNames = useMemo(() => new Set(data.map((item) => item.name)), [data]);
   const peopleTree = useMemo(() => withDisabledPeople(orgPeoplePickerTree, signedNames), [signedNames]);
   const [draft, setDraft] = useState<{
     name: string;
     phone: string;
-    signupType?: string;
     department?: string;
     status?: SignupRecord['status'];
     createdAt: DateRange;
@@ -343,6 +305,7 @@ export function SignupList({ activity }: { activity: Activity }) {
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importList, setImportList] = useState<UploadFile[]>([]);
+  const [detailRecord, setDetailRecord] = useState<SignupRecord | null>(null);
   const [addForm] = Form.useForm();
   const filtered = useMemo(
     () =>
@@ -350,7 +313,6 @@ export function SignupList({ activity }: { activity: Activity }) {
         (item) =>
           (!query.name || item.name.includes(query.name)) &&
           (!query.phone || item.phone.includes(query.phone)) &&
-          (!query.signupType || item.signupType === query.signupType) &&
           (!query.department || item.department === query.department) &&
           (!query.status || item.status === query.status) &&
           inDayRange(item.createdAt, query.createdAt),
@@ -358,10 +320,10 @@ export function SignupList({ activity }: { activity: Activity }) {
     [data, query],
   );
   const selected = data.filter((item) => selectedRowKeys.includes(item.id));
-  const hasFilter = Boolean(query.name || query.phone || query.signupType || query.department || query.status || query.createdAt);
+  const hasFilter = Boolean(query.name || query.phone || query.department || query.status || query.createdAt);
   const openAdd = () => {
     addForm.resetFields();
-    addForm.setFieldsValue({ signupType: configuredTypes[0], people: [] });
+    addForm.setFieldsValue({ people: [] });
     setAddOpen(true);
   };
   const deleteOne = (record: SignupRecord) => {
@@ -394,7 +356,6 @@ export function SignupList({ activity }: { activity: Activity }) {
   const saveAddedPeople = async () => {
     const values = await addForm.validateFields();
     const names = (values.people as string[]) ?? [];
-    const signupType = values.signupType as string;
     const created: SignupRecord[] = [];
     const skipped: string[] = [];
     const usedPhones = new Set(data.map((item) => item.phone));
@@ -414,7 +375,7 @@ export function SignupList({ activity }: { activity: Activity }) {
         name: person.name,
         phone: person.phone,
         department: person.department,
-        signupType,
+        signupType: defaultSignupType,
         status: '已通过',
         createdAt: nowText(),
       });
@@ -440,17 +401,12 @@ export function SignupList({ activity }: { activity: Activity }) {
       message.error('演示环境请下载 CSV 模板后导入。当前未改动报名数据。');
       return;
     }
-    const parsed = parseSignupImportCsv(await raw.text());
-    const allowed = new Set(configuredTypes);
+    const parsed = parseSignupImportCsv(await raw.text(), defaultSignupType);
     const created: SignupRecord[] = [];
     const skipped = [...parsed.errors];
     const usedNames = new Set(data.map((item) => item.name));
     const usedPhones = new Set(data.map((item) => item.phone));
     parsed.rows.forEach((row) => {
-      if (!allowed.has(row.signupType)) {
-        skipped.push(`${row.name} 的分组名称不在该活动中`);
-        return;
-      }
       if (usedNames.has(row.name) || usedPhones.has(row.phone) || created.some((item) => item.name === row.name || item.phone === row.phone)) {
         skipped.push(`${row.name}已报名`);
         return;
@@ -489,17 +445,33 @@ export function SignupList({ activity }: { activity: Activity }) {
   const columns: TableColumnsType<SignupRecord> = [
     { title: '姓名', dataIndex: 'name', width: 110 },
     { title: '手机号', dataIndex: 'phone', width: 130 },
-    { title: '分组名称', dataIndex: 'signupType', width: 120 },
     { title: '部门', dataIndex: 'department', width: 120 },
+    ...(signupFields.length
+      ? [
+          {
+            title: '收集信息',
+            key: 'collection',
+            width: 220,
+            ellipsis: true,
+            render: (_: unknown, record: SignupRecord) =>
+              formatSignupAnswersSummary(signupFields, resolveSignupRecordAnswers(record)),
+          },
+        ]
+      : []),
     { title: '状态', dataIndex: 'status', width: 110, render: (value: string) => <Tag color={statusColor[value]}>{value}</Tag> },
     { title: '报名时间', dataIndex: 'createdAt', width: 180 },
     {
       title: '操作',
       key: 'action',
       fixed: 'right',
-      width: 160,
+      width: signupFields.length ? 200 : 160,
       render: (_, record) => (
         <Space>
+          {signupFields.length ? (
+            <Button type="link" aria-label={`查看 ${record.name} 的报名详情`} onClick={() => setDetailRecord(record)}>
+              报名详情
+            </Button>
+          ) : null}
           {record.status === '待审核' ? (
             <>
               <Button
@@ -546,9 +518,6 @@ export function SignupList({ activity }: { activity: Activity }) {
           <SearchField label="手机号">
             <Input allowClear placeholder="请输入手机号" value={draft.phone} onChange={(event) => setDraft((currentDraft) => ({ ...currentDraft, phone: event.target.value }))} />
           </SearchField>
-          <SearchField label="分组名称">
-            <Select allowClear placeholder="全部类型" value={draft.signupType} onChange={(value) => setDraft((currentDraft) => ({ ...currentDraft, signupType: value }))} options={typeOptions} />
-          </SearchField>
           <SearchField label="部门">
             <Select allowClear placeholder="全部部门" value={draft.department} onChange={(value) => setDraft((currentDraft) => ({ ...currentDraft, department: value }))} options={optionsOf(departmentOptions)} />
           </SearchField>
@@ -564,6 +533,15 @@ export function SignupList({ activity }: { activity: Activity }) {
         <Space>
           <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>添加人员</Button>
           <Button icon={<UploadOutlined />} onClick={() => { setImportList([]); setImportOpen(true); }}>批量导入</Button>
+          <Button
+            icon={<DownloadOutlined />}
+            onClick={() => {
+              downloadSignupExport(activity.title, signupFields, filtered);
+              message.success(`已导出 ${filtered.length} 条报名`);
+            }}
+          >
+            导出
+          </Button>
         </Space>
       }
       batch={
@@ -613,7 +591,7 @@ export function SignupList({ activity }: { activity: Activity }) {
           rowSelection={{ selectedRowKeys, preserveSelectedRowKeys: true, onChange: setSelectedRowKeys }}
           columns={columns}
           dataSource={filtered}
-          scroll={{ x: 1040 }}
+          scroll={{ x: signupFields.length ? 1120 : 920 }}
           pagination={{
             pageSize: b2bStandards.table.pageSize,
             pageSizeOptions: [...b2bStandards.table.pageSizeOptions],
@@ -637,9 +615,6 @@ export function SignupList({ activity }: { activity: Activity }) {
             destroyOnHidden
           >
             <Form form={addForm} layout="horizontal" className="edit-form" requiredMark labelWrap={false} validateTrigger="onBlur">
-              <Form.Item name="signupType" label="分组名称" rules={[{ required: true, message: '请选择分组名称' }]}>
-                <Select options={optionsOf(configuredTypes)} placeholder="请选择分组名称" />
-              </Form.Item>
               <Form.Item name="people" label="选择人员" rules={[{ required: true, type: 'array', min: 1, message: '请选择人员' }]}>
                 <TreeSelect
                   treeData={peopleTree}
@@ -669,7 +644,7 @@ export function SignupList({ activity }: { activity: Activity }) {
             destroyOnHidden
           >
             <Form layout="horizontal" className="edit-form" requiredMark labelWrap={false}>
-              <Form.Item label="导入文件" extra="支持 csv。请按模板填写姓名、手机号、部门、分组名称，类型须为该活动已配置的分组名称。" required>
+              <Form.Item label="导入文件" extra="支持 csv。请按模板填写姓名、手机号、部门。" required>
                 <Space>
                   <Upload
                     accept=".csv,.xlsx"
@@ -680,12 +655,33 @@ export function SignupList({ activity }: { activity: Activity }) {
                   >
                     <Button>上传文件</Button>
                   </Upload>
-                  <Button type="link" style={{ paddingInline: 0 }} onClick={() => downloadSignupImportTemplate(configuredTypes)}>
+                  <Button type="link" style={{ paddingInline: 0 }} onClick={() => downloadSignupImportTemplate()}>
                     下载导入模板
                   </Button>
                 </Space>
               </Form.Item>
             </Form>
+          </Modal>
+          <Modal
+            title={`报名收集信息 — ${detailRecord?.name ?? ''}`}
+            open={detailRecord != null}
+            footer={null}
+            onCancel={() => setDetailRecord(null)}
+            width={b2bStandards.form.modalWidth}
+            destroyOnHidden
+          >
+            {detailRecord ? (
+              <Descriptions
+                bordered
+                column={1}
+                size="small"
+                items={signupFields.map((field) => ({
+                  key: field.key,
+                  label: field.label,
+                  children: formatSignupAnswerValue(field, resolveSignupRecordAnswers(detailRecord)[field.key]),
+                }))}
+              />
+            ) : null}
           </Modal>
         </>
       }

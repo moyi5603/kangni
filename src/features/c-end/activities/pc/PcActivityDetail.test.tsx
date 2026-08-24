@@ -49,6 +49,11 @@ describe('PC activity detail', () => {
     expect(html).not.toContain('c-pc-detail');
   });
 
+  it('lets a signed-up user cancel before the deadline', () => {
+    const html = renderToStaticMarkup(<PcActivityDetail id={2} />);
+    expect(html).toContain('取消报名');
+  });
+
   it('puts social actions above the signup CTA and lists comments in the article', () => {
     const html = renderToStaticMarkup(<PcActivityDetail id={2} />);
     const aside = html.slice(html.indexOf('<aside class="c-pc-side">'));

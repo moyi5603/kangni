@@ -53,6 +53,8 @@ export type SignupRecord = BaseRecord & {
   signupType: string;
   department: string;
   status: SignupStatus;
+  accountPhone?: string;
+  answers?: Record<string, string>;
 };
 
 export type CommentRecord = BaseRecord & {
@@ -122,19 +124,19 @@ const initialRelated: RelatedMaps = {
   signups: [
     { id: 1, activityId: 1, name: '张悦', phone: '13800001001', signupType: '个人报名', department: '研发中心', status: '已通过', createdAt: '2026-03-25 11:20:00' },
     { id: 2, activityId: 1, name: '李明', phone: '13800001002', signupType: '个人报名', department: '研发中心', status: '已通过', createdAt: '2026-03-25 14:08:00' },
-    { id: 14, activityId: 1, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '职能中心', status: '已通过', createdAt: '2026-04-12 10:00:00' },
+    { id: 14, activityId: 1, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '职能中心', status: '已通过', createdAt: '2026-04-12 10:00:00', answers: { 性别: '男', 年龄: '32', 同行人: '[{"姓名":"李小明","手机号":"13900002222"}]' } },
     { id: 3, activityId: 2, name: '王芳', phone: '13800001003', signupType: '个人报名', department: '营销中心', status: '待审核', createdAt: '2026-08-05 09:12:00' },
-    { id: 4, activityId: 2, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '职能中心', status: '已通过', createdAt: '2026-08-18 16:00:00' },
-    { id: 6, activityId: 2, name: '张悦', phone: '13800001001', signupType: '个人报名', department: '前端组', status: '已通过', createdAt: '2026-08-02 09:18:00' },
+    { id: 4, activityId: 2, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '职能中心', status: '已通过', createdAt: '2026-08-18 16:00:00', answers: { 分组选择: '技术组', 岗位: '产品经理' } },
+    { id: 6, activityId: 2, name: '张悦', phone: '13800001001', signupType: '个人报名', department: '前端组', status: '已通过', createdAt: '2026-08-02 09:18:00', answers: { 分组选择: '技术组', 岗位: '前端工程师' } },
     { id: 7, activityId: 2, name: '李明', phone: '13800001002', signupType: '个人报名', department: '前端组', status: '待审核', createdAt: '2026-08-03 10:05:00' },
     { id: 8, activityId: 2, name: '苏然', phone: '13800001004', signupType: '个人报名', department: '测试组', status: '待审核', createdAt: '2026-08-04 14:22:00' },
-    { id: 9, activityId: 2, name: '周工', phone: '13800001005', signupType: '团体报名', department: '总装车间', status: '已通过', createdAt: '2026-08-05 11:40:00' },
+    { id: 9, activityId: 2, name: '周工', phone: '13800001005', signupType: '个人报名', department: '总装车间', status: '已通过', createdAt: '2026-08-05 11:40:00' },
     { id: 10, activityId: 2, name: '吴检', phone: '13800001006', signupType: '个人报名', department: '质检部', status: '已驳回', createdAt: '2026-08-06 16:08:00' },
-    { id: 11, activityId: 2, name: '林销', phone: '13800001008', signupType: '团体报名', department: '华南大区', status: '待审核', createdAt: '2026-08-07 09:55:00' },
+    { id: 11, activityId: 2, name: '林销', phone: '13800001008', signupType: '个人报名', department: '华南大区', status: '待审核', createdAt: '2026-08-07 09:55:00' },
     { id: 12, activityId: 2, name: '赵人事', phone: '13800001009', signupType: '个人报名', department: '人力资源', status: '已通过', createdAt: '2026-08-08 13:12:00' },
     { id: 13, activityId: 2, name: '钱会', phone: '13800001010', signupType: '个人报名', department: '财务', status: '已取消', createdAt: '2026-08-09 15:30:00' },
     { id: 5, activityId: 4, name: '苏然', phone: '13800001004', signupType: '个人报名', department: '生产中心', status: '已驳回', createdAt: '2026-08-12 16:22:00' },
-    { id: 15, activityId: 6, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '职能中心', status: '待审核', createdAt: '2026-08-17 16:00:00' },
+    { id: 15, activityId: 6, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '职能中心', status: '已通过', createdAt: '2026-08-17 16:00:00' },
     { id: 16, activityId: 9, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '职能中心', status: '已通过', createdAt: '2026-08-16 16:00:00' },
     { id: 17, activityId: 12, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '职能中心', status: '已驳回', createdAt: '2026-04-12 10:00:00' },
   ],
@@ -155,7 +157,7 @@ const initialRelated: RelatedMaps = {
     { id: 14, activityId: 6, content: '周六场次我们内部排一下。', author: '张悦', createdAt: '2026-08-16 15:00:00', parentId: 4, likedBy: [] },
     { id: 15, activityId: 2, content: '导师带教很细。', author: '张悦', createdAt: '2026-08-18 12:40:00', likedBy: ['李明'] },
     { id: 16, activityId: 2, content: '安全课能不能录像？', author: '苏然', createdAt: '2026-08-18 13:10:00', likedBy: [] },
-    { id: 17, activityId: 2, content: '团体报名流程顺。', author: '周工', createdAt: '2026-08-18 13:40:00', likedBy: [] },
+    { id: 17, activityId: 2, content: '分组选择流程顺。', author: '周工', createdAt: '2026-08-18 13:40:00', likedBy: [] },
     { id: 18, activityId: 2, content: '结业证书什么时候发？', author: '赵人事', createdAt: '2026-08-18 14:00:00', likedBy: [] },
     { id: 19, activityId: 2, content: '食堂窗口排队有点长。', author: '钱会', createdAt: '2026-08-18 14:20:00', likedBy: [] },
     { id: 20, activityId: 2, content: '同感，下午跟岗也清楚。', author: '陈产品', createdAt: '2026-08-18 12:55:00', parentId: 15, likedBy: [] },
@@ -223,6 +225,19 @@ export function restoreRelatedComments() {
 
 export function getRelatedList<K extends RelatedKind>(kind: K): RelatedMaps[K] {
   return related[kind];
+}
+
+export function useAllRelated<K extends RelatedKind>(kind: K): RelatedMaps[K] {
+  const [list, setList] = useState<RelatedMaps[K]>(() => related[kind] as RelatedMaps[K]);
+  useEffect(() => {
+    const onChange = () => setList(related[kind] as RelatedMaps[K]);
+    onChange();
+    listeners.add(onChange);
+    return () => {
+      listeners.delete(onChange);
+    };
+  }, [kind]);
+  return list;
 }
 
 export function patchRelated<K extends RelatedKind>(kind: K, updater: (list: RelatedMaps[K]) => RelatedMaps[K]) {

@@ -220,16 +220,25 @@ export function filterSignupsByTitle(items: ClientSignupView[], query: string): 
   });
 }
 
-export type SignupCta = { label: string; enabled: boolean };
+export type SignupCta = { label: string; enabled: boolean; action?: 'signup' | 'cancel' };
 
-export function signupCta(activity: Activity, signedUp: boolean, now = Date.now()): SignupCta {
+export function signupCta(
+  activity: Activity,
+  signedUp: boolean,
+  now = Date.now(),
+  options: { allowCancel?: boolean } = {},
+): SignupCta {
   if (activity.activityStatus === '已结束') return { label: '报名已结束', enabled: false };
-  if (signedUp) return { label: '已报名', enabled: false };
-  const start = parseActivityDate(activity.signupStartAt);
   const end = parseActivityDate(activity.signupEndAt);
+  const beforeDeadline = Number.isFinite(end) && now <= end;
+  if (signedUp) {
+    if (options.allowCancel && beforeDeadline) return { label: '取消报名', enabled: true, action: 'cancel' };
+    return { label: '已报名', enabled: false };
+  }
+  const start = parseActivityDate(activity.signupStartAt);
   if (Number.isFinite(start) && now < start) return { label: '报名未开始', enabled: false };
-  if (Number.isFinite(end) && now > end) return { label: '报名已截止', enabled: false };
-  return { label: '立即报名', enabled: true };
+  if (!beforeDeadline && Number.isFinite(end)) return { label: '报名已截止', enabled: false };
+  return { label: '立即报名', enabled: true, action: 'signup' };
 }
 
 export type FavoriteView = {
