@@ -76,6 +76,32 @@ export type RelatedKind = keyof RelatedMaps;
 
 const medalImage: Record<string, string> = Object.fromEntries(initialMedals.map((item) => [item.id, item.imageUrl]));
 
+const PINNED_CAMP_ACTIVITY_ID = 2;
+const PINNED_CAMP_NAMED_APPROVED = 4;
+const PINNED_CAMP_APPROVED_TARGET = 50;
+const PINNED_CAMP_DEPTS = ['研发中心', '生产中心', '职能中心', '营销中心', '人力资源'] as const;
+const PINNED_CAMP_GROUPS = ['技术组', '业务组'] as const;
+
+function extraPinnedCampApprovedSignups(): SignupRecord[] {
+  const need = PINNED_CAMP_APPROVED_TARGET - PINNED_CAMP_NAMED_APPROVED;
+  return Array.from({ length: need }, (_, index) => {
+    const n = index + 1;
+    const hour = 8 + Math.floor(index / 6);
+    const minute = (index * 7) % 60;
+    return {
+      id: 2000 + index,
+      activityId: PINNED_CAMP_ACTIVITY_ID,
+      name: `学员${String(n).padStart(2, '0')}`,
+      phone: `1392000${String(n).padStart(4, '0')}`,
+      signupType: '个人报名',
+      department: PINNED_CAMP_DEPTS[index % PINNED_CAMP_DEPTS.length],
+      status: '已通过',
+      createdAt: `2026-08-19 ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`,
+      answers: { 分组选择: PINNED_CAMP_GROUPS[index % 2], 岗位: '学员' },
+    };
+  });
+}
+
 function prizePerson(
   id: number,
   activityId: number,
@@ -139,6 +165,7 @@ const initialRelated: RelatedMaps = {
     { id: 15, activityId: 6, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '职能中心', status: '已通过', createdAt: '2026-08-17 16:00:00' },
     { id: 16, activityId: 9, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '职能中心', status: '已通过', createdAt: '2026-08-16 16:00:00' },
     { id: 17, activityId: 12, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '职能中心', status: '已驳回', createdAt: '2026-04-12 10:00:00' },
+    ...extraPinnedCampApprovedSignups(),
   ],
   comments: [
     { id: 1, activityId: 1, content: '开放日讲解很清楚，希望明年还能参加。', author: '张悦', createdAt: '2026-04-12 18:20:00', likedBy: ['李明'] },

@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>兴趣小组后台 产品需求文档</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; line-height: 1.65; color: #1f2937; margin: 0; background: #f8fafc; }
+    .layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: 100vh; }
+    .layout.toc-collapsed { grid-template-columns: 0 minmax(0, 1fr); }
+    .toc { position: sticky; top: 0; height: 100vh; overflow: auto; border-right: 1px solid #d1d5db; background: #fff; padding: 16px; }
+    .layout.toc-collapsed .toc { transform: translateX(-100%); padding: 0; border: 0; }
+    .toc-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+    .toc-title { margin: 0; font-size: 15px; font-weight: 700; }
+    .icon-button { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; cursor: pointer; }
+    .icon-button svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .toc ol { list-style: none; padding: 0; margin: 0; }
+    .toc li { margin: 4px 0; }
+    .toc a { display: block; color: #374151; text-decoration: none; padding: 6px 8px; border-radius: 6px; font-size: 14px; }
+    .toc a:hover { background: #f3f4f6; color: #0f766e; }
+    .toc .sub a { padding-left: 18px; font-size: 13px; color: #6b7280; }
+    .content-wrap { min-width: 0; }
+    .floating-toc-toggle { position: fixed; left: 12px; top: 12px; z-index: 20; box-shadow: 0 4px 12px rgba(15,23,42,.12); }
+    main { max-width: 1180px; margin: 0 auto; padding: 32px 24px 64px; background: #fff; }
+    h1,h2,h3,h4 { color: #111827; line-height: 1.3; }
+    h2 { margin-top: 40px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 13px; }
+    th, td { border: 1px solid #d1d5db; padding: 8px 10px; vertical-align: top; }
+    th { background: #f3f4f6; text-align: left; }
+    figure { margin: 16px 0 24px; border: 1px solid #d1d5db; background: #f9fafb; padding: 12px; }
+    figure img { max-width: 100%; height: auto; display: block; border: 1px solid #e5e7eb; background: #fff; }
+    figcaption { margin-top: 8px; color: #4b5563; font-size: 13px; }
+    .component-path { font-weight: 600; color: #0f766e; }
+    .status { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #e0f2fe; color: #075985; font-size: 12px; margin-right: 4px; }
+    .status.impl { background: #dcfce7; color: #166534; }
+    .status.todo { background: #fee2e2; color: #991b1b; }
+    .status.guess { background: #fef3c7; color: #92400e; }
+    code { background: #f3f4f6; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+    @media (max-width: 860px) {
+      .layout { display: block; }
+      .toc { position: fixed; z-index: 15; width: 280px; box-shadow: 0 12px 30px rgba(15,23,42,.18); }
+      .layout.toc-collapsed .toc { transform: translateX(-100%); }
+      main { padding-top: 56px; }
+    }
+</style>
+</head>
+<body>
+<div class="layout" id="prdLayout">
+<aside class="toc" aria-label="PRD目录">
+  <div class="toc-header">
+    <p class="toc-title">目录</p>
+    <button class="icon-button toc-toggle" type="button" data-toggle-toc aria-label="隐藏目录" title="隐藏目录">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+    </button>
+  </div>
+  <nav><ol><li><a href="#doc-note">1. 文档说明</a></li>
+<li><a href="#overview">2. 产品概述</a></li>
+<li><a href="#ia">3. 页面结构 / 信息架构</a></li>
+<li><a href="#implemented-features">4. 已实现功能清单</a></li>
+<li><a href="#flows">5. 用户流程</a></li>
+<li><a href="#page-requirements">6. 页面级需求说明</a></li>
+<li><a href="#data-fields">7. 数据字段与枚举</a></li>
+<li><a href="#apis">8. API / 数据接口清单</a></li>
+<li><a href="#non-functional">9. 非功能需求</a></li>
+<li><a href="#analytics">10. 埋点与指标建议</a></li>
+<li><a href="#acceptance">11. 验收标准</a></li>
+<li><a href="#risks">12. 风险与待确认问题</a></li></ol></nav>
+</aside>
+<div class="content-wrap">
+<button class="icon-button floating-toc-toggle" type="button" data-toggle-toc aria-label="显示目录" title="显示目录">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+</button>
+<main>
+  <h1>兴趣小组后台 产品需求文档</h1>
+  
+  <section id="doc-note">
+    <h2>1. 文档说明</h2>
+    <ul>
+      <li>范围：应用「兴趣小组」：小组管理、活动管理、分类；概览为 PlaceholderPage</li>
+      <li>日期：2026-08-24 · html-to-prd 反向分析</li>
+    </ul>
+  </section>
+  <section id="overview">
+    <h2>2. 产品概述</h2>
+    <p>员工兴趣社群运营：小组资料与成员审核、小组活动（单次/周期/系列）审批发布、评论与精彩瞬间。</p>
+  </section>
+  <section id="ia">
+    <h2>3. 页面结构 / 信息架构</h2>
+    <figure>
+        <img src="screenshots/兴趣小组-左侧菜单.png" alt="兴趣小组-导航-左侧菜单截图">
+        <figcaption><span class="component-path">兴趣小组-导航-左侧菜单</span></figcaption>
+      </figure>
+    <ul>
+      <li>侧栏：概览(占位) / 小组管理 / 活动管理 / 分类管理</li>
+      <li>详情 Tab：小组 acts|members|comments|moments；活动 detail|signups|comments|moments</li>
+    </ul>
+  </section>
+  <section id="implemented-features">
+    <h2>4. 已实现功能清单</h2>
+    <table>
+      <thead><tr><th>模块</th><th>功能</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td>概览</td><td>占位页</td><td><span class="status guess">根据页面推测需要</span>后续 KPI</td></tr>
+        <tr><td>小组</td><td>列表/Drawer 创建编辑/详情成员评论瞬间</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>活动</td><td>三种类型、审批发布、报名只读、AI 策划入口</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>分类</td><td>CRUD、排序、启禁用</td><td><span class="status impl">代码已实现</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+  <section id="flows">
+    <h2>5. 用户流程</h2>
+    <ol>
+      <li>建小组 → 成员审核加入 → 建活动 → 提交审批 → 发布</li>
+      <li>运营评论与精彩瞬间审核</li>
+    </ol>
+  </section>
+  <section id="page-requirements">
+    <h2>6. 页面级需求说明</h2>
+    <h3>6.1 小组管理 / 详情</h3>
+    <figure>
+        <img src="screenshots/小组管理-页面整体.png" alt="小组管理-页面布局-页面整体截图">
+        <figcaption><span class="component-path">小组管理-页面布局-页面整体</span></figcaption>
+      </figure>
+    <figure>
+        <img src="screenshots/小组详情-页面整体.png" alt="小组详情-页面布局-页面整体截图">
+        <figcaption><span class="component-path">小组详情-页面布局-页面整体</span></figcaption>
+      </figure>
+    <p>Drawer 字段：封面、名称、分类、负责人、加入方式(free/approve)、区域、标签、简介(+AI)。成员：通过/驳回/移出/导入导出。</p>
+    <h3>6.2 活动管理 / 表单</h3>
+    <figure>
+        <img src="screenshots/活动管理-页面整体.png" alt="活动管理-页面布局-页面整体截图">
+        <figcaption><span class="component-path">活动管理-页面布局-页面整体</span></figcaption>
+      </figure>
+    <figure>
+        <img src="screenshots/新增活动-表单页.png" alt="新增活动-表单页-页面整体截图">
+        <figcaption><span class="component-path">新增活动-表单页-页面整体</span></figcaption>
+      </figure>
+    <p>类型 once/recurring/series；审批发布撤销；有报名不可删。</p>
+    <h3>6.3 分类管理</h3>
+    <figure>
+        <img src="screenshots/分类管理-页面整体.png" alt="分类管理-页面布局-页面整体截图">
+        <figcaption><span class="component-path">分类管理-页面布局-页面整体</span></figcaption>
+      </figure>
+  </section>
+  <section id="data-fields">
+    <h2>7. 数据字段与枚举</h2>
+    <table>
+      <thead><tr><th>枚举</th><th>取值</th></tr></thead>
+      <tbody>
+        <tr><td>JoinMode</td><td>free / approve</td></tr>
+        <tr><td>ActivityType</td><td>once / recurring / series</td></tr>
+        <tr><td>Audit/Publish</td><td>同活动域：待提交… / 未发布|已发布</td></tr>
+        <tr><td>MemberStatus</td><td>待审核 / 已通过 / 已驳回</td></tr>
+      </tbody>
+    </table>
+  </section>
+  <section id="apis"><h2>8. API / 数据接口清单</h2><p>内存 <code>interestGroupStore</code>，无 localStorage。AI 草稿 <code>pendingAiActivityDraft</code> 一次性内存。</p></section>
+  <section id="non-functional"><h2>9. 非功能需求</h2><p>删除保护（进行中活动/有报名）。权限 <span class="status todo">待确认</span>。</p></section>
+  <section id="analytics"><h2>10. 埋点与指标建议</h2><p><span class="status">建议补充</span> group_create / activity_publish / member_approve。</p></section>
+  <section id="acceptance">
+    <h2>11. 验收标准</h2>
+    <ol>
+      <li>Given 小组有进行中活动，When 删除小组，Then 禁用删除。</li>
+      <li>Given 活动有报名，When 删除活动，Then 不可删。</li>
+    </ol>
+  </section>
+  <section id="risks">
+    <h2>12. 风险与待确认问题</h2>
+    <ul>
+      <li>概览占位；报名情况只读无审核动作。</li>
+      <li>成员表「手机号」列与模型字段声明不一致风险。</li>
+      <li>删小组后活动 groupId→null 产品意图待确认。</li>
+    </ul>
+  </section>
+
+</main>
+</div>
+</div>
+<script>
+  document.querySelectorAll('[data-toggle-toc]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var layout = document.getElementById('prdLayout');
+      var collapsed = layout.classList.toggle('toc-collapsed');
+      document.querySelectorAll('[data-toggle-toc]').forEach(function (btn) {
+        btn.setAttribute('aria-label', collapsed ? '显示目录' : '隐藏目录');
+        btn.setAttribute('title', collapsed ? '显示目录' : '隐藏目录');
+      });
+    });
+  });
+</script>
+</body>
+</html>

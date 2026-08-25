@@ -46,7 +46,7 @@ export function PcExamReview({ id }: { id: number }) {
 
   if (!review) {
     return (
-      <PcActivityShell className="is-exam is-review" title="考试回顾" onPhone={() => goPcExamResult(id)}>
+      <PcActivityShell className="is-exam is-review" title="考试回顾">
         <p className="c-empty">暂无答题记录</p>
       </PcActivityShell>
     );
@@ -55,7 +55,7 @@ export function PcExamReview({ id }: { id: number }) {
   const list = wrongOnly ? review.questions.filter((item) => !item.correct) : review.questions;
 
   return (
-    <PcActivityShell className="is-exam is-review" title="考试回顾" onPhone={() => goPcExamResult(id)}>
+    <PcActivityShell className="is-exam is-review" title="考试回顾">
       <button className="c-back-link" type="button" onClick={() => goPcExamResult(id)}>
         ← 返回结果
       </button>

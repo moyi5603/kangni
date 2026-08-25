@@ -157,6 +157,20 @@ html, body, #root, .ant-app {
 .signup-field-required { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; color: rgba(0, 0, 0, 0.45); }
 .signup-field-max-length { flex: none; }
 .signup-field-options { display: flex; flex-direction: column; align-items: stretch; gap: 8px; margin-top: 12px; padding-left: 0; width: 100%; max-width: 420px; }
+.signup-field-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  max-width: none;
+  align-items: center;
+}
+.signup-field-choices .signup-field-option-add.is-inline {
+  width: auto;
+  max-width: none;
+  justify-self: start;
+  padding-inline: 0;
+  height: 24px;
+}
 .signup-field-option { width: 100%; }
 .signup-field-option .ant-input-affix-wrapper,
 .signup-field-option .ant-input { flex: 1; min-width: 0; }
@@ -176,7 +190,8 @@ html, body, #root, .ant-app {
 }
 .signup-field-option-remove.is-disabled:hover { color: rgba(0, 0, 0, 0.45); }
 .signup-field-option-add { width: 100%; max-width: 420px; }
-.signup-field-groups { max-width: 520px; gap: 12px; }
+.signup-field-groups { max-width: none; }
+.signup-field-group-hint { grid-column: 1 / -1; }
 .signup-field-companion { max-width: none; width: 100%; }
 .signup-field-options.signup-field-companion { max-width: none; }
 .signup-field-companion-row {
@@ -735,10 +750,36 @@ html, body, #root, .ant-app {
 .list-table-card .list-table-card-tabs { margin: -8px 0 16px; }
 .list-table-card .list-table-card-tabs .ant-tabs-nav { margin-bottom: 0; }
 .edit-form { display: flex; flex-direction: column; gap: 16px; }
+.edit-form .advanced-settings-collapse > .ant-collapse-item > .ant-collapse-header,
+.order-detail-page .advanced-settings-collapse > .ant-collapse-item > .ant-collapse-header {
+  align-items: center;
+  padding-block: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.88);
+}
+.edit-form .advanced-settings-collapse > .ant-collapse-item > .ant-collapse-header .ant-collapse-header-text,
+.order-detail-page .advanced-settings-collapse > .ant-collapse-item > .ant-collapse-header .ant-collapse-header-text {
+  font-size: inherit;
+  font-weight: inherit;
+}
 .course-quiz-bank { display: flex; flex-direction: column; gap: 16px; padding-top: 8px; border-top: 1px solid var(--border-color); }
 .edit-form .ant-form-item-row { flex-wrap: nowrap; align-items: flex-start; }
 .edit-form .ant-form-item-label { flex: 0 0 112px; max-width: 112px; white-space: nowrap; }
 .edit-form .ant-form-item-label > label { white-space: nowrap; }
+.edit-form .activity-settings-card .ant-form-item-label {
+  flex: 0 0 216px;
+  max-width: 216px;
+}
+.edit-form .activity-settings-card .ant-form-item-label > label {
+  height: auto;
+  white-space: nowrap;
+}
+.edit-form .activity-point-rules-card .ant-form-item-label {
+  flex: 0 0 248px;
+  max-width: 248px;
+}
 .edit-form .ant-form-item-control { min-width: 0; flex: 1 1 auto; }
 .edit-form .sticky-form-actions { margin-top: 0; }
 .ig-ai-modal .ant-modal-header,
@@ -809,4 +850,32 @@ html, body, #root, .ant-app {
   .edit-form .ant-form-item-label, .edit-form .ant-form-item-control { flex: 0 0 100%; max-width: 100%; }
   .edit-form .ant-form-item-label { padding-bottom: 8px; text-align: left; }
   .paper-form-totals { margin-left: 0; }
+}
+
+.activity-client-preview-modal .ant-modal-body {
+  max-height: 78vh;
+  overflow: auto;
+}
+.activity-client-preview.is-h5 {
+  display: flex;
+  justify-content: center;
+}
+.activity-client-preview.is-h5 .c-h5-shell {
+  min-height: 0;
+  width: 390px;
+  background: transparent;
+}
+.activity-client-preview.is-h5 .c-h5-frame {
+  min-height: 640px;
+  max-height: 68vh;
+  overflow: auto;
+  border-radius: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+.activity-client-preview.is-pc .c-pc-shell {
+  min-height: 0;
+  max-height: 68vh;
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
 }

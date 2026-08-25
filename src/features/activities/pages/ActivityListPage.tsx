@@ -25,20 +25,18 @@ import dayjs from 'dayjs';
 import { ListPageHeading, SearchField, SearchPanel } from '../../../shared/ui/ListPage';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import {
-  activityStatuses,
-  activityTypes,
   auditStatuses,
   formatActivityTime,
   formatPublishedAt,
-  publishStatuses,
+  getActivityLifecycleStatus,
+  lifecycleStatusColor,
+  lifecycleStatuses,
   canPublishActivity,
   canReviewActivity,
   canSubmitApproval,
   type Activity,
-  type ActivityStatus,
-  type ActivityType,
   type AuditStatus,
-  type PublishStatus,
+  type LifecycleStatus,
 } from '../model/activity';
 import { ActivityReviewModal } from '../components/ActivityReviewModal';
 import { patchActivities, submitActivitiesForApproval, useActivities } from '../model/activityStore';
@@ -48,12 +46,10 @@ type DateRange = [Dayjs | null, Dayjs | null] | null;
 
 type ActivityQuery = {
   title: string;
-  type?: ActivityType;
   category?: string;
   activityTime: DateRange;
   auditStatus?: AuditStatus;
-  publishStatus?: PublishStatus;
-  activityStatus?: ActivityStatus;
+  lifecycleStatus?: LifecycleStatus;
   createdAt: DateRange;
   publishedAt: DateRange;
 };
@@ -71,17 +67,6 @@ const auditColor: Record<AuditStatus, string> = {
   已通过: 'success',
   已驳回: 'error',
   无需审核: 'default',
-};
-
-const publishColor: Record<PublishStatus, string> = {
-  未发布: 'default',
-  已发布: 'success',
-};
-
-const activityStatusColor: Record<ActivityStatus, string> = {
-  未开始: 'default',
-  进行中: 'processing',
-  已结束: 'default',
 };
 
 function optionsOf(values: readonly string[]) {
@@ -137,12 +122,10 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
     const rows = data.filter(
       (item) =>
         (!query.title || item.title.includes(query.title)) &&
-        (!query.type || item.type === query.type) &&
         (!query.category || item.category === query.category) &&
         overlapsRange(item.startAt, item.endAt, query.activityTime) &&
         (!query.auditStatus || item.auditStatus === query.auditStatus) &&
-        (!query.publishStatus || item.publishStatus === query.publishStatus) &&
-        (!query.activityStatus || item.activityStatus === query.activityStatus) &&
+        (!query.lifecycleStatus || getActivityLifecycleStatus(item) === query.lifecycleStatus) &&
         inDayRange(item.createdAt, query.createdAt) &&
         inDayRange(item.publishedAt, query.publishedAt),
     );
@@ -150,12 +133,10 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
   }, [data, query]);
   const hasActiveQuery = Boolean(
     query.title ||
-      query.type ||
       query.category ||
       query.activityTime ||
       query.auditStatus ||
-      query.publishStatus ||
-      query.activityStatus ||
+      query.lifecycleStatus ||
       query.createdAt ||
       query.publishedAt,
   );
@@ -302,7 +283,6 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
         </Space>
       ),
     },
-    { title: '类型', dataIndex: 'type', width: 90 },
     { title: '分类', dataIndex: 'category', width: 90 },
     {
       title: '活动时间',
@@ -317,16 +297,13 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
       render: (value: AuditStatus) => <Tag color={auditColor[value]}>{value}</Tag>,
     },
     {
-      title: '发布状态',
-      dataIndex: 'publishStatus',
+      title: '状态',
+      key: 'lifecycleStatus',
       width: 110,
-      render: (value: PublishStatus) => <Tag color={publishColor[value]}>{value}</Tag>,
-    },
-    {
-      title: '活动状态',
-      dataIndex: 'activityStatus',
-      width: 110,
-      render: (value: ActivityStatus) => <Tag color={activityStatusColor[value]}>{value}</Tag>,
+      render: (_, record) => {
+        const status = getActivityLifecycleStatus(record);
+        return <Tag color={lifecycleStatusColor[status]}>{status}</Tag>;
+      },
     },
     { title: '创建时间', dataIndex: 'createdAt', width: 170 },
     {
@@ -396,8 +373,8 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
 
   return (
     <div className="page-stack">
-      <ListPageHeading paths={['活动', '活动管理']} title="活动管理" subtitle="查询并维护活动基础信息、审核、发布和活动状态。" />
-      {/* 收起态前三项：活动标题、类型、活动时间；分类与状态等条件展开后可见 */}
+      <ListPageHeading paths={['活动', '活动管理']} title="活动管理" subtitle="查询并维护活动基础信息、审核、发布与状态。" />
+      {/* 收起态前三项：活动标题、分类、活动时间；审核与状态等条件展开后可见 */}
       <SearchPanel
         onSearch={() => {
           setQuery(draft);
@@ -416,13 +393,13 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
             onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
           />
         </SearchField>
-        <SearchField label="类型">
+        <SearchField label="分类">
           <Select
             allowClear
-            placeholder="全部类型"
-            value={draft.type}
-            onChange={(value) => setDraft((current) => ({ ...current, type: value }))}
-            options={optionsOf(activityTypes)}
+            placeholder="全部分类"
+            value={draft.category}
+            onChange={(value) => setDraft((current) => ({ ...current, category: value }))}
+            options={categoryOptions}
           />
         </SearchField>
         <SearchField label="活动时间">
@@ -431,15 +408,6 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
             style={{ width: '100%' }}
             value={draft.activityTime}
             onChange={(value) => setDraft((current) => ({ ...current, activityTime: value }))}
-          />
-        </SearchField>
-        <SearchField label="分类">
-          <Select
-            allowClear
-            placeholder="全部分类"
-            value={draft.category}
-            onChange={(value) => setDraft((current) => ({ ...current, category: value }))}
-            options={categoryOptions}
           />
         </SearchField>
         <SearchField label="审核状态">
@@ -451,22 +419,13 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
             options={optionsOf(auditStatuses)}
           />
         </SearchField>
-        <SearchField label="发布状态">
+        <SearchField label="状态">
           <Select
             allowClear
             placeholder="全部状态"
-            value={draft.publishStatus}
-            onChange={(value) => setDraft((current) => ({ ...current, publishStatus: value }))}
-            options={optionsOf(publishStatuses)}
-          />
-        </SearchField>
-        <SearchField label="活动状态">
-          <Select
-            allowClear
-            placeholder="全部状态"
-            value={draft.activityStatus}
-            onChange={(value) => setDraft((current) => ({ ...current, activityStatus: value }))}
-            options={optionsOf(activityStatuses)}
+            value={draft.lifecycleStatus}
+            onChange={(value) => setDraft((current) => ({ ...current, lifecycleStatus: value }))}
+            options={optionsOf(lifecycleStatuses)}
           />
         </SearchField>
         <SearchField label="创建时间">

@@ -83,7 +83,7 @@ describe('signup store', () => {
   });
 
   it('uses needAudit from the activity signup setting', () => {
-    expect(getActivity(2)?.signupSettings).toEqual([{ type: '个人报名', limit: 50, needAudit: true }]);
+    expect(getActivity(2)?.signupSettings).toEqual([{ type: '个人报名', limit: 60, needAudit: true }]);
     expect(submitSignup(2, '个人报名')).toBe('ok');
     expect(getUserSignups().find((item) => item.activityId === 2)?.status).toBe('待审核');
     resetClientSignups();

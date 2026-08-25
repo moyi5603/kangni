@@ -5,6 +5,7 @@ import {
   setSignupFieldGroups,
   type SignupField,
 } from './signupFields';
+import type { ApprovalNode } from './rules';
 
 const basketballImg = '/activities/basketball.jpg';
 const checkupImg = '/activities/checkup.jpg';
@@ -13,7 +14,7 @@ const openDayImg = '/activities/open-day.jpg';
 const shareImg = '/activities/share.jpg';
 const webinarImg = '/activities/webinar.jpg';
 
-export const ACTIVITY_MOCK_VERSION = 15;
+export const ACTIVITY_MOCK_VERSION = 21;
 export type { SignupField } from './signupFields';
 export const activityTypes = ['公司活动', '疗休养活动', '体检活动', '项目活动'] as const;
 export const visibilityOptions = ['全员', '按部门', '自定义人群', '导入人群'] as const;
@@ -162,12 +163,15 @@ export function activitySignupTypes(activity: Pick<Activity, 'signupSettings'>):
 export const auditStatuses = ['待提交', '待审核', '已通过', '已驳回', '无需审核'] as const;
 export const publishStatuses = ['未发布', '已发布'] as const;
 export const activityStatuses = ['未开始', '进行中', '已结束'] as const;
+/** 列表/详情展示用：未发布优先，已发布则显示活动进度 */
+export const lifecycleStatuses = ['未发布', '未开始', '进行中', '已结束'] as const;
 
 export type ActivityType = (typeof activityTypes)[number];
 export type Visibility = (typeof visibilityOptions)[number];
 export type AuditStatus = (typeof auditStatuses)[number];
 export type PublishStatus = (typeof publishStatuses)[number];
 export type ActivityStatus = (typeof activityStatuses)[number];
+export type LifecycleStatus = (typeof lifecycleStatuses)[number];
 
 export type SignupSetting = {
   type: string;
@@ -199,12 +203,26 @@ export type Activity = {
   visibilityMinSeniorityYears?: number;
   importFileName: string;
   importedPeople: string[];
+  notifyOnPublish: boolean;
   signupStartAt: string;
   signupEndAt: string;
   signupSettings: SignupSetting[];
   signupFields: SignupField[];
   itinerary: string;
   extraFeeRule: string;
+  signupPoints: number;
+  firstCommentPoints: number;
+  ratingPoints: number;
+  firstMomentPoints: number;
+  signupPointsEnabled: boolean;
+  firstCommentPointsEnabled: boolean;
+  ratingPointsEnabled: boolean;
+  firstMomentPointsEnabled: boolean;
+  /** 是否开启精彩瞬间审核 */
+  momentAuditEnabled: boolean;
+  /** 是否开启报名审批流（从属于是否审核报名） */
+  activityApprovalEnabled: boolean;
+  signupApprovalNodes: ApprovalNode[];
   auditStatus: AuditStatus;
   publishStatus: PublishStatus;
   activityStatus: ActivityStatus;
@@ -226,12 +244,24 @@ const defaults: Pick<
   | 'customPeople'
   | 'importFileName'
   | 'importedPeople'
+  | 'notifyOnPublish'
   | 'signupStartAt'
   | 'signupEndAt'
   | 'signupSettings'
   | 'signupFields'
   | 'itinerary'
   | 'extraFeeRule'
+  | 'signupPoints'
+  | 'firstCommentPoints'
+  | 'ratingPoints'
+  | 'firstMomentPoints'
+  | 'signupPointsEnabled'
+  | 'firstCommentPointsEnabled'
+  | 'ratingPointsEnabled'
+  | 'firstMomentPointsEnabled'
+  | 'momentAuditEnabled'
+  | 'activityApprovalEnabled'
+  | 'signupApprovalNodes'
   | 'pinned'
 > = {
   coverUrl: '',
@@ -245,12 +275,24 @@ const defaults: Pick<
   customPeople: [],
   importFileName: '',
   importedPeople: [],
+  notifyOnPublish: false,
   signupStartAt: '2026-08-01 09:00',
   signupEndAt: '2026-08-31 18:00',
   signupSettings: [{ type: '个人报名', limit: 50, needAudit: true }],
   signupFields: defaultSignupFields(),
   itinerary: '',
   extraFeeRule: '',
+  signupPoints: 1,
+  firstCommentPoints: 10,
+  ratingPoints: 10,
+  firstMomentPoints: 10,
+  signupPointsEnabled: true,
+  firstCommentPointsEnabled: true,
+  ratingPointsEnabled: true,
+  firstMomentPointsEnabled: true,
+  momentAuditEnabled: false,
+  activityApprovalEnabled: false,
+  signupApprovalNodes: [],
   pinned: false,
 };
 
@@ -299,6 +341,7 @@ function publishedClient(activity: Partial<Activity> & Pick<Activity, 'id' | 'ti
     endAt: '2026-08-25 17:00',
     coverUrl: openDayImg,
     auditStatus: '已通过',
+    activityApprovalEnabled: true,
     publishStatus: '已发布',
     activityStatus: '未开始',
     createdAt: '2026-08-10 10:00:00',
@@ -360,11 +403,11 @@ export const initialActivities: Activity[] = [
     pinned: true,
     createdAt: '2026-07-28 14:05:00',
     publishedAt: '2026-08-01 11:20:00',
-    signupSettings: [{ type: '个人报名', limit: 50, needAudit: true }],
+    signupSettings: [{ type: '个人报名', limit: 60, needAudit: true }],
     signupFields: groupSignupFields(
       [
-        { name: '技术组', limit: 30 },
-        { name: '业务组', limit: 20 },
+        { name: '技术组', limit: 36 },
+        { name: '业务组', limit: 24 },
       ],
       ['部门', '岗位'],
     ),
@@ -765,6 +808,19 @@ export function formatActivityTime(activity: Activity): string {
   return `${activity.startAt} ~ ${activity.endAt}`;
 }
 
+export function getActivityLifecycleStatus(
+  activity: Pick<Activity, 'publishStatus' | 'activityStatus'>,
+): LifecycleStatus {
+  return activity.publishStatus === '已发布' ? activity.activityStatus : '未发布';
+}
+
+export const lifecycleStatusColor: Record<LifecycleStatus, string> = {
+  未发布: 'default',
+  未开始: 'default',
+  进行中: 'processing',
+  已结束: 'default',
+};
+
 export function formatPublishedAt(value: string): string {
   return value || '—';
 }
@@ -773,11 +829,13 @@ export function canPublishActivity(activity: Pick<Activity, 'auditStatus'>): boo
   return activity.auditStatus === '已通过' || activity.auditStatus === '无需审核';
 }
 
-export function canSubmitApproval(activity: Pick<Activity, 'auditStatus'>): boolean {
+export function canSubmitApproval(activity: Pick<Activity, 'auditStatus' | 'activityApprovalEnabled'>): boolean {
+  if (!activity.activityApprovalEnabled) return false;
   return activity.auditStatus === '待提交' || activity.auditStatus === '已驳回';
 }
 
-export function canReviewActivity(activity: Pick<Activity, 'auditStatus'>): boolean {
+export function canReviewActivity(activity: Pick<Activity, 'auditStatus' | 'activityApprovalEnabled'>): boolean {
+  if (!activity.activityApprovalEnabled) return false;
   return activity.auditStatus === '待审核';
 }
 

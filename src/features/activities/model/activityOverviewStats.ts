@@ -42,7 +42,7 @@ export type ActivityAttentionRow = {
   key: string;
   activityId: number;
   title: string;
-  type: Activity['type'];
+  category: string;
   kind: '活动待审核' | '报名待审核';
   count?: number;
 };
@@ -50,7 +50,7 @@ export type ActivityAttentionRow = {
 export type SignupOpenActivityRow = {
   activityId: number;
   title: string;
-  type: Activity['type'];
+  category: string;
   signupEndAt: string;
   signupCount: number;
   pendingSignupCount: number;
@@ -146,7 +146,7 @@ export function buildAttentionRows(activities: Activity[], signups: SignupRecord
         key: `audit-${activity.id}`,
         activityId: activity.id,
         title: activity.title,
-        type: activity.type,
+        category: activity.category,
         kind: '活动待审核',
       });
     });
@@ -165,7 +165,7 @@ export function buildAttentionRows(activities: Activity[], signups: SignupRecord
         key: `signup-${activity.id}`,
         activityId: activity.id,
         title: activity.title,
-        type: activity.type,
+        category: activity.category,
         kind: '报名待审核',
         count: pendingByActivity.get(activity.id) ?? 0,
       });
@@ -199,7 +199,7 @@ export function buildSignupOpenRows(
       return {
         activityId: activity.id,
         title: activity.title,
-        type: activity.type,
+        category: activity.category,
         signupEndAt: activity.signupEndAt,
         signupCount: stats.signupCount,
         pendingSignupCount: stats.pendingSignupCount,

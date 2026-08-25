@@ -1,4 +1,4 @@
-import { IconComment, IconLike, IconStar } from './Icons';
+import { IconComment, IconLike, IconShare, IconStar } from './Icons';
 
 export function DetailEngageBar({
   liked,
@@ -9,6 +9,7 @@ export function DetailEngageBar({
   onLike,
   onFavorite,
   onComment,
+  onShare,
   showLike = true,
   showFavorite = true,
   showComment = true,
@@ -21,11 +22,12 @@ export function DetailEngageBar({
   onLike: () => void;
   onFavorite: () => void;
   onComment: () => void;
+  onShare?: () => void;
   showLike?: boolean;
   showFavorite?: boolean;
   showComment?: boolean;
 }) {
-  if (!showLike && !showFavorite && !showComment) return null;
+  if (!showLike && !showFavorite && !showComment && !onShare) return null;
 
   return (
     <div className="c-engage">
@@ -57,6 +59,12 @@ export function DetailEngageBar({
         <button className="c-engage-btn" type="button" aria-label="评论" onClick={onComment}>
           <IconComment />
           {comments}
+        </button>
+      ) : null}
+      {onShare ? (
+        <button className="c-engage-btn" type="button" aria-label="分享" onClick={onShare}>
+          <IconShare />
+          分享
         </button>
       ) : null}
     </div>

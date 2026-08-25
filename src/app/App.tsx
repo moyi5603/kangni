@@ -50,7 +50,6 @@ import { ActivityOverviewPage } from '../features/activities/pages/ActivityOverv
 import { ActivityListPage } from '../features/activities/pages/ActivityListPage';
 import { ActivityFormPage } from '../features/activities/pages/ActivityFormPage';
 import { ActivityDetailPage } from '../features/activities/pages/ActivityDetailPage';
-import { ActivityTagListPage } from '../features/activities/pages/ActivityTagListPage';
 import { ActivityCategoryListPage } from '../features/activities/pages/ActivityCategoryListPage';
 import { ActivityRulesPage } from '../features/activities/pages/ActivityRulesPage';
 import { InterestGroupActivityDetailPage } from '../features/interest-groups/pages/InterestGroupActivityDetailPage';
@@ -58,6 +57,10 @@ import { InterestGroupActivityFormPage } from '../features/interest-groups/pages
 import { InterestGroupActivityListPage } from '../features/interest-groups/pages/InterestGroupActivityListPage';
 import { InterestGroupCategoryListPage } from '../features/interest-groups/pages/InterestGroupCategoryListPage';
 import { InterestGroupDetailPage } from '../features/interest-groups/pages/InterestGroupDetailPage';
+import { AwardCertificateListPage } from '../features/awards/pages/AwardCertificateListPage';
+import { AwardDetailPage } from '../features/awards/pages/AwardDetailPage';
+import { AwardFormPage } from '../features/awards/pages/AwardFormPage';
+import { AwardListPage } from '../features/awards/pages/AwardListPage';
 import { InterestGroupListPage } from '../features/interest-groups/pages/InterestGroupListPage';
 import { b2bStandards } from '../shared/design-system/generated/b2b-standards.generated';
 import { CEndApp } from './CEndApp';
@@ -378,8 +381,6 @@ function AdminApp() {
             <ActivityOverviewPage onNavigate={goToPage} />
           ) : page === 'activity-list' ? (
             <ActivityListPage onNavigate={goToPage} />
-          ) : page === 'activity-tags' ? (
-            <ActivityTagListPage />
           ) : page === 'activity-categories' ? (
             <ActivityCategoryListPage />
           ) : page === 'activity-rules' ? (
@@ -553,6 +554,30 @@ function AdminApp() {
                 syncLocation(application, 'interest-group-activity-detail', recordId, nextTab);
               }}
             />
+          ) : page === 'award-list' ? (
+            <AwardListPage onNavigate={goToPage} />
+          ) : page === 'award-create' || page === 'award-edit' ? (
+            <AwardFormPage
+              key={`${page}-${recordId ?? 'new'}`}
+              mode={page === 'award-edit' ? 'edit' : 'create'}
+              recordId={recordId}
+              onBack={() => goToPage('award-list')}
+              onNavigate={goToPage}
+            />
+          ) : page === 'award-detail' ? (
+            <AwardDetailPage
+              key={recordId ?? 'detail'}
+              recordId={recordId}
+              tab={tab}
+              onBack={() => goToPage('award-list')}
+              onEdit={(id) => goToPage('award-edit', id)}
+              onTabChange={(nextTab) => {
+                setTab(nextTab);
+                syncLocation(application, 'award-detail', recordId, nextTab);
+              }}
+            />
+          ) : page === 'award-certificates' ? (
+            <AwardCertificateListPage />
           ) : (
             <PlaceholderPage
               breadcrumbItems={breadcrumbItems}

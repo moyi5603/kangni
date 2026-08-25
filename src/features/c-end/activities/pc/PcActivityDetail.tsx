@@ -1,15 +1,18 @@
 import { useState } from 'react';
-import { isRecreationActivity } from '../../../activities/model/activity';
 import { canSubmitMoment, type MomentRecord } from '../../../activities/model/moment';
 import { useActivities } from '../../../activities/model/activityStore';
 import { useApprovedSignup, useClientMoments } from '../../../activities/model/momentStore';
 import { useRelated } from '../../../activities/model/related';
-import { goCEnd, goCEndSignup } from '../../../../app/navigation';
+import { goCEnd } from '../../../../app/navigation';
+import type { Activity } from '../../../activities/model/activity';
 import { useCEndToast } from '../components/CEndToast';
 import { ActivityCommentList } from '../components/ActivityCommentList';
 import { ActivityDetailFacts } from '../components/ActivityDetailFacts';
 import { ActivitySocialTabs } from '../components/ActivitySocialTabs';
+import { ActivityRatingBlock } from '../components/ActivityRatingBlock';
+import { ApprovedSignupPeople } from '../components/ApprovedSignupPeople';
 import { DetailEngageBar } from '../components/DetailEngageBar';
+import { ShareContactsPanel } from '../components/ShareContactsPanel';
 import { MomentFeed } from '../components/MomentFeed';
 import { shouldShowMomentsTab } from '../model/activitySocialTabs';
 import { StatusPill } from '../components/StatusPill';
@@ -21,12 +24,14 @@ import {
   toggleCommentLike,
 } from '../model/activityComments';
 import { needsSignupForm, prefillSignupAnswers } from '../../../activities/model/signupFields';
-import { getPublishedActivity, signupCta, signupOccupiedCount, signupTypes } from '../model/clientActivity';
+import { getPublishedActivity, signupCta, signupLimit, signupOccupiedCount, signupTypes } from '../model/clientActivity';
+import { shareConfirmMessage } from '../model/activityShare';
 import { toggleFavorite, toggleLike, useActivityEngagement } from '../model/engagementStore';
 import { cancelSignup, DEMO_SIGNUP_USER, submitSignup, useHasSignedUp } from '../model/signupStore';
 import { PcActivityShell } from './PcActivityShell';
 import { CancelSignupDialog } from '../components/CancelSignupDialog';
 import { PcMomentModal } from './PcMomentModal';
+import { PcSignupModal } from './PcSignupModal';
 
 function withoutLeadingIntroductionHeading(html: string): string {
   const heading = /^(\s*)<h([1-6])(?:\s[^>]*)?>([\s\S]*?)<\/h\2\s*>/i.exec(html);
@@ -36,17 +41,30 @@ function withoutLeadingIntroductionHeading(html: string): string {
   return `${heading[1]}${html.slice(heading[0].length)}`;
 }
 
-export function PcActivityDetail({ id }: { id: number }) {
+export function PcActivityDetail({
+  id,
+  activity: activityOverride,
+  preview = false,
+  signupOpen: initialSignupOpen = false,
+}: {
+  id: number;
+  activity?: Activity;
+  preview?: boolean;
+  signupOpen?: boolean;
+}) {
   const activities = useActivities();
-  const activity = getPublishedActivity(activities, id);
+  const stored = getPublishedActivity(activities, id);
+  const activity = activityOverride ?? stored;
   const signedUp = useHasSignedUp(id);
   const toast = useCEndToast();
   const engagement = useActivityEngagement(id);
   const relatedComments = useRelated('comments', id);
   const relatedSignups = useRelated('signups', id);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [signupOpen, setSignupOpen] = useState(initialSignupOpen);
   const [composer, setComposer] = useState<MomentRecord | 'create'>();
   const [socialTab, setSocialTab] = useState<'comments' | 'moments'>('comments');
+  const [shareOpen, setShareOpen] = useState(false);
   const momentItems = useClientMoments(id);
   const approvedSignup = useApprovedSignup(id);
   void relatedComments;
@@ -66,6 +84,7 @@ export function PcActivityDetail({ id }: { id: number }) {
   }
 
   const occupied = signupOccupiedCount(id);
+  const limit = signupLimit(activity);
   const cta = signupCta(activity, signedUp, Date.now(), { allowCancel: true });
   const types = signupTypes(activity);
   const threads = listActivityCommentThreads(id);
@@ -76,13 +95,33 @@ export function PcActivityDetail({ id }: { id: number }) {
   );
 
   const confirm = (type: string, answers: Record<string, string>) => {
+    if (preview) {
+      toast.show('预览中，无法报名');
+      return;
+    }
     const result = submitSignup(activity.id, type, answers);
     toast.show(result === 'ok' ? '报名成功' : '已报名');
   };
 
+  const closeSignup = () => {
+    setSignupOpen(false);
+    if (!preview) goCEnd('pc', activity.id);
+  };
+
+  const submitSignupForm = (type: string, answers: Record<string, string>) => {
+    const freshCta = signupCta(activity, signedUp, Date.now(), { allowCancel: true });
+    if (!freshCta.enabled || freshCta.action === 'cancel') {
+      toast.show(freshCta.label);
+      closeSignup();
+      return;
+    }
+    confirm(type, answers);
+    closeSignup();
+  };
+
   const openSignup = () => {
     if (needsSignupForm(activity.signupFields) || types.length !== 1) {
-      goCEndSignup('pc', activity.id);
+      setSignupOpen(true);
       return;
     }
     confirm(
@@ -98,9 +137,11 @@ export function PcActivityDetail({ id }: { id: number }) {
 
   return (
     <PcActivityShell>
-      <button className="c-back-link" type="button" onClick={() => goCEnd('pc')}>
-        ← 返回列表
-      </button>
+      {preview ? null : (
+        <button className="c-back-link" type="button" onClick={() => goCEnd('pc')}>
+          ← 返回列表
+        </button>
+      )}
       <div className="c-pc-detail">
         <article>
           <div className="c-detail-cover">
@@ -114,7 +155,7 @@ export function PcActivityDetail({ id }: { id: number }) {
               <h2 className="c-detail-name">{activity.title}</h2>
             </header>
             <section className="c-detail-info-card" aria-label="活动信息">
-              <ActivityDetailFacts activity={activity} occupied={occupied} />
+              <ActivityDetailFacts activity={activity} occupied={occupied} omitCurrentYear hideQuota />
             </section>
             <section className="c-detail-content-section" aria-labelledby="pc-activity-intro">
               <h2 id="pc-activity-intro" className="c-detail-name c-detail-section">
@@ -122,14 +163,7 @@ export function PcActivityDetail({ id }: { id: number }) {
               </h2>
               <div className="c-html" dangerouslySetInnerHTML={{ __html: detailHtml }} />
             </section>
-            {isRecreationActivity(activity.type) ? (
-              <>
-                <h2 className="c-detail-name c-detail-section">行程安排</h2>
-                <div className="c-html" dangerouslySetInnerHTML={{ __html: activity.itinerary || '—' }} />
-                <h2 className="c-detail-name c-detail-section">额外费用规则</h2>
-                <div className="c-html" dangerouslySetInnerHTML={{ __html: activity.extraFeeRule || '—' }} />
-              </>
-            ) : null}
+            <ApprovedSignupPeople activityId={id} surface="pc" />
             <ActivitySocialTabs
               activity={activity}
               tab={socialTab}
@@ -163,6 +197,11 @@ export function PcActivityDetail({ id }: { id: number }) {
           <div className="c-detail-tags">
             <StatusPill status={activity.activityStatus} />
           </div>
+          <div className="c-pc-side-quota" aria-label="报名名额">
+            <span>总名额：{limit !== undefined ? `${limit} 人` : '不限'}</span>
+            <span>已报名 {occupied} 人</span>
+          </div>
+          <ActivityRatingBlock activityId={id} status={activity.activityStatus} preview={preview} />
           <DetailEngageBar
             liked={engagement.liked}
             favorited={engagement.favorited}
@@ -178,6 +217,7 @@ export function PcActivityDetail({ id }: { id: number }) {
                 document.getElementById('activity-comment-box')?.focus();
               });
             }}
+            onShare={() => setShareOpen(true)}
           />
           <button
             className="c-cta"
@@ -185,6 +225,10 @@ export function PcActivityDetail({ id }: { id: number }) {
             disabled={!cta.enabled}
             onClick={() => {
               if (!cta.enabled) return;
+              if (preview) {
+                toast.show('预览中，无法报名');
+                return;
+              }
               if (cta.action === 'cancel') setCancelOpen(true);
               else openSignup();
             }}
@@ -193,6 +237,15 @@ export function PcActivityDetail({ id }: { id: number }) {
           </button>
         </aside>
       </div>
+      {signupOpen ? (
+        <PcSignupModal
+          title={activity.title}
+          types={types}
+          fields={activity.signupFields}
+          onCancel={closeSignup}
+          onConfirm={submitSignupForm}
+        />
+      ) : null}
       {cancelOpen ? (
         <CancelSignupDialog
           onCancel={() => setCancelOpen(false)}
@@ -214,6 +267,15 @@ export function PcActivityDetail({ id }: { id: number }) {
           }}
         />
       ) : null}
+      <ShareContactsPanel
+        open={shareOpen}
+        surface="pc"
+        onClose={() => setShareOpen(false)}
+        onConfirm={(count) => {
+          setShareOpen(false);
+          toast.show(shareConfirmMessage(count));
+        }}
+      />
     </PcActivityShell>
   );
 }

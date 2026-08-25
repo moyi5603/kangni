@@ -79,18 +79,14 @@ export function SignupForm({ types, fields, onCancel, onConfirm }: SignupFormPro
             const value = answers[field.key] ?? '';
             const label = `${field.label}${field.required ? ' *' : ''}`;
 
-            if (field.inputType === 'radio' || field.inputType === 'group') {
-              const options =
-                field.inputType === 'group'
-                  ? (field.groups ?? []).map((item) => item.name.trim()).filter(Boolean)
-                  : (field.options ?? []).filter((option) => option.trim());
+            if (field.inputType === 'radio') {
+              const options = (field.options ?? []).filter((option) => option.trim());
               return (
                 <fieldset key={field.key} className="c-signup-field">
                   <legend>{label}</legend>
                   <div className="c-signup-options" role="radiogroup" aria-label={field.label}>
                     {options.map((option) => {
                       const checked = value === option;
-                      const groupMeta = field.inputType === 'group' ? field.groups?.find((item) => item.name.trim() === option) : undefined;
                       return (
                         <label key={option} className={`c-signup-option${checked ? ' is-checked' : ''}`}>
                           <input
@@ -101,7 +97,6 @@ export function SignupForm({ types, fields, onCancel, onConfirm }: SignupFormPro
                             onChange={() => setAnswer(field.key, option)}
                           />
                           {option}
-                          {groupMeta ? <span className="c-signup-option-meta">（上限 {groupMeta.limit} 人）</span> : null}
                         </label>
                       );
                     })}
@@ -110,14 +105,19 @@ export function SignupForm({ types, fields, onCancel, onConfirm }: SignupFormPro
               );
             }
 
-            if (field.inputType === 'checkbox') {
+            if (field.inputType === 'checkbox' || field.inputType === 'group') {
+              const options =
+                field.inputType === 'group'
+                  ? (field.groups ?? []).map((item) => item.name.trim()).filter(Boolean)
+                  : (field.options ?? []).filter((option) => option.trim());
               const picked = value.split('、').map((item) => item.trim()).filter(Boolean);
               return (
                 <fieldset key={field.key} className="c-signup-field">
                   <legend>{label}</legend>
                   <div className="c-signup-options" role="group" aria-label={field.label}>
-                    {(field.options ?? []).filter((option) => option.trim()).map((option) => {
+                    {options.map((option) => {
                       const checked = picked.includes(option);
+                      const groupMeta = field.inputType === 'group' ? field.groups?.find((item) => item.name.trim() === option) : undefined;
                       return (
                         <label key={option} className={`c-signup-option${checked ? ' is-checked' : ''}`}>
                           <input
@@ -128,6 +128,7 @@ export function SignupForm({ types, fields, onCancel, onConfirm }: SignupFormPro
                             onChange={() => setAnswer(field.key, toggleCheckbox(answers[field.key] ?? '', option))}
                           />
                           {option}
+                          {groupMeta ? <span className="c-signup-option-meta">（上限 {groupMeta.limit} 人）</span> : null}
                         </label>
                       );
                     })}

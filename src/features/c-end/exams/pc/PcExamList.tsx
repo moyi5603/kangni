@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { goH5ExamList, toPcExamPrepHash } from '../../../../app/navigation';
+import { toPcExamPrepHash } from '../../../../app/navigation';
 import { useExamCategoryTree, useExams } from '../../../exams/model/examStore';
 import { PcCategoryCascade } from '../../activities/pc/PcCategoryCascade';
 import { PcMallHero } from '../../activities/pc/PcMallHero';
@@ -88,7 +88,7 @@ export function PcExamList() {
   const passedCount = published.filter((item) => item.result === 'passed').length;
 
   return (
-    <PcActivityShell className="is-exam" title="考试" onPhone={goH5ExamList}>
+    <PcActivityShell className="is-exam" title="考试">
       <PcMallHero
         tone="exam"
         kicker="能力考核"

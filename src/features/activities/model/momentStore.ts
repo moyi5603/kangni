@@ -13,7 +13,6 @@ import {
   type MomentRecord,
 } from './moment';
 import { getRelatedList, useRelated } from './related';
-import { getRules } from './rulesStore';
 import { DEMO_SIGNUP_USER } from '../../c-end/activities/model/signupStore';
 
 export const MOMENT_VIEWER = DEMO_SIGNUP_USER.name;
@@ -287,8 +286,8 @@ export function useAllMoments(): MomentRecord[] {
   return list;
 }
 
-export function isMomentAuditEnabled(activityType: Activity['type']): boolean {
-  return getRules().find((item) => item.type === activityType)?.momentAuditEnabled ?? false;
+export function isMomentAuditEnabled(activity: Pick<Activity, 'momentAuditEnabled'>): boolean {
+  return Boolean(activity.momentAuditEnabled);
 }
 
 export function hasApprovedSignup(activityId: number, phone = DEMO_SIGNUP_USER.phone): boolean {
@@ -335,7 +334,7 @@ export function submitMoment(activity: Activity, draft: MomentDraft, author = MO
   const type = inferMomentType(draft.imageUrls, draft.videoUrl);
   if (!type) return { ok: false, message: '请上传图片或视频' };
   const stamp = nowText();
-  const status = nextStatusOnSubmit(isMomentAuditEnabled(activity.type));
+  const status = nextStatusOnSubmit(isMomentAuditEnabled(activity));
   moments = [
     {
       id: nextId(moments),
@@ -370,7 +369,7 @@ export function resubmitMoment(id: number, activity: Activity, draft: MomentDraf
   const type = inferMomentType(draft.imageUrls, draft.videoUrl);
   if (!type) return { ok: false, message: '请上传图片或视频' };
   const stamp = nowText();
-  const status = nextStatusOnSubmit(isMomentAuditEnabled(activity.type));
+  const status = nextStatusOnSubmit(isMomentAuditEnabled(activity));
   const updated = patchMoment(id, (item) => ({
     ...item,
     content: draft.content.trim(),

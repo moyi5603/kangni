@@ -24,7 +24,7 @@ describe('H5 activity cards', () => {
 
     expect(html).toContain('报名已结束');
     expect(html).toContain(
-      'aria-label="员工开放日，公司活动，已结束，日期 04/12，地点 总部一号楼多功能厅，报名已结束，限额 50 人"',
+      'aria-label="员工开放日，文化，已结束，日期 04/12，地点 总部一号楼多功能厅，报名已结束，限额 50 人"',
     );
     expect(html).toContain('日期 04/12');
     expect(html).toContain('地点 总部一号楼多功能厅');
@@ -42,7 +42,7 @@ describe('H5 activity cards', () => {
     expect(html).toContain(`<img src="${openActivity.coverUrl}"`);
     expect(html.indexOf('c-cover-fallback')).toBeLessThan(html.indexOf('<img'));
     expect(html).toContain(
-      'aria-label="员工开放日，公司活动，进行中，日期 04/12，地点 总部一号楼多功能厅，立即报名，限额 50 人"',
+      'aria-label="员工开放日，文化，进行中，日期 04/12，地点 总部一号楼多功能厅，立即报名，限额 50 人"',
     );
     expect(html).toContain('日期 04/12');
     expect(html).toContain('地点 总部一号楼多功能厅');
@@ -54,7 +54,7 @@ describe('H5 activity cards', () => {
     );
 
     expect(html).toContain(
-      'aria-label="员工开放日，公司活动，进行中，日期 04/12，地点 总部一号楼多功能厅，已报名，限额 50 人"',
+      'aria-label="员工开放日，文化，进行中，日期 04/12，地点 总部一号楼多功能厅，已报名，限额 50 人"',
     );
     expect(html).toContain('>已报名<');
   });

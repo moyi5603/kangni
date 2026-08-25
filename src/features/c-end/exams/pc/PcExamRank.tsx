@@ -19,7 +19,7 @@ export function PcExamRank({ id }: { id: number }) {
 
   if (!board) {
     return (
-      <PcActivityShell className="is-exam is-rank" title="考试排名" onPhone={() => goPcExamRecords(id)}>
+      <PcActivityShell className="is-exam is-rank" title="考试排名">
         <p className="c-empty">暂无考试排名</p>
       </PcActivityShell>
     );
@@ -28,7 +28,7 @@ export function PcExamRank({ id }: { id: number }) {
   const mine = board.rows.find((item) => item.isMe);
 
   return (
-    <PcActivityShell className="is-exam is-rank" title="考试排名" onPhone={() => goPcExamRecords(id)}>
+    <PcActivityShell className="is-exam is-rank" title="考试排名">
       <button className="c-back-link" type="button" onClick={() => goPcExamRecords(id)}>
         ← 返回记录
       </button>

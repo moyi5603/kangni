@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { App, Breadcrumb, Button, Card, Col, Descriptions, Empty, Flex, Image, Row, Space, Table, Tabs, Tag, Typography } from 'antd';
+import { App, Breadcrumb, Button, Card, Collapse, Descriptions, Empty, Flex, Image, Space, Table, Tabs, Tag, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { ActivityReviewModal } from '../components/ActivityReviewModal';
+import { ActivityClientPreviewModal } from '../components/ActivityClientPreviewModal';
 import { ActivityStatsRow } from '../components/ActivityStatsRow';
 import { patchActivities, submitActivitiesForApproval, useActivities } from '../model/activityStore';
 import {
@@ -10,46 +11,26 @@ import {
   formatActivityTime,
   formatCustomCrowdVisibility,
   formatPublishedAt,
-  isRecreationActivity,
-  type ActivityStatus,
+  getActivityLifecycleStatus,
+  lifecycleStatusColor,
   type SignupField,
 } from '../model/activity';
+import { formatApprovalNodeSummary } from '../model/rules';
+import { formatActivityPointGrant } from '../model/activityPointRules';
+import { signupFieldInputTypeLabels } from '../model/signupFields';
 import { ActivityMomentListPage } from './ActivityMomentListPage';
 import { ActivityPrizeListPage } from './ActivityPrizeListPage';
-import { ApprovalList, CommentList, SignupList, SurveyList } from './ActivityRelatedListPage';
+import { CommentList, SignupList } from './ActivityRelatedListPage';
 
 const detailTabs = [
   { key: 'detail', label: '详情' },
   { key: 'signups', label: '报名' },
   { key: 'comments', label: '评论' },
   { key: 'moments', label: '精彩瞬间' },
-  { key: 'approvals', label: '活动审批' },
-  { key: 'surveys', label: '调查问卷' },
   { key: 'prizes', label: '奖品发放' },
 ] as const;
 
 type DetailTab = (typeof detailTabs)[number]['key'];
-
-const signupFieldTypeLabels: Record<SignupField['inputType'], string> = {
-  text: '文本',
-  radio: '单选',
-  checkbox: '多选',
-  group: '分组',
-  companion: '同行人',
-};
-
-const activityTypeColor: Record<string, string> = {
-  公司活动: 'blue',
-  疗休养活动: 'green',
-  体检活动: 'cyan',
-  项目活动: 'orange',
-};
-
-const activityStatusColor: Record<ActivityStatus, string> = {
-  未开始: 'default',
-  进行中: 'processing',
-  已结束: 'default',
-};
 
 function dash(value: string | null | undefined): string {
   return value?.trim() ? value : '—';
@@ -67,7 +48,7 @@ function formatSignupFieldConfig(field: SignupField): string {
   if (field.inputType === 'group') {
     const groups = field.groups ?? [];
     return groups.length
-      ? groups.map((item) => `${item.name.trim() || '未命名'}（${item.limit} 人）`).join('；')
+      ? groups.map((item) => `${item.name.trim() || '未命名'}（限 ${item.limit} 人）`).join('；')
       : '—';
   }
   if (field.inputType === 'companion') {
@@ -96,6 +77,7 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
   const { message, modal } = App.useApp();
   const activities = useActivities();
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const activeTab: DetailTab = isDetailTab(tab) ? tab : 'detail';
   const [visited, setVisited] = useState<ReadonlySet<string>>(() => new Set([activeTab]));
   useEffect(() => {
@@ -133,6 +115,7 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
   const showReview = canReviewActivity(activity);
   const showSubmit = canSubmitApproval(activity);
   const signupOpen = !dayjs().isAfter(dayjs(activity.signupEndAt));
+  const lifecycleStatus = getActivityLifecycleStatus(activity);
   const submit = () => {
     modal.confirm({
       title: `确认提交「${activity.title}」审批？`,
@@ -214,8 +197,8 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
             </div>
             <div className="activity-detail-header-copy">
               <Space wrap size={[8, 8]}>
-                <Tag color={activityTypeColor[activity.type] ?? 'default'}>{activity.type}</Tag>
-                <Tag color={activityStatusColor[activity.activityStatus]}>{activity.activityStatus}</Tag>
+                <Tag>{activity.category}</Tag>
+                <Tag color={lifecycleStatusColor[lifecycleStatus]}>{lifecycleStatus}</Tag>
                 {activity.auditStatus !== '已通过' && activity.auditStatus !== '无需审核' ? (
                   <Tag
                     color={
@@ -228,9 +211,6 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
                   >
                     {activity.auditStatus}
                   </Tag>
-                ) : null}
-                {activity.publishStatus !== '已发布' ? (
-                  <Tag color="default">{activity.publishStatus}</Tag>
                 ) : null}
               </Space>
               <Typography.Title level={3} style={{ marginTop: 8, marginBottom: 4 }}>
@@ -258,19 +238,12 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
                 提交审批
               </Button>
             ) : null}
+            <Button onClick={() => setPreviewOpen(true)}>预览</Button>
             <Button type="primary" onClick={() => onEdit(activity.id)}>
               编辑
             </Button>
             <Button onClick={() => onCopy(activity.id)}>复制创建</Button>
             {signupOpen ? <Button onClick={closeSignup}>截止报名</Button> : null}
-            <Button
-              onClick={() => {
-                message.info('未开发，跳转到创建问卷');
-                onTabChange('surveys');
-              }}
-            >
-              创建问卷
-            </Button>
             <Button danger onClick={remove}>
               删除
             </Button>
@@ -304,12 +277,7 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
                         ),
                       },
                       { label: '活动标题', children: activity.title },
-                      {
-                        label: '类型',
-                        children: <Tag color={activityTypeColor[activity.type] ?? 'default'}>{activity.type}</Tag>,
-                      },
                       { label: '分类', children: dash(activity.category) },
-                      { label: '标签', children: activity.tags.length ? activity.tags.join('、') : '—' },
                       { label: '报名时间', children: `${activity.signupStartAt} ~ ${activity.signupEndAt}` },
                       { label: '活动时间', children: formatActivityTime(activity) },
                       { label: '活动地点', children: dash(activity.location) },
@@ -321,9 +289,6 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
                     ]}
                   />
                 </Card>
-                <Card title="可见范围">
-                  <Descriptions column={{ xs: 1, sm: 2, lg: 3 }} items={[{ label: '可见范围', children: visibilityText }]} />
-                </Card>
                 <Card title="活动详情">
                   {hasHtmlContent(activity.detailHtml) ? (
                     <div
@@ -334,83 +299,110 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
                     <Empty description="暂无详情" />
                   )}
                 </Card>
-                {isRecreationActivity(activity.type) ? (
-                  <>
-                    <Card title="行程安排">
-                      {hasHtmlContent(activity.itinerary) ? (
-                        <div
-                          className="rich-text-preview activity-detail-rich"
-                          dangerouslySetInnerHTML={{ __html: activity.itinerary }}
-                        />
-                      ) : (
-                        <Empty description="暂无行程" />
-                      )}
-                    </Card>
-                    <Card title="额外费用规则">
-                      {hasHtmlContent(activity.extraFeeRule) ? (
-                        <div
-                          className="rich-text-preview activity-detail-rich"
-                          dangerouslySetInnerHTML={{ __html: activity.extraFeeRule }}
-                        />
-                      ) : (
-                        <Empty description="暂无费用规则" />
-                      )}
-                    </Card>
-                  </>
-                ) : null}
-                <Card title="活动设置">
-                  <Descriptions
-                    column={{ xs: 1, sm: 2, lg: 3 }}
+                <Card styles={{ body: { paddingBlock: 0 } }} className="advanced-settings-card">
+                  <Collapse
+                    ghost
+                    className="advanced-settings-collapse"
+                    defaultActiveKey={[]}
                     items={[
                       {
-                        label: '是否审核报名',
-                        children: signupSetting?.needAudit ? '需要审核' : '无需审核',
+                        key: 'advanced',
+                        label: '高级设置',
+                        children: (
+                          <Space direction="vertical" size="middle" style={{ width: '100%', paddingBottom: 16 }}>
+                            <Card title="可见范围" size="small">
+                              <Descriptions
+                                column={{ xs: 1, sm: 2, lg: 3 }}
+                                items={[
+                                  { label: '可见范围', children: visibilityText },
+                                  {
+                                    label: '是否发送消息通知',
+                                    children: activity.notifyOnPublish ? '开启' : '关闭',
+                                  },
+                                ]}
+                              />
+                            </Card>
+                            <Card title="活动设置" size="small">
+                              <Descriptions
+                                column={{ xs: 1, sm: 2, lg: 3 }}
+                                items={[
+                                  {
+                                    label: '是否审核报名',
+                                    children: signupSetting?.needAudit ? '需要审核' : '无需审核',
+                                  },
+                                  ...(signupSetting?.needAudit
+                                    ? [
+                                        {
+                                          label: '是否开启报名审批流',
+                                          children: activity.activityApprovalEnabled
+                                            ? activity.signupApprovalNodes?.length
+                                              ? activity.signupApprovalNodes
+                                                  .map((node, index) => `第 ${index + 1} 节点：${formatApprovalNodeSummary(node)}`)
+                                                  .join('；')
+                                              : '开启（未设置节点）'
+                                            : '未开启，由管理员进行审核',
+                                        },
+                                      ]
+                                    : []),
+                                  {
+                                    label: '报名是否有司龄限制',
+                                    children: hasSeniorityLimit ? '有限制' : '无限制',
+                                  },
+                                  ...(hasSeniorityLimit
+                                    ? [
+                                        {
+                                          label: '司龄要满',
+                                          children: `${signupSetting?.minSeniorityYears} 年`,
+                                        },
+                                      ]
+                                    : []),
+                                  {
+                                    label: '是否开启精彩瞬间审核',
+                                    children: activity.momentAuditEnabled ? '开启' : '关闭',
+                                  },
+                                  { label: '报名活动可得积分', children: formatActivityPointGrant(activity.signupPointsEnabled, activity.signupPoints) },
+                                  { label: '活动首评可得积分', children: formatActivityPointGrant(activity.firstCommentPointsEnabled, activity.firstCommentPoints) },
+                                  { label: '活动打分可得积分', children: formatActivityPointGrant(activity.ratingPointsEnabled, activity.ratingPoints) },
+                                  { label: '首次发布精彩瞬间可得积分', children: formatActivityPointGrant(activity.firstMomentPointsEnabled, activity.firstMomentPoints) },
+                                ]}
+                              />
+                            </Card>
+                            <Card title="报名信息收集" size="small">
+                              {signupFields.length ? (
+                                <Table
+                                  size="small"
+                                  pagination={false}
+                                  rowKey="key"
+                                  dataSource={signupFields}
+                                  columns={[
+                                    { title: '字段名称', dataIndex: 'label', width: 140 },
+                                    {
+                                      title: '类型',
+                                      dataIndex: 'inputType',
+                                      width: 96,
+                                      render: (value: SignupField['inputType']) => signupFieldInputTypeLabels[value],
+                                    },
+                                    {
+                                      title: '必填',
+                                      dataIndex: 'required',
+                                      width: 72,
+                                      render: (value: boolean) => (value ? '是' : '否'),
+                                    },
+                                    {
+                                      title: '配置',
+                                      render: (_: unknown, field: SignupField) => formatSignupFieldConfig(field),
+                                    },
+                                  ]}
+                                />
+                              ) : (
+                                <Empty description="暂无收集字段" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                              )}
+                            </Card>
+                          </Space>
+                        ),
                       },
-                      {
-                        label: '报名是否有司龄限制',
-                        children: hasSeniorityLimit ? '有限制' : '无限制',
-                      },
-                      ...(hasSeniorityLimit
-                        ? [
-                            {
-                              label: '司龄要满',
-                              children: `${signupSetting?.minSeniorityYears} 年`,
-                            },
-                          ]
-                        : []),
                     ]}
                   />
-                </Card>
-                <Card title="报名信息收集">
-                  {signupFields.length ? (
-                    <Table
-                      size="small"
-                      pagination={false}
-                      rowKey="key"
-                      dataSource={signupFields}
-                      columns={[
-                        { title: '字段名称', dataIndex: 'label', width: 140 },
-                        {
-                          title: '类型',
-                          dataIndex: 'inputType',
-                          width: 96,
-                          render: (value: SignupField['inputType']) => signupFieldTypeLabels[value],
-                        },
-                        {
-                          title: '必填',
-                          dataIndex: 'required',
-                          width: 72,
-                          render: (value: boolean) => (value ? '是' : '否'),
-                        },
-                        {
-                          title: '配置',
-                          render: (_: unknown, field: SignupField) => formatSignupFieldConfig(field),
-                        },
-                      ]}
-                    />
-                  ) : (
-                    <Empty description="暂无收集字段" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-                  )}
                 </Card>
               </div>
             ),
@@ -418,12 +410,11 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
           { key: 'signups', label: '报名', children: visited.has('signups') ? <SignupList activity={activity} /> : null },
           { key: 'comments', label: '评论', children: visited.has('comments') ? <CommentList activity={activity} /> : null },
           { key: 'moments', label: '精彩瞬间', children: visited.has('moments') ? <ActivityMomentListPage activity={activity} /> : null },
-          { key: 'approvals', label: '活动审批', children: visited.has('approvals') ? <ApprovalList activity={activity} /> : null },
-          { key: 'surveys', label: '调查问卷', children: visited.has('surveys') ? <SurveyList activity={activity} /> : null },
           { key: 'prizes', label: '奖品发放', children: visited.has('prizes') ? <ActivityPrizeListPage activity={activity} /> : null },
         ]}
       />
       <ActivityReviewModal activity={activity} open={reviewOpen} onClose={() => setReviewOpen(false)} />
+      <ActivityClientPreviewModal activity={activity} open={previewOpen} onClose={() => setPreviewOpen(false)} />
     </div>
   );
 }

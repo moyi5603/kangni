@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { goH5CourseList, toPcCourseDetailHash } from '../../../../app/navigation';
+import { toPcCourseDetailHash } from '../../../../app/navigation';
 import { useCourseCategoryTree } from '../../../training/model/trainingStore';
 import { PcCategoryCascade } from '../../activities/pc/PcCategoryCascade';
 import { PcMallHero } from '../../activities/pc/PcMallHero';
@@ -65,7 +65,7 @@ export function PcCourseMall() {
   );
 
   return (
-    <PcActivityShell className="is-course" title="课程" onPhone={goH5CourseList}>
+    <PcActivityShell className="is-course" title="课程">
       <PcMallHero
         tone="course"
         kicker="员工学堂"

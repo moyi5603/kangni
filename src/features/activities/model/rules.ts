@@ -1,8 +1,15 @@
 import { activityTypes, type ActivityType } from './activity';
 
-export const RULES_MOCK_VERSION = 2;
+export const RULES_MOCK_VERSION = 3;
 
-export type AssigneeMode = 'people' | 'department';
+export const assigneeModes = ['people', 'sameLevelLeader', 'parentLevelLeader'] as const;
+export type AssigneeMode = (typeof assigneeModes)[number];
+
+export const assigneeModeLabels: Record<AssigneeMode, string> = {
+  people: '指定审核人',
+  sameLevelLeader: '本级部门负责人',
+  parentLevelLeader: '上级部门负责人',
+};
 
 export type SignupLadder = {
   minSeniorityYears: number;
@@ -67,6 +74,13 @@ export function canDisableCreate(rules: ActivityTypeRule[], type: ActivityType):
 
 export function emptyLadder(): Partial<SignupLadder> {
   return {};
+}
+
+export function formatApprovalNodeSummary(node: ApprovalNode): string {
+  const mode = assigneeModeLabels[node.assigneeMode] ?? '指定审核人';
+  if (node.assigneeMode !== 'people') return mode;
+  const who = node.reviewerIds.length ? node.reviewerIds.join('、') : '—';
+  return `${mode}（${who}）`;
 }
 
 export function createApprovalNode(): ApprovalNode {
@@ -137,7 +151,7 @@ export const initialRules: ActivityTypeRule[] = activityTypes.map((type) => {
       approvalEnabled: true,
       approvalNodes: [
         { id: 'company-1', assigneeMode: 'people', reviewerIds: ['张悦', '李明'] },
-        { id: 'company-2', assigneeMode: 'department', reviewerIds: [], departmentId: '人力资源' },
+        { id: 'company-2', assigneeMode: 'sameLevelLeader', reviewerIds: [] },
       ],
     };
   }

@@ -8,7 +8,6 @@ import { PcActivityDetail } from '../features/c-end/activities/pc/PcActivityDeta
 import { PcActivityHome } from '../features/c-end/activities/pc/PcActivityHome';
 import { PcMyFavorites } from '../features/c-end/activities/pc/PcMyFavorites';
 import { PcMySignups } from '../features/c-end/activities/pc/PcMySignups';
-import { PcSignupPage } from '../features/c-end/activities/pc/PcSignupPage';
 import { H5CourseDetail } from '../features/c-end/courses/h5/H5CourseDetail';
 import { H5CourseMall } from '../features/c-end/courses/h5/H5CourseMall';
 import { H5ExamList } from '../features/c-end/exams/h5/H5ExamList';
@@ -96,7 +95,7 @@ export function CEndApp(props: CEndAppProps) {
     ) : h5Page === 'favorites' ? (
       <PcMyFavorites />
     ) : h5Page === 'signup' ? (
-      <PcSignupPage id={activityId ?? -1} />
+      <PcActivityDetail id={activityId ?? -1} signupOpen />
     ) : activityId == null ? (
       <PcActivityHome />
     ) : (

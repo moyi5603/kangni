@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>评优后台 产品需求文档</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; line-height: 1.65; color: #1f2937; margin: 0; background: #f8fafc; }
+    .layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: 100vh; }
+    .layout.toc-collapsed { grid-template-columns: 0 minmax(0, 1fr); }
+    .toc { position: sticky; top: 0; height: 100vh; overflow: auto; border-right: 1px solid #d1d5db; background: #fff; padding: 16px; }
+    .layout.toc-collapsed .toc { transform: translateX(-100%); padding: 0; border: 0; }
+    .toc-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+    .toc-title { margin: 0; font-size: 15px; font-weight: 700; }
+    .icon-button { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; cursor: pointer; }
+    .icon-button svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .toc ol { list-style: none; padding: 0; margin: 0; }
+    .toc li { margin: 4px 0; }
+    .toc a { display: block; color: #374151; text-decoration: none; padding: 6px 8px; border-radius: 6px; font-size: 14px; }
+    .toc a:hover { background: #f3f4f6; color: #0f766e; }
+    .toc .sub a { padding-left: 18px; font-size: 13px; color: #6b7280; }
+    .content-wrap { min-width: 0; }
+    .floating-toc-toggle { position: fixed; left: 12px; top: 12px; z-index: 20; box-shadow: 0 4px 12px rgba(15,23,42,.12); }
+    main { max-width: 1180px; margin: 0 auto; padding: 32px 24px 64px; background: #fff; }
+    h1,h2,h3,h4 { color: #111827; line-height: 1.3; }
+    h2 { margin-top: 40px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 13px; }
+    th, td { border: 1px solid #d1d5db; padding: 8px 10px; vertical-align: top; }
+    th { background: #f3f4f6; text-align: left; }
+    figure { margin: 16px 0 24px; border: 1px solid #d1d5db; background: #f9fafb; padding: 12px; }
+    figure img { max-width: 100%; height: auto; display: block; border: 1px solid #e5e7eb; background: #fff; }
+    figcaption { margin-top: 8px; color: #4b5563; font-size: 13px; }
+    .component-path { font-weight: 600; color: #0f766e; }
+    .status { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #e0f2fe; color: #075985; font-size: 12px; margin-right: 4px; }
+    .status.impl { background: #dcfce7; color: #166534; }
+    .status.todo { background: #fee2e2; color: #991b1b; }
+    .status.guess { background: #fef3c7; color: #92400e; }
+    code { background: #f3f4f6; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+    @media (max-width: 860px) {
+      .layout { display: block; }
+      .toc { position: fixed; z-index: 15; width: 280px; box-shadow: 0 12px 30px rgba(15,23,42,.18); }
+      .layout.toc-collapsed .toc { transform: translateX(-100%); }
+      main { padding-top: 56px; }
+    }
+</style>
+</head>
+<body>
+<div class="layout" id="prdLayout">
+<aside class="toc" aria-label="PRD目录">
+  <div class="toc-header">
+    <p class="toc-title">目录</p>
+    <button class="icon-button toc-toggle" type="button" data-toggle-toc aria-label="隐藏目录" title="隐藏目录">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+    </button>
+  </div>
+  <nav><ol><li><a href="#doc-note">1. 文档说明</a></li>
+<li><a href="#overview">2. 产品概述</a></li>
+<li><a href="#ia">3. 页面结构 / 信息架构</a></li>
+<li><a href="#implemented-features">4. 已实现功能清单</a></li>
+<li><a href="#flows">5. 用户流程</a></li>
+<li><a href="#page-requirements">6. 页面级需求说明</a></li>
+<li><a href="#data-fields">7. 数据字段与枚举</a></li>
+<li><a href="#apis">8. API / 数据接口清单</a></li>
+<li><a href="#non-functional">9. 非功能需求</a></li>
+<li><a href="#analytics">10. 埋点与指标建议</a></li>
+<li><a href="#acceptance">11. 验收标准</a></li>
+<li><a href="#risks">12. 风险与待确认问题</a></li></ol></nav>
+</aside>
+<div class="content-wrap">
+<button class="icon-button floating-toc-toggle" type="button" data-toggle-toc aria-label="显示目录" title="显示目录">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+</button>
+<main>
+  <h1>评优后台 产品需求文档</h1>
+  
+  <section id="doc-note">
+    <h2>1. 文档说明</h2>
+    <ul>
+      <li>范围：应用「评优」：评优管理、证书；概览与规则设置为 PlaceholderPage</li>
+      <li>日期：2026-08-24</li>
+    </ul>
+  </section>
+  <section id="overview">
+    <h2>2. 产品概述</h2>
+    <p>评优活动配置（提名/投票截止、名次奖励）、提名审核、结果公示与证书模板管理。</p>
+  </section>
+  <section id="ia">
+    <h2>3. 页面结构 / 信息架构</h2>
+    <figure>
+        <img src="screenshots/评优-左侧菜单.png" alt="评优应用-导航-左侧菜单截图">
+        <figcaption><span class="component-path">评优应用-导航-左侧菜单</span></figcaption>
+      </figure>
+    <ul>
+      <li>侧栏：概览(占位) / 评优管理 / 评优证书 / 规则设置(占位)</li>
+      <li>详情 Tab：detail / nominations / comments（评论 Empty 占位）</li>
+    </ul>
+  </section>
+  <section id="implemented-features">
+    <h2>4. 已实现功能清单</h2>
+    <table>
+      <thead><tr><th>模块</th><th>功能</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td>评优列表/表单/详情</td><td>创建编辑发布公示、提名审核、名次奖励配置</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>证书</td><td>证书模板 CRUD</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>概览/规则/评论</td><td>占位</td><td><span class="status guess">根据页面推测需要</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+  <section id="flows">
+    <h2>5. 用户流程</h2>
+    <ol>
+      <li>创建评优 → 配置范围与名次奖励 → 发布 → 审核提名 → 结束后结果公示</li>
+    </ol>
+  </section>
+  <section id="page-requirements">
+    <h2>6. 页面级需求说明</h2>
+    <h3>6.1 评优管理</h3>
+    <figure>
+        <img src="screenshots/评优管理-页面整体.png" alt="评优管理-页面布局-页面整体截图">
+        <figcaption><span class="component-path">评优管理-页面布局-页面整体</span></figcaption>
+      </figure>
+    <p>筛名称/状态/类型/提名投票截止/是否公示。行：详情编辑发布撤销删除（征集中且未发布）、结果公示。</p>
+    <h3>6.2 新增评优 / 详情</h3>
+    <figure>
+        <img src="screenshots/新增评优-表单页.png" alt="新增评优-表单页-页面整体截图">
+        <figcaption><span class="component-path">新增评优-表单页-页面整体</span></figcaption>
+      </figure>
+    <figure>
+        <img src="screenshots/评优详情-页面整体.png" alt="评优详情-页面布局-页面整体截图">
+        <figcaption><span class="component-path">评优详情-页面布局-页面整体</span></figcaption>
+      </figure>
+    <p>表单：名称、类型(个人/团队/项目)、提名/投票截止、标准列表、前 x 名奖励(积分/勋章/证书)、可见/提名人/被提范围、自动公示。详情提名 Tab 可新建与审核。</p>
+    <h3>6.3 评优证书</h3>
+    <figure>
+        <img src="screenshots/评优证书-页面整体.png" alt="评优证书-页面布局-页面整体截图">
+        <figcaption><span class="component-path">评优证书-页面布局-页面整体</span></figcaption>
+      </figure>
+  </section>
+  <section id="data-fields">
+    <h2>7. 数据字段与枚举</h2>
+    <table>
+      <thead><tr><th>枚举</th><th>取值</th></tr></thead>
+      <tbody>
+        <tr><td>AwardType</td><td>个人 / 团队 / 项目</td></tr>
+        <tr><td>AwardStatus（推导）</td><td>征集中 / 投票中 / 已结束</td></tr>
+        <tr><td>PublishStatus</td><td>未发布 / 已发布</td></tr>
+        <tr><td>NominationReviewStatus</td><td>待审核 / 已通过 / 已驳回</td></tr>
+      </tbody>
+    </table>
+  </section>
+  <section id="apis"><h2>8. API / 数据接口清单</h2><p>内存 awardStore / awardCertificateStore / awardNominationStore，无 localStorage。</p></section>
+  <section id="non-functional"><h2>9. 非功能需求</h2><p>未保存离开确认；删除保护。投票计票 UI 未见。</p></section>
+  <section id="analytics"><h2>10. 埋点与指标建议</h2><p><span class="status">建议补充</span> award_publish / nomination_approve / result_publicize。</p></section>
+  <section id="acceptance">
+    <h2>11. 验收标准</h2>
+    <ol>
+      <li>Given 征集中且未发布，When 删除，Then 可删。</li>
+      <li>Given 已结束，When 结果公示，Then 公示标签更新。</li>
+      <li>Given 个人类型提名，When 名单人数≠1，Then 校验失败。</li>
+    </ol>
+  </section>
+  <section id="risks">
+    <h2>12. 风险与待确认问题</h2>
+    <ul>
+      <li>概览/规则/评论占位；无投票与发奖流程页。</li>
+      <li>状态由截止时间推导，无 collectStartAt/未开始。</li>
+      <li>导入人群仅文件名；勋章复用活动 medalLibrary。</li>
+    </ul>
+  </section>
+
+</main>
+</div>
+</div>
+<script>
+  document.querySelectorAll('[data-toggle-toc]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var layout = document.getElementById('prdLayout');
+      var collapsed = layout.classList.toggle('toc-collapsed');
+      document.querySelectorAll('[data-toggle-toc]').forEach(function (btn) {
+        btn.setAttribute('aria-label', collapsed ? '显示目录' : '隐藏目录');
+        btn.setAttribute('title', collapsed ? '显示目录' : '隐藏目录');
+      });
+    });
+  });
+</script>
+</body>
+</html>

@@ -1,17 +1,25 @@
 import { Card, Col, Row, Statistic } from 'antd';
 import type { Activity } from '../model/activity';
+import { activityRatingAverage, activityRatingCount, useActivityRatings } from '../model/activityRating';
 import { computeActivityStats } from '../model/activityStats';
 import { useMoments } from '../model/momentStore';
 import { useRelated } from '../model/related';
 
 export function ActivityStatsRow({ activity, embedded = false }: { activity: Activity; embedded?: boolean }) {
+  useActivityRatings();
   const signups = useRelated('signups', activity.id);
   const comments = useRelated('comments', activity.id);
-  const surveys = useRelated('surveys', activity.id);
   const moments = useMoments(activity.id);
-  const stats = computeActivityStats({ signups, comments, moments, surveys, signupSettings: activity.signupSettings });
+  const stats = computeActivityStats({
+    signups,
+    comments,
+    moments,
+    surveys: [],
+    signupSettings: activity.signupSettings,
+  });
   const signupTotalLimit = activity.signupSettings.reduce((sum, item) => sum + (item.limit ?? 0), 0);
-  const items = [
+  const ratingAverage = activityRatingAverage(activity.id);
+  const items: { title: string; value: string | number; suffix?: string }[] = [
     {
       title: '报名人数',
       value: stats.signupCount,
@@ -25,12 +33,13 @@ export function ActivityStatsRow({ activity, embedded = false }: { activity: Act
     },
     { title: '评论数', value: stats.commentCount },
     { title: '精彩瞬间数', value: stats.momentCount },
-    { title: '问卷回收数', value: stats.surveyResponseCount },
+    { title: '平均分', value: ratingAverage === null ? '—' : ratingAverage.toFixed(1) },
+    { title: '评分人数', value: activityRatingCount(activity.id) },
   ];
   const content = (
     <Row gutter={16}>
       {items.map((item) => (
-        <Col key={item.title} xs={12} sm={8} md={4}>
+        <Col key={item.title} xs={12} sm={8} md={6} lg={3}>
           <Statistic title={item.title} value={item.value} suffix={item.suffix} />
         </Col>
       ))}

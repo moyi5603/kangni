@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { goPcExamPrep, goPcExamResult } from '../../../../app/navigation';
+import { goPcExamResult } from '../../../../app/navigation';
 import { useCEndToast } from '../../activities/components/CEndToast';
 import { PcActivityShell } from '../../activities/pc/PcActivityShell';
 import { submitClientExam } from '../model/clientExamResult';
@@ -25,7 +25,7 @@ export function PcExamTaking({
 
   if (!paper || !question) {
     return (
-      <PcActivityShell className="is-exam is-taking" title="考试中" onPhone={() => goPcExamPrep(id)}>
+      <PcActivityShell className="is-exam is-taking" title="考试中">
         <p className="c-empty">考试不存在或未发布</p>
       </PcActivityShell>
     );
@@ -46,7 +46,7 @@ export function PcExamTaking({
   };
 
   return (
-    <PcActivityShell className="is-exam is-taking" title="考试中" onPhone={() => goPcExamPrep(id)}>
+    <PcActivityShell className="is-exam is-taking" title="考试中">
       <div className="c-pc-detail">
         <article>
           <section className="c-detail-info-card c-pc-exam-paper" aria-label="当前题目">

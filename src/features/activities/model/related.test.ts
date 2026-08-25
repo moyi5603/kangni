@@ -45,6 +45,15 @@ describe('related signups seed and subscribe', () => {
     expect(getRelatedList('signups').some((item) => item.phone === '13800001001')).toBe(true);
   });
 
+  it('seeds 50 approved people on the pinned camp activity', () => {
+    const approved = getRelatedList('signups').filter(
+      (item) => item.activityId === 2 && item.status === '已通过',
+    );
+    expect(approved).toHaveLength(50);
+    expect(approved.some((item) => item.name === '张悦')).toBe(true);
+    expect(approved.some((item) => item.name === '学员01')).toBe(true);
+  });
+
   it('notifies subscribeRelated when signups change', () => {
     let calls = 0;
     const stop = subscribeRelated(() => {

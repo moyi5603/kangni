@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import type { Activity, ActivityType } from '../../../activities/model/activity';
+import type { Activity } from '../../../activities/model/activity';
 import { getRelatedList, subscribeRelated } from '../../../activities/model/related';
 import type { ClientSignup } from './signupStore';
 import { commentCount } from './activityComments';
@@ -16,10 +16,10 @@ export const HOME_FAVORITE_PREVIEW_LIMIT = 2;
 
 export const CLIENT_TABS = [
   { id: 'all', label: '全部' },
-  { id: '公司活动', label: '公司活动' },
-  { id: '体检活动', label: '体检活动' },
-  { id: '疗休养活动', label: '疗休养活动' },
-  { id: '项目活动', label: '项目活动' },
+  { id: '文化', label: '文化' },
+  { id: '体育', label: '体育' },
+  { id: '培训', label: '培训' },
+  { id: '公益', label: '公益' },
 ] as const;
 
 export type ClientTabId = (typeof CLIENT_TABS)[number]['id'];
@@ -89,20 +89,20 @@ export function featuredActivities(list: Activity[], now = Date.now()): Activity
 export function filterByTab(list: Activity[], tab: ClientTabId): Activity[] {
   const visible = clientVisibleActivities(list);
   if (tab === 'all') return visible;
-  return visible.filter((item) => item.type === (tab as ActivityType));
+  return visible.filter((item) => item.category === tab);
 }
 
 export function tabCounts(list: Activity[]): Record<ClientTabId, number> {
   const visible = clientVisibleActivities(list);
   const counts: Record<ClientTabId, number> = {
     all: visible.length,
-    公司活动: 0,
-    体检活动: 0,
-    疗休养活动: 0,
-    项目活动: 0,
+    文化: 0,
+    体育: 0,
+    培训: 0,
+    公益: 0,
   };
   visible.forEach((item) => {
-    counts[item.type] += 1;
+    if (item.category in counts) counts[item.category as Exclude<ClientTabId, 'all'>] += 1;
   });
   return counts;
 }
@@ -119,8 +119,27 @@ export function formatShortActivityDate(activity: Activity): string {
   return start === end ? start : `${start} - ${end}`;
 }
 
+export function formatPcDateTime(value: string, now = new Date()): string {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(value)) return value;
+  if (value.slice(0, 4) !== String(now.getFullYear())) return value;
+  return value.slice(5);
+}
+
+export function formatPcDateTimeRange(start: string, end: string, now = new Date()): string {
+  return `${formatPcDateTime(start, now)} ~ ${formatPcDateTime(end, now)}`;
+}
+
 export function getPublishedActivity(list: Activity[], id: number): Activity | undefined {
   return publishedActivities(list).find((item) => item.id === id);
+}
+
+/** B 端预览：按已发布展示，便于看 PC / H5 页面效果 */
+export function asClientPreviewActivity(activity: Activity): Activity {
+  return {
+    ...activity,
+    publishStatus: '已发布',
+    publishedAt: activity.publishedAt || activity.createdAt,
+  };
 }
 
 export function signupTypes(activity: Activity): string[] {
@@ -149,6 +168,34 @@ export function signupOccupiedCount(activityId: number): number {
   return getRelatedList('signups').filter(
     (item) => item.activityId === activityId && OCCUPIED_SIGNUP_STATUSES.has(item.status),
   ).length;
+}
+
+export type ApprovedSignupPerson = {
+  id: number;
+  name: string;
+  department: string;
+};
+
+export const SIGNUP_PEOPLE_PREVIEW_LIMIT = 5;
+
+export function approvedSignupPeople(activityId: number): ApprovedSignupPerson[] {
+  return getRelatedList('signups')
+    .filter((item) => item.activityId === activityId && item.status === '已通过')
+    .slice()
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+    .map((item) => ({ id: item.id, name: item.name, department: item.department }));
+}
+
+export function filterApprovedSignupPeople(
+  people: readonly ApprovedSignupPerson[],
+  query: string,
+): ApprovedSignupPerson[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return [...people];
+  return people.filter(
+    (person) =>
+      person.name.toLowerCase().includes(needle) || person.department.toLowerCase().includes(needle),
+  );
 }
 
 export type ClientSignupView = {

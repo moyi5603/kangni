@@ -2,8 +2,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { initialActivities, type Activity } from '../../../activities/model/activity';
 import { patchRelated, restoreRelatedComments, restoreRelatedSignups } from '../../../activities/model/related';
 import {
+  approvedSignupPeople,
   favoriteViews,
+  filterApprovedSignupPeople,
   filterSignupsByTitle,
+  formatPcDateTime,
+  formatPcDateTimeRange,
   groupClientSignups,
   hasHomeFavoritesPane,
   hasHomeSignupsPane,
@@ -70,7 +74,29 @@ describe('client activity signup model', () => {
 
   it('counts pending and approved signups as occupied seats', () => {
     expect(signupOccupiedCount(1)).toBe(3);
-    expect(signupOccupiedCount(2)).toBe(8);
+    expect(signupOccupiedCount(2)).toBe(54);
+  });
+
+  it('lists only approved signup people with name and department', () => {
+    const people = approvedSignupPeople(2);
+    expect(people).toHaveLength(50);
+    expect(people.slice(0, 4)).toEqual([
+      { id: 6, name: '张悦', department: '前端组' },
+      { id: 9, name: '周工', department: '总装车间' },
+      { id: 12, name: '赵人事', department: '人力资源' },
+      { id: 4, name: '陈产品', department: '职能中心' },
+    ]);
+    expect(people[4]).toEqual({ id: 2000, name: '学员01', department: '研发中心' });
+    expect(approvedSignupPeople(21)).toEqual([]);
+  });
+
+  it('filters approved people by name or department', () => {
+    const people = approvedSignupPeople(2);
+    expect(filterApprovedSignupPeople(people, ' 张 ')).toEqual([
+      { id: 6, name: '张悦', department: '前端组' },
+    ]);
+    expect(filterApprovedSignupPeople(people, '前端').map((item) => item.name)).toEqual(['张悦']);
+    expect(filterApprovedSignupPeople(people, '')).toHaveLength(50);
   });
 
   it('groups signups by activity status and sorts newest first', () => {
@@ -370,5 +396,23 @@ describe('home mine mode', () => {
   it('uses tabs when both sides have data', () => {
     expect(homeMineMode(true, true)).toBe('tabs');
     expect(HOME_MINE_TABS.map((item) => item.label)).toEqual(['我的活动', '我的收藏']);
+  });
+});
+
+describe('PC datetime display', () => {
+  const now = new Date('2026-08-24T12:00:00');
+
+  it('drops the year for datetimes in the current year', () => {
+    expect(formatPcDateTime('2026-08-18 09:30', now)).toBe('08-18 09:30');
+    expect(formatPcDateTimeRange('2026-08-01 09:00', '2026-08-31 18:00', now)).toBe(
+      '08-01 09:00 ~ 08-31 18:00',
+    );
+  });
+
+  it('keeps the year when the datetime is outside the current year', () => {
+    expect(formatPcDateTime('2025-12-31 23:59', now)).toBe('2025-12-31 23:59');
+    expect(formatPcDateTimeRange('2026-12-31 09:00', '2027-01-01 18:00', now)).toBe(
+      '12-31 09:00 ~ 2027-01-01 18:00',
+    );
   });
 });

@@ -60,7 +60,7 @@ export function MomentComposer({ activity, editing, onCancel, onSuccess }: Momen
       setError(result.message);
       return;
     }
-    const audit = isMomentAuditEnabled(activity.type);
+    const audit = isMomentAuditEnabled(activity);
     onSuccess(audit ? '已提交，待审核' : '发布成功');
   };
 

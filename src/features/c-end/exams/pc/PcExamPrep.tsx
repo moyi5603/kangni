@@ -14,7 +14,7 @@ export function PcExamPrep({ id }: { id: number }) {
 
   if (!prep) {
     return (
-      <PcActivityShell className="is-exam is-prep" title="考试准备" onPhone={() => goPcExamList()}>
+      <PcActivityShell className="is-exam is-prep" title="考试准备">
         <div className="c-missing">
           <p className="c-empty">考试不存在或未发布</p>
           <button className="c-btn c-btn-primary" type="button" onClick={goPcExamList}>
@@ -26,7 +26,7 @@ export function PcExamPrep({ id }: { id: number }) {
   }
 
   return (
-    <PcActivityShell className="is-exam is-prep" title="考试准备" onPhone={() => goPcExamList()}>
+    <PcActivityShell className="is-exam is-prep" title="考试准备">
       <button className="c-back-link" type="button" onClick={goPcExamList}>
         ← 返回列表
       </button>

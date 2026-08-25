@@ -4,6 +4,7 @@ import {
   canDisableCreate,
   emptyRule,
   firstCreatableType,
+  formatApprovalNodeSummary,
   listCreatableTypeOptions,
   prepareRulesForSave,
   type ActivityTypeRule,
@@ -68,5 +69,22 @@ describe('createEnabled helpers', () => {
     });
     expect(canDisableCreate(twoOpen, '公司活动')).toBe(true);
     expect(canDisableCreate(twoOpen, '疗休养活动')).toBe(true);
+  });
+});
+
+describe('formatApprovalNodeSummary', () => {
+  it('shows named reviewers for 指定审核人', () => {
+    expect(
+      formatApprovalNodeSummary({ id: '1', assigneeMode: 'people', reviewerIds: ['张悦', '李明'] }),
+    ).toBe('指定审核人（张悦、李明）');
+  });
+
+  it('shows role labels without extra picker text', () => {
+    expect(
+      formatApprovalNodeSummary({ id: '2', assigneeMode: 'sameLevelLeader', reviewerIds: [] }),
+    ).toBe('本级部门负责人');
+    expect(
+      formatApprovalNodeSummary({ id: '3', assigneeMode: 'parentLevelLeader', reviewerIds: [] }),
+    ).toBe('上级部门负责人');
   });
 });

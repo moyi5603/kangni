@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { goH5CourseDetail, goPcCourseList } from '../../../../app/navigation';
+import { goPcCourseList } from '../../../../app/navigation';
 import { DetailEngageBar } from '../../activities/components/DetailEngageBar';
 import { EmployeeAvatar } from '../../activities/components/EmployeeAvatar';
 import { useCEndToast } from '../../activities/components/CEndToast';
@@ -48,7 +48,7 @@ export function PcCourseDetail({ id }: { id: number }) {
 
   if (!course || !learning) {
     return (
-      <PcActivityShell className="is-course" title="课程学习" onPhone={() => goH5CourseDetail(id)}>
+      <PcActivityShell className="is-course" title="课程学习">
         <div className="c-missing">
           <p className="c-empty">课程不存在</p>
           <button className="c-btn c-btn-primary" type="button" onClick={goPcCourseList}>
@@ -70,7 +70,7 @@ export function PcCourseDetail({ id }: { id: number }) {
   };
 
   return (
-    <PcActivityShell className="is-course" title="课程学习" onPhone={() => goH5CourseDetail(id)}>
+    <PcActivityShell className="is-course" title="课程学习">
       <button className="c-back-link" type="button" onClick={goPcCourseList}>
         ← 返回列表
       </button>

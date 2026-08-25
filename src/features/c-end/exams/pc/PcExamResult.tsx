@@ -7,14 +7,14 @@ export function PcExamResult({ id }: { id: number }) {
 
   if (!result) {
     return (
-      <PcActivityShell className="is-exam is-result" title="考试结果" onPhone={() => goPcExamPrep(id)}>
+      <PcActivityShell className="is-exam is-result" title="考试结果">
         <p className="c-empty">暂无考试结果</p>
       </PcActivityShell>
     );
   }
 
   return (
-    <PcActivityShell className="is-exam is-result" title="考试结果" onPhone={() => goPcExamPrep(id)}>
+    <PcActivityShell className="is-exam is-result" title="考试结果">
       <button className="c-back-link" type="button" onClick={() => goPcExamPrep(id)}>
         ← 返回准备
       </button>

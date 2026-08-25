@@ -5,6 +5,7 @@ import {
   defaultSignupFields,
   moveSignupField,
   presetSignupFields,
+  signupFieldInputTypeLabels,
   removeSignupField,
   renameSignupField,
   setSignupFieldCompanion,
@@ -37,14 +38,15 @@ describe('signup fields presets', () => {
     ]);
   });
 
-  it('marks 姓名 and 手机号 as fixed required, others optional', () => {
+  it('marks 姓名 as the only fixed required field; 手机号 can be added', () => {
     const name = presetSignupFields.find((field) => field.label === '姓名');
     const phone = presetSignupFields.find((field) => field.label === '手机号');
     const email = presetSignupFields.find((field) => field.label === '邮箱');
     const age = presetSignupFields.find((field) => field.label === '年龄');
     const id = presetSignupFields.find((field) => field.label === '身份证号');
     expect(name).toMatchObject({ fixed: true, required: true, inputType: 'text', maxLength: 20 });
-    expect(phone).toMatchObject({ fixed: true, required: true, inputType: 'text', maxLength: 11, digitOnly: true });
+    expect(phone).toMatchObject({ required: false, inputType: 'text', maxLength: 11, digitOnly: true });
+    expect(phone?.fixed).toBeUndefined();
     expect(id).toMatchObject({ digitOnly: true, maxLength: 18 });
     expect(age).toMatchObject({ digitOnly: true, maxLength: 3 });
     expect(email).toMatchObject({ required: false, inputType: 'text', maxLength: 50 });
@@ -55,13 +57,14 @@ describe('signup fields presets', () => {
     const group = presetSignupFields.find((field) => field.label === '分组选择');
     expect(group).toMatchObject({
       inputType: 'group',
-      required: true,
+      required: false,
       groups: [
         { name: 'A组', limit: 5 },
         { name: 'B组', limit: 5 },
       ],
     });
     expect(group?.totalLimit).toBeUndefined();
+    expect(signupFieldInputTypeLabels.group).toBe('多选');
   });
 
   it('gives 同行人 companion defaults', () => {
@@ -73,8 +76,8 @@ describe('signup fields presets', () => {
     });
   });
 
-  it('defaults to 姓名 + 手机号 selected', () => {
-    expect(defaultSignupFields().map((field) => field.label)).toEqual(['姓名', '手机号']);
+  it('defaults to 姓名 only', () => {
+    expect(defaultSignupFields().map((field) => field.label)).toEqual(['姓名']);
   });
 
   it('gives 性别 radio options 男/女', () => {
@@ -86,7 +89,9 @@ describe('signup fields presets', () => {
 describe('addSignupField', () => {
   it('appends a preset field by key', () => {
     const next = addSignupField(defaultSignupFields(), '邮箱');
-    expect(next.map((field) => field.label)).toEqual(['姓名', '手机号', '邮箱']);
+    expect(next.map((field) => field.label)).toEqual(['姓名', '邮箱']);
+    expect(next.find((field) => field.label === '邮箱')?.required).toBe(false);
+    expect(addSignupField(defaultSignupFields(), '分组选择').find((field) => field.label === '分组选择')?.required).toBe(false);
   });
 
   it('ignores duplicate keys', () => {
@@ -98,17 +103,24 @@ describe('addSignupField', () => {
 describe('removeSignupField', () => {
   it('removes non-fixed fields and keeps fixed ones', () => {
     const fields = addSignupField(defaultSignupFields(), '邮箱');
-    expect(removeSignupField(fields, '邮箱').map((field) => field.label)).toEqual(['姓名', '手机号']);
+    expect(removeSignupField(fields, '邮箱').map((field) => field.label)).toEqual(['姓名']);
     expect(removeSignupField(fields, '姓名')).toEqual(fields);
+  });
+
+  it('allows adding and removing 手机号', () => {
+    const fields = addSignupField(defaultSignupFields(), '手机号');
+    expect(fields.map((field) => field.label)).toEqual(['姓名', '手机号']);
+    expect(fields.find((field) => field.label === '手机号')?.required).toBe(false);
+    expect(removeSignupField(fields, '手机号').map((field) => field.label)).toEqual(['姓名']);
   });
 });
 
 describe('moveSignupField', () => {
   it('moves a field by offset and clamps at boundaries', () => {
     const fields = addSignupField(defaultSignupFields(), '邮箱');
-    expect(moveSignupField(fields, '邮箱', -1).map((field) => field.label)).toEqual(['姓名', '邮箱', '手机号']);
+    expect(moveSignupField(fields, '邮箱', -1).map((field) => field.label)).toEqual(['邮箱', '姓名']);
     expect(moveSignupField(fields, '姓名', -1)).toEqual(fields);
-    expect(moveSignupField(fields, '邮箱', 1).map((field) => field.label)).toEqual(['姓名', '手机号', '邮箱']);
+    expect(moveSignupField(fields, '邮箱', 1).map((field) => field.label)).toEqual(['姓名', '邮箱']);
   });
 });
 
@@ -128,6 +140,7 @@ describe('createCustomSignupField', () => {
     expect(first.source).toBe('custom');
     expect(first.inputType).toBe('text');
     expect(first.maxLength).toBe(50);
+    expect(first.required).toBe(false);
     expect(first.key).not.toBe(second.key);
   });
 
@@ -204,7 +217,7 @@ describe('validateSignupFields', () => {
   it('requires group limits to sum to signupTotalLimit', () => {
     const fields = addSignupField(defaultSignupFields(), '分组选择');
     const broken = setSignupFieldGroups(fields, '分组选择', [{ name: 'A', limit: 3 }, { name: 'B', limit: 3 }]);
-    expect(validateSignupFields(broken, { signupTotalLimit: 10 })).toBe('各分组人数上限之和须等于报名总人数');
+    expect(validateSignupFields(broken, { signupTotalLimit: 10 })).toBe('各组人数合计要等于报名总人数10');
     expect(validateSignupFields(broken)).toBe('请先设置报名总人数');
     const ok = setSignupFieldGroups(fields, '分组选择', [{ name: 'A', limit: 4 }, { name: 'B', limit: 6 }]);
     expect(validateSignupFields(ok, { signupTotalLimit: 10 })).toBeUndefined();
@@ -243,19 +256,27 @@ describe('prefill and validate signup answers', () => {
     const fields = addSignupField(addSignupField(defaultSignupFields(), '部门'), '岗位');
     expect(prefillSignupAnswers(fields, demoProfile)).toEqual({
       姓名: '陈产品',
-      手机号: '13800001111',
       部门: '职能中心',
       岗位: '产品经理',
     });
   });
 
   it('rejects empty required fields', () => {
-    expect(validateSignupAnswers(defaultSignupFields(), { 姓名: '', 手机号: '13800001111' })).toBe('姓名不能为空');
+    expect(validateSignupAnswers(defaultSignupFields(), { 姓名: '' })).toBe('姓名不能为空');
   });
 
   it('rejects non-digit values for digitOnly fields', () => {
     const fields = addSignupField(defaultSignupFields(), '年龄');
     expect(validateSignupAnswers(fields, { 姓名: '陈产品', 手机号: '13800001111', 年龄: '2a' })).toBe('年龄仅允许输入数字');
+  });
+
+  it('accepts multiple 分组选择 values', () => {
+    const fields = setSignupFieldGroups(addSignupField(defaultSignupFields(), '分组选择'), '分组选择', [
+      { name: 'A组', limit: 5 },
+      { name: 'B组', limit: 5 },
+    ]);
+    expect(validateSignupAnswers(fields, { 姓名: '陈产品', 分组选择: 'A组、B组' })).toBeUndefined();
+    expect(validateSignupAnswers(fields, { 姓名: '陈产品', 分组选择: 'C组' })).toBe('请选择有效的分组选择');
   });
 
   it('validates companion answers', () => {

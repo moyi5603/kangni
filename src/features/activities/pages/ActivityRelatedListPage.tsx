@@ -291,13 +291,11 @@ export function SignupList({ activity }: { activity: Activity }) {
   const peopleTree = useMemo(() => withDisabledPeople(orgPeoplePickerTree, signedNames), [signedNames]);
   const [draft, setDraft] = useState<{
     name: string;
-    phone: string;
     department?: string;
     status?: SignupRecord['status'];
     createdAt: DateRange;
   }>({
     name: '',
-    phone: '',
     createdAt: null,
   });
   const [query, setQuery] = useState(draft);
@@ -312,7 +310,6 @@ export function SignupList({ activity }: { activity: Activity }) {
       data.filter(
         (item) =>
           (!query.name || item.name.includes(query.name)) &&
-          (!query.phone || item.phone.includes(query.phone)) &&
           (!query.department || item.department === query.department) &&
           (!query.status || item.status === query.status) &&
           inDayRange(item.createdAt, query.createdAt),
@@ -320,7 +317,7 @@ export function SignupList({ activity }: { activity: Activity }) {
     [data, query],
   );
   const selected = data.filter((item) => selectedRowKeys.includes(item.id));
-  const hasFilter = Boolean(query.name || query.phone || query.department || query.status || query.createdAt);
+  const hasFilter = Boolean(query.name || query.department || query.status || query.createdAt);
   const openAdd = () => {
     addForm.resetFields();
     addForm.setFieldsValue({ people: [] });
@@ -444,7 +441,6 @@ export function SignupList({ activity }: { activity: Activity }) {
   };
   const columns: TableColumnsType<SignupRecord> = [
     { title: '姓名', dataIndex: 'name', width: 110 },
-    { title: '手机号', dataIndex: 'phone', width: 130 },
     { title: '部门', dataIndex: 'department', width: 120 },
     ...(signupFields.length
       ? [
@@ -506,7 +502,7 @@ export function SignupList({ activity }: { activity: Activity }) {
             message.success('查询完成');
           }}
           onReset={() => {
-            const empty = { name: '', phone: '', createdAt: null as DateRange };
+            const empty = { name: '', createdAt: null as DateRange };
             setDraft(empty);
             setQuery(empty);
             setSelectedRowKeys([]);
@@ -514,9 +510,6 @@ export function SignupList({ activity }: { activity: Activity }) {
         >
           <SearchField label="姓名">
             <Input allowClear placeholder="请输入姓名" value={draft.name} onChange={(event) => setDraft((currentDraft) => ({ ...currentDraft, name: event.target.value }))} />
-          </SearchField>
-          <SearchField label="手机号">
-            <Input allowClear placeholder="请输入手机号" value={draft.phone} onChange={(event) => setDraft((currentDraft) => ({ ...currentDraft, phone: event.target.value }))} />
           </SearchField>
           <SearchField label="部门">
             <Select allowClear placeholder="全部部门" value={draft.department} onChange={(value) => setDraft((currentDraft) => ({ ...currentDraft, department: value }))} options={optionsOf(departmentOptions)} />

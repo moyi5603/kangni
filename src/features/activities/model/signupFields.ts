@@ -1,5 +1,13 @@
 export type SignupFieldInputType = 'text' | 'radio' | 'checkbox' | 'group' | 'companion';
 
+export const signupFieldInputTypeLabels: Record<SignupFieldInputType, string> = {
+  text: '文本',
+  radio: '单选',
+  checkbox: '多选',
+  group: '多选',
+  companion: '同行人',
+};
+
 export const CUSTOM_TEXT_MAX_LENGTH_DEFAULT = 50;
 export const CUSTOM_TEXT_MAX_LENGTH_MIN = 1;
 export const CUSTOM_TEXT_MAX_LENGTH_MAX = 200;
@@ -47,7 +55,7 @@ export function emptySignupGroups(): SignupGroupOption[] {
 
 export const presetSignupFields: SignupField[] = [
   preset('姓名', '姓名', { fixed: true, required: true, maxLength: 20 }),
-  preset('手机号', '手机号', { fixed: true, required: true, maxLength: 11, digitOnly: true }),
+  preset('手机号', '手机号', { maxLength: 11, digitOnly: true }),
   preset('身份证号', '身份证号', { maxLength: 18, digitOnly: true }),
   preset('邮箱', '邮箱', { maxLength: 50 }),
   preset('性别', '性别', { inputType: 'radio', options: ['男', '女'], maxLength: undefined }),
@@ -59,7 +67,6 @@ export const presetSignupFields: SignupField[] = [
   preset('分组选择', '分组选择', {
     inputType: 'group',
     maxLength: undefined,
-    required: true,
     groups: [
       { name: 'A组', limit: 5 },
       { name: 'B组', limit: 5 },
@@ -85,6 +92,7 @@ export function addSignupField(fields: SignupField[], key: string): SignupField[
     ...fields,
     {
       ...presetField,
+      required: false,
       options: presetField.options ? [...presetField.options] : undefined,
       groups: presetField.groups?.map((item) => ({ ...item })),
       companionFields: presetField.companionFields ? [...presetField.companionFields] : undefined,
@@ -195,7 +203,7 @@ export function validateSignupFields(
       if (new Set(names).size !== names.length) return '分组名称不能重复';
       const total = options?.signupTotalLimit;
       if (total == null || !Number.isInteger(total) || total < 1) return '请先设置报名总人数';
-      if (groupLimitsSum(groups) !== total) return '各分组人数上限之和须等于报名总人数';
+      if (groupLimitsSum(groups) !== total) return `各组人数合计要等于报名总人数${total}`;
     } else if (field.inputType === 'companion') {
       const max = field.companionMax;
       if (max == null || !Number.isInteger(max) || max < COMPANION_MAX_MIN || max > COMPANION_MAX_MAX) {
@@ -279,14 +287,13 @@ export function validateSignupAnswers(fields: SignupField[], answers: SignupAnsw
       const options = (field.options ?? []).map((option) => option.trim()).filter(Boolean);
       if (!options.includes(value)) return `请选择有效的${label}`;
     }
-    if (field.inputType === 'checkbox' && value) {
-      const options = (field.options ?? []).map((option) => option.trim()).filter(Boolean);
+    if ((field.inputType === 'checkbox' || field.inputType === 'group') && value) {
+      const options =
+        field.inputType === 'group'
+          ? (field.groups ?? []).map((item) => item.name.trim()).filter(Boolean)
+          : (field.options ?? []).map((option) => option.trim()).filter(Boolean);
       const picked = value.split('、').map((item) => item.trim()).filter(Boolean);
       if (picked.some((item) => !options.includes(item))) return `请选择有效的${label}`;
-    }
-    if (field.inputType === 'group' && value) {
-      const names = (field.groups ?? []).map((item) => item.name.trim()).filter(Boolean);
-      if (!names.includes(value)) return `请选择有效的${label}`;
     }
   }
   return undefined;

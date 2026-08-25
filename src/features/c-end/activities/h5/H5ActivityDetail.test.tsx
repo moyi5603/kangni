@@ -23,24 +23,28 @@ describe('H5 activity detail engage', () => {
     expect(like).toBeGreaterThan(-1);
     expect(fav).toBeGreaterThan(like);
     expect(comment).toBeGreaterThan(fav);
+    expect(bar).toContain('aria-label="分享"');
     expect(cta).toBeGreaterThan(comment);
     expect(html).toContain('id="activity-social"');
     expect(html).toContain('评论 26');
     expect(html).toContain('精彩瞬间');
     expect(html).toContain('纪念品柜台要排队。');
     expect(html).not.toContain('开场致辞很有感染力');
+    expect(html).toContain('活动评分');
+    expect(html).toContain('4.3');
   });
 
   it('shows category, times, quota and occupied seats on the info card', () => {
     const html = renderToStaticMarkup(<H5ActivityDetail id={2} />);
     const card = html.slice(html.indexOf('c-detail-info-card'));
-    expect(card).toContain('类型：项目活动');
     expect(card).toContain('分类：培训');
     expect(card).toContain('活动时间：2026-08-18 09:30 ~ 2026-08-20 17:30');
     expect(card).toContain('报名时间：2026-08-01 09:00 ~ 2026-08-31 18:00');
-    expect(card).toContain('总名额：50 人');
-    expect(card).toContain('已报名 8 人');
+    expect(card).toContain('总名额：60 人');
+    expect(card).toContain('已报名 54 人');
     expect(card).toContain('href="tel:13800001111"');
+    expect(html).not.toContain('活动评分');
+    expect(html).toContain('aria-label="分享"');
   });
 
   it('lists all open-day threads on detail without view-all', () => {
@@ -87,5 +91,23 @@ describe('H5 activity detail engage', () => {
   it('shows full comments when CEndApp opens an activity', () => {
     const html = renderToStaticMarkup(<CEndApp surface="h5" activityId={1} />);
     expect(html).toContain('纪念品柜台要排队。');
+  });
+
+  it('shows floating back and home buttons', () => {
+    const html = renderToStaticMarkup(<H5ActivityDetail id={1} />);
+    expect(html).toContain('c-h5-detail-fab');
+    expect(html).toContain('返回上一页');
+    expect(html).toContain('回主页');
+  });
+
+  it('summarizes approved signup people instead of tiling them', () => {
+    const html = renderToStaticMarkup(<H5ActivityDetail id={2} />);
+    const block = html.slice(html.indexOf('c-signup-people'), html.indexOf('id="activity-social"'));
+    expect(block).toContain('已报名人员（50）');
+    expect(block).toContain('+45');
+    expect(block).toContain('查看名单');
+    expect(block).toContain('c-avatar');
+    expect(block).not.toContain('前端组');
+    expect(block).not.toContain('王芳');
   });
 });

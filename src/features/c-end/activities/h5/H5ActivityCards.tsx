@@ -24,7 +24,7 @@ function ActivityCover({ activity, className }: { activity: Activity; className:
           }}
         />
       ) : null}
-      <span className="c-cover-type">{activity.type}</span>
+      <span className="c-cover-type">{activity.category}</span>
     </div>
   );
 }
@@ -32,7 +32,7 @@ function ActivityCover({ activity, className }: { activity: Activity; className:
 function activityCardLabel(activity: Activity, action: string, limit: number | undefined): string {
   const parts = [
     activity.title,
-    activity.type,
+    activity.category,
     activity.activityStatus,
     `日期 ${formatShortActivityDate(activity)}`,
     `地点 ${activity.location}`,

@@ -448,6 +448,21 @@ describe('skills-contest application', () => {
   });
 });
 
+describe('activities application menus', () => {
+  it('includes 规则设置', () => {
+    expect(applicationMenus.activities).toEqual([
+      { key: 'activity-overview', icon: 'dashboard', label: '概览' },
+      { key: 'activity-list', icon: 'unorderedList', label: '活动管理' },
+      { key: 'activity-categories', icon: 'appstore', label: '分类管理' },
+      { key: 'activity-rules', icon: 'fileText', label: '规则设置' },
+    ]);
+    expect(parseLocationHash('#/activities/activity-rules')).toEqual({
+      application: 'activities',
+      page: 'activity-rules',
+    });
+  });
+});
+
 describe('activity detail tab hash', () => {
   it('parses the tab segment of activity-detail hash', () => {
     expect(parseLocationHash('#/activities/activity-detail/3/signups')).toEqual({
@@ -766,15 +781,16 @@ describe('awards application', () => {
     expect(keys.indexOf('awards')).toBe(keys.indexOf('training') - 1);
   });
 
-  it('uses three first-level menus: 概览 / 评优管理 / 规则设置', () => {
+  it('uses four first-level menus including 评优证书', () => {
     expect(applicationMenus.awards).toEqual([
       { key: 'award-overview', icon: 'dashboard', label: '概览' },
       { key: 'award-list', icon: 'trophy', label: '评优管理' },
+      { key: 'award-certificates', icon: 'gift', label: '评优证书' },
       { key: 'award-rules', icon: 'fileText', label: '规则设置' },
     ]);
   });
 
-  it('parses leaf hashes and falls back to 概览', () => {
+  it('parses leaf hashes, hidden form pages, and falls back to 概览', () => {
     expect(parseLocationHash('#/awards/award-overview')).toEqual({
       application: 'awards',
       page: 'award-overview',
@@ -783,10 +799,31 @@ describe('awards application', () => {
       application: 'awards',
       page: 'award-list',
     });
+    expect(parseLocationHash('#/awards/award-certificates')).toEqual({
+      application: 'awards',
+      page: 'award-certificates',
+    });
     expect(parseLocationHash('#/awards/award-rules')).toEqual({
       application: 'awards',
       page: 'award-rules',
     });
+    expect(parseLocationHash('#/awards/award-create')).toEqual({
+      application: 'awards',
+      page: 'award-create',
+    });
+    expect(parseLocationHash('#/awards/award-edit/2')).toEqual({
+      application: 'awards',
+      page: 'award-edit',
+      recordId: '2',
+    });
+    expect(parseLocationHash('#/awards/award-detail/2')).toEqual({
+      application: 'awards',
+      page: 'award-detail',
+      recordId: '2',
+    });
+    expect(siderSelectedKey('award-create')).toBe('award-list');
+    expect(siderSelectedKey('award-edit')).toBe('award-list');
+    expect(siderSelectedKey('award-detail')).toBe('award-list');
     expect(parseLocationHash('#/awards')).toEqual({
       application: 'awards',
       page: 'award-overview',

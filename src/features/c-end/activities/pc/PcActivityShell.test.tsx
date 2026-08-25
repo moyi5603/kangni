@@ -13,7 +13,8 @@ describe('PC activity shell', () => {
     expect(html).toContain('<header class="c-pc-header">');
     expect(html).toContain('<h1 class="c-pc-header-title">员工活动</h1>');
     expect(html).not.toContain('活动广场');
-    expect(html).toContain('手机版');
+    expect(html).not.toContain('手机版');
+    expect(html).not.toContain('回主页');
     expect(html).toContain('内容');
   });
 });

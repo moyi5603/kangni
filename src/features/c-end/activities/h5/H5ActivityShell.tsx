@@ -4,6 +4,7 @@ import { IconBack } from '../components/Icons';
 type H5ActivityShellSharedProps = {
   children: ReactNode;
   footer?: ReactNode;
+  overlay?: ReactNode;
   detail?: boolean;
   className?: string;
 };
@@ -23,7 +24,7 @@ type H5ActivityShellProps = H5ActivityShellSharedProps &
   );
 
 export function H5ActivityShell(props: H5ActivityShellProps) {
-  const { children, footer, detail, className } = props;
+  const { children, footer, overlay, detail, className } = props;
   const shellClass = className ? `c-h5-shell ${className}` : 'c-h5-shell';
 
   return (
@@ -45,6 +46,7 @@ export function H5ActivityShell(props: H5ActivityShellProps) {
           props.header
         )}
         <main className={`c-h5-main${detail ? ' is-detail' : ''}`}>{children}</main>
+        {overlay}
         {footer}
       </div>
     </div>

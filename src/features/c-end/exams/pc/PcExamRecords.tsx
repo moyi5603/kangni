@@ -10,14 +10,14 @@ export function PcExamRecords({ id }: { id: number }) {
 
   if (!board) {
     return (
-      <PcActivityShell className="is-exam is-records" title="考试记录" onPhone={() => goPcExamResult(id)}>
+      <PcActivityShell className="is-exam is-records" title="考试记录">
         <p className="c-empty">暂无考试记录</p>
       </PcActivityShell>
     );
   }
 
   return (
-    <PcActivityShell className="is-exam is-records" title="考试记录" onPhone={() => goPcExamResult(id)}>
+    <PcActivityShell className="is-exam is-records" title="考试记录">
       <button className="c-back-link" type="button" onClick={() => goPcExamResult(id)}>
         ← 返回结果
       </button>

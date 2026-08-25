@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
-import { isRecreationActivity } from '../../../activities/model/activity';
 import { canSubmitMoment, type MomentRecord } from '../../../activities/model/moment';
 import { useActivities } from '../../../activities/model/activityStore';
 import { useApprovedSignup, useClientMoments } from '../../../activities/model/momentStore';
 import { useRelated } from '../../../activities/model/related';
 import { goCEnd, goCEndSignup } from '../../../../app/navigation';
+import type { Activity } from '../../../activities/model/activity';
 import { ActivityCommentList } from '../components/ActivityCommentList';
 import { ActivityDetailFacts } from '../components/ActivityDetailFacts';
 import { ActivitySocialTabs } from '../components/ActivitySocialTabs';
+import { ActivityRatingBlock } from '../components/ActivityRatingBlock';
+import { ApprovedSignupPeople } from '../components/ApprovedSignupPeople';
 import { DetailEngageBar } from '../components/DetailEngageBar';
+import { ShareContactsPanel } from '../components/ShareContactsPanel';
 import { MomentFeed } from '../components/MomentFeed';
 import { shouldShowMomentsTab } from '../model/activitySocialTabs';
 import { StatusPill } from '../components/StatusPill';
@@ -21,6 +24,7 @@ import {
 } from '../model/activityComments';
 import { needsSignupForm, prefillSignupAnswers } from '../../../activities/model/signupFields';
 import { getPublishedActivity, signupCta, signupOccupiedCount, signupTypes } from '../model/clientActivity';
+import { shareConfirmMessage } from '../model/activityShare';
 import { toggleFavorite, toggleLike, useActivityEngagement } from '../model/engagementStore';
 import { cancelSignup, DEMO_SIGNUP_USER, submitSignup, useHasSignedUp } from '../model/signupStore';
 import { useCEndToast } from '../components/CEndToast';
@@ -38,9 +42,31 @@ function withoutLeadingIntroductionHeading(html: string): string {
   return `${heading[1]}${html.slice(heading[0].length)}`;
 }
 
-export function H5ActivityDetail({ id }: { id: number }) {
+function H5DetailNavFab() {
+  return (
+    <nav className="c-h5-detail-fab" aria-label="页面导航">
+      <button type="button" onClick={() => window.history.back()}>
+        返回上一页
+      </button>
+      <button type="button" onClick={() => goCEnd('h5')}>
+        回主页
+      </button>
+    </nav>
+  );
+}
+
+export function H5ActivityDetail({
+  id,
+  activity: activityOverride,
+  preview = false,
+}: {
+  id: number;
+  activity?: Activity;
+  preview?: boolean;
+}) {
   const activities = useActivities();
-  const activity = getPublishedActivity(activities, id);
+  const stored = getPublishedActivity(activities, id);
+  const activity = activityOverride ?? stored;
   const signedUp = useHasSignedUp(id);
   const toast = useCEndToast();
   const engagement = useActivityEngagement(id);
@@ -50,6 +76,7 @@ export function H5ActivityDetail({ id }: { id: number }) {
   const [composer, setComposer] = useState<MomentRecord | 'create'>();
   const [now, setNow] = useState(() => Date.now());
   const [socialTab, setSocialTab] = useState<'comments' | 'moments'>('comments');
+  const [shareOpen, setShareOpen] = useState(false);
   const momentItems = useClientMoments(id);
   const approvedSignup = useApprovedSignup(id);
   void relatedComments;
@@ -62,7 +89,11 @@ export function H5ActivityDetail({ id }: { id: number }) {
 
   if (!activity) {
     return (
-      <H5ActivityShell title="活动不存在" onBack={() => goCEnd('h5')}>
+      <H5ActivityShell
+        title="活动不存在"
+        onBack={() => goCEnd('h5')}
+        overlay={<H5DetailNavFab />}
+      >
         <div className="c-missing">
           <p className="c-empty">活动不存在</p>
           <button className="c-btn c-btn-primary" type="button" onClick={() => goCEnd('h5')}>
@@ -84,6 +115,10 @@ export function H5ActivityDetail({ id }: { id: number }) {
   );
 
   const confirm = (type: string, answers: Record<string, string>) => {
+    if (preview) {
+      toast.show('预览中，无法报名');
+      return;
+    }
     const freshCta = signupCta(activity, signedUp, Date.now(), { allowCancel: true });
     if (!freshCta.enabled) {
       toast.show(freshCta.label);
@@ -95,6 +130,10 @@ export function H5ActivityDetail({ id }: { id: number }) {
   };
 
   const openSignup = () => {
+    if (preview) {
+      toast.show('预览中，无法报名');
+      return;
+    }
     if (needsSignupForm(activity.signupFields) || types.length !== 1) {
       goCEndSignup('h5', activity.id);
       return;
@@ -113,8 +152,9 @@ export function H5ActivityDetail({ id }: { id: number }) {
   return (
     <H5ActivityShell
       title={activity.title}
-      onBack={() => goCEnd('h5')}
+      onBack={preview ? undefined : () => goCEnd('h5')}
       detail
+      overlay={preview ? undefined : <H5DetailNavFab />}
       footer={
         <div className="c-h5-cta-bar">
           <DetailEngageBar
@@ -132,6 +172,7 @@ export function H5ActivityDetail({ id }: { id: number }) {
                 document.getElementById('activity-comment-box')?.focus();
               });
             }}
+            onShare={() => setShareOpen(true)}
           />
           <button
             className="c-cta"
@@ -139,6 +180,10 @@ export function H5ActivityDetail({ id }: { id: number }) {
             disabled={!cta.enabled}
             onClick={() => {
               if (!cta.enabled) return;
+              if (preview) {
+                toast.show('预览中，无法报名');
+                return;
+              }
               if (cta.action === 'cancel') setCancelOpen(true);
               else openSignup();
             }}
@@ -173,6 +218,8 @@ export function H5ActivityDetail({ id }: { id: number }) {
           <ActivityDetailFacts activity={activity} occupied={occupied} />
         </section>
 
+        <ActivityRatingBlock activityId={id} status={activity.activityStatus} preview={preview} />
+
         <section className="c-detail-content-section" aria-labelledby="h5-activity-intro">
           <h2 id="h5-activity-intro" className="c-detail-name c-detail-section">
             活动介绍
@@ -180,22 +227,8 @@ export function H5ActivityDetail({ id }: { id: number }) {
           <div className="c-html" dangerouslySetInnerHTML={{ __html: detailHtml }} />
         </section>
 
-        {isRecreationActivity(activity.type) ? (
-          <>
-            <section className="c-detail-content-section" aria-labelledby="h5-activity-itinerary">
-              <h2 id="h5-activity-itinerary" className="c-detail-name c-detail-section">
-                行程安排
-              </h2>
-              <div className="c-html" dangerouslySetInnerHTML={{ __html: activity.itinerary || '—' }} />
-            </section>
-            <section className="c-detail-content-section" aria-labelledby="h5-activity-fee">
-              <h2 id="h5-activity-fee" className="c-detail-name c-detail-section">
-                额外费用规则
-              </h2>
-              <div className="c-html" dangerouslySetInnerHTML={{ __html: activity.extraFeeRule || '—' }} />
-            </section>
-          </>
-        ) : null}
+        <ApprovedSignupPeople activityId={id} surface="h5" />
+
         <ActivitySocialTabs
           activity={activity}
           tab={socialTab}
@@ -244,6 +277,15 @@ export function H5ActivityDetail({ id }: { id: number }) {
           }}
         />
       ) : null}
+      <ShareContactsPanel
+        open={shareOpen}
+        surface="h5"
+        onClose={() => setShareOpen(false)}
+        onConfirm={(count) => {
+          setShareOpen(false);
+          toast.show(shareConfirmMessage(count));
+        }}
+      />
     </H5ActivityShell>
   );
 }

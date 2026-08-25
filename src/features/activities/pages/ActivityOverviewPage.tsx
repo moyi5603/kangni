@@ -28,11 +28,11 @@ import {
 import { useAllMoments } from '../model/momentStore';
 import { useAllRelated } from '../model/related';
 
-const activityTypeColor: Record<string, string> = {
-  公司活动: 'blue',
-  疗休养活动: 'green',
-  体检活动: 'cyan',
-  项目活动: 'orange',
+const activityCategoryColor: Record<string, string> = {
+  文化: 'blue',
+  体育: 'green',
+  培训: 'cyan',
+  公益: 'orange',
 };
 
 type ActivityOverviewPageProps = {
@@ -75,10 +75,10 @@ export function ActivityOverviewPage({ onNavigate }: ActivityOverviewPageProps) 
   const attentionColumns: TableColumnsType<ActivityAttentionRow> = [
     { title: '活动名称', dataIndex: 'title', ellipsis: true },
     {
-      title: '类型',
-      dataIndex: 'type',
-      width: 110,
-      render: (value: string) => <Tag color={activityTypeColor[value] ?? 'default'}>{value}</Tag>,
+      title: '分类',
+      dataIndex: 'category',
+      width: 100,
+      render: (value: string) => <Tag color={activityCategoryColor[value] ?? 'default'}>{value}</Tag>,
     },
     {
       title: '待办类型',
@@ -111,10 +111,10 @@ export function ActivityOverviewPage({ onNavigate }: ActivityOverviewPageProps) 
   const signupOpenColumns: TableColumnsType<SignupOpenActivityRow> = [
     { title: '活动名称', dataIndex: 'title', ellipsis: true },
     {
-      title: '类型',
-      dataIndex: 'type',
-      width: 110,
-      render: (value: string) => <Tag color={activityTypeColor[value] ?? 'default'}>{value}</Tag>,
+      title: '分类',
+      dataIndex: 'category',
+      width: 100,
+      render: (value: string) => <Tag color={activityCategoryColor[value] ?? 'default'}>{value}</Tag>,
     },
     { title: '报名截止', dataIndex: 'signupEndAt', width: 170 },
     { title: '报名人数', dataIndex: 'signupCount', width: 100, align: 'right' },

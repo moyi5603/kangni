@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>课程管理后台 产品需求文档</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; line-height: 1.65; color: #1f2937; margin: 0; background: #f8fafc; }
+    .layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: 100vh; }
+    .layout.toc-collapsed { grid-template-columns: 0 minmax(0, 1fr); }
+    .toc { position: sticky; top: 0; height: 100vh; overflow: auto; border-right: 1px solid #d1d5db; background: #fff; padding: 16px; transition: transform .2s ease, padding .2s ease; }
+    .layout.toc-collapsed .toc { transform: translateX(-100%); padding-left: 0; padding-right: 0; border-right: 0; }
+    .toc-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+    .toc-title { margin: 0; font-size: 15px; font-weight: 700; color: #111827; }
+    .icon-button { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #cbd5e1; background: #fff; color: #111827; border-radius: 6px; padding: 0; cursor: pointer; }
+    .icon-button svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .toc ol { list-style: none; padding: 0; margin: 0; }
+    .toc li { margin: 4px 0; }
+    .toc a { display: block; color: #374151; text-decoration: none; padding: 6px 8px; border-radius: 6px; font-size: 14px; }
+    .toc a:hover { background: #f3f4f6; color: #0f766e; }
+    .toc .sub a { padding-left: 18px; font-size: 13px; color: #6b7280; }
+    .content-wrap { min-width: 0; }
+    .floating-toc-toggle { position: fixed; left: 12px; top: 12px; z-index: 20; box-shadow: 0 4px 12px rgba(15, 23, 42, .12); }
+    main { max-width: 1180px; margin: 0 auto; padding: 32px 24px 64px; background: #fff; }
+    h1, h2, h3, h4 { color: #111827; line-height: 1.3; }
+    h1 { font-size: 28px; margin-top: 0; }
+    h2 { margin-top: 40px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb; }
+    h3 { margin-top: 28px; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 13px; }
+    th, td { border: 1px solid #d1d5db; padding: 8px 10px; vertical-align: top; }
+    th { background: #f3f4f6; text-align: left; }
+    figure { margin: 16px 0 24px; border: 1px solid #d1d5db; background: #f9fafb; padding: 12px; }
+    figure img { max-width: 100%; height: auto; display: block; border: 1px solid #e5e7eb; background: #fff; }
+    figcaption { margin-top: 8px; color: #4b5563; font-size: 13px; }
+    .component-path { font-weight: 600; color: #0f766e; }
+    .status { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #e0f2fe; color: #075985; font-size: 12px; margin-right: 4px; }
+    .status.impl { background: #dcfce7; color: #166534; }
+    .status.guess { background: #fef3c7; color: #92400e; }
+    .status.todo { background: #fee2e2; color: #991b1b; }
+    code { background: #f3f4f6; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+    ul, ol { padding-left: 1.3em; }
+    @media (max-width: 860px) {
+      .layout { display: block; }
+      .toc { position: fixed; z-index: 15; width: 280px; box-sizing: border-box; box-shadow: 0 12px 30px rgba(15, 23, 42, .18); }
+      .layout.toc-collapsed .toc { transform: translateX(-100%); }
+      main { padding-top: 56px; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout" id="prdLayout">
+<aside class="toc" aria-label="PRD目录">
+  <div class="toc-header">
+    <p class="toc-title">目录</p>
+    <button class="icon-button toc-toggle" type="button" data-toggle-toc aria-label="隐藏目录" title="隐藏目录">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+    </button>
+  </div>
+  <nav>
+    <ol>
+      <li><a href="#doc-note">1. 文档说明</a></li>
+      <li><a href="#overview">2. 产品概述</a></li>
+      <li><a href="#ia">3. 页面结构 / 信息架构</a></li>
+      <li><a href="#implemented-features">4. 已实现功能清单</a></li>
+      <li><a href="#flows">5. 用户流程</a></li>
+      <li><a href="#page-requirements">6. 页面级需求说明</a>
+        <ol class="sub">
+          <li><a href="#p-overview">6.1 概览</a></li>
+          <li><a href="#p-courses">6.2 课程管理</a></li>
+          <li><a href="#p-form">6.3 新增/编辑课程</a></li>
+          <li><a href="#p-detail">6.4 课程详情</a></li>
+          <li><a href="#p-courseware">6.5 课件管理</a></li>
+          <li><a href="#p-rules">6.6 规则设置</a></li>
+        </ol>
+      </li>
+      <li><a href="#data-fields">7. 数据字段与枚举</a></li>
+      <li><a href="#apis">8. API / 数据接口清单</a></li>
+      <li><a href="#non-functional">9. 非功能需求</a></li>
+      <li><a href="#analytics">10. 埋点与指标建议</a></li>
+      <li><a href="#acceptance">11. 验收标准</a></li>
+      <li><a href="#risks">12. 风险与待确认问题</a></li>
+    </ol>
+  </nav>
+</aside>
+<div class="content-wrap">
+<button class="icon-button floating-toc-toggle" type="button" data-toggle-toc aria-label="显示目录" title="显示目录">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+</button>
+<main>
+  <h1>课程管理后台 产品需求文档</h1>
+
+  <section id="doc-note">
+    <h2>1. 文档说明</h2>
+    <ul>
+      <li>文档来源：基于康尼管理后台 React/TSX 原型代码反向分析（html-to-prd skill）</li>
+      <li>分析范围：应用「课程」（application key: <code>training</code>）下管理端页面：概览、课程管理、新增/编辑课程、课程详情（含学习记录/评论管理/设置答题）、课件管理、规则设置</li>
+      <li>生成日期：2026-08-24</li>
+      <li>可信度说明：界面结构、字段、按钮交互以源码为准，标记为 <span class="status impl">代码已实现</span>；无后端/权限体系处标记 <span class="status todo">待确认</span> 或 <span class="status guess">根据页面推测需要</span></li>
+      <li>待确认事项摘要：真实 API、角色权限、封面/文件实际上传存储、学习详情页、答题与考试题库联动规则边界</li>
+      <li>输出格式：HTML 图文需求文档（截图目录 <code>screenshots/</code>）</li>
+      <li>组件命名规则：一律使用 <code>页面-模块-组件名称</code></li>
+    </ul>
+  </section>
+
+  <section id="overview">
+    <h2>2. 产品概述</h2>
+    <p><strong>产品定位：</strong>企业员工培训场景下的课程资产管理后台，覆盖课程分类、课程/课件 CRUD、发布状态、评论审核、学习记录查看、课后答题配置与奖励规则。</p>
+    <p><strong>目标用户：</strong>代码中可见创建人示例为「陈产品」；目标角色为培训运营 / 课程管理员。<span class="status todo">待确认</span>是否与 HR、部门管理员分权。</p>
+    <p><strong>核心使用场景：</strong></p>
+    <ul>
+      <li>维护课程分类树与课件分类树，管理视频/音频/PDF 课程与课件</li>
+      <li>配置课程目录（课件组合、学时、必学、排序）与学习过程（不限制 / 按序学习）</li>
+      <li>发布/下架课程，员工端可见性随之变化（文案已说明）</li>
+      <li>审核课程评论，配置评论/点赞/收藏开关</li>
+      <li>为课程配置练习题库抽题规则；配置积分/学分奖励规则</li>
+    </ul>
+    <p><strong>页面/系统主要价值：</strong>把培训内容生产、发布、互动审核与激励规则收敛在同一应用内，便于运营闭环。</p>
+  </section>
+
+  <section id="ia">
+    <h2>3. 页面结构 / 信息架构</h2>
+    <figure>
+      <img src="screenshots/课程应用-左侧菜单.png" alt="课程应用-导航-左侧菜单截图">
+      <figcaption><span class="component-path">课程应用-导航-左侧菜单</span>：侧栏展示「概览 / 课程管理 / 课件管理 / 规则设置」。</figcaption>
+    </figure>
+    <ul>
+      <li>应用入口：顶部应用切换中的「课程」（category: 员工与组织，defaultPage: <code>training-overview</code>）</li>
+      <li>页面清单与路由（hash）：
+        <ul>
+          <li>概览 <code>#/training/training-overview</code></li>
+          <li>课程管理 <code>#/training/training-courses</code></li>
+          <li>新增课程 <code>#/training/course-create</code></li>
+          <li>编辑课程 <code>#/training/course-edit/:id</code></li>
+          <li>课程详情 <code>#/training/course-detail/:id[/:tab]</code>，tab ∈ detail|records|comments|quiz</li>
+          <li>课件管理 <code>#/training/training-courseware</code></li>
+          <li>规则设置 <code>#/training/training-rules</code></li>
+        </ul>
+      </li>
+      <li>跳转关系：列表 → 详情/编辑/新增；详情「编辑」→ 编辑表单；编辑「查看详情」→ 详情；概览评论「查看」→ 详情 comments Tab</li>
+    </ul>
+  </section>
+
+  <section id="implemented-features">
+    <h2>4. 已实现功能清单</h2>
+    <table>
+      <thead><tr><th>模块</th><th>功能点</th><th>功能说明</th><th>页面/区域</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td>概览</td><td>KPI / 分布图 / 最近更新 / 待审评论</td><td>统计课程、课件、发布、待审评论；快捷通过/驳回</td><td>概览</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>课程分类</td><td>树 CRUD / 排序 / 三级限制</td><td>新建根/子分类、重命名、上移下移、删除（有课程占用不可删）</td><td>课程管理-分类树</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>课程列表</td><td>筛选 / Tab / 批量发布撤销 / 行操作</td><td>按名称、状态、分类、类型筛选；发布/撤销/删除（已发布不可删）</td><td>课程管理</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>课程表单</td><td>创建/编辑</td><td>类型、封面、分类、名称、标签、对象、学习过程、目录、介绍、评论配置</td><td>新增/编辑课程</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>课程详情</td><td>四 Tab</td><td>详情信息、学习记录、评论管理、设置答题</td><td>课程详情</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>课件管理</td><td>分类 + 列表 + 抽屉表单</td><td>与课程类似的分类树与发布状态；抽屉新增/编辑</td><td>课件管理</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>规则设置</td><td>积分/学分奖励</td><td>开关、固定分或按时长、课上限与日上限</td><td>规则设置</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>数据持久化</td><td>localStorage</td><td>评论、评论配置、答题配置写入本地</td><td>Store</td><td><span class="status impl">代码已实现</span>（原型级）</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="flows">
+    <h2>5. 用户流程</h2>
+    <h3>5.1 发布一门课程（主流程）</h3>
+    <ol>
+      <li>入口：课程管理 → 新增课程（或先在课件管理上传课件）</li>
+      <li>填写基本信息、学习设置，添加至少一个课件到目录，可选评论配置</li>
+      <li>保存 → 状态为「草稿」，返回列表，提示成功</li>
+      <li>行操作「发布」或批量发布 → 状态「已发布」，员工端可见（文案说明）</li>
+    </ol>
+    <h3>5.2 评论审核</h3>
+    <ol>
+      <li>概览「待审核评论」或详情「评论管理」</li>
+      <li>通过：确认弹窗 → 员工端可见；驳回：仅作者可见（文案）</li>
+      <li>支持批量通过/驳回/删除（评论管理 Tab）</li>
+    </ol>
+    <h3>5.3 异常</h3>
+    <ul>
+      <li>已发布课程不可删除：提示先下架</li>
+      <li>分类下仍有课程：删除分类被拦截</li>
+      <li>分类超过 3 级：创建失败提示</li>
+      <li>表单未保存离开：确认弹窗「未保存的修改将丢失」</li>
+      <li>详情 ID 无效：Empty「课程不存在或已删除」</li>
+    </ul>
+  </section>
+
+  <section id="page-requirements">
+    <h2>6. 页面级需求说明</h2>
+
+    <article class="page-requirement" id="p-overview">
+      <h3>6.1 概览</h3>
+      <h4>页面目标</h4>
+      <p>展示课程资产健康度与待办：总量、发布率、待审评论，并提供快捷审核入口。</p>
+      <h4>页面布局</h4>
+      <p>面包屑「课程 &gt; 概览」→ KPI 网格 → 状态/类型分布条 → 发布率仪表 → 最近更新课程表 → 待审核评论表。</p>
+      <figure>
+        <img src="screenshots/概览-页面整体.png" alt="概览-页面布局-页面整体截图">
+        <figcaption><span class="component-path">概览-页面布局-页面整体</span>：概览完整布局。</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/概览-KPI指标卡.png" alt="概览-指标看板-KPI指标卡截图">
+        <figcaption><span class="component-path">概览-指标看板-KPI指标卡</span>：课程总数、课件数、已发布、未发布、待审核评论。</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/概览-状态与类型分布.png" alt="概览-图表区-状态与类型分布截图">
+        <figcaption><span class="component-path">概览-图表区-状态与类型分布</span>：课程状态分布与类型分布分段条。</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/概览-最近更新课程表.png" alt="概览-最近更新-最近更新课程表截图">
+        <figcaption><span class="component-path">概览-最近更新-最近更新课程表</span>：课程名称可点击跳转详情；列含状态、最后修改时间。</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/概览-待审核评论表.png" alt="概览-待审评论-待审核评论表截图">
+        <figcaption><span class="component-path">概览-待审评论-待审核评论表</span>：评论/评论人/课程；操作：查看、通过、驳回。</figcaption>
+      </figure>
+      <h4>组件显示逻辑</h4>
+      <table>
+        <thead><tr><th>组件路径</th><th>组件类型</th><th>默认状态</th><th>显示/隐藏逻辑</th><th>启用/禁用逻辑</th><th>数据来源</th><th>状态变化</th><th>空/错/加载状态</th><th>权限/条件控制</th></tr></thead>
+        <tbody>
+          <tr><td>概览-指标看板-KPI指标卡</td><td>卡片组</td><td>展示</td><td>始终显示</td><td>无</td><td><code>computeCourseOverviewStats</code>（courses/courseware/records/comments）</td><td>数据变更重算</td><td>数值可为 0</td><td>无权限控制（待确认）</td></tr>
+          <tr><td>概览-待审评论-待审核评论表</td><td>表格</td><td>展示</td><td>始终显示</td><td>行操作始终可点</td><td><code>pendingCourseComments</code></td><td>通过/驳回后行消失</td><td>emptyText「暂无待审核评论」</td><td>待确认</td></tr>
+        </tbody>
+      </table>
+      <h4>操作说明</h4>
+      <table>
+        <thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用逻辑</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead>
+        <tbody>
+          <tr><td>查看评论所属课程</td><td>概览-待审评论-查看按钮</td><td>链接按钮「查看」</td><td>有评论记录</td><td>始终启用</td><td>点击</td><td>导航到课程详情 comments Tab</td><td>路由变化</td><td>无 toast</td><td>无</td><td><code>onNavigate('course-detail', id, 'comments')</code></td></tr>
+          <tr><td>通过评论</td><td>概览-待审评论-通过按钮</td><td>「通过」</td><td>待审核</td><td>始终启用</td><td>点击→确认</td><td><code>approveCourseComment</code></td><td>status→已通过</td><td>message.success</td><td>待确认</td><td>localStorage 持久化</td></tr>
+          <tr><td>驳回评论</td><td>概览-待审评论-驳回按钮</td><td>「驳回」</td><td>待审核</td><td>始终启用</td><td>点击→确认</td><td><code>rejectCourseComment</code></td><td>status→已驳回</td><td>message.success</td><td>待确认</td><td>localStorage</td></tr>
+        </tbody>
+      </table>
+      <h4>验收标准</h4>
+      <p>Given 存在待审核评论，When 管理员点击通过并确认，Then 评论状态变为已通过且概览待审数减 1。</p>
+    </article>
+
+    <article class="page-requirement" id="p-courses">
+      <h3>6.2 课程管理</h3>
+      <h4>页面目标</h4>
+      <p>按分类与类型维护课程列表，支持查询、批量发布/撤销、分类树管理。</p>
+      <figure>
+        <img src="screenshots/课程管理-页面整体.png" alt="课程管理-页面布局-页面整体截图">
+        <figcaption><span class="component-path">课程管理-页面布局-页面整体</span>：左侧分类树 + 右侧查询与表格。</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/课程管理-分类树.png" alt="课程管理-分类树-分类树面板截图">
+        <figcaption><span class="component-path">课程管理-分类树-分类树面板</span>：支持搜索、新建分类、节点更多操作（新建子分类/编辑/上移/下移/删除）。</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/课程管理-查询筛选.png" alt="课程管理-查询筛选-搜索面板截图">
+        <figcaption><span class="component-path">课程管理-查询筛选-搜索面板</span>：课程名称 Input、发布状态 Select；查询/重置。</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/课程管理-列表表格.png" alt="课程管理-列表表格-课程表格截图">
+        <figcaption><span class="component-path">课程管理-列表表格-课程表格</span>：封面、名称、分类、类型、发布状态、创建人、时间与行操作。</figcaption>
+      </figure>
+      <h4>字段说明（查询）</h4>
+      <table>
+        <thead><tr><th>字段名称</th><th>组件路径</th><th>控件类型</th><th>是否必填</th><th>默认值</th><th>校验规则</th><th>选项值</th><th>业务含义</th></tr></thead>
+        <tbody>
+          <tr><td>课程名称</td><td>课程管理-查询筛选-课程名称</td><td>Input</td><td>否</td><td>空</td><td>包含匹配</td><td>—</td><td>按名称模糊筛选</td></tr>
+          <tr><td>发布状态</td><td>课程管理-查询筛选-发布状态</td><td>Select</td><td>否</td><td>全部</td><td>无</td><td>草稿 / 已发布 / 已下架</td><td>精确匹配状态</td></tr>
+        </tbody>
+      </table>
+      <h4>列表列</h4>
+      <table>
+        <thead><tr><th>列名</th><th>组件路径</th><th>数据含义</th><th>格式</th><th>是否可排序</th><th>是否可筛选</th><th>行操作</th></tr></thead>
+        <tbody>
+          <tr><td>课程封面</td><td>课程管理-列表表格-封面列</td><td>类型占位缩略</td><td>类型文字</td><td>否</td><td>否</td><td>—</td></tr>
+          <tr><td>课程名称</td><td>课程管理-列表表格-名称列</td><td>课程名</td><td>链接按钮</td><td>否</td><td>Tab/查询</td><td>点击进详情</td></tr>
+          <tr><td>分类名称</td><td>课程管理-列表表格-分类列</td><td>categoryId→名称</td><td>文本</td><td>否</td><td>左侧树</td><td>—</td></tr>
+          <tr><td>课程类型</td><td>课程管理-列表表格-类型列</td><td>视频/音频/PDF</td><td>Tag</td><td>否</td><td>顶部 Tab</td><td>—</td></tr>
+          <tr><td>发布状态</td><td>课程管理-列表表格-状态列</td><td>草稿/已发布/已下架</td><td>Tag</td><td>否</td><td>查询</td><td>—</td></tr>
+          <tr><td>操作</td><td>课程管理-列表表格-操作列</td><td>—</td><td>链接组</td><td>—</td><td>—</td><td>详情/编辑/发布|撤销/更多删除</td></tr>
+        </tbody>
+      </table>
+      <h4>操作说明</h4>
+      <table>
+        <thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用逻辑</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead>
+        <tbody>
+          <tr><td>新增课程</td><td>课程管理-工具栏-新增课程</td><td>主按钮</td><td>无</td><td>始终</td><td>点击</td><td>跳转 course-create</td><td>路由</td><td>无</td><td>无</td><td>hash 路由</td></tr>
+          <tr><td>发布</td><td>课程管理-列表表格-发布按钮</td><td>「发布」</td><td>非已发布</td><td>已发布时显示「撤销」</td><td>点击</td><td><code>setCourseStatus([id],'已发布')</code></td><td>status→已发布</td><td>success toast</td><td>已发布时 info</td><td>内存 store</td></tr>
+          <tr><td>撤销</td><td>课程管理-列表表格-撤销按钮</td><td>「撤销」</td><td>已发布</td><td>仅已发布显示</td><td>确认弹窗</td><td>状态改为已下架</td><td>已下架</td><td>success</td><td>待确认</td><td>内存 store</td></tr>
+          <tr><td>删除</td><td>课程管理-列表表格-更多-删除</td><td>更多菜单</td><td><code>canDeleteCourse</code>：非已发布</td><td>已发布不展示删除</td><td>危险确认</td><td><code>removeCourse</code></td><td>记录移除</td><td>success</td><td>error「请确认课程未发布」</td><td>内存 store</td></tr>
+          <tr><td>批量发布/撤销</td><td>课程管理-工具栏-批量操作</td><td>Dropdown</td><td>已勾选行</td><td>无勾选时待确认禁用</td><td>确认</td><td>过滤可操作行后批量改状态</td><td>多行变化</td><td>success 计数</td><td>info 无可操作</td><td>内存 store</td></tr>
+          <tr><td>新建分类</td><td>课程管理-分类树-新建分类</td><td>虚线按钮</td><td>层级&lt;3</td><td>第 3 级不可再加子级</td><td>弹窗填名称</td><td><code>addCourseCategoryNode</code></td><td>树新增节点</td><td>success</td><td>warning「分类最多支持 3 级」；重名校验</td><td>内存 store</td></tr>
+        </tbody>
+      </table>
+      <h4>交互规则</h4>
+      <ul>
+        <li>顶部 Tab：全部 / 视频 / 音频 / PDF，与查询条件叠加过滤。</li>
+        <li>选中分类：按子树 ID 过滤 <code>categoryId</code>。</li>
+        <li>删除分类：若子树内有课程占用，warning 并阻止；否则确认后级联删除子分类。</li>
+      </ul>
+      <h4>验收标准</h4>
+      <p>Given 课程为草稿，When 点击发布，Then 状态变为已发布且删除入口消失。Given 已发布，When 尝试删除，Then 不展示删除或提示先下架。</p>
+    </article>
+
+    <article class="page-requirement" id="p-form">
+      <h3>6.3 新增 / 编辑课程</h3>
+      <h4>页面目标</h4>
+      <p>采集课程完整配置并保存；编辑态可跳转详情；脏数据离开需确认。</p>
+      <figure>
+        <img src="screenshots/新增课程-表单页.png" alt="新增课程-表单页-页面整体截图">
+        <figcaption><span class="component-path">新增课程-表单页-页面整体</span>：分卡片表单 + 底部粘性保存/取消。</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/编辑课程-表单页.png" alt="编辑课程-表单页-页面整体截图">
+        <figcaption><span class="component-path">编辑课程-表单页-页面整体</span>：编辑态带「查看详情」；预填已有课程数据。</figcaption>
+      </figure>
+      <h4>字段说明</h4>
+      <table>
+        <thead><tr><th>字段名称</th><th>组件路径</th><th>控件类型</th><th>是否必填</th><th>默认值</th><th>校验规则</th><th>选项值</th><th>业务含义</th></tr></thead>
+        <tbody>
+          <tr><td>课程类型</td><td>新增课程-基本信息-课程类型</td><td>Radio.Button</td><td>是</td><td>视频</td><td>必选</td><td>视频/音频/PDF</td><td>课程媒体类型</td></tr>
+          <tr><td>课程封面图</td><td>新增课程-基本信息-课程封面图</td><td>Upload picture-card</td><td>是</td><td>空</td><td>必传；accept image/*；本地 FileReader→DataURL</td><td>—</td><td>封面展示</td></tr>
+          <tr><td>课程分类</td><td>新增课程-基本信息-课程分类</td><td>TreeSelect</td><td>是</td><td>无</td><td>必选；可搜索</td><td>分类树</td><td>归属分类</td></tr>
+          <tr><td>课程名称</td><td>新增课程-基本信息-课程名称</td><td>Input</td><td>是</td><td>空</td><td>必填去空格；max 20；showCount</td><td>—</td><td>显示名</td></tr>
+          <tr><td>课程标签</td><td>新增课程-基本信息-课程标签</td><td>TextArea</td><td>是</td><td>空</td><td>必填；max 500</td><td>—</td><td>标签文案</td></tr>
+          <tr><td>适用对象</td><td>新增课程-基本信息-适用对象</td><td>TextArea</td><td>是</td><td>空</td><td>必填；max 500</td><td>—</td><td>岗位/人群</td></tr>
+          <tr><td>学习过程</td><td>新增课程-学习设置-学习过程</td><td>Radio.Button</td><td>是</td><td>不限制</td><td>必选</td><td>不限制 / 按序学习</td><td>按序需按目录完成</td></tr>
+          <tr><td>课程目录</td><td>新增课程-课程目录-目录表</td><td>可编辑 Table</td><td>是（≥1）</td><td>[]</td><td>至少 1 个课件</td><td>来自课件库</td><td>学时/必学/排序</td></tr>
+          <tr><td>课程介绍</td><td>新增课程-课程介绍-富文本</td><td>RichTextField</td><td>否</td><td>空</td><td>无</td><td>—</td><td>图文介绍</td></tr>
+          <tr><td>评论/审核/点赞/收藏</td><td>新增课程-互动设置-开关组</td><td>Switch×4</td><td>否</td><td>评论开、审核关、点赞开、收藏开</td><td>无</td><td>开/关</td><td>员工端互动能力</td></tr>
+        </tbody>
+      </table>
+      <h4>操作说明</h4>
+      <table>
+        <thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用逻辑</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead>
+        <tbody>
+          <tr><td>添加课件</td><td>新增课程-课程目录-添加课件</td><td>主按钮</td><td>无</td><td>始终</td><td>打开选择弹窗</td><td>多选课件追加到目录，默认学时 1、必学开</td><td>catalog 增长</td><td>success 数量</td><td>info「所选课件已在目录中」</td><td>弹窗确认</td></tr>
+          <tr><td>清空课件</td><td>新增课程-课程目录-清空课件</td><td>按钮</td><td>目录非空</td><td>空目录可点但无效果</td><td>确认</td><td>catalog=[]</td><td>清空</td><td>无额外 toast</td><td>—</td><td>确认弹窗</td></tr>
+          <tr><td>保存</td><td>新增课程-底部操作-保存</td><td>主按钮</td><td>校验通过且目录非空</td><td>始终可点</td><td>点击</td><td><code>upsertCourse</code>；新建默认草稿</td><td>写入 store</td><td>success → 返回列表</td><td>表单校验 / error「请至少添加一个课件」</td><td>onBack</td></tr>
+          <tr><td>取消/离开</td><td>新增课程-底部操作-取消</td><td>按钮/面包屑</td><td>若 dirty</td><td>—</td><td>点击</td><td>确认离开</td><td>丢弃修改</td><td>—</td><td>—</td><td>onBack</td></tr>
+        </tbody>
+      </table>
+      <h4>验收标准</h4>
+      <p>Given 未添加课件，When 保存，Then 提示至少添加一个课件且不落库。Given 表单已改，When 点取消，Then 出现离开确认。</p>
+    </article>
+
+    <article class="page-requirement" id="p-detail">
+      <h3>6.4 课程详情</h3>
+      <h4>页面目标</h4>
+      <p>只读查看课程配置与运营数据，管理评论与答题设置。</p>
+      <figure>
+        <img src="screenshots/课程详情-页面整体.png" alt="课程详情-页面布局-页面整体截图">
+        <figcaption><span class="component-path">课程详情-页面布局-页面整体</span>：标题+状态 Tag、编辑/返回、统计条、四 Tab。</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/课程详情-标题与操作.png" alt="课程详情-标题区-标题与操作截图">
+        <figcaption><span class="component-path">课程详情-标题区-标题与操作</span>：主按钮编辑、次按钮返回。</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/课程详情-统计条.png" alt="课程详情-统计条-指标卡截图">
+        <figcaption><span class="component-path">课程详情-统计条-指标卡</span>：课程维度统计（学习/互动等，见 CourseStatsRow）。</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/课程详情-Tab详情.png" alt="课程详情-详情Tab-内容区截图">
+        <figcaption><span class="component-path">课程详情-详情Tab-内容区</span>：Descriptions + 目录表 + 只读评论配置 + 介绍 HTML。</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/课程详情-学习记录Tab.png" alt="课程详情-学习记录Tab-面板截图">
+        <figcaption><span class="component-path">课程详情-学习记录Tab-面板</span>：按员工姓名/状态筛选；进度条；详情按钮目前 message.info 占位。</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/课程详情-评论管理Tab.png" alt="课程详情-评论管理Tab-面板截图">
+        <figcaption><span class="component-path">课程详情-评论管理Tab-面板</span>：内容/作者/时间筛选；批量通过驳回删除；行级审核。</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/课程详情-设置答题Tab.png" alt="课程详情-设置答题Tab-面板截图">
+        <figcaption><span class="component-path">课程详情-设置答题Tab-面板</span>：是否开启答题；题库规则（分类/题型/难度/抽题数）；库存校验来自练习题库 store。</figcaption>
+      </figure>
+      <h4>组件显示逻辑</h4>
+      <table>
+        <thead><tr><th>组件路径</th><th>组件类型</th><th>默认状态</th><th>显示/隐藏逻辑</th><th>启用/禁用逻辑</th><th>数据来源</th><th>状态变化</th><th>空/错/加载状态</th><th>权限/条件控制</th></tr></thead>
+        <tbody>
+          <tr><td>课程详情-页面布局-空状态</td><td>Empty</td><td>隐藏</td><td>recordId 无效或课程不存在时显示</td><td>—</td><td>courses.find</td><td>—</td><td>「课程不存在或已删除」</td><td>—</td></tr>
+          <tr><td>课程详情-Tab容器-Tabs</td><td>Tabs</td><td>detail</td><td>始终</td><td>—</td><td>URL tab</td><td>切换写回 hash</td><td>destroyOnHidden</td><td>—</td></tr>
+          <tr><td>课程详情-设置答题Tab-题库规则</td><td>动态表单</td><td>随 enabled</td><td>enabled=true 显示 banks</td><td>—</td><td>courseQuizStore + practice 题库</td><td>保存写 localStorage</td><td>库存为 0 时提示风险（代码可见）</td><td>待确认与考试权限关系</td></tr>
+        </tbody>
+      </table>
+      <h4>验收标准</h4>
+      <p>Given 课程存在，When 打开 <code>#/training/course-detail/1/comments</code>，Then 默认选中评论管理 Tab。Given 无效 ID，When 进入详情，Then 显示空状态与返回按钮。</p>
+    </article>
+
+    <article class="page-requirement" id="p-courseware">
+      <h3>6.5 课件管理</h3>
+      <h4>页面目标</h4>
+      <p>维护可被课程目录引用的课件资产（视频/音频/PDF）及其分类。</p>
+      <figure>
+        <img src="screenshots/课件管理-页面整体.png" alt="课件管理-页面布局-页面整体截图">
+        <figcaption><span class="component-path">课件管理-页面布局-页面整体</span>：布局同课程管理：左树右表。</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/课件管理-分类树.png" alt="课件管理-分类树-分类树面板截图">
+        <figcaption><span class="component-path">课件管理-分类树-分类树面板</span>：独立课件分类树（与课程分类 store 分离）。</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/课件管理-查询筛选.png" alt="课件管理-查询筛选-搜索面板截图">
+        <figcaption><span class="component-path">课件管理-查询筛选-搜索面板</span>：名称 + 发布状态（草稿/已发布）。</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/课件管理-列表表格.png" alt="课件管理-列表表格-课件表格截图">
+        <figcaption><span class="component-path">课件管理-列表表格-课件表格</span>：课件列表与发布/编辑/删除等操作。</figcaption>
+      </figure>
+      <h4>字段说明（抽屉表单，代码）</h4>
+      <table>
+        <thead><tr><th>字段名称</th><th>组件路径</th><th>控件类型</th><th>是否必填</th><th>默认值</th><th>校验规则</th><th>选项值</th><th>业务含义</th></tr></thead>
+        <tbody>
+          <tr><td>类型</td><td>课件管理-表单抽屉-类型</td><td>Radio</td><td>是</td><td>视频</td><td>必选；影响文件 accept</td><td>视频/音频/PDF</td><td>媒体类型</td></tr>
+          <tr><td>封面</td><td>课件管理-表单抽屉-封面</td><td>Upload</td><td>代码可见必填</td><td>空</td><td>image/*</td><td>—</td><td>列表封面</td></tr>
+          <tr><td>名称</td><td>课件管理-表单抽屉-名称</td><td>Input</td><td>是</td><td>空</td><td>trim</td><td>—</td><td>课件名</td></tr>
+          <tr><td>分类</td><td>课件管理-表单抽屉-分类</td><td>TreeSelect</td><td>是</td><td>当前选中分类</td><td>必选</td><td>课件分类树</td><td>归属</td></tr>
+          <tr><td>课件文件</td><td>课件管理-表单抽屉-文件</td><td>Upload</td><td>是</td><td>空</td><td>按类型 accept</td><td>—</td><td>fileName/fileUrl</td></tr>
+          <tr><td>简介</td><td>课件管理-表单抽屉-简介</td><td>TextArea</td><td>否</td><td>空</td><td>—</td><td>—</td><td>说明</td></tr>
+          <tr><td>预估时长(秒)</td><td>课件管理-表单抽屉-时长</td><td>InputNumber</td><td>否</td><td>null</td><td>—</td><td>—</td><td>展示用时长</td></tr>
+        </tbody>
+      </table>
+      <h4>操作说明</h4>
+      <ul>
+        <li>删除课件：仅草稿可删（<code>canDeleteCourseware</code>）。</li>
+        <li>发布状态：草稿 ↔ 已发布（列表操作）。</li>
+        <li>分类占用校验：有课件时不可删分类（usage API）。</li>
+      </ul>
+      <h4>验收标准</h4>
+      <p>Given 草稿课件，When 删除确认，Then 记录移除。Given 已发布课件，When 删除，Then 不可删。</p>
+    </article>
+
+    <article class="page-requirement" id="p-rules">
+      <h3>6.6 规则设置</h3>
+      <h4>页面目标</h4>
+      <p>配置学完/学时奖励的积分与学分发放规则。</p>
+      <figure>
+        <img src="screenshots/规则设置-页面整体.png" alt="规则设置-页面布局-页面整体截图">
+        <figcaption><span class="component-path">规则设置-页面布局-页面整体</span>：积分规则卡 + 学分规则卡 + 保存。</figcaption>
+      </figure>
+      <h4>字段说明</h4>
+      <table>
+        <thead><tr><th>字段名称</th><th>组件路径</th><th>控件类型</th><th>是否必填</th><th>默认值</th><th>校验规则</th><th>选项值</th><th>业务含义</th></tr></thead>
+        <tbody>
+          <tr><td>是否发放</td><td>规则设置-积分规则-是否发放</td><td>Switch</td><td>否</td><td>关</td><td>关时清空子字段</td><td>开/关</td><td>启用积分</td></tr>
+          <tr><td>发放方式</td><td>规则设置-积分规则-发放方式</td><td>Radio</td><td>启用时必填</td><td>null</td><td>required</td><td>每课程固定分 / 每 x 分钟 x 分</td><td>计算模式</td></tr>
+          <tr><td>固定分值</td><td>规则设置-积分规则-固定分值</td><td>InputNumber</td><td>fixed 模式必填</td><td>null</td><td>≥1 整数</td><td>—</td><td>整课奖励</td></tr>
+          <tr><td>间隔分钟 / 区间分值</td><td>规则设置-积分规则-时长字段</td><td>InputNumber</td><td>duration 必填</td><td>null</td><td>≥1</td><td>—</td><td>按时长发放</td></tr>
+          <tr><td>每节课上限 / 每日上限</td><td>规则设置-积分规则-上限</td><td>InputNumber</td><td>启用必填</td><td>null</td><td>≥1；日上限 ≥ 课上限</td><td>—</td><td>封顶</td></tr>
+        </tbody>
+      </table>
+      <p>学分规则字段结构与积分相同（points / credits 两套 KindRule）。</p>
+      <h4>验收标准</h4>
+      <p>Given 开启积分且选固定分但未填分值，When 保存，Then 表单校验失败。Given 日上限小于课上限，When 保存，Then 校验失败。</p>
+    </article>
+  </section>
+
+  <section id="data-fields">
+    <h2>7. 数据字段与枚举</h2>
+    <table>
+      <thead><tr><th>枚举/字段</th><th>取值</th><th>出处</th></tr></thead>
+      <tbody>
+        <tr><td>CourseStatus</td><td>草稿、已发布、已下架</td><td>training.ts</td></tr>
+        <tr><td>CourseType / CoursewareType</td><td>视频、音频、PDF</td><td>training.ts</td></tr>
+        <tr><td>LearningMode</td><td>不限制、按序学习</td><td>training.ts</td></tr>
+        <tr><td>CoursewarePublishStatus</td><td>草稿、已发布</td><td>training.ts</td></tr>
+        <tr><td>LearningStatus</td><td>未开始、学习中、已完成</td><td>training.ts</td></tr>
+        <tr><td>CommentStatus</td><td>已通过、待审核、已驳回</td><td>courseCommentStore</td></tr>
+        <tr><td>RewardMode</td><td>fixed、duration</td><td>rewardRules.ts</td></tr>
+        <tr><td>CourseCommentConfig</td><td>commentEnabled / commentAuditEnabled / likeEnabled / favoriteEnabled</td><td>training.ts</td></tr>
+        <tr><td>分类层级</td><td>最多 3 级</td><td>addCourseCategoryNode</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="apis">
+    <h2>8. API / 数据接口清单</h2>
+    <p><span class="status impl">代码已实现</span>：当前为前端内存 Store + 部分 localStorage，无 HTTP API。</p>
+    <table>
+      <thead><tr><th>接口用途</th><th>方法</th><th>路径</th><th>触发场景</th><th>请求参数</th><th>响应字段</th><th>是否真实接口</th><th>备注</th></tr></thead>
+      <tbody>
+        <tr><td>课程 CRUD / 状态</td><td>—</td><td>trainingStore</td><td>列表/表单</td><td>CourseRecord</td><td>内存数组</td><td>否</td><td>原型</td></tr>
+        <tr><td>评论列表持久化</td><td>localStorage</td><td><code>kangni.training.courseComments.v1</code></td><td>评论变更</td><td>JSON 数组</td><td>CourseCommentRecord[]</td><td>否</td><td>浏览器本地</td></tr>
+        <tr><td>评论配置持久化</td><td>localStorage</td><td><code>kangni.training.courseCommentConfigs.v1</code></td><td>更新配置</td><td>Record&lt;id, config&gt;</td><td>—</td><td>否</td><td></td></tr>
+        <tr><td>答题配置持久化</td><td>localStorage</td><td><code>kangni.training.courseQuizConfigs.v2</code></td><td>保存答题</td><td>configs</td><td>—</td><td>否</td><td></td></tr>
+        <tr><td>练习题库存</td><td>—</td><td>exams/questionStore('practice')</td><td>设置答题</td><td>分类/题型/难度</td><td>题目列表</td><td>否</td><td>跨模块读题库</td></tr>
+      </tbody>
+    </table>
+    <p><span class="status todo">建议接口 / 待确认</span>：课程/课件 REST、文件上传 OSS、评论审核 API、学习进度查询、奖励发放服务端结算、权限鉴权。</p>
+  </section>
+
+  <section id="non-functional">
+    <h2>9. 非功能需求</h2>
+    <ul>
+      <li>布局：窄屏时列表侧栏变为纵向堆叠（<code>Grid.useBreakpoint</code> lg 断点）。</li>
+      <li>无障碍：部分按钮带 <code>aria-label</code>（详情/编辑/发布等）。</li>
+      <li>表单：<code>validateTrigger=onBlur</code>，<code>scrollToFirstError</code>。</li>
+      <li>安全：上传使用 <code>beforeUpload={() => false}</code> 本地预览，未对接服务端存储。<span class="status todo">待确认</span></li>
+      <li>性能/并发/审计：代码未见。<span class="status todo">待确认</span></li>
+    </ul>
+  </section>
+
+  <section id="analytics">
+    <h2>10. 埋点与指标建议</h2>
+    <p><span class="status">建议补充</span> 代码中无埋点实现。</p>
+    <table>
+      <thead><tr><th>事件名称</th><th>触发动作</th><th>关键属性</th><th>业务目的</th></tr></thead>
+      <tbody>
+        <tr><td>course_publish</td><td>发布课程</td><td>course_id, from_status</td><td>发布转化</td></tr>
+        <tr><td>course_create_save</td><td>保存新建</td><td>type, catalog_count</td><td>生产效率</td></tr>
+        <tr><td>comment_approve</td><td>审核通过</td><td>comment_id, course_id</td><td>审核时效</td></tr>
+        <tr><td>quiz_config_save</td><td>保存答题设置</td><td>enabled, bank_count</td><td>功能采用</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="acceptance">
+    <h2>11. 验收标准</h2>
+    <ol>
+      <li>Given 进入课程应用，When 查看侧栏，Then 可见概览/课程管理/课件管理/规则设置。</li>
+      <li>Given 填写合法课程表单且目录≥1，When 保存，Then 列表出现草稿课程。</li>
+      <li>Given 草稿课程，When 发布，Then 状态为已发布且不可删除。</li>
+      <li>Given 待审评论，When 概览通过，Then 待审列表更新且持久化刷新后仍在。</li>
+      <li>Given 规则启用 duration 模式，When 缺间隔分钟，Then 无法保存。</li>
+      <li>Given 课件分类下有课件，When 删除该分类，Then 被占用提示阻止。</li>
+    </ol>
+  </section>
+
+  <section id="risks">
+    <h2>12. 风险与待确认问题</h2>
+    <ul>
+      <li>无后端：刷新后课程/课件主体数据是否持久化取决于 mock 初始化，仅评论/评论配置/答题配置写 localStorage。</li>
+      <li>学习记录「详情」仅为 message 占位，无真实学习明细页。</li>
+      <li>封面/课件上传仅为前端 DataURL/本地文件名，生产存储与病毒扫描 <span class="status todo">待确认</span>。</li>
+      <li>角色权限、操作审计、多租户隔离未实现。<span class="status todo">待确认</span></li>
+      <li>答题抽题与考试模块题库耦合边界、完成课程后奖励发放时序 <span class="status todo">待确认</span>。</li>
+      <li>批量操作按钮在未选中时的禁用态 UI 细节需对照交互规范复核。</li>
+      <li>新建分类/课件抽屉弹层截图本次未稳定捕获，字段以源码为准。</li>
+    </ul>
+  </section>
+</main>
+</div>
+</div>
+<script>
+  document.querySelectorAll('[data-toggle-toc]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var layout = document.getElementById('prdLayout');
+      var collapsed = layout.classList.toggle('toc-collapsed');
+      var sidebarToggle = document.querySelector('.toc-toggle');
+      var floatingToggle = document.querySelector('.floating-toc-toggle');
+      if (sidebarToggle) {
+        sidebarToggle.setAttribute('aria-label', collapsed ? '显示目录' : '隐藏目录');
+        sidebarToggle.setAttribute('title', collapsed ? '显示目录' : '隐藏目录');
+      }
+      if (floatingToggle) {
+        floatingToggle.setAttribute('aria-label', collapsed ? '显示目录' : '隐藏目录');
+        floatingToggle.setAttribute('title', collapsed ? '显示目录' : '隐藏目录');
+      }
+    });
+  });
+</script>
+</body>
+</html>

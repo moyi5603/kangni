@@ -3,7 +3,11 @@ import { ACTIVITY_MOCK_VERSION, activityReviewer, canSubmitApproval, initialActi
 import { recordApprovalDecision, recordApprovalSubmit } from './related';
 
 let mockVersion = ACTIVITY_MOCK_VERSION;
-let activities = [...initialActivities];
+let activities = initialActivities.map((item) => ({
+  ...item,
+  // 演示数据：非「无需审核」视为已开审批流
+  activityApprovalEnabled: item.auditStatus !== '无需审核',
+}));
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -12,7 +16,10 @@ function emit() {
 
 function syncMockData() {
   if (mockVersion === ACTIVITY_MOCK_VERSION) return;
-  activities = [...initialActivities];
+  activities = initialActivities.map((item) => ({
+    ...item,
+    activityApprovalEnabled: item.auditStatus !== '无需审核',
+  }));
   mockVersion = ACTIVITY_MOCK_VERSION;
   emit();
 }
@@ -20,7 +27,10 @@ function syncMockData() {
 if (import.meta.hot) {
   import.meta.hot.accept('./activity', (mod) => {
     if (!mod) return;
-    activities = [...mod.initialActivities];
+    activities = mod.initialActivities.map((item: Activity) => ({
+      ...item,
+      activityApprovalEnabled: item.auditStatus !== '无需审核',
+    }));
     mockVersion = mod.ACTIVITY_MOCK_VERSION;
     emit();
   });

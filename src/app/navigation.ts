@@ -113,7 +113,6 @@ export const applicationMenus: Record<string, MenuNode[]> = {
     { key: 'activity-overview', icon: 'dashboard', label: '概览' },
     { key: 'activity-list', icon: 'unorderedList', label: '活动管理' },
     { key: 'activity-categories', icon: 'appstore', label: '分类管理' },
-    { key: 'activity-tags', icon: 'tags', label: '活动标签' },
     { key: 'activity-rules', icon: 'fileText', label: '规则设置' },
   ],
   experience: [
@@ -139,6 +138,7 @@ export const applicationMenus: Record<string, MenuNode[]> = {
   awards: [
     { key: 'award-overview', icon: 'dashboard', label: '概览' },
     { key: 'award-list', icon: 'trophy', label: '评优管理' },
+    { key: 'award-certificates', icon: 'gift', label: '评优证书' },
     { key: 'award-rules', icon: 'fileText', label: '规则设置' },
   ],
   training: [
@@ -586,6 +586,9 @@ export function parseLocationHash(hash: string): { application: string; page: st
     'interest-group-activity-create',
     'interest-group-activity-edit',
     'interest-group-activity-detail',
+    'award-create',
+    'award-edit',
+    'award-detail',
   ];
   if (pageKey && (isLeafMenuKey(menus, pageKey) || extraPages.includes(pageKey))) {
     return tab ? { application: application.key, page: pageKey, recordId, tab } : { application: application.key, page: pageKey, recordId };
@@ -593,8 +596,6 @@ export function parseLocationHash(hash: string): { application: string; page: st
   const legacyRelatedTabs: Record<string, string> = {
     'activity-signups': 'signups',
     'activity-comments': 'comments',
-    'activity-approvals': 'approvals',
-    'activity-surveys': 'surveys',
     'activity-moments': 'moments',
     'activity-prizes': 'prizes',
   };
@@ -640,6 +641,9 @@ export function siderSelectedKey(page: string): string {
     page === 'interest-group-activity-detail'
   ) {
     return 'interest-group-activities';
+  }
+  if (page === 'award-create' || page === 'award-edit' || page === 'award-detail') {
+    return 'award-list';
   }
   return page;
 }

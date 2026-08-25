@@ -9,7 +9,8 @@ describe('PC course mall catalog', () => {
 
     expect(html).toContain('class="c-pc-shell is-course"');
     expect(html).toContain('<h1 class="c-pc-header-title">课程</h1>');
-    expect(html).toContain('手机版');
+    expect(html).not.toContain('手机版');
+    expect(html).not.toContain('回主页');
     expect(html).toContain('<h2 class="c-section-title">发现课程</h2>');
     expect(html).toContain('c-pc-mall-hero is-course');
     expect(html).toContain('今日精选学习');
