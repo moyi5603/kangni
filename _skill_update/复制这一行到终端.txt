@@ -1,0 +1,1 @@
+bash "/Users/edy/Documents/需求/康尼2/_skill_update/一键更新B2B-Skill.command"

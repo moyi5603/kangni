@@ -1,0 +1,588 @@
+# b2b-standards.json 中文配置指南
+
+## 这份文件控制什么
+
+`.b2b/b2b-standards.json` 是项目的统一设计规范配置。产品经理或设计负责人可以通过它调整布局、颜色、字号、表格、表单和反馈规则，不需要逐页修改组件代码。
+
+修改时只改 JSON 中冒号右侧的值，不要删除字段名、逗号或双引号。尺寸单位统一为像素，但 JSON 中只填写数字，例如 `224`，不要写成 `"224px"`。
+
+设计规范总源为 `designSource.projectUrl` 指向的 CoDesign“后台规范”项目。该地址用于核对当前版本；`urls` 中其余链接用于定位具体演示页。不要自行删除或替换总源地址。
+
+## 修改布局
+
+标准骨架固定为：顶部通栏中左侧 Logo、中间为应用切换区、右侧当前用户；主体左侧为当前应用的应用菜单（最多两级），右侧为功能区。切换应用时，左侧菜单和应用默认页自动切换。应用较多时由“全部应用”入口收缩，并在分类悬浮卡片中展示。该结构直接使用 Ant Design `Layout`、`Menu` 和 `Popover`。
+
+布局尺寸由 `product`、`layout` 和 `theme.components.Layout` 三个区域共同控制：
+
+```json
+{
+  "product": {
+    "contentWidthMode": "fluid",
+    "contentWidth": "100%",
+    "allowReadableContentMaxWidth": true,
+    "pageGutter": 24,
+    "pageGutterCompact": 16,
+    "uniformOuterGutter": true
+  },
+  "theme": {
+    "components": {
+      "Layout": { "headerHeight": 50 }
+    }
+  },
+  "layout": {
+    "pattern": "top-app-left-app-menu-content",
+    "topLevelType": "application",
+    "leftNavigationType": "application-menu",
+    "sidebarTitleContent": "none",
+    "navigationMaxDepth": 2,
+    "applicationDirectVisibleMax": 4,
+    "applicationOverflowMode": "categorized-hover-card",
+    "applicationCardTrigger": "hover",
+    "switchApplicationLoadsDefaultPage": true,
+    "menuIconsRequired": true,
+    "logoWidth": 224,
+    "sidebarWidth": 224,
+    "sidebarCollapsedWidth": 64,
+    "stickyPageHeader": false,
+    "breadcrumb": true
+  }
+}
+```
+
+| 配置项 | 中文含义 | 当前值 | 推荐范围 | 修改效果 |
+|---|---|---:|---:|---|
+| `product.contentWidthMode` | 主内容宽度模式 | `fluid` | 不修改 | 页面内容随可用空间伸缩 |
+| `product.contentWidth` | 主内容宽度 | `100%` | 不修改 | 禁止业务页面写死整体容器宽度 |
+| `product.allowReadableContentMaxWidth` | 阅读内容可使用最大宽度 | true | true／false | 允许长文本、说明页等单独限制阅读宽度 |
+| `product.pageGutter` | 桌面端页面边距 | 24 | 16～32 | 控制内容与页面边缘的距离 |
+| `product.pageGutterCompact` | 窄屏页面边距 | 16 | 12～20 | 控制平板和手机页面边距 |
+| `theme.components.Layout.headerHeight` | 顶部导航高度 | 50 | 48～64 | 控制顶部栏和左侧品牌区高度 |
+| `layout.pattern` | 固定应用骨架 | `top-app-left-app-menu-content` | 不修改 | 顶部应用、左侧应用菜单、右侧功能区 |
+| `layout.topLevelType` | 顶层对象类型 | `application` | 不修改 | 明确顶部切换的是应用，不是菜单层级 |
+| `layout.leftNavigationType` | 左侧导航类型 | `application-menu` | 不修改 | 左侧只展示当前应用的菜单 |
+| `layout.sidebarTitleContent` | 左侧栏标题内容 | `none` | 不修改 | 不显示标题区，应用菜单从侧栏顶部直接开始 |
+| `layout.navigationMaxDepth` | 应用菜单最大层级 | 2 | 不修改 | 左侧应用菜单最多两级 |
+| `layout.applicationDirectVisibleMax` | 顶部直显应用数 | 4 | 3～6 | 超出的应用收进全部应用卡片 |
+| `layout.applicationOverflowMode` | 多应用收缩方式 | `categorized-hover-card` | 不修改 | 按分类用悬浮卡片展示全部应用 |
+| `layout.applicationCardTrigger` | 应用卡片主要触发方式 | `hover` | 不修改 | 鼠标悬浮“全部应用”打开卡片，同时保留点击能力以兼容触控和键盘 |
+| `layout.switchApplicationLoadsDefaultPage` | 切换应用后进入默认页 | true | 不修改 | 同步更新左侧菜单和默认页面 |
+| `layout.menuIconsRequired` | 菜单是否必须配置图标 | true | 不修改 | 顶部和左侧所有菜单项均展示语义图标 |
+| `layout.logoWidth` | 顶部 Logo 区宽度 | 224 | 200～256 | 控制 Logo 区域及右侧用户区对称宽度 |
+| `layout.sidebarWidth` | 左侧导航展开宽度 | 224 | 200～256 | 控制展开后的菜单宽度 |
+| `layout.sidebarCollapsedWidth` | 左侧导航收起宽度 | 64 | 56～80 | 控制只显示图标时的宽度 |
+| `layout.stickyPageHeader` | 页面标题是否吸顶 | false | true／false | 供页面框架决定标题滚动行为 |
+| `layout.breadcrumb` | 是否显示面包屑 | true | true／false | 供页面框架决定是否显示路径导航 |
+
+### 示例一：做成更紧凑的后台
+
+```json
+"product": {
+  "locale": "zh-CN",
+  "density": "small",
+  "contentWidthMode": "fluid",
+  "contentWidth": "100%",
+  "pageGutter": 16,
+  "pageGutterCompact": 12
+},
+"layout": {
+  "pattern": "top-app-left-app-menu-content",
+  "navigationMaxDepth": 2,
+  "applicationDirectVisibleMax": 3,
+  "logoWidth": 200,
+  "sidebarWidth": 200,
+  "sidebarCollapsedWidth": 56,
+  "stickyPageHeader": true,
+  "breadcrumb": true
+}
+```
+
+同时将顶部高度改为：
+
+```json
+"Layout": { "headerHeight": 48 }
+```
+
+### 示例二：做成适合大屏的宽松布局
+
+```json
+"product": {
+  "locale": "zh-CN",
+  "density": "large",
+  "contentWidthMode": "fluid",
+  "contentWidth": "100%",
+  "pageGutter": 32,
+  "pageGutterCompact": 20
+},
+"layout": {
+  "pattern": "top-app-left-app-menu-content",
+  "navigationMaxDepth": 2,
+  "applicationDirectVisibleMax": 5,
+  "logoWidth": 256,
+  "sidebarWidth": 256,
+  "sidebarCollapsedWidth": 72,
+  "stickyPageHeader": false,
+  "breadcrumb": true
+}
+```
+
+## 修改颜色与圆角
+
+修改 `theme.token`：
+
+```json
+"theme": {
+  "token": {
+    "colorPrimary": "#2A56DE",
+    "colorSuccess": "#52c41a",
+    "colorWarning": "#faad14",
+    "colorError": "#ff4d4f",
+    "colorText": "#171A1D",
+    "colorTextSecondary": "#747677",
+    "borderRadius": 6,
+    "controlHeight": 32
+  },
+  "customToken": {
+    "colorSecondary": "#FF6B06"
+  },
+  "colorUsage": {
+    "interactive": "colorPrimary",
+    "secondary": ["special-emphasis", "individual-tags"]
+  }
+}
+```
+
+- `colorPrimary`：主品牌色；主按钮、选中项、链接和其他可交互字段统一使用该颜色。
+- `colorSecondary`：辅助色；仅用于特殊强调和个别标签，不用于常规链接或主按钮。
+- `colorSuccess`／`colorWarning`／`colorError`：成功、警告、错误状态色。
+- `colorText`：主要正文颜色。
+- `colorTextSecondary`：辅助说明文字颜色。
+- `borderRadius`：按钮、输入框、卡片等基础圆角。
+- `controlHeight`：输入框、按钮等基础控件高度。
+
+顶部 Header 与左侧菜单使用同一个导航模式配置。必须同时保留浅色、深色两套模式；业务提示未明确要求深色时使用浅色：
+
+```json
+"navigation": {
+  "defaultMode": "light",
+  "modes": {
+    "light": { "headerBg": "#FFFFFF", "siderBg": "#FFFFFF", "headerTextColor": "#171A1D", "menuTheme": "light" },
+    "dark": { "headerBg": "#001529", "siderBg": "#001529", "headerTextColor": "#FFFFFF", "menuTheme": "dark" }
+  }
+}
+```
+
+## 修改间距与边框
+
+业务间距使用统一的 4px 基数，组件和页面优先读取以下语义值：
+
+```json
+"spacing": {
+  "unit": 4,
+  "xs": 4,
+  "sm": 8,
+  "md": 16,
+  "lg": 24,
+  "xl": 32
+},
+"border": {
+  "color": "#E8E9EB",
+  "width": 1,
+  "style": "solid"
+}
+```
+
+例如希望分割线更深，可将 `border.color` 改为 `#D9DADD`。通常不建议把 `border.width` 改成 2 以上，以免后台界面显得过重。
+
+## 自定义 Ant Design 组件
+
+组件外观集中在 `theme.components`，字段直接映射 Ant Design 公开的组件 Token：
+
+```json
+"components": {
+  "Layout": { "bodyBg": "#F5F6F8", "headerHeight": 50 },
+  "Menu": {
+    "itemHeight": 40,
+    "itemBorderRadius": 6,
+    "itemMarginInline": 8
+  },
+  "Table": {
+    "cellPaddingBlock": 12,
+    "cellPaddingInline": 12
+  },
+  "Button": { "paddingInline": 15 },
+  "Card": { "paddingLG": 24 }
+}
+```
+
+- 菜单更紧凑：减小 `Menu.itemHeight` 和 `Menu.itemMarginInline`。
+- 表格更紧凑：减小 `Table.cellPaddingBlock`。
+- 卡片留白更大：增大 `Card.paddingLG`。
+- 按钮左右更宽：增大 `Button.paddingInline`。
+
+只使用 Ant Design 当前版本公开的组件 Token；不要通过覆盖内部类名修改组件。
+
+按钮强调与顺序规则位于顶层 `components.actionGroups`，按场景配置而不是全局固定主按钮方向：
+
+```json
+"components": {
+  "primaryButtonMaxPerModule": 1,
+  "buttonFallbackEmphasis": "secondary",
+  "actionGroups": {
+    "formSubmit": { "align": "right", "order": ["secondary", "primary"] },
+    "listQuery": { "align": "right", "order": ["primary-business", "utility", "view-toggle"] },
+    "tableToolbar": {
+      "layout": "information-left-actions-right",
+      "informationAlign": "left",
+      "actionsAlign": "right",
+      "order": ["danger-or-secondary", "positive-primary"]
+    },
+    "tableRow": { "align": "right", "order": ["detail", "edit", "copy", "enable-disable", "delete"] }
+  }
+}
+```
+
+表示每个模块最多出现一个主按钮；无法判断按钮强调级别时使用次按钮。提交区为“取消 → 保存”；查询区使用标准图标文字按钮“查询 → 重置 → 展开”；表格工具栏按“只读文本居左、操作按钮组居右”分区，按钮组示例为“批量删除 → 导出 → 新增”；行内操作按“详情 → 编辑 → 复制 → 启用／禁用 → 删除”，删除最右且为危险色。
+
+## 修改字号
+
+`theme.token.fontSize` 是 Ant Design 的基础字号；`typography` 定义业务语义字号：
+
+```json
+"typography": {
+  "h1": { "fontSize": 24, "fontWeights": ["regular", "bold"] },
+  "h2": { "fontSize": 18, "fontWeights": ["regular", "bold"] },
+  "modalAndTab": { "fontSize": 16, "fontWeights": ["regular", "bold"] },
+  "description": { "fontSize": 14, "fontWeights": ["regular", "bold"] },
+  "footnote": { "fontSize": 12, "fontWeights": ["regular", "bold"] }
+}
+```
+
+如果把一级标题从 24px 改为 28px，只修改：
+
+```json
+"h1": { "fontSize": 28, "fontWeights": ["regular", "bold"] }
+```
+
+## 修改表格
+
+```json
+"table": {
+  "pageSize": 20,
+  "pageSizeOptions": [10, 20, 50, 100],
+  "showSizeChanger": true,
+  "stickyHeader": true,
+  "actionsMaxVisible": 3,
+  "fixedActionColumn": true,
+  "containerWidth": "fill-available",
+  "allowSemanticColumnWidth": true,
+  "allowHorizontalScrollBelowMinimum": true,
+  "emptyText": "暂无数据",
+  "columnLayout": "information-left-actions-right",
+  "dataColumnsReadOnly": true,
+  "singleFieldPerColumnByDefault": true,
+  "compositeFieldRequiresExplicitScenario": true,
+  "allowNavigableLinksInDataColumns": true,
+  "actionColumnSide": "right",
+  "actionColumnAlign": "right",
+  "headerBackgroundToken": "Table.headerBg",
+  "headerBackgroundConsistent": true,
+  "autoMeasureLongContent": true,
+  "longContentOverflow": "ellipsis-with-tooltip",
+  "preventContentOverlap": true
+}
+```
+
+- 默认每页显示 50 条：将 `pageSize` 改为 `50`，并确保 `pageSizeOptions` 中包含 `50`。
+- 不允许用户修改每页数量：将 `showSizeChanger` 改为 `false`。
+- 行内最多直接显示两个操作：将 `actionsMaxVisible` 改为 `2`，其余操作应收进“更多”。
+- 不固定操作列：将 `fixedActionColumn` 改为 `false`。
+- 数据列统一放在左侧并保持只读，查看详情等导航链接可以保留；变更类动作放在最右侧操作列并右对齐。
+- 默认一列只展示一个字段；头像、姓名、邮箱等仅在明确的身份识别场景允许组成复合字段。
+- 表头选择列、数据列和固定操作列统一使用 `Table.headerBg`，不能让固定列表头单独变白。
+- 页面根据字段内容与可用列宽自动判断溢出，超长内容显示省略号，并在 Hover 或键盘聚焦时用 Tooltip 展示全文；不得遮挡相邻字段或操作列。
+
+## 修改列表页和弹窗／抽屉判断
+
+默认交互为“菜单进入列表页”，列表页统一承载查询、新增、详情、行操作和批量操作：
+
+```json
+"pagePatterns": {
+  "menuDefaultTarget": "list",
+  "listCapabilities": ["query", "create", "detail", "rowActions", "batchActions"],
+  "createEditSurface": {
+    "modalMaxFields": 6,
+    "drawerMaxFields": 16,
+    "complexContentEscalates": true
+  },
+  "detailSurface": {
+    "modalMaxFields": 8,
+    "drawerMaxFields": 20,
+    "complexContentEscalates": true
+  },
+  "preserveListContext": true
+}
+```
+
+新增／编辑默认判断：
+
+- 1～6 个简单字段：弹窗。
+- 7～16 个字段：抽屉。
+- 超过 16 个字段：独立页面。
+
+详情默认判断：
+
+- 1～8 个简单展示字段：弹窗。
+- 9～20 个字段：抽屉。
+- 超过 20 个字段：独立页面。
+
+字段数量不是唯一标准。包含长文本、附件上传、动态字段、子表、复杂关联、状态流转或高风险提交时，必须至少提升一级。例如只有 5 个字段但包含多个附件和动态明细，也应使用抽屉而不是弹窗。
+
+`preserveListContext` 为 `true` 表示关闭新增、编辑或详情后，应保留列表的筛选、排序、分页和合理的滚动位置。
+
+### 修改列表、表单、详情和弹窗规范
+
+这些业务页面规则集中在 `pagePatterns`，默认值如下：
+
+```json
+"list": {
+  "sections": ["query", "table"],
+  "pageOrder": ["breadcrumb", "title", "query", "table"],
+  "breadcrumbSeparator": ">",
+  "titleSubtitleInline": true,
+  "queryLabelControlLayout": true,
+  "queryButtons": ["查询", "重置"],
+  "queryGridColumns": 4,
+  "queryActionSlots": 1,
+  "collapseThreshold": 3,
+  "queryItemLayout": "label-control-inline",
+  "queryLabelWidth": 88,
+  "queryLabelWrap": false,
+  "queryControlWidth": "fill",
+  "queryActionsAlign": "right-center",
+  "queryResponsiveColumns": [4, 2, 1],
+  "queryActionsStayRowEnd": true,
+  "queryTableContentLeftAligned": true,
+  "containerWidth": "fill-available",
+  "uniformOuterGutter": true,
+  "showTableTitle": false,
+  "tableToolbarLayout": "information-left-actions-right",
+  "tableInformationPosition": "header-left",
+  "tableActionsPosition": "header-right",
+  "queryOrder": "table-column-order",
+  "dateRangeDefault": true,
+  "dateRangeRequired": false,
+  "requiredHint": "tooltip-on-query",
+  "linkNavigableContent": true,
+  "longContent": "auto-ellipsis-with-tooltip",
+  "leftTreeFilter": {
+    "applicableTo": "hierarchical-dimension",
+    "panel": {
+      "width": 240,
+      "gap": 16,
+      "paddingBlock": 16,
+      "paddingInline": 12,
+      "borderRadius": 8,
+      "boxShadow": "0 1px 3px rgba(0, 0, 0, 0.06)",
+      "sticky": true,
+      "stickyTop": 80,
+      "viewportOffset": 160
+    },
+    "selectionMode": "single",
+    "searchable": true,
+    "preserveAncestorPathOnSearch": true,
+    "showLine": true,
+    "showLeafIcon": false,
+    "blockNode": true,
+    "titleOverflow": "ellipsis-with-tooltip",
+    "collapsible": true,
+    "preserveStateOnCollapse": true,
+    "collapsedTriggerPosition": "content-top-left",
+    "showSelectedStateWhenCollapsed": true,
+    "footerCreateAction": true,
+    "nodeActions": ["edit", "add-child", "delete"],
+    "destructiveActionConfirm": true,
+    "mobileBreakpoint": 991,
+    "mobileLayout": "stack",
+    "syncSelectionToUrl": true,
+    "resetRowSelectionOnChange": true
+  }
+},
+"formTypes": ["basic", "step", "advanced"],
+"formItemLayout": "label-control-inline",
+"formLabelWidth": 112,
+"formLabelWrap": false,
+"formControlWidth": "semantic-adaptive",
+"formNarrowLayout": "vertical",
+"advancedFormStickyFooter": true,
+"detailTypes": ["basic", "advanced"],
+"detailEditSurfaceConsistency": "same-within-list",
+"surfaceConflictResolution": "escalate-to-more-complex",
+"surfacePriority": ["modal", "drawer", "page"],
+"detailColumns": 3,
+"advancedDetailHeader": true,
+"advancedDetailBreadcrumbSeparateRow": true,
+"advancedDetailActionsInlineWithTitle": true,
+"advancedDetailPrimaryActionPosition": "left",
+"cards": {
+  "density": "compact",
+  "mediaRatio": 2,
+  "contentRatio": 1,
+  "dataCardLayout": "data-left-icon-right",
+  "dataTitleFontSize": 14,
+  "dataValueFontSize": 24,
+  "dataValueFontWeight": "regular",
+  "titleWrap": false,
+  "summaryMaxLines": 2
+},
+"modal": {
+  "requiredMark": true,
+  "fieldHelpRequired": true,
+  "cancelText": "取消",
+  "confirmText": "确认",
+  "footerAlign": "right",
+  "footerOrder": ["cancel", "confirm"]
+}
+```
+
+- `list.sections`：固定为上方查询、下方表格。
+- `list.pageOrder`：列表页从上到下固定为面包屑、标题、查询、表格。
+- `list.breadcrumbSeparator`：面包屑分隔符，默认 `>`。
+- `list.titleSubtitleInline`：标题和副标题同行展示。
+- `list.queryLabelControlLayout`：查询项使用“字段名称 + 输入控件”。
+- `list.queryButtons`：查询区按钮及顺序，默认“查询”“重置”。
+- `list.queryGridColumns`：桌面端查询区每行最多 4 项。
+- `list.queryActionSlots`：按钮组占用 1 项。
+- `list.collapseThreshold`：默认收起时最多展示 3 个查询字段，剩余第 4 项留给按钮组；超过 3 个查询字段时出现“展开／收起”。
+- `list.queryItemLayout`：固定为 `label-control-inline`，表示字段名称和输入控件必须同行，不能上下换行。
+- `list.queryLabelWidth`：查询标签固定宽度，单位为 px，默认 88；字段名较长时应优化文案，不通过换行撑高查询项。
+- `list.queryLabelWrap`：固定为 `false`，查询标签禁止换行。
+- `list.queryControlWidth`：固定为 `fill`，控件填满标签之外的剩余空间，同时允许在网格内收缩。
+- `list.queryActionsAlign`：固定为 `right-center`，按钮组在自己的网格项内右对齐、垂直居中。
+- `list.queryResponsiveColumns`：查询区随页面宽度依次使用 4 列、2 列、1 列。
+- `list.queryActionsStayRowEnd`：固定为 `true`；字段发生响应式折行后，按钮组仍占当前行最后一列并靠右，不能出现在第二行左侧。
+- `list.queryTableContentLeftAligned`：固定为 `true`；查询区内容与表格内容共用同一左边界。
+- `list.containerWidth`／`uniformOuterGutter`：列表区占满可用内容宽度，并在页面四周使用统一响应式留白。
+- `list.showTableTitle`：列表页表格区不展示独立标题。
+- `list.tableToolbarLayout`：固定为 `information-left-actions-right`，表示表格顶部工具栏按信息区和操作区左右分组。
+- `list.tableInformationPosition`：只读文本位于表格上方左侧，包括总数、已选数量和作用范围等信息。
+- `list.tableActionsPosition`：新增、导出和批量操作等按钮组位于表格上方右侧。
+- `list.queryOrder`：默认按表格列顺序排列查询项；特殊场景可改成 `custom`，并在需求中列明顺序。
+- `list.dateRangeDefault`：日期起止默认使用范围选择器。
+- `list.dateRangeRequired`：默认 `false`，表示开始和结束都非必填。
+- `list.requiredHint`：必填查询项为空时，点击查询后使用 Tooltip 提示，不显示星号。
+- `list.linkNavigableContent`：可跳转内容使用链接形式。
+- `list.longContent`：固定为 `auto-ellipsis-with-tooltip`；按内容和列宽自动判断溢出，超出后省略并展示完整内容 Tooltip。
+- `list.leftTreeFilter`：可选配置；部门、组织、分类等层级维度需要左树右列表时使用，未使用该模式的既有列表可以不配置。
+- `list.leftTreeFilter.panel`：控制 240px 面板宽度、16px 左右间距、内边距、8px 圆角、阴影、80px 吸顶位置和 160px 视口高度扣减值。尺寸可按产品规范调整，但必须为正数。
+- `list.leftTreeFilter.selectionMode`：固定为 `single`；树是单一层级维度筛选，不在同一树中混合多选语义。
+- `list.leftTreeFilter.preserveAncestorPathOnSearch`：固定为 `true`；搜索命中子节点时保留并展开祖先路径。
+- `list.leftTreeFilter.showLine`／`showLeafIcon`／`blockNode`：使用连线和整行点击，不显示叶子图标。
+- `list.leftTreeFilter.titleOverflow`：固定为 `ellipsis-with-tooltip`，长节点名省略并提供完整 Tooltip。
+- `list.leftTreeFilter.preserveStateOnCollapse`：收起后保留搜索词、展开节点和当前选择；展开按钮位于主内容左上，并为其预留空间。
+- `list.leftTreeFilter.showSelectedStateWhenCollapsed`：收起后仍展示“已筛选「名称」”提示和选中色。
+- `list.leftTreeFilter.footerCreateAction`：布尔值；为 `true` 时模式支持根级新增入口，具体页面没有权限时仍由业务层隐藏。
+- `list.leftTreeFilter.nodeActions`：可从 `edit`、`add-child`、`delete` 中配置不重复的子集，并保持该顺序；页面再按权限隐藏不可用项。
+- `list.leftTreeFilter.destructiveActionConfirm`：配置了 `delete` 时必须为 `true`，删除使用危险样式并二次确认；菜单点击不得触发节点选择。
+- `list.leftTreeFilter.mobileBreakpoint`／`mobileLayout`：固定为 991 和 `stack`，不超过 991px 时切换为上下堆叠布局。
+- `list.leftTreeFilter.syncSelectionToUrl`：树选择使用稳定业务 ID 同步到 URL。
+- `list.leftTreeFilter.resetRowSelectionOnChange`：树筛选变化后回到第一页并清空已选表格行。
+- `advancedFormStickyFooter`：高级表单操作区是否吸底。
+- `formItemLayout`：固定为 `label-control-inline`，新建和编辑表单在桌面端保持标签与控件同行。
+- `formLabelWidth`：同一表单的标签固定宽度，单位为 px，默认 112。
+- `formLabelWrap`：固定为 `false`，字段标签禁止换行；字段名过长时应优化文案或增加说明。
+- `formControlWidth`：固定为 `semantic-adaptive`；控件容器可占满剩余空间，但实际输入框和下拉框按字段内容、输入预期和布局选择短、中、长或填充宽度。
+- `formNarrowLayout`：窄屏时统一切换为 `vertical`；必须整张表单一起切换，不能单个字段随机换行。
+- `detailColumns`：详情字段桌面端每行列数，可配置为 1、2 或 3，默认 3。
+- `detailEditSurfaceConsistency`：固定为 `same-within-list`，同一列表页的详情与编辑必须使用同一种承载方式。
+- `surfaceConflictResolution`：固定为 `escalate-to-more-complex`；详情和编辑分别判断后不一致时，统一提升到复杂度更高的一档。
+- `surfacePriority`：承载复杂度顺序为 `modal < drawer < page`，用于决定统一提升结果。
+- `advancedDetailHeader`：高级详情是否使用突出状态、金额和操作的统一 Header。
+- `advancedDetailBreadcrumbSeparateRow`：高级详情面包屑单独占一行。
+- `advancedDetailActionsInlineWithTitle`：高级详情操作按钮与标题同行，默认标题在左、操作在右。
+- `advancedDetailPrimaryActionPosition`：操作按钮组内主操作位于最左侧，次操作依次向右排列。
+- `cards.density`：卡片默认使用紧凑密度。
+- `cards.mediaRatio`／`contentRatio`：图文卡片的图片与文字高度比例，默认 2:1。
+- `cards.dataCardLayout`：数据卡片采用左侧小标题与突出数据、右侧 Logo／图标的结构。
+- `cards.dataTitleFontSize`：数据卡片标题字号，默认 14px。
+- `cards.dataValueFontSize`：数据卡片数字字号，默认 24px。
+- `cards.dataValueFontWeight`：数据卡片数字使用常规字重 `regular`，不加粗。
+- `cards.titleWrap`：`false` 表示标题不换行，超长使用省略号和完整标题提示。
+- `cards.summaryMaxLines`：图文卡片摘要最多展示两行，超出后省略。
+- `modal`：控制弹窗必填标识、字段说明以及“取消／确认”按钮文案和顺序。
+- `components.actionGroups`：按提交区、查询区、表格工具栏和行内操作分别定义对齐方式与顺序。查询按钮使用 Search／Reload／Down-Up 标准图标；行内操作保持“详情、编辑、复制、启用／禁用、删除”的相对顺序。
+- `modal.footerAlign`／`footerOrder`：弹窗与抽屉提交区整体右对齐，按钮顺序为“取消 → 确认”。
+
+字段级的默认值、数据源、组件格式、单选／多选、校验和联动属于业务需求，不应写成全局 JSON。产品经理应在字段清单中逐项说明；Skill 会按统一页面规则实现。
+
+## 严格执行与自动检查
+
+`conformance.mode` 固定为 `strict`，`conflictPolicy` 固定为 `skill-wins`。当框架默认行为、已有代码或 Agent 的生成习惯与规范冲突时，必须以本 Skill 为准；禁止静默保留偏差。页面交付前执行 `npm run check:standards`，检查失败时必须先修正，不能跳过后交付。
+
+## 修改表单和弹窗
+
+```json
+"form": {
+  "layout": "horizontal",
+  "containerWidth": "fill-available",
+  "controlWidth": "semantic-adaptive",
+  "labelWrap": false,
+  "validateTrigger": "onBlur",
+  "drawerWidth": 560,
+  "modalWidth": 640,
+  "unsavedChangesGuard": true
+}
+```
+
+- `layout` 固定为 `horizontal`，桌面端字段标签与控件同行。
+- `containerWidth` 固定为 `fill-available`；表单容器随页面宽度伸缩。
+- `controlWidth` 固定为 `semantic-adaptive`；短字段控件不得全局拉满。
+- `labelWrap` 固定为 `false`，标签禁止换行；窄屏纵向切换由响应式样式统一处理。
+- `validateTrigger` 为 `onBlur` 时，离开字段后校验；改为 `onChange` 时输入过程中校验。
+- `drawerWidth` 和 `modalWidth` 分别控制抽屉与弹窗默认宽度。
+- `unsavedChangesGuard` 控制未保存离开提醒是否必须实现。
+
+## 修改反馈规则
+
+```json
+"feedback": {
+  "successDurationSeconds": 3,
+  "errorDurationSeconds": 5,
+  "confirmDestructiveActions": true,
+  "tooltipMaxWidth": 300,
+  "tooltipRecommendedMaxLines": 2
+}
+```
+
+危险操作不需要确认通常不建议；如确有需要，将 `confirmDestructiveActions` 改为 `false`。Tooltip 的 CoDesign 标准为最大宽度 300px，建议不超过两行。
+
+## 让修改生效
+
+产品经理只修改 `.b2b/b2b-standards.json`，不要直接修改 `DESIGN.md` 或生成的 TypeScript 文件。修改后在项目目录执行：
+
+```bash
+npm run generate:standards
+npm run check:standards
+```
+
+第一条命令会校验 JSON，并重新生成 Ant Design Theme、TypeScript 配置和供 Agent 阅读的中文 `DESIGN.md`；第二条命令检查这些产物是否与 JSON 同步，并执行页面规范检查。
+
+如果项目尚未配置 npm 命令，可以直接执行：
+
+```bash
+python3 scripts/apply_standards.py \
+  --config .b2b/b2b-standards.json \
+  --out-dir src/shared/design-system/generated
+
+python3 scripts/generate_design_md.py \
+  --config .b2b/b2b-standards.json \
+  --output DESIGN.md
+```
+
+如果开发服务正在运行，保存后通常会自动刷新；否则重新执行 `npm run dev`。
+
+## 注意事项
+
+1. 不要直接修改 `DESIGN.md` 或 `src/shared/design-system/generated`，下次生成时会被覆盖。
+2. `b2b-standards.json` 是唯一需要人工维护的配置文件；修改后运行 `npm run generate:standards`。
+3. 不是所有行为配置都会自动变成样式；业务组件需要读取相应配置。这个 Demo 已接入主题 Token、组件 Token、顶部高度、Logo 宽度、侧栏宽度、边框、流式内容宽度和页面边距。
+4. 新增配置字段时，需要同步更新校验脚本和消费该字段的页面组件。

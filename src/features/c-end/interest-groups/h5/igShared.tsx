@@ -294,13 +294,13 @@ export function enrollInfo(act: Act, group?: Group) {
   return { label: act.type === 'recurring' ? '选场次报名' : '报名', variant: 'primary' as const, icon: 'ticket', disabled: false };
 }
 
-export function pickActs(tab: ActTab, acts: Act[]) {
+export function pickActs(tab: ActTab, acts: Act[], limit = 3) {
   const live = acts.filter((a) => a.status !== 'ended' && a.status !== 'cancelled');
   if (tab === 'rec') {
-    return [...live].sort((a, b) => Number(Boolean(b.recReason)) - Number(Boolean(a.recReason)) || b.likes - a.likes).slice(0, 3);
+    return [...live].sort((a, b) => Number(Boolean(b.recReason)) - Number(Boolean(a.recReason)) || b.likes - a.likes).slice(0, limit);
   }
-  if (tab === 'latest') return [...live].sort((a, b) => a.dateKey - b.dateKey).slice(0, 3);
-  return [...live].sort((a, b) => b.likes - a.likes || b.signed - a.signed).slice(0, 3);
+  if (tab === 'latest') return [...live].sort((a, b) => a.dateKey - b.dateKey).slice(0, limit);
+  return [...live].sort((a, b) => b.likes - a.likes || b.signed - a.signed).slice(0, limit);
 }
 
 export function filterActs(acts: Act[], groups: Group[], q: string) {

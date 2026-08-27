@@ -48,9 +48,9 @@ export function IgMomentCard({
   );
 }
 
-export function IgHomePastRail({ moments }: { moments: InterestGroupMoment[] }) {
+export function IgHomePastRail({ moments, limit = 3 }: { moments: InterestGroupMoment[]; limit?: number }) {
   const { nav } = useIg();
-  const past = listIgHomeHighlightMoments(moments);
+  const past = listIgHomeHighlightMoments(moments, limit);
   if (!past.length) return null;
   return (
     <section className="c-past-sec" aria-labelledby="ig-past-title">

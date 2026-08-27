@@ -1,0 +1,139 @@
+{
+  "deliveryMode": "D. PRD Only",
+  "slug": "course-admin-prd-only",
+  "baselineVerification": "Source-derived",
+  "screenshots": [
+    {
+      "file": "课程管理后台-PRD.html#annotate-list",
+      "title": "课程列表线框标注",
+      "annotations": [
+        {
+          "id": "INT-02",
+          "sequence": 1,
+          "endpoint_label": "1",
+          "connector": "svg-line",
+          "connector_visible": true,
+          "endpoint_visible": true,
+          "endpoint_style": "numbered-circle",
+          "endpoint_label_visible": true,
+          "target": {
+            "role": "category-tree",
+            "named_region": "课程列表-左侧分类树",
+            "verified": false
+          }
+        },
+        {
+          "id": "INT-03",
+          "sequence": 2,
+          "endpoint_label": "2",
+          "connector": "svg-line",
+          "connector_visible": true,
+          "endpoint_visible": true,
+          "endpoint_style": "numbered-circle",
+          "endpoint_label_visible": true,
+          "target": {
+            "role": "primary-action",
+            "named_region": "课程列表-新增课程",
+            "verified": false
+          }
+        },
+        {
+          "id": "INT-02",
+          "sequence": 3,
+          "endpoint_label": "3",
+          "connector": "svg-line",
+          "connector_visible": true,
+          "endpoint_visible": true,
+          "endpoint_style": "numbered-circle",
+          "endpoint_label_visible": true,
+          "target": {
+            "role": "row-action-publish",
+            "named_region": "课程列表-行内发布",
+            "verified": false
+          }
+        },
+        {
+          "id": "INT-02",
+          "sequence": 4,
+          "endpoint_label": "4",
+          "connector": "svg-line",
+          "connector_visible": true,
+          "endpoint_visible": true,
+          "endpoint_style": "numbered-circle",
+          "endpoint_label_visible": true,
+          "target": {
+            "role": "batch-bar",
+            "named_region": "课程列表-批量栏",
+            "verified": false
+          }
+        }
+      ]
+    },
+    {
+      "file": "课程管理后台-PRD.html#annotate-comments",
+      "title": "课程详情评论标注",
+      "annotations": [
+        {
+          "id": "INT-04",
+          "sequence": 1,
+          "endpoint_label": "1",
+          "connector": "svg-line",
+          "connector_visible": true,
+          "endpoint_visible": true,
+          "endpoint_style": "numbered-circle",
+          "endpoint_label_visible": true,
+          "target": {
+            "role": "tab-comments",
+            "named_region": "课程详情-评论管理 Tab",
+            "verified": false
+          }
+        },
+        {
+          "id": "INT-05",
+          "sequence": 2,
+          "endpoint_label": "2",
+          "connector": "svg-line",
+          "connector_visible": true,
+          "endpoint_visible": true,
+          "endpoint_style": "numbered-circle",
+          "endpoint_label_visible": true,
+          "target": {
+            "role": "approve-action",
+            "named_region": "评论行-通过",
+            "verified": false
+          }
+        },
+        {
+          "id": "INT-05",
+          "sequence": 3,
+          "endpoint_label": "3",
+          "connector": "svg-line",
+          "connector_visible": true,
+          "endpoint_visible": true,
+          "endpoint_style": "numbered-circle",
+          "endpoint_label_visible": true,
+          "target": {
+            "role": "reject-action",
+            "named_region": "评论行-驳回",
+            "verified": false
+          }
+        },
+        {
+          "id": "INT-05",
+          "sequence": 4,
+          "endpoint_label": "4",
+          "connector": "svg-line",
+          "connector_visible": true,
+          "endpoint_visible": true,
+          "endpoint_style": "numbered-circle",
+          "endpoint_label_visible": true,
+          "target": {
+            "role": "batch-actions",
+            "named_region": "评论-批量操作",
+            "verified": false
+          }
+        }
+      ]
+    }
+  ]
+}

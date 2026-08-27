@@ -25,19 +25,20 @@ import {
 } from './igShared';
 import './groupHome.css';
 
-function HomeTab() {
+function HomeTab({ surface }: { surface: CEndSurface }) {
   const { store, nav, actions } = useIg();
   const settings = useInterestGroupSettings();
   const moments = useInterestGroupMoments();
   const [tab, setTab] = useState<ActTab>('rec');
-  const acts = useMemo(() => pickActs(tab, store.acts), [tab, store.acts]);
+  const homeLimit = surface === 'pc' ? 6 : 3;
+  const acts = useMemo(() => pickActs(tab, store.acts, homeLimit), [tab, store.acts, homeLimit]);
   const hotGroups = useMemo(
     () =>
       [...store.groups]
         .filter(isCEndGroupDiscoverable)
         .sort((a, b) => Number(b.hot) - Number(a.hot) || b.members - a.members || b.acts - a.acts)
-        .slice(0, 5),
-    [store.groups],
+        .slice(0, surface === 'pc' ? 6 : 5),
+    [store.groups, surface],
   );
   const shortcuts = SHORTCUTS.filter((item) => {
     if (item.key === 'createGroup') return settings.allowEmployeeCreateGroup;
@@ -112,7 +113,7 @@ function HomeTab() {
             </button>
           ))}
         </div>
-        <ul className="c-ig-acts" aria-label="活动列表">
+        <ul className={`c-ig-acts${surface === 'pc' ? ' is-pc-3' : ''}`} aria-label="活动列表">
           {acts.map((act) => (
             <li key={act.id}>
               <ActivityCard
@@ -142,7 +143,7 @@ function HomeTab() {
         </ul>
       </section>
 
-      <IgHomePastRail moments={moments} />
+      <IgHomePastRail moments={moments} limit={surface === 'pc' ? 5 : 3} />
     </div>
   );
 }
@@ -158,7 +159,7 @@ export function InterestGroupHome({ surface }: { surface: CEndSurface }) {
       <PcActivityShell className="is-ig" title="兴趣小组">
         <div className="c-pc-ig-stage">
           <div className="c-pc-ig-home">
-            <HomeTab />
+            <HomeTab surface="pc" />
           </div>
           <IgStackOverlay />
         </div>
@@ -190,7 +191,7 @@ export function InterestGroupHome({ surface }: { surface: CEndSurface }) {
         </>
       }
     >
-      <HomeTab />
+      <HomeTab surface="h5" />
     </H5ActivityShell>
   );
 }

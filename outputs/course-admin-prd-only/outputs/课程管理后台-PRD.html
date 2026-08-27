@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>课程管理后台 PRD｜当前能力基线规格</title>
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --card: #fff;
+      --text: #1f2329;
+      --muted: #646a73;
+      --line: #e5e6eb;
+      --brand: #1677ff;
+      --ok: #00b42a;
+      --warn: #ff7d00;
+      --danger: #f53f3f;
+      --chip: #e8f3ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.65;
+      font-size: 14px;
+    }
+    .layout { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+    nav {
+      position: sticky; top: 0; height: 100vh; overflow: auto;
+      background: #0f1b2d; color: #c9d4e5; padding: 20px 14px;
+    }
+    nav h1 { color: #fff; font-size: 15px; margin: 0 0 12px; line-height: 1.4; }
+    nav a {
+      display: block; color: #9eb0c9; text-decoration: none;
+      padding: 6px 10px; border-radius: 6px; font-size: 13px;
+    }
+    nav a:hover { background: rgba(255,255,255,.06); color: #fff; }
+    main { padding: 28px 36px 80px; max-width: 1100px; }
+    .hero {
+      background: linear-gradient(135deg, #102a56, #1b4f9c 55%, #1677ff);
+      color: #fff; border-radius: 14px; padding: 28px 32px; margin-bottom: 24px;
+    }
+    .hero h2 { margin: 0 0 8px; font-size: 26px; }
+    .hero p { margin: 0; opacity: .9; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.25);
+      border-radius: 999px; padding: 4px 12px; font-size: 12px;
+    }
+    section {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 12px; padding: 22px 24px; margin-bottom: 16px;
+    }
+    section h3 {
+      margin: 0 0 14px; font-size: 18px; padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+    section h4 { margin: 18px 0 8px; font-size: 15px; }
+    .muted { color: var(--muted); }
+    .tag {
+      display: inline-block; border-radius: 4px; padding: 1px 8px;
+      font-size: 12px; background: var(--chip); color: var(--brand);
+    }
+    .tag.warn { background: #fff7e8; color: var(--warn); }
+    .tag.ok { background: #e8ffea; color: var(--ok); }
+    .tag.danger { background: #ffece8; color: var(--danger); }
+    table {
+      width: 100%; border-collapse: collapse; font-size: 13px;
+      margin: 10px 0 6px;
+    }
+    th, td {
+      border: 1px solid var(--line); padding: 8px 10px;
+      vertical-align: top; text-align: left;
+    }
+    th { background: #f7f8fa; font-weight: 600; white-space: nowrap; }
+    code, .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px; background: #f2f3f5; padding: 1px 5px; border-radius: 4px;
+    }
+    .contract {
+      border: 1px solid var(--line); border-radius: 10px;
+      padding: 14px 16px; margin: 12px 0; background: #fafbfc;
+    }
+    .contract h5 { margin: 0 0 8px; font-size: 14px; color: var(--brand); }
+    .kv { display: grid; grid-template-columns: 140px 1fr; gap: 6px 12px; }
+    .kv b { color: var(--muted); font-weight: 500; }
+    .anno-wrap {
+      background: #111827; border-radius: 12px; padding: 16px;
+      overflow: auto; margin: 12px 0;
+    }
+    .callout {
+      border-left: 3px solid var(--brand); background: #f0f6ff;
+      padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 10px 0;
+    }
+    .callout.warn { border-color: var(--warn); background: #fff8f0; }
+    ul.compact li { margin: 4px 0; }
+    footer.note { color: var(--muted); font-size: 12px; margin-top: 24px; }
+    @media (max-width: 960px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: relative; height: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <nav>
+      <h1>课程管理后台<br/>PRD（全新基线）</h1>
+      <a href="#s1">1. 标题与状态</a>
+      <a href="#s2">2. 背景与目标</a>
+      <a href="#s3">3. 页面与边界</a>
+      <a href="#s4">4. 事实 / 决策 / 假设</a>
+      <a href="#s5">5. UI 方向</a>
+      <a href="#s6">6. 变更矩阵</a>
+      <a href="#s7">7. 交互覆盖</a>
+      <a href="#s8">8. 交互契约</a>
+      <a href="#s9">9. 视觉证据与标注</a>
+      <a href="#s10">10. 追溯矩阵</a>
+      <a href="#s11">11. 验收标准</a>
+      <a href="#s12">12. 实现说明</a>
+      <a href="#s13">13. 产物清单</a>
+      <a href="#s14">14. AI 交接提示</a>
+    </nav>
+    <main>
+      <div class="hero">
+        <h2>课程管理后台 PRD：B 端课程能力基线规格</h2>
+        <p>交付模式 <strong>D. 仅输出 PRD</strong>。本文档基于当前仓库源码独立成文，不修改、不引用既有 `docs/prd/course-admin` 产物。</p>
+        <div class="meta">
+          <span class="chip">Mode D · PRD Only</span>
+          <span class="chip">状态：Ready for implementation（基线复现）</span>
+          <span class="chip">证据：Source-derived</span>
+          <span class="chip">应用：课程 / training</span>
+        </div>
+      </div>
+
+      <section id="s1">
+        <h3>1. 标题与状态</h3>
+        <div class="kv">
+          <b>文档名</b><div>课程管理后台 PRD：当前能力基线规格</div>
+          <b>Delivery mode</b><div><span class="tag">PRD Only</span></div>
+          <b>PRD status</b><div><span class="tag ok">Ready for implementation</span>（作为现有能力的可实施规格；非新需求变更案）</div>
+          <b>Target runtime</b><div>Vite + React + Ant Design B 端；Hash 路由 `#/training/*`</div>
+          <b>Baseline verification</b><div><span class="tag warn">Source-derived</span> — 未完成同视口运行时 Verified；阻塞声明见 §9</div>
+          <b>模式选定依据</b><div>用户要求「html 文件就行 / 过程不询问 / 自行决定」→ 选定 Mode D，跳过可点击原型制作。</div>
+        </div>
+      </section>
+
+      <section id="s2">
+        <h3>2. 背景与目标</h3>
+        <h4>REQ-01 产品问题</h4>
+        <p>企业需要在统一后台完成课程与课件的生产、发布、评论治理与学习激励规则配置，使员工端可见内容可控、可运营。</p>
+        <div class="kv">
+          <b>主用户</b><div>培训管理员 / 内容运营</div>
+          <b>主场景</b><div>维护分类 → 上传课件 → 组装课程 → 发布 → 审核评论 → 配置积分/学分规则 → 查看概览与学习记录</div>
+          <b>产品目标</b><div>提供完整、可验收的「课程」应用后台能力规格，使研发/AI 可按 INT/AC 复现或对齐实现。</div>
+          <b>成功定义</b><div>六大页面边界内交互均可按本文契约复现；发布态与评论态机与枚举一致；关键校验不可绕过。</div>
+          <b>Out of scope</b><div>C 端学习播放器细节、真实媒体转码、真实权限中台、题库题目 CRUD、消息推送通道实现。</div>
+        </div>
+      </section>
+
+      <section id="s3">
+        <h3>3. 目标页面与边界</h3>
+        <table>
+          <thead>
+            <tr><th>路由</th><th>页面</th><th>源码</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>#/training/training-overview</code></td><td>概览</td><td><code>CourseOverviewPage.tsx</code></td></tr>
+            <tr><td><code>#/training/training-courses</code></td><td>课程管理</td><td><code>CourseListPage.tsx</code></td></tr>
+            <tr><td><code>#/training/course-create</code></td><td>新增课程</td><td><code>CourseFormPage.tsx</code></td></tr>
+            <tr><td><code>#/training/course-edit/:id</code></td><td>编辑课程</td><td><code>CourseFormPage.tsx</code></td></tr>
+            <tr><td><code>#/training/course-detail/:id[/:tab]</code></td><td>课程详情（detail/records/comments/quiz）</td><td><code>CourseDetailPage.tsx</code> + panels</td></tr>
+            <tr><td><code>#/training/training-courseware</code></td><td>课件管理</td><td><code>CoursewareListPage.tsx</code></td></tr>
+            <tr><td><code>#/training/training-rules</code></td><td>规则设置</td><td><code>TrainingRulesPage.tsx</code></td></tr>
+          </tbody>
+        </table>
+        <h4>边界</h4>
+        <ul class="compact">
+          <li><strong>包含</strong>：上述页面 + 分类 Modal、课件选择 Modal、课件 Drawer、评论通过/驳回 Modal、确认框。</li>
+          <li><strong>下游</strong>：从列表/概览跳入详情/表单；不展开 C 端页面。</li>
+          <li><strong>能力边界</strong>：数据为内存/localStorage mock；无真实上传服务。</li>
+          <li><strong>关键 store</strong>：<code>trainingStore</code>、<code>courseCommentStore</code>、<code>courseQuizStore</code>、<code>rewardRulesStore</code>。</li>
+        </ul>
+      </section>
+
+      <section id="s4">
+        <h3>4. 源码事实 / 产品决策 / 假设 / 未决</h3>
+        <h4>Confirmed source facts</h4>
+        <ul class="compact">
+          <li>应用菜单：概览、课程管理、课件管理、规则设置（<code>navigation.ts</code>）。</li>
+          <li>课程状态：<code>草稿</code> / <code>已发布</code> / <code>已下架</code>；已发布不可删，须先下架。</li>
+          <li>课件发布：<code>草稿</code> / <code>已发布</code>；仅草稿可删。</li>
+          <li>评论：审核开启时新评论进 <code>待审核</code>；否则直接 <code>已通过</code>。</li>
+          <li>驳回原因：选填（全局驳回交互约定）；通过/驳回有确认流。</li>
+          <li>分类树最深 3 级；同级名不可重；有内容不可删。</li>
+          <li>课程表单目录至少 1 个课件；名称 ≤20。</li>
+        </ul>
+        <h4>Confirmed product decisions（本次自行拍板）</h4>
+        <ul class="compact">
+          <li>本文档目标是<strong>完整基线规格</strong>，Change type 以 <code>Unchanged</code> 为主（记录应保持的行为）。</li>
+          <li>交付物以单 HTML 为主；标注图以内嵌 SVG 线连编号圈交付（Mode D 仍保留标注义务）。</li>
+          <li>不改动任何既有 `docs/prd/**` 文件。</li>
+        </ul>
+        <h4>Assumptions</h4>
+        <ul class="compact">
+          <li>管理员具备「课程」应用全部菜单权限。</li>
+          <li>原型演示数据足以覆盖三种课程类型与评论三态。</li>
+          <li>若错：真实权限系统需另补 RBAC 表，不影响本基线字段与状态机。</li>
+        </ul>
+        <h4>Unresolved decisions</h4>
+        <ul class="compact">
+          <li>真实对象存储与转码策略（非本原型范围）。</li>
+          <li>学习记录「详情」目前仅为提示，完整学员轨迹页未定义。</li>
+        </ul>
+      </section>
+
+      <section id="s5">
+        <h3>5. UI 设计方向</h3>
+        <ul class="compact">
+          <li>遵循项目既有 B 端规范：Ant Design、列表四层（筛选 / 工具栏 / 批量栏 / 表）、横向表单标签固定宽。</li>
+          <li>主操作在左（新增、保存、批量通过等）；危险操作确认 Modal。</li>
+          <li>空态文案使用页面内既有中文（如「没有符合条件的课程」「暂无待审核评论」）。</li>
+          <li>不引入新视觉主题；无新组件模式。</li>
+        </ul>
+      </section>
+
+      <section id="s6">
+        <h3>6. Current / Target / Unchanged 变更矩阵</h3>
+        <p class="muted">本次为基线规格，无新增业务变更；矩阵用于防止实现时误改。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>INT ID</th><th>类型</th><th>Current = Target</th><th>Must remain unchanged</th><th>Out of scope</th><th>Data/API</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>INT-01</td><td>Unchanged</td><td>概览 KPI + 图表 + 待审评论快捷审核</td>
+              <td>KPI 口径：未发布=草稿数</td><td>自定义看板配置</td><td>聚合 courses/courseware/comments</td>
+            </tr>
+            <tr>
+              <td>INT-02</td><td>Unchanged</td><td>课程列表筛选/分类树/类型 Tab/批量发布撤销</td>
+              <td>已发布不可删</td><td>导入导出</td><td><code>setCourseStatus</code>/<code>removeCourse</code></td>
+            </tr>
+            <tr>
+              <td>INT-03</td><td>Unchanged</td><td>课程新建/编辑五段表单 + 目录拖拽</td>
+              <td>目录≥1；保存默认草稿</td><td>表单内直接发布</td><td><code>upsertCourse</code></td>
+            </tr>
+            <tr>
+              <td>INT-04</td><td>Unchanged</td><td>详情四 Tab：详情/学习记录/评论/答题</td>
+              <td>Tab 路由 <code>:tab</code></td><td>学员画像页</td><td>comments/quiz/learning stores</td>
+            </tr>
+            <tr>
+              <td>INT-05</td><td>Unchanged</td><td>评论单条/批量 通过·驳回·删除</td>
+              <td>驳回仅待审核；通过可含已驳回</td><td>敏感词自动审</td><td><code>approve/reject/deleteCourseComment(s)</code></td>
+            </tr>
+            <tr>
+              <td>INT-06</td><td>Unchanged</td><td>课件列表与 Drawer CRUD/发布</td>
+              <td>仅草稿可删</td><td>多版本课件</td><td><code>upsertCourseware</code></td>
+            </tr>
+            <tr>
+              <td>INT-07</td><td>Unchanged</td><td>积分/学分规则保存与校验</td>
+              <td>开启后发放方式必填；日上限≥课上限</td><td>规则版本审计</td><td><code>saveRewardRules</code></td>
+            </tr>
+            <tr>
+              <td>INT-08</td><td>Unchanged</td><td>课程/课件分类树 CRUD（≤3 级）</td>
+              <td>有内容不可删；同级不重名</td><td>跨应用分类共享</td><td>category tree helpers</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="s7">
+        <h3>7. 既有交互覆盖</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>INT</th><th>Trigger</th><th>Landmark</th><th>Preconditions</th><th>Result / STATE</th>
+              <th>Coverage</th><th>Verify</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>INT-01</td><td>进入概览</td><td>CourseOverviewPage</td><td>有 mock 数据</td>
+              <td>STATE-01A 有数据；STATE-01B 空待审</td>
+              <td>Preserve</td><td>Source-derived</td>
+            </tr>
+            <tr>
+              <td>INT-02</td><td>搜索/Tab/批量发布</td><td>CourseListPage</td><td>选中行</td>
+              <td>STATE-02A 列表；STATE-02B 空结果；STATE-02C 发布成功</td>
+              <td>Preserve</td><td>Source-derived</td>
+            </tr>
+            <tr>
+              <td>INT-03</td><td>保存课程</td><td>CourseFormPage</td><td>校验通过</td>
+              <td>STATE-03A 编辑态；STATE-03B 校验失败；STATE-03C 保存成功跳转</td>
+              <td>Preserve</td><td>Source-derived</td>
+            </tr>
+            <tr>
+              <td>INT-04</td><td>切换详情 Tab</td><td>CourseDetailPage</td><td>课程存在</td>
+              <td>STATE-04A~D 四 Tab；STATE-04E 课程不存在</td>
+              <td>Preserve</td><td>Source-derived</td>
+            </tr>
+            <tr>
+              <td>INT-05</td><td>通过/驳回</td><td>CourseCommentPanel</td><td>待审核或部分已驳回</td>
+              <td>STATE-05A 待审列表；STATE-05B 通过后；STATE-05C 驳回后</td>
+              <td>Preserve</td><td>Source-derived</td>
+            </tr>
+            <tr>
+              <td>INT-06</td><td>新增课件并发布</td><td>CoursewareListPage</td><td>表单合法</td>
+              <td>STATE-06A Drawer；STATE-06B 已发布；STATE-06C 删草稿</td>
+              <td>Preserve</td><td>Source-derived</td>
+            </tr>
+            <tr>
+              <td>INT-07</td><td>保存规则</td><td>TrainingRulesPage</td><td>校验通过</td>
+              <td>STATE-07A 编辑；STATE-07B 校验错误；STATE-07C 保存成功</td>
+              <td>Preserve</td><td>Source-derived</td>
+            </tr>
+            <tr>
+              <td>INT-08</td><td>新建分类</td><td>List pages Modals</td><td>深度&lt;3</td>
+              <td>STATE-08A 树更新；STATE-08B 重名失败</td>
+              <td>Preserve</td><td>Source-derived</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>Inventoried interactions: 8 主 INT + 各页次级操作（筛选、拖拽、清空目录等）均归入对应 INT 契约。Required by mode D: 文档化 100%。Runtime verified: 0（证据阻塞）。</p>
+      </section>
+
+      <section id="s8">
+        <h3>8. 交互实现契约</h3>
+
+        <div class="contract" id="int-01">
+          <h5>INT-01 概览看板与快捷审核</h5>
+          <div class="kv">
+            <b>Related</b><div>REQ-01</div>
+            <b>Change type</b><div>Unchanged</div>
+            <b>Trigger</b><div>打开「概览」；或点击待审评论的通过/驳回/查看</div>
+            <b>Preconditions</b><div>进入课程应用</div>
+            <b>System</b><div>计算课程总数、课件数、已发布、未发布(=草稿)、待审核评论；展示状态/类型分布与发布率；列出最近更新课程与待审评论</div>
+            <b>User feedback</b><div>通过/驳回成功 message；驳回弹窗可填原因（选填）</div>
+            <b>States</b><div>STATE-01A 默认；STATE-01B 无待审空表</div>
+            <b>Landmark</b><div><code>CourseOverviewPage.tsx</code>、<code>courseOverviewStats</code></div>
+            <b>AC</b><div>AC-01-01 ~ AC-01-03</div>
+          </div>
+        </div>
+
+        <div class="contract" id="int-02">
+          <h5>INT-02 课程列表运营</h5>
+          <div class="kv">
+            <b>Trigger</b><div>筛选课程名称/发布状态；点分类树；切换类型 Tab；行内详情/编辑/发布|撤销/删除；批量发布/撤销</div>
+            <b>Validation</b><div>删除仅非已发布；批量发布跳过已发布；批量撤销仅已发布</div>
+            <b>Navigation</b><div>新增 → <code>course-create</code>；编辑 → <code>course-edit/:id</code>；详情 → <code>course-detail/:id</code></div>
+            <b>Columns</b><div>封面、名称、分类、类型、发布状态、创建人、创建时间、最后修改时间、操作</div>
+            <b>Landmark</b><div><code>CourseListPage.tsx</code>、<code>setCourseStatus</code>、<code>canDeleteCourse</code></div>
+            <b>AC</b><div>AC-02-01 ~ AC-02-04</div>
+          </div>
+        </div>
+
+        <div class="contract" id="int-03">
+          <h5>INT-03 课程新建/编辑</h5>
+          <div class="kv">
+            <b>Inputs</b><div>
+              基本信息：课程类型*、封面*、分类*、名称*(≤20)、标签(≤500)、适用对象(≤500)；
+              学习设置：学习过程*（不限制/按序学习）；
+              课程目录*：≥1 课件，可拖拽排序，字段含学时/是否必学；
+              课程介绍：富文本选填；
+              评论配置：评论/审核/点赞/收藏开关
+            </div>
+            <b>System</b><div>保存写入课程；新建 status=<code>草稿</code>；脏离开二次确认</div>
+            <b>Disabled/Validation</b><div>缺必填或目录为空 → 阻断保存并标红</div>
+            <b>Landmark</b><div><code>CourseFormPage.tsx</code>、<code>upsertCourse</code></div>
+            <b>AC</b><div>AC-03-01 ~ AC-03-03</div>
+          </div>
+        </div>
+
+        <div class="contract" id="int-04">
+          <h5>INT-04 课程详情多 Tab</h5>
+          <div class="kv">
+            <b>Tabs</b><div>详情｜学习记录｜评论管理｜设置答题</div>
+            <b>详情</b><div>只读展示基本信息、目录、介绍、评论配置；顶栏 KPI；编辑入口</div>
+            <b>学习记录</b><div>筛员工姓名/学习状态；列含进度与最近学习时间</div>
+            <b>设置答题</b><div>课后答题开关；习题库行（分类/题型/难度/数量≤可用）；保存</div>
+            <b>Empty</b><div>课程不存在 → 提示并回列表；目录空「暂无课件」</div>
+            <b>Landmark</b><div><code>CourseDetailPage.tsx</code> + panels</div>
+            <b>AC</b><div>AC-04-01 ~ AC-04-03</div>
+          </div>
+        </div>
+
+        <div class="contract" id="int-05">
+          <h5>INT-05 评论治理</h5>
+          <div class="kv">
+            <b>Filters</b><div>评论内容、评论人、评论时间范围</div>
+            <b>Row actions</b><div>通过（待审核/已驳回）；驳回（仅待审核，原因选填）；删除</div>
+            <b>Batch</b><div>批量通过 / 批量驳回 / 批量删除</div>
+            <b>State mutation</b><div>待审核→已通过｜已驳回；已驳回→已通过；删除硬删</div>
+            <b>Landmark</b><div><code>CourseCommentPanel.tsx</code>、<code>courseCommentStore.ts</code></div>
+            <b>AC</b><div>AC-05-01 ~ AC-05-03</div>
+          </div>
+        </div>
+
+        <div class="contract" id="int-06">
+          <h5>INT-06 课件管理</h5>
+          <div class="kv">
+            <b>List</b><div>左分类树 + 名称/发布状态筛选 + 类型 Tab；批量发布/撤销</div>
+            <b>Drawer 字段</b><div>类型*、封面*、名称*(≤20)、分类*、文件*、简介(≤500)、预估学习时长(秒，可选≥1)</div>
+            <b>Rules</b><div>新建默认草稿；已发布不可删；撤销→草稿</div>
+            <b>Landmark</b><div><code>CoursewareListPage.tsx</code>、<code>CoursewareFormDrawer.tsx</code></div>
+            <b>AC</b><div>AC-06-01 ~ AC-06-03</div>
+          </div>
+        </div>
+
+        <div class="contract" id="int-07">
+          <h5>INT-07 规则设置（积分/学分）</h5>
+          <div class="kv">
+            <b>Inputs</b><div>是否发放；发放方式（每课程固定分 / 每 x 分钟 x 分）；固定分值或间隔分钟+区间分；每节课上限；每日上限</div>
+            <b>Validation</b><div>开启发放后方式与正整数必填；每日上限 ≥ 每节课上限</div>
+            <b>Landmark</b><div><code>TrainingRulesPage.tsx</code>、<code>validateRewardRules</code></div>
+            <b>AC</b><div>AC-07-01 ~ AC-07-02</div>
+          </div>
+        </div>
+
+        <div class="contract" id="int-08">
+          <h5>INT-08 分类树维护</h5>
+          <div class="kv">
+            <b>Trigger</b><div>课程/课件列表中新建分类、新建子分类、编辑、删除</div>
+            <b>Rules</b><div>名≤10；同级不重名；最大深度 3；节点或其子树挂有内容则不可删</div>
+            <b>AC</b><div>AC-08-01 ~ AC-08-02</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="s9">
+        <h3>9. 原型与视觉证据（标注）</h3>
+        <div class="callout warn">
+          <strong>高保真验证阻塞：</strong>Mode D 未启动可点击原型；未做同视口运行时截图对比。
+          下列标注图为基于源码信息架构的线框+强制线连编号圈，状态记为 <span class="tag warn">Source-derived</span>，不可称为 Verified 1:1。
+        </div>
+        <div class="kv">
+          <b>Prototype</b><div>无（Mode D 省略）；运行入口：<code>npm run dev</code> → 打开课程应用</div>
+          <b>Viewport</b><div>1440×900（示意）</div>
+          <b>annotation-map</b><div><code>outputs/course-admin-prd-only/outputs/annotation-map.json</code></div>
+        </div>
+
+        <h4 id="annotate-list">标注图 A · 课程列表（INT-02 / INT-08）</h4>
+        <div class="anno-wrap">
+          <svg viewBox="0 0 960 420" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="课程列表标注">
+            <rect width="960" height="420" fill="#0b1220"/>
+            <!-- page chrome -->
+            <rect x="160" y="24" width="640" height="372" rx="8" fill="#f5f6f8" stroke="#334155"/>
+            <rect x="160" y="24" width="160" height="372" fill="#fff" stroke="#cbd5e1"/>
+            <text x="180" y="52" fill="#334155" font-size="12">分类树</text>
+            <rect x="176" y="68" width="128" height="22" rx="4" fill="#e2e8f0"/>
+            <rect x="176" y="98" width="110" height="18" rx="3" fill="#eef2ff"/>
+            <rect x="336" y="40" width="280" height="28" rx="4" fill="#fff" stroke="#94a3b8"/>
+            <text x="348" y="58" fill="#64748b" font-size="11">课程名称 / 发布状态</text>
+            <rect x="700" y="40" width="80" height="28" rx="4" fill="#1677ff"/>
+            <text x="718" y="58" fill="#fff" font-size="11">新增课程</text>
+            <rect x="336" y="84" width="448" height="24" rx="4" fill="#e2e8f0"/>
+            <text x="350" y="100" fill="#475569" font-size="11">全部 | 视频 | 音频 | PDF</text>
+            <rect x="336" y="120" width="448" height="200" rx="4" fill="#fff" stroke="#cbd5e1"/>
+            <text x="350" y="145" fill="#0f172a" font-size="11">表：封面 名称 分类 类型 状态 … 操作</text>
+            <rect x="640" y="160" width="48" height="18" rx="3" fill="#dbeafe"/>
+            <text x="648" y="173" fill="#1d4ed8" font-size="10">发布</text>
+            <rect x="336" y="336" width="200" height="28" rx="4" fill="#fff7ed" stroke="#fdba74"/>
+            <text x="348" y="354" fill="#9a3412" font-size="11">批量发布 / 批量撤销</text>
+
+            <!-- cards -->
+            <rect x="16" y="40" width="130" height="70" rx="8" fill="#1e293b" stroke="#38bdf8"/>
+            <text x="28" y="62" fill="#e2e8f0" font-size="11">1 分类树筛选</text>
+            <text x="28" y="80" fill="#94a3b8" font-size="10">INT-02 / INT-08</text>
+            <line x1="146" y1="75" x2="176" y2="90" stroke="#38bdf8" stroke-width="2"/>
+            <circle cx="176" cy="90" r="10" fill="#0ea5e9"/><text x="172" y="94" fill="#fff" font-size="11">1</text>
+
+            <rect x="16" y="130" width="130" height="70" rx="8" fill="#1e293b" stroke="#a78bfa"/>
+            <text x="28" y="152" fill="#e2e8f0" font-size="11">2 新增课程</text>
+            <text x="28" y="170" fill="#94a3b8" font-size="10">INT-03 入口</text>
+            <line x1="146" y1="165" x2="700" y2="54" stroke="#a78bfa" stroke-width="2"/>
+            <circle cx="740" cy="54" r="10" fill="#8b5cf6"/><text x="736" y="58" fill="#fff" font-size="11">2</text>
+
+            <rect x="16" y="220" width="130" height="70" rx="8" fill="#1e293b" stroke="#34d399"/>
+            <text x="28" y="242" fill="#e2e8f0" font-size="11">3 行内发布</text>
+            <text x="28" y="260" fill="#94a3b8" font-size="10">INT-02</text>
+            <line x1="146" y1="255" x2="640" y2="169" stroke="#34d399" stroke-width="2"/>
+            <circle cx="664" cy="169" r="10" fill="#10b981"/><text x="660" y="173" fill="#fff" font-size="11">3</text>
+
+            <rect x="16" y="310" width="130" height="70" rx="8" fill="#1e293b" stroke="#fb923c"/>
+            <text x="28" y="332" fill="#e2e8f0" font-size="11">4 批量栏</text>
+            <text x="28" y="350" fill="#94a3b8" font-size="10">INT-02</text>
+            <line x1="146" y1="345" x2="336" y2="350" stroke="#fb923c" stroke-width="2"/>
+            <circle cx="336" cy="350" r="10" fill="#f97316"/><text x="332" y="354" fill="#fff" font-size="11">4</text>
+          </svg>
+        </div>
+
+        <h4 id="annotate-comments">标注图 B · 课程详情评论 Tab（INT-04 / INT-05）</h4>
+        <div class="anno-wrap">
+          <svg viewBox="0 0 960 380" width="100%" xmlns="http://www.w3.org/2000/svg">
+            <rect width="960" height="380" fill="#0b1220"/>
+            <rect x="180" y="28" width="600" height="324" rx="8" fill="#f8fafc" stroke="#334155"/>
+            <text x="200" y="56" fill="#0f172a" font-size="14" font-weight="600">课程详情 · 状态 Tag</text>
+            <rect x="200" y="72" width="560" height="36" rx="4" fill="#e2e8f0"/>
+            <text x="214" y="94" fill="#334155" font-size="12">详情 | 学习记录 | 评论管理 | 设置答题</text>
+            <rect x="200" y="124" width="560" height="200" rx="4" fill="#fff" stroke="#cbd5e1"/>
+            <text x="214" y="150" fill="#0f172a" font-size="12">筛选：内容 / 评论人 / 时间</text>
+            <text x="214" y="178" fill="#64748b" font-size="11">行：评论内容 · 评论人 · 状态 · 时间 · 通过/驳回/删除</text>
+            <rect x="520" y="200" width="48" height="20" rx="3" fill="#dcfce7"/>
+            <text x="528" y="214" fill="#166534" font-size="10">通过</text>
+            <rect x="580" y="200" width="48" height="20" rx="3" fill="#fee2e2"/>
+            <text x="588" y="214" fill="#991b1b" font-size="10">驳回</text>
+            <rect x="200" y="300" width="220" height="28" rx="4" fill="#eff6ff" stroke="#93c5fd"/>
+            <text x="212" y="318" fill="#1e40af" font-size="11">批量通过 / 驳回 / 删除</text>
+
+            <rect x="20" y="50" width="140" height="64" rx="8" fill="#1e293b" stroke="#38bdf8"/>
+            <text x="32" y="74" fill="#e2e8f0" font-size="11">1 评论 Tab</text>
+            <line x1="160" y1="82" x2="310" y2="94" stroke="#38bdf8" stroke-width="2"/>
+            <circle cx="310" cy="94" r="10" fill="#0ea5e9"/><text x="306" y="98" fill="#fff" font-size="11">1</text>
+
+            <rect x="20" y="140" width="140" height="64" rx="8" fill="#1e293b" stroke="#34d399"/>
+            <text x="32" y="164" fill="#e2e8f0" font-size="11">2 通过</text>
+            <line x1="160" y1="172" x2="520" y2="210" stroke="#34d399" stroke-width="2"/>
+            <circle cx="544" cy="210" r="10" fill="#10b981"/><text x="540" y="214" fill="#fff" font-size="11">2</text>
+
+            <rect x="20" y="230" width="140" height="64" rx="8" fill="#1e293b" stroke="#f87171"/>
+            <text x="32" y="254" fill="#e2e8f0" font-size="11">3 驳回(原因选填)</text>
+            <line x1="160" y1="262" x2="580" y2="210" stroke="#f87171" stroke-width="2"/>
+            <circle cx="604" cy="210" r="10" fill="#ef4444"/><text x="600" y="214" fill="#fff" font-size="11">3</text>
+
+            <rect x="20" y="310" width="140" height="50" rx="8" fill="#1e293b" stroke="#fb923c"/>
+            <text x="32" y="338" fill="#e2e8f0" font-size="11">4 批量操作</text>
+            <line x1="160" y1="335" x2="200" y2="314" stroke="#fb923c" stroke-width="2"/>
+            <circle cx="200" cy="314" r="10" fill="#f97316"/><text x="196" y="318" fill="#fff" font-size="11">4</text>
+          </svg>
+        </div>
+      </section>
+
+      <section id="s10">
+        <h3>10. 追溯矩阵</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>REQ</th><th>INT</th><th>STATE</th><th>Evidence</th><th>Code landmark</th><th>AC</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>REQ-01</td><td>INT-01</td><td>01A/B</td><td>标注图 A 语境 / 概览页</td><td>CourseOverviewPage</td><td>AC-01-*</td><td>Confirmed</td></tr>
+            <tr><td>REQ-01</td><td>INT-02</td><td>02A/B/C</td><td>标注图 A · 1/3/4</td><td>CourseListPage</td><td>AC-02-*</td><td>Confirmed</td></tr>
+            <tr><td>REQ-01</td><td>INT-03</td><td>03A/B/C</td><td>标注图 A · 2</td><td>CourseFormPage</td><td>AC-03-*</td><td>Confirmed</td></tr>
+            <tr><td>REQ-01</td><td>INT-04</td><td>04A~E</td><td>标注图 B · 1</td><td>CourseDetailPage</td><td>AC-04-*</td><td>Confirmed</td></tr>
+            <tr><td>REQ-01</td><td>INT-05</td><td>05A/B/C</td><td>标注图 B · 2/3/4</td><td>courseCommentStore</td><td>AC-05-*</td><td>Confirmed</td></tr>
+            <tr><td>REQ-01</td><td>INT-06</td><td>06A/B/C</td><td>课件列表（源码）</td><td>CoursewareListPage</td><td>AC-06-*</td><td>Confirmed</td></tr>
+            <tr><td>REQ-01</td><td>INT-07</td><td>07A/B/C</td><td>规则页（源码）</td><td>TrainingRulesPage</td><td>AC-07-*</td><td>Confirmed</td></tr>
+            <tr><td>REQ-01</td><td>INT-08</td><td>08A/B</td><td>标注图 A · 1</td><td>category tree helpers</td><td>AC-08-*</td><td>Confirmed</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="s11">
+        <h3>11. 验收标准</h3>
+        <pre class="mono" style="white-space:pre-wrap;background:#f7f8fa;padding:14px;border-radius:8px;border:1px solid var(--line);">
+AC-01-01 Given 存在课程与待审评论 When 打开概览 Then KPI 与待审表可见，未发布计数仅含草稿
+AC-01-02 Given 待审评论 When 点击通过并确认 Then 状态变已通过且 message 成功
+AC-01-03 Given 待审评论 When 驳回（原因可空） Then 状态变已驳回
+
+AC-02-01 Given 课程列表 When 按名称+状态+分类+类型 Tab 组合筛选 Then 仅展示匹配行，无匹配显示空态
+AC-02-02 Given 草稿或已下架课程 When 发布 Then 状态=已发布
+AC-02-03 Given 已发布课程 When 撤销 Then 状态=已下架
+AC-02-04 Given 已发布课程 When 尝试删除 Then 阻断并提示需先下架
+
+AC-03-01 Given 缺封面或目录为空 When 保存 Then 校验失败不落库
+AC-03-02 Given 合法表单 When 新建保存 Then 生成草稿课程并可在列表看到
+AC-03-03 Given 编辑脏数据 When 取消/返回 Then 弹出离开确认
+
+AC-04-01 Given 有效课程 id When 打开详情四 Tab Then 路由 tab 与内容一致
+AC-04-02 Given 无效 id When 打开详情 Then 显示不存在并回列表
+AC-04-03 Given 开启答题并配置合法题库 When 保存 Then 配置持久化
+
+AC-05-01 Given 待审核 When 批量通过 Then 全部变已通过
+AC-05-02 Given 已通过 When 尝试驳回 Then 操作不可用或无效
+AC-05-03 Given 任意状态评论 When 删除 Then 记录移除
+
+AC-06-01 Given 合法课件表单 When 保存 Then 草稿入库
+AC-06-02 Given 草稿 When 发布 Then 状态=已发布且不可删
+AC-06-03 Given 已发布 When 撤销 Then 回草稿且可删
+
+AC-07-01 Given 开启发放但未填正整数 When 保存 Then 校验失败
+AC-07-02 Given 日上限&lt;课上限 When 保存 Then 校验失败
+
+AC-08-01 Given 同级重名 When 新建分类 Then 失败提示
+AC-08-02 Given 分类下有课程 When 删除 Then 阻断
+
+AC-VIS-01 最终标注图每张卡片均有可见连线，终点为连续编号实心圆且压在目标控件上（见图 A/B）
+        </pre>
+      </section>
+
+      <section id="s12">
+        <h3>12. 实现说明</h3>
+        <ul class="compact">
+          <li>优先复用 <code>src/features/training/**</code> 现有页面与 store，勿平行造轮。</li>
+          <li>实现顺序建议：INT-08 分类 → INT-06 课件 → INT-03/02 课程 → INT-04/05 详情评论 → INT-07 规则 → INT-01 概览。</li>
+          <li>验证：<code>npm run dev</code> 后按 Hash 路由走查；单测可跑 training 相关 vitest。</li>
+          <li>兼容：保持 Ant Design 表单横向布局与列表批量栏模式。</li>
+        </ul>
+      </section>
+
+      <section id="s13">
+        <h3>13. 产物清单</h3>
+        <table>
+          <thead><tr><th>产物</th><th>路径</th></tr></thead>
+          <tbody>
+            <tr><td>本 PRD（HTML）</td><td><code>outputs/course-admin-prd-only/outputs/课程管理后台-PRD.html</code></td></tr>
+            <tr><td>page-map</td><td><code>outputs/course-admin-prd-only/work/page-map.md</code></td></tr>
+            <tr><td>annotation-map</td><td><code>outputs/course-admin-prd-only/outputs/annotation-map.json</code></td></tr>
+            <tr><td>manifest</td><td><code>outputs/course-admin-prd-only/outputs/manifest.md</code></td></tr>
+            <tr><td>可点击原型</td><td>省略（Mode D）</td></tr>
+            <tr><td>既有 docs/prd/course-admin</td><td><strong>未读取、未修改</strong></td></tr>
+          </tbody>
+        </table>
+        <div class="kv" style="margin-top:12px">
+          <b>Product Design availability</b><div>unavailable</div>
+          <b>Execution path</b><div>native-fallback</div>
+          <b>Enhancement skill</b><div>none</div>
+          <b>Fallback reason</b><div>unavailable</div>
+          <b>Runtime verification</b><div>blocked</div>
+          <b>Design QA</b><div>not-applicable</div>
+        </div>
+      </section>
+
+      <section id="s14">
+        <h3>14. Developer / AI Handoff Prompt</h3>
+        <div class="callout">
+          请根据本 PRD 实现或对齐「课程」管理后台。按 INT-01～INT-08 逐项核对，严格保持 Change Matrix 中的 Unchanged 行为；使每个 STATE 可在 <code>#/training/*</code> 复现；完成并验证全部 AC。优先复用 <code>src/features/training</code> 现有组件与 store，不要根据线框猜测未定义规则。实现后启动项目，在目标页面回归发布态机、评论态机、分类深度与规则校验，并报告每个 INT/AC 结果。
+        </div>
+      </section>
+
+      <p class="footer note">
+        生成方式：product-prd-prototype · Mode D · 自行选定模式（用户禁止询问）。
+        证据级别 Source-derived。生成时间：2026-08-25。
+      </p>
+    </main>
+  </div>
+</body>
+</html>
