@@ -39,7 +39,7 @@ describe('PC interest group home', () => {
     expect(html).toContain('c-ig-acts is-pc-3');
 
     const groups = html.slice(html.indexOf('aria-label="热门小组"'), html.indexOf('>活动<'));
-    expect((groups.match(/c-ig-group/g) ?? []).length).toBeGreaterThanOrEqual(5);
+    expect((groups.match(/class="c-ig-group"/g) ?? []).length).toBe(3);
 
     const past = html.slice(html.indexOf('往期精彩回顾'));
     expect((past.match(/c-past-card/g) ?? []).length).toBe(5);

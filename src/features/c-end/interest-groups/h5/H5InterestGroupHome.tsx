@@ -37,7 +37,7 @@ function HomeTab({ surface }: { surface: CEndSurface }) {
       [...store.groups]
         .filter(isCEndGroupDiscoverable)
         .sort((a, b) => Number(b.hot) - Number(a.hot) || b.members - a.members || b.acts - a.acts)
-        .slice(0, surface === 'pc' ? 6 : 5),
+        .slice(0, surface === 'pc' ? 3 : 5),
     [store.groups, surface],
   );
   const shortcuts = SHORTCUTS.filter((item) => {
