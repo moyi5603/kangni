@@ -16,7 +16,6 @@ import {
   Typography,
 } from 'antd';
 import { InterestGroupFormDrawer } from '../components/InterestGroupFormDrawer';
-import { interestGroupJoinModeLabels } from '../model/interestGroup';
 import { getInterestGroupCategoryLabel } from '../model/interestGroupCategory';
 import { InterestGroupActivityListPage } from './InterestGroupActivityListPage';
 import { InterestGroupCommentListPage } from './InterestGroupCommentListPage';
@@ -124,7 +123,9 @@ export function InterestGroupDetailPage({ recordId, tab, onBack, onNavigate, onT
               </Typography.Title>
               <Space wrap>
                 <Tag>{getInterestGroupCategoryLabel(group.categoryKey, categories)}</Tag>
-                <Tag color={group.joinMode === 'free' ? 'green' : 'gold'}>{interestGroupJoinModeLabels[group.joinMode]}</Tag>
+                {group.auditStatus !== '已通过' && group.auditStatus !== '无需审核' ? (
+                  <Tag color={group.auditStatus === '已驳回' ? 'error' : 'warning'}>{group.auditStatus}</Tag>
+                ) : null}
               </Space>
               <Descriptions column={1} size="small" style={{ marginTop: 12 }}>
                 <Descriptions.Item label="小组负责人">{group.leadName}</Descriptions.Item>

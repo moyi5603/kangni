@@ -6,9 +6,15 @@ import {
   deleteInterestGroup,
   getInterestGroup,
   getInterestGroupActivities,
+  getInterestGroupActivity,
+  getInterestGroupSignups,
+  addInterestGroupSignup,
+  setInterestGroupSignupStatus,
   terminateInterestGroupActivity,
   upsertInterestGroup,
+  reviewInterestGroup,
   upsertInterestGroupActivity,
+  createEmployeeInterestGroupActivity,
   submitInterestGroupActivities,
   reviewInterestGroupActivity,
   publishInterestGroupActivities,
@@ -85,7 +91,7 @@ describe('interestGroupStore delete rules', () => {
 
   it('deletes category and unassigns groups and activities', () => {
     const result = deleteInterestGroupCategory('sport');
-    expect(result).toEqual({ ok: true, groupCount: 2, activityCount: 3 });
+    expect(result).toEqual({ ok: true, groupCount: 4, activityCount: 4 });
     expect(getInterestGroupCategories().some((item) => item.key === 'sport')).toBe(false);
     expect(getInterestGroups().filter((item) => item.categoryKey === 'sport')).toHaveLength(0);
     expect(getInterestGroupActivities().filter((item) => item.categoryKey === 'sport')).toHaveLength(0);
@@ -131,11 +137,8 @@ describe('interestGroupStore delete rules', () => {
     expect(getInterestGroupMoments().find((item) => item.id === 2)?.rejectReason).toBeUndefined();
   });
 
-  it('rejects pending member with optional reason', () => {
-    expect(setInterestGroupMemberStatus(2, ['林销'], '已驳回', '资料不全')).toEqual({ done: 1, skipped: 0 });
-    expect(getInterestGroupMembers().find((item) => item.groupId === 2 && item.employeeId === '林销')?.rejectReason).toBe(
-      '资料不全',
-    );
+  it('skips member review when the member is already 已通过', () => {
+    expect(setInterestGroupMemberStatus(2, ['林销'], '已驳回', '资料不全')).toEqual({ done: 0, skipped: 1 });
   });
 
   it('deletes moment and its comments', () => {
@@ -161,8 +164,17 @@ describe('interestGroupStore delete rules', () => {
     expect(removeInterestGroupMembers(1, ['赵人事']).removed).toBe(1);
     expect(getInterestGroup(1)?.memberCount).toBe(128);
     expect(getInterestGroupMembers().find((item) => item.employeeId === '李明' && item.groupId === 1)?.status).toBe('已通过');
-    expect(setInterestGroupMemberStatus(2, ['林销'], '已通过')).toEqual({ done: 1, skipped: 0 });
+    expect(setInterestGroupMemberStatus(2, ['林销'], '已通过')).toEqual({ done: 0, skipped: 1 });
     expect(getInterestGroupMembers().find((item) => item.employeeId === '林销' && item.groupId === 2)?.status).toBe('已通过');
+  });
+
+  it('does not enable signup audit or seniority on interest-group activities', () => {
+    expect(getInterestGroupActivity(101)?.needAudit).toBe(false);
+    expect(getInterestGroupActivity(101)?.minSeniorityYears).toBeUndefined();
+    expect(getInterestGroupSignups().find((item) => item.name === '李明' && item.activityId === 101)?.status).toBe('已通过');
+    const added = addInterestGroupSignup({ activityId: 101, name: '周测', department: '测试组', sessionId: '101-s1' });
+    expect(added.status).toBe('已通过');
+    expect(setInterestGroupSignupStatus(101, [added.id], '已通过')).toEqual({ done: 0, skipped: 1 });
   });
 
   it('auto-approves pending members when group switches to free join', () => {
@@ -189,7 +201,7 @@ describe('interestGroupStore delete rules', () => {
       name: '测试小组',
       categoryKey: 'sport',
       leadEmployeeId: '赵人事',
-      joinMode: 'free',
+      joinMode: 'approve',
       area: '总部',
       tags: ['新人友好'],
       intro: '简介',
@@ -197,6 +209,61 @@ describe('interestGroupStore delete rules', () => {
     });
     expect(created.memberCount).toBe(1);
     expect(created.activityCount).toBe(0);
+    expect(created.joinMode).toBe('free');
+    expect(created.auditStatus).toBe('无需审核');
+    expect(created.source).toBe('admin');
     expect(getInterestGroup(created.id)?.name).toBe('测试小组');
+  });
+
+  it('puts employee-created groups into 待审核 when settings require audit', () => {
+    expect(getInterestGroup(5)?.auditStatus).toBe('待审核');
+    expect(getInterestGroup(5)?.source).toBe('employee');
+    const created = upsertInterestGroup(
+      {
+        name: 'C端新建小组',
+        categoryKey: 'sport',
+        leadEmployeeId: '赵人事',
+        joinMode: 'free',
+        area: '总部',
+        tags: [],
+        intro: '员工创建',
+        coverUrl: '/activities/share.jpg',
+      },
+      undefined,
+      { source: 'employee' },
+    );
+    expect(created.auditStatus).toBe('待审核');
+    expect(created.source).toBe('employee');
+    expect(reviewInterestGroup(created.id, true, '')).toBe(true);
+    expect(getInterestGroup(created.id)?.auditStatus).toBe('已通过');
+    expect(reviewInterestGroup(5, false, '封面不符')).toBe(true);
+    expect(getInterestGroup(5)?.auditStatus).toBe('已驳回');
+    expect(getInterestGroup(5)?.rejectReason).toBe('封面不符');
+  });
+
+  it('creates employee activity with schedule fields from C-end form', () => {
+    const created = createEmployeeInterestGroupActivity({
+      ...igActivityAlignDefaults(),
+      coverUrl: '/activities/share.jpg',
+      title: 'H5 夜跑加练',
+      groupId: 5,
+      categoryKey: 'sport',
+      type: 'once',
+      startAt: '2026-09-04 19:30',
+      endAt: '2026-09-04 21:00',
+      signupStartAt: '2026-08-27 09:00',
+      signupEndAt: '2026-09-04 18:00',
+      location: '总部草坪',
+      capacity: 12,
+      detailHtml: '<p>加练</p>',
+      hostName: '林浅',
+    });
+    expect(created?.title).toBe('H5 夜跑加练');
+    expect(created?.type).toBe('once');
+    expect(created?.startAt).toBe('2026-09-04 19:30');
+    expect(created?.capacity).toBe(12);
+    expect(created?.auditStatus).toBe('待审核');
+    expect(created?.publishStatus).toBe('未发布');
+    expect(created?.hostName).toBe('林浅');
   });
 });

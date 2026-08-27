@@ -13,6 +13,8 @@ export function PcSignupModal({
   signupHoursBefore,
   initialAnswers,
   mode = 'create',
+  activityId,
+  quotaLimit,
   onCancel,
   onConfirm,
 }: {
@@ -26,6 +28,8 @@ export function PcSignupModal({
   signupHoursBefore?: number;
   initialAnswers?: Record<string, string>;
   mode?: 'create' | 'adjust';
+  activityId?: number;
+  quotaLimit?: number;
   onCancel: () => void;
   onConfirm: (type: string, answers: Record<string, string>) => void;
 }) {
@@ -52,6 +56,8 @@ export function PcSignupModal({
           signupHoursBefore={signupHoursBefore}
           initialAnswers={initialAnswers}
           mode={mode}
+          activityId={activityId}
+          quotaLimit={quotaLimit}
           onCancel={onCancel}
           onConfirm={onConfirm}
         />

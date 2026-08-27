@@ -1,6 +1,6 @@
 import { useActivities } from '../../../activities/model/activityStore';
 import { goCEnd } from '../../../../app/navigation';
-import { getPublishedActivity, signupCta, signupTypes } from '../model/clientActivity';
+import { getPublishedActivity, signupCta, signupLimit, signupTypes } from '../model/clientActivity';
 import { getUserSignupAnswers, saveClientSignup, useHasSignedUp } from '../model/signupStore';
 import { useCEndToast } from '../components/CEndToast';
 import { SignupForm } from '../components/SignupForm';
@@ -57,6 +57,8 @@ export function H5SignupPage({ id }: { id: number }) {
           signupHoursBefore={activity.signupHoursBefore}
           initialAnswers={adjusting ? getUserSignupAnswers(activity.id) : undefined}
           mode={adjusting ? 'adjust' : 'create'}
+          activityId={activity.id}
+          quotaLimit={signupLimit(activity)}
           onCancel={back}
           onConfirm={confirm}
         />

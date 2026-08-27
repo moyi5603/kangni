@@ -28,6 +28,9 @@ describe('C-end portal', () => {
     expect(html).toContain('>兴趣小组 H5<');
     expect(html).toContain('href="#/c/h5/interest-groups"');
     expect(html).toContain('兴趣小组 · 手机');
+    expect(html).toContain('>兴趣小组 PC<');
+    expect(html).toContain('href="#/c/pc/interest-groups"');
+    expect(html).toContain('兴趣小组 · 宽屏门户');
     expect(html).not.toContain('评优 H5');
     expect(html).not.toContain('href="#/c/h5/honor"');
     expect(html).not.toContain('href="#/c/h5/honor-admin"');

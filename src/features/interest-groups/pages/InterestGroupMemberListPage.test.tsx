@@ -19,10 +19,6 @@ describe('InterestGroupMemberListPage', () => {
     expect(html).toContain('驳回');
     expect(html).toContain('删除');
     expect(html).toContain('已通过');
-  });
-
-  it('shows pending status only for approve-join groups', () => {
-    const html = renderPage(<InterestGroupMemberListPage groupId={2} />);
-    expect(html).toContain('待审核');
+    expect(html).not.toContain('待审核');
   });
 });

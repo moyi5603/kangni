@@ -5,6 +5,16 @@ import { ActivityListPage } from './ActivityListPage';
 import { ActivityCategoryListPage } from './ActivityCategoryListPage';
 
 describe('ActivityListPage', () => {
+  it('shows title, audit status and lifecycle on the collapsed filter row', () => {
+    const html = renderToStaticMarkup(
+      <App>
+        <ActivityListPage onNavigate={() => undefined} />
+      </App>,
+    );
+    const labels = [...html.matchAll(/search-field-label[^>]*>([^<]+)</g)].map((match) => match[1]);
+    expect(labels).toEqual(['活动标题', '审核状态', '状态']);
+  });
+
   it('keeps list toolbar information on the left and create on the right', () => {
     const html = renderToStaticMarkup(
       <App>

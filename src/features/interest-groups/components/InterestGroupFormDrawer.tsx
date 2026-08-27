@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react';
 import { PlusOutlined } from '@ant-design/icons';
-import { App, Button, Drawer, Form, Input, Radio, Select, Space, TreeSelect, Upload } from 'antd';
+import { App, Button, Drawer, Form, Input, Select, Space, TreeSelect, Upload } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { orgPeoplePickerTree } from '../../activities/model/activity';
 import {
-  interestGroupJoinModeLabels,
   normalizeInterestGroupTags,
   validateInterestGroupForm,
   type InterestGroup,
   type InterestGroupFormValues,
-  type InterestGroupJoinMode,
 } from '../model/interestGroup';
 import { generateInterestGroupIntro } from '../model/interestGroupIntro';
 import { buildInterestGroupCategoryOptions } from '../model/interestGroupCategory';
@@ -26,7 +24,6 @@ type FormShape = {
   name: string;
   categoryKey: string;
   leadEmployeeId: string;
-  joinMode: InterestGroupJoinMode;
   area: string;
   tags: string[];
   intro: string;
@@ -38,7 +35,6 @@ function toFormValues(record: InterestGroup | undefined): FormShape {
     name: record?.name ?? '',
     categoryKey: record?.categoryKey ?? '',
     leadEmployeeId: record?.leadEmployeeId ?? '',
-    joinMode: record?.joinMode ?? 'free',
     area: record?.area ?? '',
     tags: record?.tags ?? [],
     intro: record?.intro ?? '',
@@ -93,7 +89,7 @@ export function InterestGroupFormDrawer({ open, record, onClose, onSaved }: Inte
       name: values.name,
       categoryKey: values.categoryKey ?? '',
       leadEmployeeId: values.leadEmployeeId,
-      joinMode: values.joinMode,
+      joinMode: 'free',
       area: values.area ?? '',
       tags: normalizeInterestGroupTags(values.tags ?? []),
       intro: values.intro ?? '',
@@ -169,15 +165,6 @@ export function InterestGroupFormDrawer({ open, record, onClose, onSaved }: Inte
             allowClear
             placeholder="请按组织架构选择负责人"
             style={{ width: '100%' }}
-          />
-        </Form.Item>
-        <Form.Item label="加入方式" name="joinMode" rules={[{ required: true }]}>
-          <Radio.Group
-            optionType="button"
-            options={(Object.keys(interestGroupJoinModeLabels) as InterestGroupJoinMode[]).map((key) => ({
-              value: key,
-              label: interestGroupJoinModeLabels[key],
-            }))}
           />
         </Form.Item>
         <Form.Item label="活动区域" name="area">

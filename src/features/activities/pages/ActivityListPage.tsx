@@ -416,7 +416,7 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
   return (
     <div className="page-stack">
       <ListPageHeading paths={['活动', '活动管理']} title="活动管理" subtitle="查询并维护活动基础信息、审核、发布与状态。" />
-      {/* 收起态前三项：活动标题、分类、举办方式；活动时间与审核等条件展开后可见 */}
+      {/* 收起态前三项：活动标题、审核状态、状态；分类、举办方式、时间等展开后可见 */}
       <SearchPanel
         onSearch={() => {
           setQuery(draft);
@@ -433,6 +433,24 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
             placeholder="请输入活动标题"
             value={draft.title}
             onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
+          />
+        </SearchField>
+        <SearchField label="审核状态">
+          <Select
+            allowClear
+            placeholder="全部状态"
+            value={draft.auditStatus}
+            onChange={(value) => setDraft((current) => ({ ...current, auditStatus: value }))}
+            options={optionsOf(auditStatuses)}
+          />
+        </SearchField>
+        <SearchField label="状态">
+          <Select
+            allowClear
+            placeholder="全部状态"
+            value={draft.lifecycleStatus}
+            onChange={(value) => setDraft((current) => ({ ...current, lifecycleStatus: value }))}
+            options={optionsOf(lifecycleStatuses)}
           />
         </SearchField>
         <SearchField label="分类">
@@ -459,24 +477,6 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
             style={{ width: '100%' }}
             value={draft.activityTime}
             onChange={(value) => setDraft((current) => ({ ...current, activityTime: value }))}
-          />
-        </SearchField>
-        <SearchField label="审核状态">
-          <Select
-            allowClear
-            placeholder="全部状态"
-            value={draft.auditStatus}
-            onChange={(value) => setDraft((current) => ({ ...current, auditStatus: value }))}
-            options={optionsOf(auditStatuses)}
-          />
-        </SearchField>
-        <SearchField label="状态">
-          <Select
-            allowClear
-            placeholder="全部状态"
-            value={draft.lifecycleStatus}
-            onChange={(value) => setDraft((current) => ({ ...current, lifecycleStatus: value }))}
-            options={optionsOf(lifecycleStatuses)}
           />
         </SearchField>
         <SearchField label="创建时间">

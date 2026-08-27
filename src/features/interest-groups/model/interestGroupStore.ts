@@ -3,10 +3,12 @@ import dayjs from 'dayjs';
 import { orgPeopleByName } from '../../activities/model/activity';
 import {
   INTEREST_GROUP_MOCK_VERSION,
+  canReviewInterestGroup,
   initialInterestGroups,
   normalizeInterestGroupTags,
   type InterestGroup,
   type InterestGroupFormValues,
+  type InterestGroupSource,
 } from './interestGroup';
 import {
   INTEREST_GROUP_CATEGORY_MOCK_VERSION,
@@ -29,6 +31,7 @@ import {
   groupHasOngoingActivity,
   igActivityAlignDefaults,
   initialInterestGroupActivities,
+  validateInterestGroupActivityForm,
   type InterestGroupActivity,
   type InterestGroupActivityFormValues,
 } from './interestGroupActivity';
@@ -38,7 +41,13 @@ import {
   type InterestGroupMemberStatus,
 } from './interestGroupMember';
 import { INTEREST_GROUP_COMMENT_MOCK_VERSION, initialInterestGroupComments, type InterestGroupComment } from './interestGroupComment';
-import { generateRecurringSessions, syncSessionBounds, createSessionId } from '../../activities/model/activitySchedule';
+import {
+  generateRecurringSessions,
+  needsSessionPick,
+  syncSessionBounds,
+  syncSignupEndAt,
+  createSessionId,
+} from '../../activities/model/activitySchedule';
 import { removeCommentsAndDescendants } from '../../activities/model/commentTree';
 import type { CommentRecord } from '../../activities/model/related';
 import {
@@ -47,7 +56,16 @@ import {
   type InterestGroupMoment,
 } from './interestGroupMoment';
 import { validateRejectReason, normalizeRejectReason } from '../../activities/model/moment';
-import { initialInterestGroupSignups, type InterestGroupSignup } from './interestGroupSignup';
+import {
+  canReviewInterestGroupSignup,
+  interestGroupSignupInitialStatus,
+  occupiesInterestGroupSignupSlot,
+  initialInterestGroupSignups,
+  type InterestGroupSignup,
+  type InterestGroupSignupStatus,
+} from './interestGroupSignup';
+import { employeeCreatedGroupAuditStatus } from './interestGroupSettings';
+import { getInterestGroupSettings } from './interestGroupSettingsStore';
 
 let mockVersion = INTEREST_GROUP_MOCK_VERSION;
 let categoryMockVersion = INTEREST_GROUP_CATEGORY_MOCK_VERSION;
@@ -62,6 +80,7 @@ let members = [...initialInterestGroupMembers];
 let comments = [...initialInterestGroupComments];
 let moments = [...initialInterestGroupMoments];
 let signups = [...initialInterestGroupSignups];
+let activityLikers: Record<number, string[]> = {};
 
 const listeners = new Set<() => void>();
 
@@ -259,6 +278,76 @@ export function getInterestGroupSignups(): InterestGroupSignup[] {
   return signups;
 }
 
+export type AddInterestGroupSignupInput = {
+  activityId: number;
+  name: string;
+  department: string;
+  sessionId?: string;
+};
+
+function adjustSignedCount(activityId: number, sessionId: string | undefined, delta: number) {
+  activities = activities.map((activity) => {
+    if (activity.id !== activityId) return activity;
+    if (activity.sessions?.length && sessionId) {
+      const sessions = activity.sessions.map((session) =>
+        session.id === sessionId ? { ...session, signedCount: Math.max(0, session.signedCount + delta) } : session,
+      );
+      return { ...activity, sessions, signedCount: Math.max(0, activity.signedCount + delta) };
+    }
+    return { ...activity, signedCount: Math.max(0, activity.signedCount + delta) };
+  });
+}
+
+export function addInterestGroupSignup(input: AddInterestGroupSignupInput): InterestGroupSignup {
+  syncMockData();
+  const activity = activities.find((item) => item.id === input.activityId);
+  if (!activity) throw new Error('活动不存在');
+  const created: InterestGroupSignup = {
+    id: Math.max(0, ...signups.map((item) => item.id)) + 1,
+    activityId: input.activityId,
+    sessionId: input.sessionId,
+    name: input.name,
+    department: input.department,
+    signedAt: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+    status: interestGroupSignupInitialStatus(activity.needAudit),
+  };
+  signups = [created, ...signups];
+  if (occupiesInterestGroupSignupSlot(created.status)) adjustSignedCount(input.activityId, input.sessionId, 1);
+  emit();
+  return created;
+}
+
+export function setInterestGroupSignupStatus(
+  activityId: number,
+  ids: number[],
+  status: Exclude<InterestGroupSignupStatus, '待审核'>,
+  rejectReason?: string,
+): { done: number; skipped: number } {
+  syncMockData();
+  const activity = activities.find((item) => item.id === activityId);
+  if (!activity) return { done: 0, skipped: ids.length };
+  const idSet = new Set(ids);
+  let done = 0;
+  let skipped = 0;
+  const reason = status === '已驳回' ? normalizeRejectReason(rejectReason) : undefined;
+  signups = signups.map((item) => {
+    if (!idSet.has(item.id) || item.activityId !== activityId) return item;
+    if (!canReviewInterestGroupSignup(item, activity)) {
+      skipped += 1;
+      return item;
+    }
+    done += 1;
+    if (status === '已驳回') adjustSignedCount(activityId, item.sessionId, -1);
+    return {
+      ...item,
+      status,
+      rejectReason: status === '已驳回' ? reason : undefined,
+    };
+  });
+  if (done) emit();
+  return { done, skipped };
+}
+
 export function getInterestGroupActivity(id: number): InterestGroupActivity | undefined {
   syncMockData();
   return activities.find((item) => item.id === id);
@@ -368,7 +457,13 @@ export function moveInterestGroupCategory(key: string, dir: -1 | 1): boolean {
   return true;
 }
 
-export function upsertInterestGroup(values: InterestGroupFormValues, id?: number): InterestGroup {
+export type UpsertInterestGroupOptions = { source?: InterestGroupSource };
+
+export function upsertInterestGroup(
+  values: InterestGroupFormValues,
+  id?: number,
+  options?: UpsertInterestGroupOptions,
+): InterestGroup {
   syncMockData();
   const employee = orgPeopleByName[values.leadEmployeeId];
   const payload = {
@@ -376,7 +471,7 @@ export function upsertInterestGroup(values: InterestGroupFormValues, id?: number
     categoryKey: values.categoryKey,
     leadEmployeeId: values.leadEmployeeId,
     leadName: employee?.name ?? values.leadEmployeeId,
-    joinMode: values.joinMode,
+    joinMode: 'free',
     area: values.area.trim(),
     tags: normalizeInterestGroupTags(values.tags),
     intro: values.intro.trim(),
@@ -410,12 +505,15 @@ export function upsertInterestGroup(values: InterestGroupFormValues, id?: number
 
   const nextId = Math.max(0, ...groups.map((group) => group.id)) + 1;
   const createdAt = dayjs().format('YYYY-MM-DD HH:mm:ss');
+  const source = options?.source ?? 'admin';
   const created: InterestGroup = {
     id: nextId,
     ...payload,
     memberCount: 1,
     activityCount: 0,
     createdAt,
+    source,
+    auditStatus: source === 'employee' ? employeeCreatedGroupAuditStatus(getInterestGroupSettings()) : '无需审核',
   };
   groups = [created, ...groups];
   members = [
@@ -497,9 +595,9 @@ function buildActivityFromForm(values: InterestGroupActivityFormValues, current?
     importFileName: values.importFileName,
     importedPeople: values.importedPeople,
     notifyOnPublish: values.notifyOnPublish,
-    needAudit: values.needAudit,
-    minSeniorityYears: values.minSeniorityYears,
-    signupApprovalNodes: values.signupApprovalNodes,
+    needAudit: false,
+    minSeniorityYears: undefined,
+    signupApprovalNodes: [],
     signupFields: values.signupFields,
     signupPoints: values.signupPoints,
     signupPointsEnabled: values.signupPointsEnabled,
@@ -519,6 +617,13 @@ export function upsertInterestGroupActivity(values: InterestGroupActivityFormVal
     if (!current) throw new Error('活动不存在');
     const next = buildActivityFromForm(values, current);
     activities = activities.map((item) => (item.id === id ? next : item));
+    if (!next.needAudit) {
+      signups = signups.map((item) =>
+        item.activityId === id && item.status === '待审核'
+          ? { ...item, status: '已通过' as const, rejectReason: undefined }
+          : item,
+      );
+    }
     syncActivityCounts();
     emit();
     return next;
@@ -534,6 +639,23 @@ export function patchInterestGroupActivities(updater: (list: InterestGroupActivi
   syncMockData();
   activities = updater(activities);
   emit();
+}
+
+export function reviewInterestGroup(id: number, pass: boolean, comment: string): boolean {
+  syncMockData();
+  const current = groups.find((item) => item.id === id);
+  if (!current || !canReviewInterestGroup(current)) return false;
+  groups = groups.map((item) =>
+    item.id === id
+      ? {
+          ...item,
+          auditStatus: pass ? '已通过' : '已驳回',
+          rejectReason: pass ? undefined : normalizeRejectReason(comment),
+        }
+      : item,
+  );
+  emit();
+  return true;
 }
 
 export function submitInterestGroupActivities(ids: number[]): number {
@@ -624,6 +746,279 @@ export function terminateInterestGroupActivity(id: number): TerminateActivityRes
   );
   emit();
   return { ok: true };
+}
+
+export function viewerHasLikedInterestGroupActivity(activityId: number, name: string): boolean {
+  return Boolean(activityLikers[activityId]?.includes(name));
+}
+
+export function joinInterestGroupAsEmployee(
+  groupId: number,
+  employeeName: string,
+): 'joined' | 'pending' | 'already' | 'missing' {
+  syncMockData();
+  const group = groups.find((item) => item.id === groupId);
+  if (!group) return 'missing';
+  const existing = members.find((item) => item.groupId === groupId && (item.employeeId === employeeName || item.name === employeeName));
+  if (existing?.status === '已通过') return 'already';
+  if (existing?.status === '待审核') return 'pending';
+  const person = orgPeopleByName[employeeName];
+  const status: InterestGroupMemberStatus = '已通过';
+  members = [
+    {
+      groupId,
+      employeeId: employeeName,
+      name: employeeName,
+      department: person?.department ?? '—',
+      role: 'member',
+      status,
+      joinedAt: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+    },
+    ...members,
+  ];
+  if (status === '已通过') {
+    groups = groups.map((item) => (item.id === groupId ? { ...item, memberCount: item.memberCount + 1 } : item));
+  }
+  emit();
+  return status === '已通过' ? 'joined' : 'pending';
+}
+
+export function leaveInterestGroupAsEmployee(groupId: number, employeeName: string): 'left' | 'lead' | 'missing' {
+  syncMockData();
+  const current = members.find((item) => item.groupId === groupId && (item.employeeId === employeeName || item.name === employeeName));
+  if (!current) return 'missing';
+  if (current.role === 'lead') return 'lead';
+  const wasApproved = current.status === '已通过';
+  members = members.filter((item) => !(item.groupId === groupId && (item.employeeId === employeeName || item.name === employeeName)));
+  if (wasApproved) {
+    groups = groups.map((item) =>
+      item.id === groupId ? { ...item, memberCount: Math.max(0, item.memberCount - 1) } : item,
+    );
+  }
+  const activityIds = activities.filter((item) => item.groupId === groupId).map((item) => item.id);
+  for (const activityId of activityIds) {
+    cancelInterestGroupViewerSignups(activityId, employeeName);
+  }
+  emit();
+  return 'left';
+}
+
+export function cancelInterestGroupViewerSignups(activityId: number, name: string, sessionId?: string): number {
+  syncMockData();
+  const drop = signups.filter(
+    (item) =>
+      item.activityId === activityId &&
+      item.name === name &&
+      (sessionId == null || item.sessionId === sessionId) &&
+      occupiesInterestGroupSignupSlot(item.status),
+  );
+  if (!drop.length) return 0;
+  const dropIds = new Set(drop.map((item) => item.id));
+  for (const item of drop) {
+    adjustSignedCount(activityId, item.sessionId, -1);
+  }
+  signups = signups.filter((item) => !dropIds.has(item.id));
+  emit();
+  return drop.length;
+}
+
+export function setInterestGroupViewerSessions(
+  activityId: number,
+  name: string,
+  department: string,
+  sessionIds: string[],
+): void {
+  syncMockData();
+  const activity = activities.find((item) => item.id === activityId);
+  if (!activity?.sessions?.length) return;
+  const want = new Set(sessionIds);
+  for (const session of activity.sessions) {
+    const occupying = signups.find(
+      (item) =>
+        item.activityId === activityId &&
+        item.name === name &&
+        item.sessionId === session.id &&
+        occupiesInterestGroupSignupSlot(item.status),
+    );
+    if (want.has(session.id) && !occupying) {
+      addInterestGroupSignup({ activityId, name, department, sessionId: session.id });
+    } else if (!want.has(session.id) && occupying) {
+      cancelInterestGroupViewerSignups(activityId, name, session.id);
+    }
+  }
+}
+
+export function toggleInterestGroupActivityLike(activityId: number, name: string): boolean {
+  syncMockData();
+  const activity = activities.find((item) => item.id === activityId);
+  if (!activity) return false;
+  const liked = viewerHasLikedInterestGroupActivity(activityId, name);
+  const names = new Set(activityLikers[activityId] ?? []);
+  if (liked) names.delete(name);
+  else names.add(name);
+  activityLikers = { ...activityLikers, [activityId]: [...names] };
+  activities = activities.map((item) =>
+    item.id === activityId ? { ...item, likeCount: Math.max(0, item.likeCount + (liked ? -1 : 1)) } : item,
+  );
+  emit();
+  return !liked;
+}
+
+export function addInterestGroupComment(activityId: number, author: string, content: string): InterestGroupComment | null {
+  syncMockData();
+  if (!activities.some((item) => item.id === activityId)) return null;
+  const created: InterestGroupComment = {
+    id: Math.max(0, ...comments.map((item) => item.id)) + 1,
+    activityId,
+    author,
+    content,
+    likedBy: [],
+    createdAt: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+  };
+  comments = [created, ...comments];
+  emit();
+  return created;
+}
+
+export function toggleInterestGroupCommentLike(commentId: number, name: string): boolean {
+  syncMockData();
+  const current = comments.find((item) => item.id === commentId);
+  if (!current) return false;
+  const liked = current.likedBy.includes(name);
+  comments = comments.map((item) =>
+    item.id === commentId
+      ? { ...item, likedBy: liked ? item.likedBy.filter((who) => who !== name) : [...item.likedBy, name] }
+      : item,
+  );
+  emit();
+  return !liked;
+}
+
+export function toggleInterestGroupMomentLike(momentId: number, name: string): boolean {
+  syncMockData();
+  const current = moments.find((item) => item.id === momentId);
+  if (!current) return false;
+  const liked = current.likedBy.includes(name);
+  return patchInterestGroupMoment(momentId, (item) => ({
+    ...item,
+    likedBy: liked ? item.likedBy.filter((who) => who !== name) : [...item.likedBy, name],
+  }));
+}
+
+export function addEmployeeInterestGroupMoment(input: {
+  groupId: number;
+  activityId?: number;
+  author: string;
+  content: string;
+  imageUrls: string[];
+  videoUrl?: string;
+}): InterestGroupMoment | null {
+  syncMockData();
+  if (!groups.some((item) => item.id === input.groupId)) return null;
+  const stamp = nowText();
+  const created: InterestGroupMoment = {
+    id: Math.max(0, ...moments.map((item) => item.id)) + 1,
+    groupId: input.groupId,
+    activityId: input.activityId,
+    author: input.author,
+    content: input.content,
+    type: input.videoUrl ? '视频' : '图文类型',
+    imageUrls: input.videoUrl ? [] : input.imageUrls,
+    videoUrl: input.videoUrl,
+    status: '待审核',
+    createdAt: stamp,
+    updatedAt: stamp,
+    likedBy: [],
+    comments: [],
+  };
+  moments = [created, ...moments];
+  emit();
+  return created;
+}
+
+function employeeActivitySignupEndAt(
+  input: Pick<
+    InterestGroupActivityFormValues,
+    'type' | 'signupEndAt' | 'repeatWeekday' | 'timeStart' | 'timeEnd' | 'cycleStart' | 'cycleEnd' | 'sessions' | 'signupHoursBefore'
+  >,
+): string {
+  if (!needsSessionPick(input.type)) return input.signupEndAt;
+  if (
+    input.type === 'recurring' &&
+    input.repeatWeekday != null &&
+    input.timeStart &&
+    input.timeEnd &&
+    input.cycleStart &&
+    input.cycleEnd
+  ) {
+    return syncSignupEndAt(
+      generateRecurringSessions({
+        repeatWeekday: input.repeatWeekday,
+        timeStart: input.timeStart,
+        timeEnd: input.timeEnd,
+        cycleStart: input.cycleStart,
+        cycleEnd: input.cycleEnd,
+      }),
+      input.signupHoursBefore ?? 0,
+    );
+  }
+  return syncSignupEndAt(
+    (input.sessions ?? []).map((session, index) => ({
+      id: `draft-${index}`,
+      startAt: session.startAt,
+      endAt: session.endAt,
+    })),
+    input.signupHoursBefore ?? 0,
+  );
+}
+
+export function createEmployeeInterestGroupActivity(
+  input: Omit<InterestGroupActivityFormValues, 'visibility' | 'departments' | 'customPeople' | 'importFileName' | 'importedPeople' | 'notifyOnPublish' | 'needAudit' | 'signupApprovalNodes' | 'signupFields' | 'signupPoints' | 'signupPointsEnabled' | 'minSeniorityYears'> & {
+    hostName: string;
+  },
+): InterestGroupActivity | null {
+  syncMockData();
+  const group = groups.find((item) => item.id === input.groupId);
+  if (!group) return null;
+  const { hostName, ...form } = input;
+  const align = igActivityAlignDefaults();
+  const payload: InterestGroupActivityFormValues = {
+    ...align,
+    ...form,
+    coverUrl: form.coverUrl.trim(),
+    title: form.title.trim().slice(0, 20),
+    location: form.location.trim(),
+    signupEndAt: employeeActivitySignupEndAt(form) || align.signupEndAt,
+    visibility: align.visibility,
+    departments: [],
+    customPeople: [],
+    importFileName: '',
+    importedPeople: [],
+    notifyOnPublish: false,
+    needAudit: false,
+    signupApprovalNodes: [],
+    signupFields: align.signupFields,
+    signupPoints: align.signupPoints,
+    signupPointsEnabled: align.signupPointsEnabled,
+  };
+  if (validateInterestGroupActivityForm(payload, true)) return null;
+  const created = upsertInterestGroupActivity(payload);
+  const audit = '待审核' as const;
+  const publish = '未发布' as const;
+  const stamp = dayjs().format('YYYY-MM-DD HH:mm:ss');
+  activities = activities.map((item) =>
+    item.id === created.id
+      ? {
+          ...item,
+          hostName,
+          auditStatus: audit,
+          publishStatus: publish,
+          publishedAt: '',
+        }
+      : item,
+  );
+  emit();
+  return activities.find((item) => item.id === created.id) ?? created;
 }
 
 export function removeInterestGroupComment(commentId: number): boolean {
@@ -745,6 +1140,62 @@ export function deleteInterestGroupMoment(id: number): boolean {
   return true;
 }
 
+function nextMomentLineId(list: { id: number }[]): number {
+  return Math.max(0, ...list.map((item) => item.id)) + 1;
+}
+
+export function addInterestGroupMomentComment(
+  id: number,
+  content: string,
+  user: string,
+): { ok: true } | { ok: false; message: string } {
+  syncMockData();
+  const text = content.trim();
+  if (!text) return { ok: false, message: '请输入评论' };
+  const current = moments.find((item) => item.id === id);
+  if (!current || current.status !== '已通过') return { ok: false, message: '仅已通过的瞬间可以评论' };
+  patchInterestGroupMoment(id, (item) => ({
+    ...item,
+    comments: [
+      ...item.comments,
+      { id: nextMomentLineId(item.comments), author: user, content: text, createdAt: nowText(), replies: [] },
+    ],
+  }));
+  return { ok: true };
+}
+
+export function addInterestGroupMomentReply(
+  id: number,
+  commentId: number,
+  content: string,
+  user: string,
+  replyTo?: string,
+): { ok: true } | { ok: false; message: string } {
+  syncMockData();
+  const text = content.trim();
+  if (!text) return { ok: false, message: '请输入回复' };
+  const current = moments.find((item) => item.id === id);
+  if (!current || current.status !== '已通过') return { ok: false, message: '仅已通过的瞬间可以回复' };
+  const comment = current.comments.find((item) => item.id === commentId);
+  if (!comment) return { ok: false, message: '评论不存在' };
+  const target = replyTo?.trim() || comment.author;
+  patchInterestGroupMoment(id, (item) => ({
+    ...item,
+    comments: item.comments.map((entry) =>
+      entry.id === commentId
+        ? {
+            ...entry,
+            replies: [
+              ...entry.replies,
+              { id: nextMomentLineId(entry.replies), author: user, content: text, createdAt: nowText(), replyTo: target },
+            ],
+          }
+        : entry,
+    ),
+  }));
+  return { ok: true };
+}
+
 export function deleteInterestGroupMomentComment(id: number, commentId: number): boolean {
   syncMockData();
   const current = moments.find((item) => item.id === id);
@@ -777,6 +1228,7 @@ export function __resetInterestGroupStoreForTest() {
   comments = [...initialInterestGroupComments];
   moments = [...initialInterestGroupMoments];
   signups = [...initialInterestGroupSignups];
+  activityLikers = {};
   mockVersion = INTEREST_GROUP_MOCK_VERSION;
   categoryMockVersion = INTEREST_GROUP_CATEGORY_MOCK_VERSION;
   activityMockVersion = INTEREST_GROUP_ACTIVITY_MOCK_VERSION;

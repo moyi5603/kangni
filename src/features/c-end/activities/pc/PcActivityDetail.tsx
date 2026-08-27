@@ -25,7 +25,7 @@ import {
 } from '../model/activityComments';
 import { needsSessionPick } from '../../../activities/model/activitySchedule';
 import { needsSignupForm, prefillSignupAnswers } from '../../../activities/model/signupFields';
-import { getPublishedActivity, signupCta, signupTypes } from '../model/clientActivity';
+import { getPublishedActivity, signupCta, signupLimit, signupTypes } from '../model/clientActivity';
 import { shareConfirmMessage } from '../model/activityShare';
 import { toggleFavorite, toggleLike, useActivityEngagement } from '../model/engagementStore';
 import { cancelSignup, DEMO_SIGNUP_USER, getUserSignupAnswers, saveClientSignup, useHasSignedUp } from '../model/signupStore';
@@ -225,6 +225,8 @@ export function PcActivityDetail({
           signupHoursBefore={activity.signupHoursBefore}
           initialAnswers={signedUp ? getUserSignupAnswers(activity.id) : undefined}
           mode={signedUp ? 'adjust' : 'create'}
+          activityId={activity.id}
+          quotaLimit={signupLimit(activity)}
           onCancel={closeSignup}
           onConfirm={submitSignupForm}
         />

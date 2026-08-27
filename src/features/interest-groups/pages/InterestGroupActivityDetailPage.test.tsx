@@ -34,11 +34,29 @@ describe('InterestGroupActivityDetailPage', () => {
     expect(html).toContain('可见范围');
     expect(html).toContain('高级设置');
     expect(html).toContain('报名信息收集');
+    expect(html).toContain('活动积分');
+    expect(html).not.toContain('是否审核报名');
+    expect(html).not.toContain('报名司龄限制');
     expect(html).toContain('所属小组');
     expect(html).not.toContain('小组负责人');
     expect(html).toContain('评论');
     expect(html).toContain('精彩瞬间');
     expect(html).toContain('周期活动');
     expect(html).not.toMatch(/ant-tag[^>]*>周期活动/);
+  });
+
+  it('shows signup list without review actions when signup audit is off', () => {
+    const html = renderPage(
+      <InterestGroupActivityDetailPage
+        recordId="101"
+        tab="signups"
+        onBack={() => undefined}
+        onEdit={() => undefined}
+        onTabChange={() => undefined}
+      />,
+    );
+    expect(html).toContain('状态');
+    expect(html).toContain('已通过');
+    expect(html).toContain('李明');
   });
 });

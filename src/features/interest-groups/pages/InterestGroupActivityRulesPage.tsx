@@ -102,12 +102,8 @@ export function InterestGroupActivityRulesPage() {
       cloneInterestGroupSettings({
         ...getInterestGroupSettings(),
         allowEmployeeCreateGroup: values.allowEmployeeCreateGroup,
-        allowMemberCreateActivity: values.allowMemberCreateActivity,
         ...(values.employeeCreateGroupNeedAudit != null
           ? { employeeCreateGroupNeedAudit: values.employeeCreateGroupNeedAudit }
-          : {}),
-        ...(values.employeeCreateActivityNeedAudit != null
-          ? { employeeCreateActivityNeedAudit: values.employeeCreateActivityNeedAudit }
           : {}),
       }),
     );
@@ -124,7 +120,7 @@ export function InterestGroupActivityRulesPage() {
       <ListPageHeading
         paths={['兴趣小组', '规则设置']}
         title="规则设置"
-        subtitle="配置员工创建权限，以及活动可发放的积分范围。"
+        subtitle="配置员工创建小组权限，以及活动可发放的积分范围。"
       />
       <Form
         form={form}
@@ -152,22 +148,6 @@ export function InterestGroupActivityRulesPage() {
             label="员工创建小组是否需要审核"
             valuePropName="checked"
             extra="开启后，员工提交的小组进入待审核，通过后才对外展示"
-          >
-            <Switch checkedChildren="需要审核" unCheckedChildren="无需审核" />
-          </Form.Item>
-          <Form.Item
-            name="allowMemberCreateActivity"
-            label="是否允许小组成员创建活动"
-            valuePropName="checked"
-            extra="关闭后，员工端首页不再展示「创建活动」"
-          >
-            <Switch checkedChildren="允许" unCheckedChildren="不允许" />
-          </Form.Item>
-          <Form.Item
-            name="employeeCreateActivityNeedAudit"
-            label="员工创建活动是否需要管理员审核"
-            valuePropName="checked"
-            extra="开启后，员工提交的活动进入待审核，管理员通过后才可发布"
           >
             <Switch checkedChildren="需要审核" unCheckedChildren="无需审核" />
           </Form.Item>

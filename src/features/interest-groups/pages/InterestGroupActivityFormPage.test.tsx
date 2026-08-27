@@ -33,6 +33,11 @@ describe('InterestGroupActivityFormPage', () => {
     expect(html).toContain('活动详情');
     expect(html).toContain('可见范围');
     expect(html).toContain('报名信息收集');
+    expect(html).toContain('高级设置');
+    expect(html).toContain('活动积分');
+    expect(html).not.toContain('是否审核报名');
+    expect(html).not.toContain('报名司龄限制');
+    expect(html).not.toContain('审批流节点');
     expect(html).toContain('AI 帮写');
     expect(html).not.toContain('AI 策划');
     expect(html).toContain('运动健身');

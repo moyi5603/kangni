@@ -16,5 +16,13 @@ describe('InterestGroupListPage', () => {
     expect(html).toContain('新建小组');
     expect(html).toContain('运动健身');
     expect(html).toContain('学习充电');
+    expect(html).toContain('审核状态');
+    expect(html).toContain('午休飞盘局');
+    expect(html).toContain('待审核');
+    expect(html).toContain('无需审核');
+    expect(html).toContain('审核');
+    expect(html).not.toContain('加入方式');
+    expect(html).not.toContain('审核加入');
+    expect(html).not.toContain('自由加入');
   });
 });

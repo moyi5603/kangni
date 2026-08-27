@@ -1,9 +1,13 @@
 import { useMemo, useState } from 'react';
 import { goCEndPortal } from '../../../../app/navigation';
+import type { CEndSurface } from '../../../../app/navigation';
 import { IconBack } from '../../activities/components/Icons';
 import { H5ActivityShell } from '../../activities/h5/H5ActivityShell';
+import { PcActivityShell } from '../../activities/pc/PcActivityShell';
 import { useInterestGroupSettings } from '../../../interest-groups/model/interestGroupSettingsStore';
+import { useInterestGroupMoments } from '../../../interest-groups/model/interestGroupStore';
 import { IgProvider, useIg } from './IgContext';
+import { IgHomePastRail } from './IgMomentUi';
 import { IgRouteView, IgStackOverlay } from './IgScreens';
 import {
   ACT_TABS,
@@ -11,51 +15,32 @@ import {
   GroupCard,
   HINTS,
   IgIcon,
-  Photo,
   SHORTCUTS,
   SectionHead,
   Sparkles,
   pickActs,
+  isCEndGroupDiscoverable,
   type ActTab,
   type IgRoute,
-  type Moment,
 } from './igShared';
 import './groupHome.css';
-
-function PastMomentCard({ moment, onOpen }: { moment: Moment; onOpen: () => void }) {
-  const cover = moment.imgs[0] || moment.id;
-  const extra = moment.imgs.length;
-  return (
-    <button className="c-ig-past" type="button" aria-label="查看大图" onClick={onOpen}>
-      <div className="c-ig-past-media">
-        <Photo seed={cover} icon="image" />
-        {extra > 1 ? (
-          <span className="c-ig-past-count" aria-label={`共${extra}张`}>
-            {extra}
-          </span>
-        ) : null}
-      </div>
-      <p className="c-ig-past-copy">{moment.text}</p>
-    </button>
-  );
-}
 
 function HomeTab() {
   const { store, nav, actions } = useIg();
   const settings = useInterestGroupSettings();
+  const moments = useInterestGroupMoments();
   const [tab, setTab] = useState<ActTab>('rec');
   const acts = useMemo(() => pickActs(tab, store.acts), [tab, store.acts]);
   const hotGroups = useMemo(
-    () => [...store.groups].sort((a, b) => Number(b.hot) - Number(a.hot) || b.members - a.members || b.acts - a.acts).slice(0, 5),
+    () =>
+      [...store.groups]
+        .filter(isCEndGroupDiscoverable)
+        .sort((a, b) => Number(b.hot) - Number(a.hot) || b.members - a.members || b.acts - a.acts)
+        .slice(0, 5),
     [store.groups],
-  );
-  const highlights = useMemo(
-    () => [...store.moments].sort((a, b) => (b.likes || 0) - (a.likes || 0)).slice(0, 3),
-    [store.moments],
   );
   const shortcuts = SHORTCUTS.filter((item) => {
     if (item.key === 'createGroup') return settings.allowEmployeeCreateGroup;
-    if (item.key === 'createAct') return settings.allowMemberCreateActivity;
     return true;
   });
 
@@ -138,8 +123,7 @@ function HomeTab() {
                 onEnroll={() => {
                   const group = store.groups.find((g) => g.id === act.gid);
                   if (!group || !group.joined) {
-                    if (group?.join === 'approve') actions.applyJoin(group.id);
-                    else if (group) {
+                    if (group) {
                       if (act.sessions) {
                         actions.joinGroupFree(group.id);
                         nav.go('activity', { aid: act.id, pickEnroll: true });
@@ -151,29 +135,37 @@ function HomeTab() {
                   else actions.toggleSignup(act.id);
                 }}
                 onLike={() => actions.toggleLike(act.id)}
+                peopleNames={store.signups.filter((item) => item.activityId === act.id).map((item) => item.name)}
               />
             </li>
           ))}
         </ul>
       </section>
 
-      <section className="c-ig-block is-ended">
-        <SectionHead title="往期精彩回顾" action="查看全部" accent="var(--sun)" onAction={() => nav.go('moments')} />
-        <div className="c-ig-hscroll" aria-label="往期精彩回顾">
-          {highlights.map((moment) => (
-            <PastMomentCard key={moment.id} moment={moment} onOpen={() => nav.go('moments', { gid: moment.gid })} />
-          ))}
-        </div>
-      </section>
+      <IgHomePastRail moments={moments} />
     </div>
   );
 }
 
-function InterestGroupApp() {
+export function InterestGroupHome({ surface }: { surface: CEndSurface }) {
   const { stack } = useIg();
   const stacked = stack.length > 0;
   const top = stack[stack.length - 1];
-  const hideHomeFab = top?.name === 'createGroup';
+  const hideHomeFab = top?.name === 'createGroup' || top?.name === 'createAct' || top?.name === 'post';
+
+  if (surface === 'pc') {
+    return (
+      <PcActivityShell className="is-ig" title="兴趣小组">
+        <div className="c-pc-ig-stage">
+          <div className="c-pc-ig-home">
+            <HomeTab />
+          </div>
+          <IgStackOverlay />
+        </div>
+      </PcActivityShell>
+    );
+  }
+
   return (
     <H5ActivityShell
       className="is-ig"
@@ -206,7 +198,7 @@ function InterestGroupApp() {
 export function H5InterestGroupHome() {
   return (
     <IgProvider>
-      <InterestGroupApp />
+      <InterestGroupHome surface="h5" />
     </IgProvider>
   );
 }

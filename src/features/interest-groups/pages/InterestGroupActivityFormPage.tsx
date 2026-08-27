@@ -27,7 +27,6 @@ import type { UploadFile } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { RichTextField } from '../../activities/components/RichTextField';
 import { SignupFieldsEditor } from '../../activities/components/SignupFieldsEditor';
-import { SignupApprovalNodesEditor } from '../../activities/components/SignupApprovalNodesEditor';
 import {
   orgDepartmentTree,
   orgPeoplePickerTree,
@@ -40,7 +39,6 @@ import {
   validateActivityPointValues,
 } from '../../activities/model/activityPointRules';
 import { getInterestGroupPointRules, useInterestGroupPointRules } from '../model/interestGroupPointRulesStore';
-import type { ApprovalNode } from '../../activities/model/rules';
 import {
   formatDateTimeRange,
   toDateTimeRange,
@@ -96,10 +94,6 @@ type FormShape = {
   customPeople: string[];
   importFileName: string;
   notifyOnPublish: boolean;
-  needAudit: boolean;
-  hasSeniorityLimit: boolean;
-  minSeniorityYears?: number;
-  signupApprovalNodes: ApprovalNode[];
   signupFields: SignupField[];
   signupPoints: number;
   signupPointsEnabled: boolean;
@@ -179,9 +173,9 @@ function toPayload(values: FormShape, importedPeople: string[]): InterestGroupAc
     importFileName: values.importFileName ?? '',
     importedPeople,
     notifyOnPublish: values.notifyOnPublish,
-    needAudit: values.needAudit,
-    minSeniorityYears: values.hasSeniorityLimit ? values.minSeniorityYears : undefined,
-    signupApprovalNodes: values.signupApprovalNodes ?? [],
+    needAudit: false,
+    minSeniorityYears: undefined,
+    signupApprovalNodes: [],
     signupFields: values.signupFields ?? defaultSignupFields(),
     signupPoints: values.signupPoints,
     signupPointsEnabled: values.signupPointsEnabled,
@@ -225,10 +219,6 @@ function draftToFormShape(draft: InterestGroupActivityFormValues): FormShape {
     customPeople: draft.customPeople,
     importFileName: draft.importFileName,
     notifyOnPublish: draft.notifyOnPublish,
-    needAudit: draft.needAudit,
-    hasSeniorityLimit: draft.minSeniorityYears != null,
-    minSeniorityYears: draft.minSeniorityYears,
-    signupApprovalNodes: draft.signupApprovalNodes,
     signupFields: draft.signupFields?.length ? draft.signupFields : defaultSignupFields(),
     signupPoints: draft.signupPoints,
     signupPointsEnabled: draft.signupPointsEnabled,
@@ -294,9 +284,6 @@ export function InterestGroupActivityFormPage({
                 customPeople: [],
                 importFileName: '',
                 notifyOnPublish: false,
-                needAudit: false,
-                hasSeniorityLimit: false,
-                signupApprovalNodes: [],
                 signupFields: defaultSignupFields(),
                 signupPoints: defaultActivityPointValues(getInterestGroupPointRules()).signupPoints,
                 signupPointsEnabled: false,
@@ -311,11 +298,8 @@ export function InterestGroupActivityFormPage({
 
   const type = Form.useWatch('type', form) ?? initialValues.type;
   const visibility = Form.useWatch('visibility', form);
-  const needAudit = Form.useWatch('needAudit', form);
-  const hasSeniorityLimit = Form.useWatch('hasSeniorityLimit', form);
   const signupPointsEnabled = Form.useWatch('signupPointsEnabled', form);
   const capacity = Form.useWatch('capacity', form);
-  const showSignupApproval = needAudit ?? editing?.needAudit ?? copySource?.needAudit ?? false;
 
   const writeIntro = () => {
     if (writing) return;
@@ -799,37 +783,6 @@ export function InterestGroupActivityFormPage({
                 children: (
                   <Space direction="vertical" size="middle" style={{ width: '100%', paddingBottom: 16 }}>
                     <Card title="活动设置" size="small" className="activity-settings-card">
-                      <Form.Item name="needAudit" label="是否审核报名" valuePropName="checked">
-                        <Switch
-                          checkedChildren="需要审核"
-                          unCheckedChildren="无需审核"
-                          onChange={(checked) => {
-                            if (!checked) form.setFieldValue('signupApprovalNodes', []);
-                          }}
-                        />
-                      </Form.Item>
-                      {showSignupApproval ? (
-                        <Form.Item name="signupApprovalNodes" label="审批流节点">
-                          <SignupApprovalNodesEditor />
-                        </Form.Item>
-                      ) : null}
-                      <Form.Item label="报名司龄限制">
-                        <Flex align="center" gap={12} className="activity-signup-points">
-                          <Form.Item name="hasSeniorityLimit" valuePropName="checked" noStyle>
-                            <Switch checkedChildren="有限制" unCheckedChildren="无限制" />
-                          </Form.Item>
-                          <Space.Compact className="activity-unit-compact">
-                            <Form.Item
-                              name="minSeniorityYears"
-                              noStyle
-                              rules={hasSeniorityLimit ? [{ required: true, message: '请输入司龄年限' }] : []}
-                            >
-                              <InputNumber disabled={!hasSeniorityLimit} min={0} precision={0} placeholder="请输入" />
-                            </Form.Item>
-                            <Button disabled>年</Button>
-                          </Space.Compact>
-                        </Flex>
-                      </Form.Item>
                       <Form.Item
                         label="活动积分"
                         extra={signupPointsEnabled ? `规则范围 ${pointRules.signupPointsMin}～${pointRules.signupPointsMax}` : undefined}

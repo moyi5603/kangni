@@ -565,6 +565,14 @@ export function goH5InterestGroups() {
   window.location.hash = toH5InterestGroupsHash();
 }
 
+export function toPcInterestGroupsHash(): string {
+  return '#/c/pc/interest-groups';
+}
+
+export function goPcInterestGroups() {
+  window.location.hash = toPcInterestGroupsHash();
+}
+
 export function toH5HonorHash(): string {
   return '#/c/h5/honor';
 }

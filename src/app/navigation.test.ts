@@ -47,6 +47,7 @@ import {
   toH5HonorHash,
   toH5HonorAdminHash,
   toH5InterestGroupsHash,
+  toPcInterestGroupsHash,
   toPcFavoritesHash,
   toPcMySignupsHash,
   toCEndSignupHash,
@@ -306,8 +307,20 @@ describe('C-end navigation', () => {
     });
   });
 
+  it('parses the PC interest groups home', () => {
+    expect(parseCEndHash('#/c/pc/interest-groups')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'interest-groups',
+    });
+  });
+
   it('builds the H5 interest groups hash', () => {
     expect(toH5InterestGroupsHash()).toBe('#/c/h5/interest-groups');
+  });
+
+  it('builds the PC interest groups hash', () => {
+    expect(toPcInterestGroupsHash()).toBe('#/c/pc/interest-groups');
   });
 
   it('parses the H5 honor page', () => {

@@ -163,6 +163,8 @@ describe('PC activity detail', () => {
     expect(html).toContain('调整报名');
     expect(html).toContain('参加场次');
     expect(html).toContain('保存场次');
+    expect(html).toContain('余49位');
+    expect(html).toContain('余50位');
   });
 
   it('collects signup info in a dialog on the detail page', () => {

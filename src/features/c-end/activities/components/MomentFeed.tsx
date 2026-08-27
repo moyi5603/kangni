@@ -17,6 +17,34 @@ import { PcDeleteModal } from '../pc/PcDeleteModal';
 import { EmployeeAvatar } from './EmployeeAvatar';
 import { IconComment, IconLike } from './Icons';
 
+export type MomentCardActions = {
+  viewer: string;
+  toggleLike: (id: number) => void;
+  addComment: (id: number, content: string, user: string) => { ok: boolean };
+  addReply: (
+    id: number,
+    commentId: number,
+    content: string,
+    user: string,
+    replyTo: string,
+  ) => { ok: boolean };
+  deleteComment: (id: number, commentId: number) => void;
+  deleteReply: (id: number, commentId: number, replyId: number) => void;
+};
+
+const activityMomentActions: MomentCardActions = {
+  viewer: MOMENT_VIEWER,
+  toggleLike: (id) => toggleMomentLike(id),
+  addComment: (id, content, user) => addMomentComment(id, content, user),
+  addReply: (id, commentId, content, user, replyTo) => addMomentReply(id, commentId, content, user, replyTo),
+  deleteComment: (id, commentId) => {
+    deleteMomentComment(id, commentId);
+  },
+  deleteReply: (id, commentId, replyId) => {
+    deleteMomentReply(id, commentId, replyId);
+  },
+};
+
 type MediaViewer =
   | { kind: 'images'; urls: string[]; index: number }
   | { kind: 'video'; url: string };
@@ -176,10 +204,14 @@ export function MomentCard({
   moment,
   surface,
   activityTitle,
+  onActivityClick,
+  actions = activityMomentActions,
 }: {
   moment: MomentRecord;
   surface: 'h5' | 'pc';
   activityTitle?: string;
+  onActivityClick?: () => void;
+  actions?: MomentCardActions;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [composing, setComposing] = useState(false);
@@ -189,7 +221,7 @@ export function MomentCard({
   const [viewer, setViewer] = useState<MediaViewer>();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
-  const liked = moment.likedBy.includes(MOMENT_VIEWER);
+  const liked = moment.likedBy.includes(actions.viewer);
   const passed = moment.status === '已通过';
   const hasEngage = moment.likedBy.length > 0 || moment.comments.length > 0;
 
@@ -204,8 +236,8 @@ export function MomentCard({
     const text = draft.trim();
     if (!text) return;
     const result = replyTo
-      ? addMomentReply(moment.id, replyTo.commentId, text, MOMENT_VIEWER, replyTo.name)
-      : addMomentComment(moment.id, text);
+      ? actions.addReply(moment.id, replyTo.commentId, text, actions.viewer, replyTo.name)
+      : actions.addComment(moment.id, text, actions.viewer);
     if (result.ok) {
       setDraft('');
       setReplyTo(undefined);
@@ -228,7 +260,15 @@ export function MomentCard({
         <EmployeeAvatar name={moment.author} size="md" />
         <div className="c-moment-meta-main">
           <strong>{moment.author}</strong>
-          {activityTitle ? <p className="c-moment-from">{activityTitle}</p> : null}
+          {activityTitle ? (
+            onActivityClick ? (
+              <button className="c-moment-from" type="button" onClick={onActivityClick}>
+                {activityTitle}
+              </button>
+            ) : (
+              <p className="c-moment-from">{activityTitle}</p>
+            )
+          ) : null}
         </div>
       </div>
       {moment.content ? <p className="c-moment-body">{moment.content}</p> : null}
@@ -272,7 +312,7 @@ export function MomentCard({
                     type="button"
                     role="menuitem"
                     onClick={() => {
-                      toggleMomentLike(moment.id);
+                      actions.toggleLike(moment.id);
                       setMenuOpen(false);
                     }}
                   >
@@ -311,7 +351,7 @@ export function MomentCard({
                       key={`c-${item.id}`}
                       author={item.author}
                       content={item.content}
-                      own={item.author === MOMENT_VIEWER}
+                      own={item.author === actions.viewer}
                       onReply={() => openCompose({ commentId: item.id, name: item.author })}
                       onDelete={() => setPending({ kind: 'comment', commentId: item.id })}
                     />,
@@ -321,7 +361,7 @@ export function MomentCard({
                         author={entry.author}
                         content={entry.content}
                         replyTo={entry.replyTo ?? item.author}
-                        own={entry.author === MOMENT_VIEWER}
+                        own={entry.author === actions.viewer}
                         onReply={() => openCompose({ commentId: item.id, name: entry.author })}
                         onDelete={() => setPending({ kind: 'reply', commentId: item.id, replyId: entry.id })}
                       />
@@ -376,8 +416,8 @@ export function MomentCard({
           <PcDeleteModal
             onCancel={() => setPending(undefined)}
             onConfirm={() => {
-              if (pending.kind === 'comment') deleteMomentComment(moment.id, pending.commentId);
-              else deleteMomentReply(moment.id, pending.commentId, pending.replyId);
+              if (pending.kind === 'comment') actions.deleteComment(moment.id, pending.commentId);
+              else actions.deleteReply(moment.id, pending.commentId, pending.replyId);
               setPending(undefined);
             }}
           />
@@ -385,8 +425,8 @@ export function MomentCard({
           <H5DeleteSheet
             onCancel={() => setPending(undefined)}
             onConfirm={() => {
-              if (pending.kind === 'comment') deleteMomentComment(moment.id, pending.commentId);
-              else deleteMomentReply(moment.id, pending.commentId, pending.replyId);
+              if (pending.kind === 'comment') actions.deleteComment(moment.id, pending.commentId);
+              else actions.deleteReply(moment.id, pending.commentId, pending.replyId);
               setPending(undefined);
             }}
           />

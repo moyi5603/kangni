@@ -21,6 +21,7 @@ import { H5ExamReview } from '../features/c-end/exams/h5/H5ExamReview';
 import { H5ExamTaking } from '../features/c-end/exams/h5/H5ExamTaking';
 import { H5HonorApp } from '../features/c-end/honor/h5/H5HonorApp';
 import { H5InterestGroupHome } from '../features/c-end/interest-groups/h5/H5InterestGroupHome';
+import { PcInterestGroupHome } from '../features/c-end/interest-groups/pc/PcInterestGroupHome';
 import { H5VoteList } from '../features/c-end/voting/h5/H5VoteList';
 import { H5VoteDetail } from '../features/c-end/voting/h5/H5VoteDetail';
 import { H5VoteTaking } from '../features/c-end/voting/h5/H5VoteTaking';
@@ -112,6 +113,8 @@ export function CEndApp(props: CEndAppProps) {
       )
     ) : h5Page === 'courses' ? (
       <PcCourseMall />
+    ) : h5Page === 'interest-groups' ? (
+      <PcInterestGroupHome />
     ) : h5Page === 'course-detail' ? (
       <PcCourseDetail id={courseId ?? -1} />
     ) : h5Page === 'exams' ? (

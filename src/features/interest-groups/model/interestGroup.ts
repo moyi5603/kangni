@@ -1,6 +1,16 @@
-export const INTEREST_GROUP_MOCK_VERSION = 3;
+export const INTEREST_GROUP_MOCK_VERSION = 6;
 
 export type InterestGroupJoinMode = 'free' | 'approve';
+export type InterestGroupSource = 'admin' | 'employee';
+export const interestGroupEntityAuditStatuses = ['待审核', '已通过', '已驳回', '无需审核'] as const;
+export type InterestGroupEntityAuditStatus = (typeof interestGroupEntityAuditStatuses)[number];
+
+export const interestGroupEntityAuditStatusColor: Record<InterestGroupEntityAuditStatus, string> = {
+  待审核: 'warning',
+  已通过: 'success',
+  已驳回: 'error',
+  无需审核: 'default',
+};
 
 export type InterestGroup = {
   id: number;
@@ -16,7 +26,14 @@ export type InterestGroup = {
   area: string;
   coverUrl: string;
   createdAt: string;
+  source: InterestGroupSource;
+  auditStatus: InterestGroupEntityAuditStatus;
+  rejectReason?: string;
 };
+
+export function canReviewInterestGroup(group: Pick<InterestGroup, 'auditStatus'>): boolean {
+  return group.auditStatus === '待审核';
+}
 
 export const interestGroupJoinModeLabels: Record<InterestGroupJoinMode, string> = {
   free: '自由加入',
@@ -71,6 +88,8 @@ export const initialInterestGroups: InterestGroup[] = [
     area: '总部 · 滨江园区',
     coverUrl: '/activities/basketball.jpg',
     createdAt: '2026-06-01 10:00:00',
+    source: 'admin',
+    auditStatus: '无需审核',
   },
   {
     id: 2,
@@ -80,12 +99,14 @@ export const initialInterestGroups: InterestGroup[] = [
     leadEmployeeId: '陈产品',
     memberCount: 96,
     activityCount: 1,
-    joinMode: 'approve',
+    joinMode: 'free',
     intro: '逃离工位，走进山野。每月 2-3 条线路，领队持证、全程保障。',
     tags: ['周末出行', '装备互助'],
     area: '近郊 · 多线路',
     coverUrl: '/activities/onboarding.jpg',
     createdAt: '2026-06-03 14:20:00',
+    source: 'admin',
+    auditStatus: '无需审核',
   },
   {
     id: 3,
@@ -93,7 +114,7 @@ export const initialInterestGroups: InterestGroup[] = [
     categoryKey: 'learning',
     leadName: '王芳',
     leadEmployeeId: '王芳',
-    memberCount: 64,
+    memberCount: 65,
     activityCount: 1,
     joinMode: 'free',
     intro: '一本书、一杯茶、一群不催进度的人。每期共读一本，线下围读 + 自由发言。',
@@ -101,6 +122,8 @@ export const initialInterestGroups: InterestGroup[] = [
     area: '总部 · 三楼书吧',
     coverUrl: '/activities/webinar.jpg',
     createdAt: '2026-06-05 09:30:00',
+    source: 'admin',
+    auditStatus: '无需审核',
   },
   {
     id: 4,
@@ -108,7 +131,7 @@ export const initialInterestGroups: InterestGroup[] = [
     categoryKey: 'game',
     leadName: '黄码',
     leadEmployeeId: '黄码',
-    memberCount: 142,
+    memberCount: 143,
     activityCount: 1,
     joinMode: 'free',
     intro: '剧本杀、阿瓦隆、狼人杀、五黑上分，午休和下班后随时开局。',
@@ -116,5 +139,58 @@ export const initialInterestGroups: InterestGroup[] = [
     area: '总部 · 休闲区',
     coverUrl: '/activities/open-day.jpg',
     createdAt: '2026-06-08 16:00:00',
+    source: 'admin',
+    auditStatus: '无需审核',
+  },
+  {
+    id: 5,
+    name: '午休飞盘局',
+    categoryKey: 'sport',
+    leadName: '林浅',
+    leadEmployeeId: '林浅',
+    memberCount: 1,
+    activityCount: 0,
+    joinMode: 'free',
+    intro: '午休 30 分钟飞盘局，员工从 C 端发起，待管理员审核后对全员可见。',
+    tags: ['午休', '新手友好'],
+    area: '总部 · 草坪',
+    coverUrl: '/activities/share.jpg',
+    createdAt: '2026-08-20 12:10:00',
+    source: 'employee',
+    auditStatus: '待审核',
+  },
+  {
+    id: 6,
+    name: '午间拉伸站',
+    categoryKey: 'sport',
+    leadName: '林浅',
+    leadEmployeeId: '林浅',
+    memberCount: 8,
+    activityCount: 1,
+    joinMode: 'free',
+    intro: '午休 10 分钟跟练拉伸，工位旁就能做。林浅从 C 端建组后已通过审核。',
+    tags: ['午休', '拉伸'],
+    area: '总部 · 工位区',
+    coverUrl: '/activities/share.jpg',
+    createdAt: '2026-08-12 12:20:00',
+    source: 'employee',
+    auditStatus: '已通过',
+  },
+  {
+    id: 7,
+    name: '周末胶片社',
+    categoryKey: 'other',
+    leadName: '林浅',
+    leadEmployeeId: '林浅',
+    memberCount: 11,
+    activityCount: 1,
+    joinMode: 'free',
+    intro: '冲洗、扫片、互评。不卷器材，先把一卷拍完。',
+    tags: ['胶片', '周末'],
+    area: '总部 · 暗房角落',
+    coverUrl: '/activities/open-day.jpg',
+    createdAt: '2026-08-15 19:00:00',
+    source: 'employee',
+    auditStatus: '已通过',
   },
 ];

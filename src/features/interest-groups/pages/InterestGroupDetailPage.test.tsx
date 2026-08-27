@@ -26,5 +26,20 @@ describe('InterestGroupDetailPage', () => {
     expect(html).toContain('AI 策划');
     expect(html).toContain('新建活动');
     expect(html).toContain('activity-detail-cover');
+    expect(html).not.toContain('自由加入');
+    expect(html).not.toContain('审核加入');
+  });
+
+  it('shows 待审核 on employee-created pending group', () => {
+    const html = renderPage(
+      <InterestGroupDetailPage
+        recordId="5"
+        onBack={() => undefined}
+        onNavigate={() => undefined}
+        onTabChange={() => undefined}
+      />,
+    );
+    expect(html).toContain('午休飞盘局');
+    expect(html).toContain('待审核');
   });
 });

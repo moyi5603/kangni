@@ -24,7 +24,7 @@ const openDayImg = '/activities/open-day.jpg';
 const shareImg = '/activities/share.jpg';
 const webinarImg = '/activities/webinar.jpg';
 
-export const ACTIVITY_MOCK_VERSION = 31;
+export const ACTIVITY_MOCK_VERSION = 32;
 export type { SignupField } from './signupFields';
 export const activityTypes = ['公司活动', '疗休养活动', '体检活动', '项目活动'] as const;
 export const visibilityOptions = ['全员', '按部门', '自定义人群', '导入人群'] as const;
@@ -78,7 +78,7 @@ export const orgDepartmentTree: OrgTreeNode[] = [
 ];
 
 const peopleByLeafDepartment: Record<string, string[]> = {
-  前端组: ['张悦', '李明', '孙新', '何研'],
+  前端组: ['张悦', '李明', '孙新', '何研', '林浅'],
   后端组: ['王芳', '黄码', '丁码'],
   测试组: ['苏然', '郑测', '沈测'],
   总装车间: ['周工', '马装', '韩装'],
@@ -106,6 +106,7 @@ const peoplePhones: Record<string, string> = {
   马装: '13800001014',
   刘销: '13800001015',
   何研: '13800001016',
+  林浅: '13800138000',
   丁码: '13800001017',
   沈测: '13800001018',
   韩装: '13800001019',

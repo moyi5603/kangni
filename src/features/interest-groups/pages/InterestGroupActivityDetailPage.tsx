@@ -17,7 +17,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import type { TableColumnsType } from 'antd';
+import { InterestGroupActivitySignupList } from './InterestGroupActivitySignupList';
 import {
   canDeleteInterestGroupActivity,
   canTerminateInterestGroupActivity,
@@ -30,12 +30,10 @@ import {
   type InterestGroupActivity,
 } from '../model/interestGroupActivity';
 import { formatCustomCrowdVisibility } from '../../activities/model/activity';
-import { formatSignupAuditSummary } from '../../activities/model/rules';
 import { formatActivityPointGrant } from '../../activities/model/activityPointRules';
 import { formatSessionLabel, needsSessionPick, sessionSignupEndAt, signupQuotaLabel } from '../../activities/model/activitySchedule';
 import { signupFieldInputTypeLabels, type SignupField } from '../../activities/model/signupFields';
 import { TableEllipsisText } from '../../../shared/ui/TableEllipsisText';
-import type { InterestGroupSignup } from '../model/interestGroupSignup';
 import { InterestGroupCommentListPage } from './InterestGroupCommentListPage';
 import { InterestGroupMomentListPage } from './InterestGroupMomentListPage';
 import { getInterestGroupCategoryLabel } from '../model/interestGroupCategory';
@@ -46,7 +44,6 @@ import {
   useInterestGroupCategories,
   useInterestGroupComments,
   useInterestGroupMoments,
-  useInterestGroupSignups,
   useInterestGroups,
 } from '../model/interestGroupStore';
 
@@ -91,14 +88,6 @@ function isDetailTab(value: string | undefined): value is DetailTab {
   return !!value && detailTabs.some((tab) => tab.key === value);
 }
 
-function sessionLabel(activity: InterestGroupActivity, sessionId?: string) {
-  if (!sessionId || !activity.sessions?.length) return '—';
-  const index = activity.sessions.findIndex((item) => item.id === sessionId);
-  const session = activity.sessions[index];
-  if (!session) return '—';
-  return `第 ${index + 1} 场 ${session.startAt}`;
-}
-
 type InterestGroupActivityDetailPageProps = {
   recordId?: string;
   tab?: string;
@@ -122,7 +111,6 @@ export function InterestGroupActivityDetailPage({
   const categories = useInterestGroupCategories();
   const comments = useInterestGroupComments();
   const moments = useInterestGroupMoments();
-  const signups = useInterestGroupSignups();
   const activity = activities.find((item) => item.id === Number(recordId));
   const activeTab: DetailTab = isDetailTab(tab) ? tab : 'detail';
   const [visited, setVisited] = useState<ReadonlySet<string>>(() => new Set([activeTab]));
@@ -153,7 +141,6 @@ export function InterestGroupActivityDetailPage({
   const lifecycleStatus = getInterestGroupLifecycleStatus(activity);
   const activityComments = comments.filter((item) => item.activityId === activity.id);
   const activityMoments = moments.filter((item) => item.activityId === activity.id);
-  const activitySignups = signups.filter((item) => item.activityId === activity.id);
   const deletable = canDeleteInterestGroupActivity(activity);
   const terminable = canTerminateInterestGroupActivity(activity);
   const visibilityText =
@@ -165,7 +152,6 @@ export function InterestGroupActivityDetailPage({
           ? `导入人群：${activity.importFileName || '—'}${activity.importedPeople.length ? `（${activity.importedPeople.length} 人）` : ''}`
           : '全员';
   const signupFields = activity.signupFields ?? [];
-  const hasSeniorityLimit = activity.minSeniorityYears != null;
   const terminate = () => {
     const result = terminateInterestGroupActivity(activity.id);
     if (!result.ok) {
@@ -184,15 +170,6 @@ export function InterestGroupActivityDetailPage({
     message.success('活动已删除');
     onBack();
   };
-
-  const signupColumns: TableColumnsType<InterestGroupSignup> = [
-    { title: '姓名', dataIndex: 'name', width: 120 },
-    { title: '部门', dataIndex: 'department', width: 140 },
-    ...(activity.sessions?.length
-      ? [{ title: '场次', key: 'session', render: (_: unknown, record: InterestGroupSignup) => sessionLabel(activity, record.sessionId) }]
-      : []),
-    { title: '报名时间', dataIndex: 'signedAt', width: 180 },
-  ];
 
   return (
     <div className="page-stack order-detail-page">
@@ -368,14 +345,6 @@ export function InterestGroupActivityDetailPage({
                                 column={{ xs: 1, sm: 2, lg: 3 }}
                                 items={[
                                   {
-                                    label: '是否审核报名',
-                                    children: formatSignupAuditSummary(activity.needAudit, activity.signupApprovalNodes),
-                                  },
-                                  { label: '报名司龄限制', children: hasSeniorityLimit ? '有限制' : '无限制' },
-                                  ...(hasSeniorityLimit
-                                    ? [{ label: '司龄要满', children: `${activity.minSeniorityYears} 年` }]
-                                    : []),
-                                  {
                                     label: '活动积分',
                                     children: formatActivityPointGrant(activity.signupPointsEnabled, activity.signupPoints),
                                   },
@@ -428,17 +397,7 @@ export function InterestGroupActivityDetailPage({
           {
             key: 'signups',
             label: '报名',
-            children: visited.has('signups') ? (
-              <Card>
-                <Table
-                  rowKey="id"
-                  columns={signupColumns}
-                  dataSource={activitySignups}
-                  pagination={false}
-                  locale={{ emptyText: '暂无报名' }}
-                />
-              </Card>
-            ) : null,
+            children: visited.has('signups') ? <InterestGroupActivitySignupList activity={activity} /> : null,
           },
           {
             key: 'comments',

@@ -4,6 +4,7 @@ import {
   toH5CourseListHash,
   toH5ExamListHash,
   toH5InterestGroupsHash,
+  toPcInterestGroupsHash,
   toH5VoteListHash,
   toPcVoteListHash,
   toPcCourseListHash,
@@ -20,6 +21,7 @@ const entries = [
   { title: '考试 H5', hint: '考试列表 · 手机', href: toH5ExamListHash() },
   { title: '投票 PC', hint: '普通投票 · 宽屏门户', href: toPcVoteListHash() },
   { title: '投票 H5', hint: '普通投票 · 手机', href: toH5VoteListHash() },
+  { title: '兴趣小组 PC', hint: '兴趣小组 · 宽屏门户', href: toPcInterestGroupsHash() },
   { title: '兴趣小组 H5', hint: '兴趣小组 · 手机', href: toH5InterestGroupsHash() },
 ] as const;
 

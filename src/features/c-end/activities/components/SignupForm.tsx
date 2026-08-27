@@ -12,6 +12,8 @@ import {
 } from '../../../activities/model/signupFields';
 import { formatCEndDateTimeInText } from '../../formatDateTime';
 import { DEMO_SIGNUP_USER } from '../model/signupStore';
+import { sessionOccupiedCount } from '../model/clientActivity';
+import { useRelated } from '../../../activities/model/related';
 import {
   formatSessionLabel,
   isSessionSignupOpen,
@@ -34,6 +36,8 @@ type SignupFormProps = {
   now?: number;
   initialAnswers?: Record<string, string>;
   mode?: 'create' | 'adjust';
+  activityId?: number;
+  quotaLimit?: number;
   onCancel: () => void;
   onConfirm: (type: string, answers: Record<string, string>) => void;
 };
@@ -70,9 +74,12 @@ export function SignupForm({
   now = Date.now(),
   initialAnswers,
   mode = 'create',
+  activityId,
+  quotaLimit,
   onCancel,
   onConfirm,
 }: SignupFormProps) {
+  useRelated('signups', activityId ?? 0);
   const collectFields = needsSignupForm(fields);
   const [type, setType] = useState(types[0] ?? '');
   const [answers, setAnswers] = useState(() => ({
@@ -148,8 +155,14 @@ export function SignupForm({
                   { signupStartAt: signupStartAt!, signupEndAt: signupEndAt!, signupHoursBefore },
                   now,
                 );
+              const remain =
+                activityId != null && quotaLimit !== undefined
+                  ? Math.max(0, quotaLimit - sessionOccupiedCount(activityId, session.id))
+                  : undefined;
+              const remainLabel =
+                remain === undefined ? undefined : remain <= 0 ? '已满' : `余${remain}位`;
               return (
-                <label key={session.id} className={`c-signup-option${checked ? ' is-checked' : ''}${closed ? ' is-disabled' : ''}`}>
+                <label key={session.id} className={`c-signup-option is-session${checked ? ' is-checked' : ''}${closed ? ' is-disabled' : ''}`}>
                   <input
                     type="checkbox"
                     name="场次"
@@ -161,8 +174,15 @@ export function SignupForm({
                       setAnswer('场次', toggleCheckbox(answers['场次'] ?? '', session.id));
                     }}
                   />
-                  {formatCEndDateTimeInText(formatSessionLabel(session, index < 0 ? 0 : index))}
-                  {closed ? '（已截止）' : ''}
+                  <span className="c-signup-session-copy">
+                    <span>
+                      {formatCEndDateTimeInText(formatSessionLabel(session, index < 0 ? 0 : index))}
+                      {closed ? '（已截止）' : ''}
+                    </span>
+                    {remainLabel ? (
+                      <span className={`c-signup-session-remain${remain === 0 ? ' is-full' : ''}`}>{remainLabel}</span>
+                    ) : null}
+                  </span>
                 </label>
               );
             })}

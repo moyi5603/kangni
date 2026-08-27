@@ -5,7 +5,6 @@ import {
   Button,
   Card,
   Empty,
-  Flex,
   Image,
   Input,
   Popconfirm,
@@ -14,16 +13,19 @@ import {
   Table,
   Tag,
   Tooltip,
-  Typography,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { ListPageHeading, SearchField, SearchPanel } from '../../../shared/ui/ListPage';
+import { TableRowActions, type TableRowAction } from '../../../shared/ui/TableRowActions';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import { InterestGroupFormDrawer } from '../components/InterestGroupFormDrawer';
+import { InterestGroupReviewModal } from '../components/InterestGroupReviewModal';
 import {
-  interestGroupJoinModeLabels,
+  canReviewInterestGroup,
+  interestGroupEntityAuditStatusColor,
+  interestGroupEntityAuditStatuses,
   type InterestGroup,
-  type InterestGroupJoinMode,
+  type InterestGroupEntityAuditStatus,
 } from '../model/interestGroup';
 import { buildInterestGroupCategoryOptions, getInterestGroupCategoryLabel } from '../model/interestGroupCategory';
 import {
@@ -37,10 +39,10 @@ import {
 type GroupQuery = {
   name: string;
   categoryKey?: string;
-  joinMode?: InterestGroupJoinMode | 'all';
+  auditStatus?: InterestGroupEntityAuditStatus;
 };
 
-const emptyQuery: GroupQuery = { name: '', joinMode: 'all' };
+const emptyQuery: GroupQuery = { name: '' };
 
 type InterestGroupListPageProps = {
   onNavigate: (page: string, recordId?: string) => void;
@@ -54,6 +56,7 @@ export function InterestGroupListPage({ onNavigate }: InterestGroupListPageProps
   const [query, setQuery] = useState<GroupQuery>(emptyQuery);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<InterestGroup>();
+  const [reviewing, setReviewing] = useState<InterestGroup>();
 
   const categoryOptions = useMemo(
     () => buildInterestGroupCategoryOptions(categories, { includeUncategorized: true }),
@@ -65,7 +68,7 @@ export function InterestGroupListPage({ onNavigate }: InterestGroupListPageProps
       groups.filter((item) => {
         if (query.name && !item.name.includes(query.name)) return false;
         if (query.categoryKey && item.categoryKey !== query.categoryKey) return false;
-        if (query.joinMode && query.joinMode !== 'all' && item.joinMode !== query.joinMode) return false;
+        if (query.auditStatus && item.auditStatus !== query.auditStatus) return false;
         return true;
       }),
     [groups, query],
@@ -128,15 +131,17 @@ export function InterestGroupListPage({ onNavigate }: InterestGroupListPageProps
         return value ? <Tag>{label}</Tag> : '—';
       },
     },
+    {
+      title: '审核状态',
+      dataIndex: 'auditStatus',
+      width: 110,
+      render: (value: InterestGroupEntityAuditStatus) => (
+        <Tag color={interestGroupEntityAuditStatusColor[value]}>{value}</Tag>
+      ),
+    },
     { title: '小组负责人', dataIndex: 'leadName', width: 120 },
     { title: '成员数', dataIndex: 'memberCount', width: 88, align: 'right' },
     { title: '活动数', dataIndex: 'activityCount', width: 88, align: 'right' },
-    {
-      title: '加入方式',
-      dataIndex: 'joinMode',
-      width: 110,
-      render: (value: InterestGroupJoinMode) => <Tag color={value === 'free' ? 'green' : 'gold'}>{interestGroupJoinModeLabels[value]}</Tag>,
-    },
     {
       title: '活动区域',
       dataIndex: 'area',
@@ -147,24 +152,45 @@ export function InterestGroupListPage({ onNavigate }: InterestGroupListPageProps
     {
       title: '操作',
       key: 'action',
-      width: 140,
+      width: 180,
       fixed: 'right',
+      align: 'right',
       render: (_, record) => {
         const deletable = canDeleteInterestGroup(record.id);
+        const actions: TableRowAction[] = [
+          {
+            key: 'detail',
+            label: '详情',
+            ariaLabel: `详情 ${record.name}`,
+            onClick: () => onNavigate('interest-group-detail', String(record.id)),
+          },
+          {
+            key: 'edit',
+            label: '编辑',
+            ariaLabel: `编辑 ${record.name}`,
+            onClick: () => openEditor(record),
+          },
+        ];
+        if (canReviewInterestGroup(record)) {
+          actions.push({
+            key: 'review',
+            label: '审核',
+            ariaLabel: `审核 ${record.name}`,
+            onClick: () => setReviewing(record),
+          });
+        }
         return (
           <Space>
-            <Button type="link" onClick={() => openEditor(record)}>
-              编辑
-            </Button>
+            <TableRowActions moreAriaLabel={`更多操作 ${record.name}`} actions={actions} />
             {deletable ? (
               <Popconfirm title={deleteConfirmText(record)} onConfirm={() => tryDelete(record)}>
-                <Button type="link" danger>
+                <Button type="link" danger aria-label={`删除 ${record.name}`}>
                   删除
                 </Button>
               </Popconfirm>
             ) : (
               <Tooltip title="存在进行中的活动，无法删除小组">
-                <Button type="link" danger disabled>
+                <Button type="link" danger disabled aria-label={`删除 ${record.name}`}>
                   删除
                 </Button>
               </Tooltip>
@@ -175,9 +201,11 @@ export function InterestGroupListPage({ onNavigate }: InterestGroupListPageProps
     },
   ];
 
+  const hasQuery = Boolean(query.name || query.categoryKey || query.auditStatus);
+
   return (
     <div className="page-stack">
-      <ListPageHeading paths={['兴趣小组', '小组管理']} title="小组管理" subtitle="维护兴趣小组基础信息、成员规模与加入方式。" />
+      <ListPageHeading paths={['兴趣小组', '小组管理']} title="小组管理" subtitle="维护兴趣小组基础信息与成员规模。员工从 C 端创建的小组按规则进入审核。" />
       <SearchPanel
         onSearch={() => setQuery(draft)}
         onReset={() => {
@@ -202,15 +230,13 @@ export function InterestGroupListPage({ onNavigate }: InterestGroupListPageProps
             options={categoryOptions}
           />
         </SearchField>
-        <SearchField label="加入方式">
+        <SearchField label="审核状态">
           <Select
-            value={draft.joinMode}
-            onChange={(value) => setDraft((current) => ({ ...current, joinMode: value }))}
-            options={[
-              { value: 'all', label: '全部' },
-              { value: 'free', label: '自由加入' },
-              { value: 'approve', label: '审核加入' },
-            ]}
+            allowClear
+            placeholder="全部状态"
+            value={draft.auditStatus}
+            onChange={(value) => setDraft((current) => ({ ...current, auditStatus: value }))}
+            options={interestGroupEntityAuditStatuses.map((value) => ({ value, label: value }))}
           />
         </SearchField>
       </SearchPanel>
@@ -224,8 +250,8 @@ export function InterestGroupListPage({ onNavigate }: InterestGroupListPageProps
           rowKey="id"
           columns={columns}
           dataSource={filtered}
-          scroll={{ x: 1200 }}
-          locale={{ emptyText: <Empty description={query.name || query.categoryKey || query.joinMode !== 'all' ? '没有匹配的小组' : '暂无小组'} /> }}
+          scroll={{ x: 1280 }}
+          locale={{ emptyText: <Empty description={hasQuery ? '没有匹配的小组' : '暂无小组'} /> }}
           pagination={{
             pageSize: b2bStandards.table.pageSize,
             pageSizeOptions: [...b2bStandards.table.pageSizeOptions],
@@ -235,6 +261,7 @@ export function InterestGroupListPage({ onNavigate }: InterestGroupListPageProps
         />
       </Card>
       <InterestGroupFormDrawer open={editorOpen} record={editing} onClose={() => setEditorOpen(false)} />
+      <InterestGroupReviewModal group={reviewing} open={Boolean(reviewing)} onClose={() => setReviewing(undefined)} />
     </div>
   );
 }

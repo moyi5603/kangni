@@ -27,6 +27,7 @@ export const ICONS: Record<string, string> = {
   image: 'M4 5h16v14H4zM4 16l4.2-4.2 3 3 3.5-4.4L20 16',
   clock: 'M12 7v5.2l3.2 1.8M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z',
   search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20.5 20.5 16.2 16.2',
+  list: 'M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01',
   edit: 'M4 17.5V20h2.5L18 8.5 15.5 6 4 17.5zM13.6 7.9l2.5 2.5',
   user: 'M12 12a3.6 3.6 0 1 0 0-7.2A3.6 3.6 0 0 0 12 12zM5.5 19.2c.8-3 3.4-4.7 6.5-4.7s5.7 1.7 6.5 4.7',
 };
@@ -90,6 +91,8 @@ export type Group = {
   tags: string[];
   area: string;
   hot?: boolean;
+  auditStatus?: '待审核' | '已通过' | '已驳回' | '无需审核';
+  createdByMe?: boolean;
 };
 
 export type Act = {
@@ -108,11 +111,13 @@ export type Act = {
   likes: number;
   liked?: boolean;
   joinedByMe: boolean;
+  createdByMe?: boolean;
   recReason?: string;
   status: ActStatus;
   desc: string;
   tags: string[];
   sessions?: ActSession[];
+  signupStatus?: '待审核' | '已通过' | '已驳回';
 };
 
 export type Moment = {
@@ -163,11 +168,11 @@ function sessions(actId: string, dates: string[], time: string, cap: number, fir
 
 export const GROUPS: Group[] = [
   { id: 'g1', name: '城市夜跑团', cat: 'sport', lead: '江野', members: 128, acts: 24, join: 'free', joined: true, tags: ['每周三场', '零基础友好', '配速分组'], area: '总部 · 滨江园区', intro: '下班后甩开屏幕,用脚步丈量城市。我们按配速分组,从 6′30″ 到 5′00″ 都有搭子,跑完一起撸串复盘。', hot: true },
-  { id: 'g2', name: '周末徒步野行', cat: 'sport', lead: '苏曼', members: 96, acts: 18, join: 'approve', joined: true, tags: ['周末出行', '装备互助', 'AA 拼车'], area: '近郊 · 多线路', intro: '逃离工位,走进山野。每月 2-3 条线路,从溪谷轻徒步到登顶看日出,领队持证、全程保障。' },
+  { id: 'g2', name: '周末徒步野行', cat: 'sport', lead: '苏曼', members: 96, acts: 18, join: 'free', joined: true, tags: ['周末出行', '装备互助', 'AA 拼车'], area: '近郊 · 多线路', intro: '逃离工位,走进山野。每月 2-3 条线路,从溪谷轻徒步到登顶看日出,领队持证、全程保障。' },
   { id: 'g3', name: '深夜读书会', cat: 'learning', lead: '周棠', members: 64, acts: 31, join: 'free', joined: false, tags: ['双周一次', '主题共读', '不打卡不焦虑'], area: '总部 · 三楼书吧', intro: '一本书、一杯茶、一群不催进度的人。每期共读一本,线下围读 + 自由发言,读得慢也没关系。' },
   { id: 'g4', name: '周五观影会', cat: 'movie', lead: '许墨', members: 73, acts: 17, join: 'free', joined: false, tags: ['每周放映', '影乐分享', '偶尔开麦'], area: '总部 · 多功能厅', intro: '下班留下来,一起看场电影、聊聊配乐。从经典老片到话题新作,也有同事的现场弹唱开放麦。' },
   { id: 'g5', name: '桌游电竞局', cat: 'game', lead: '沈星', members: 142, acts: 40, join: 'free', joined: true, tags: ['每周开局', '新手教学', '五黑常驻'], area: '总部 · 休闲区', intro: '剧本杀、阿瓦隆、狼人杀、五黑上分,午休和下班后随时开局,菜也没关系,快乐第一。', hot: true },
-  { id: 'g6', name: '职场成长营', cat: 'career', lead: '何夕', members: 58, acts: 16, join: 'approve', joined: false, tags: ['双周一次', '经验分享', '简历互助'], area: '总部 · 学习室', intro: '把同事的经验变成你的捷径。每期一个主题:汇报表达、向上沟通、项目复盘,老带新少走弯路。' },
+  { id: 'g6', name: '职场成长营', cat: 'career', lead: '何夕', members: 58, acts: 16, join: 'free', joined: false, tags: ['双周一次', '经验分享', '简历互助'], area: '总部 · 学习室', intro: '把同事的经验变成你的捷径。每期一个主题:汇报表达、向上沟通、项目复盘,老带新少走弯路。' },
   { id: 'g7', name: '暖心公益志愿队', cat: 'volunteer', lead: '顾乔', members: 110, acts: 29, join: 'free', joined: false, tags: ['月度活动', '工会支持', '人人可参与'], area: '城市 · 各公益点', intro: '用业余时间做点暖心的事。社区助老、山区捐书、公益义卖,工会提供保障,报名即可参与。' },
   { id: 'g8', name: '羽毛球俱乐部', cat: 'sport', lead: '叶蓁', members: 87, acts: 35, join: 'free', joined: false, tags: ['每周二四', '场地已包', '拍可借'], area: '总部 · 体育馆', intro: '已包下体育馆 4 片场地,周二周四晚常态开打。从娱乐双打到水平局,都能找到对手。' },
   { id: 'g9', name: '视觉设计交流组', cat: 'other', lead: '许墨', members: 45, acts: 12, join: 'free', joined: false, tags: ['UI/UX', '设计分享', '作品互评'], area: '总部 · 设计开放区', intro: 'UI、品牌、插画爱好者的圈子。双周设计分享、作品互评，设计部同事常驻交流。' },
@@ -244,17 +249,6 @@ export const ACTS: Act[] = [
   },
 ];
 
-export const REC_IDS = ['a26', 'a19', 'a1', 'a5'];
-
-export const MOMENTS: Moment[] = [
-  { id: 'm1', aid: 'a7', gid: 'g1', author: '江野', text: '38 人!本团历史新高,这张全员合影必须存档 📸 下周三老地方见!', imgs: ['run-group', 'run-night'], likes: 47, time: '5月29日 21:36' },
-  { id: 'm2', aid: 'a7', gid: 'g1', author: '林浅', text: '今晚 PB 了!5′28″ 跑完 8K,江风真的很顶。', imgs: ['run-track'], likes: 23, time: '5月29日 22:01' },
-  { id: 'm3', aid: 'a8', gid: 'g2', author: '苏曼', text: '凌晨四点出发是值得的。云海翻涌的那一刻,所有人都安静了。', imgs: ['sunrise-1', 'sunrise-2', 'sunrise-3'], likes: 89, time: '5月25日 07:12' },
-  { id: 'm4', aid: 'a8', gid: 'g2', author: '周棠', text: '第一次看到云海,腿软但值。系列②我还来!', imgs: ['sunrise-4'], likes: 31, time: '5月25日 09:40' },
-  { id: 'm6', aid: 'a8', gid: 'g2', author: '江野', text: '全员登顶合影,云海就在身后。这张是系列①的高光 📸 24 人一个不少!', imgs: ['sunrise-cloud', 'sunrise-group'], likes: 76, time: '5月25日 07:28' },
-  { id: 'm5', aid: 'a9', gid: 'g5', author: '沈星', text: '七连胜截图来了,这波指挥我可以吹一年。', imgs: ['game-win'], likes: 28, time: '5月28日 23:18' },
-];
-
 export const HINTS = ['职场成长的活动有什么', '适合新人的小组', '本月最热门的小组'] as const;
 
 export const SHORTCUTS = [
@@ -302,7 +296,9 @@ export function enrollInfo(act: Act, group?: Group) {
 
 export function pickActs(tab: ActTab, acts: Act[]) {
   const live = acts.filter((a) => a.status !== 'ended' && a.status !== 'cancelled');
-  if (tab === 'rec') return REC_IDS.map((id) => live.find((a) => a.id === id)).filter((a): a is Act => Boolean(a));
+  if (tab === 'rec') {
+    return [...live].sort((a, b) => Number(Boolean(b.recReason)) - Number(Boolean(a.recReason)) || b.likes - a.likes).slice(0, 3);
+  }
   if (tab === 'latest') return [...live].sort((a, b) => a.dateKey - b.dateKey).slice(0, 3);
   return [...live].sort((a, b) => b.likes - a.likes || b.signed - a.signed).slice(0, 3);
 }
@@ -316,10 +312,15 @@ export function filterActs(acts: Act[], groups: Group[], q: string) {
   });
 }
 
+export function isCEndGroupDiscoverable(group: Group): boolean {
+  return group.auditStatus !== '待审核' && group.auditStatus !== '已驳回';
+}
+
 export function filterGroups(groups: Group[], q: string) {
+  const visible = groups.filter(isCEndGroupDiscoverable);
   const s = q.trim().toLowerCase();
-  if (!s) return groups;
-  return groups.filter((g) => {
+  if (!s) return visible;
+  return visible.filter((g) => {
     const cat = CATS[g.cat].label;
     return [g.name, g.intro, g.lead, g.area, cat, ...g.tags].join(' ').toLowerCase().includes(s);
   });
@@ -443,17 +444,19 @@ type ActivityCardProps = {
   act: Act;
   group?: Group;
   rec?: boolean;
+  peopleNames?: string[];
   onOpen: () => void;
   onEnroll: (e: MouseEvent<HTMLButtonElement>) => void;
   onLike?: (e: MouseEvent<HTMLButtonElement>) => void;
 };
 
-export function ActivityCard({ act, group, rec, onOpen, onEnroll, onLike }: ActivityCardProps) {
+export function ActivityCard({ act, group, rec, peopleNames, onOpen, onEnroll, onLike }: ActivityCardProps) {
   const cat = CATS[act.cat];
   const type = TYPE_META[act.type];
   const enroll = enrollInfo(act, group);
   const left = act.cap - act.signed;
   const pct = Math.min(100, Math.round((act.signed / act.cap) * 100));
+  const avatars = (peopleNames?.length ? peopleNames : NAMES).slice(0, 6);
   return (
     <article className="c-ig-act" onClick={onOpen} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') onOpen(); }}>
       <div className="c-ig-cover">
@@ -516,7 +519,7 @@ export function ActivityCard({ act, group, rec, onOpen, onEnroll, onLike }: Acti
           </div>
         </div>
         <div className="c-ig-foot">
-          <AvatarStack names={NAMES.slice(0, 6)} n={4} size={26} extra={Math.max(0, act.signed - 4)} />
+          <AvatarStack names={avatars} n={4} size={26} extra={Math.max(0, act.signed - 4)} />
           <button
             className={`c-ig-btn is-${enroll.variant}`}
             type="button"
@@ -572,7 +575,7 @@ export function GroupCard({ group, wide, onOpen, onJoin }: GroupCardProps) {
           ) : (
             <button className="c-ig-btn is-soft" type="button" onClick={(e) => { e.stopPropagation(); onJoin(e); }}>
               <IgIcon name="plus" size={16} stroke={2.4} />
-              {group.join === 'approve' ? '申请加入' : '加入'}
+              加入
             </button>
           )}
         </div>

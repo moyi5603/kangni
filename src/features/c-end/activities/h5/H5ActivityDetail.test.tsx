@@ -139,6 +139,8 @@ describe('H5 activity detail engage', () => {
     expect(html).toContain('调整报名');
     expect(html).toContain('参加场次');
     expect(html).toContain('保存场次');
+    expect(html).toContain('余49位');
+    expect(html).toContain('余50位');
     expect(html).toMatch(/value="s-0-202608271400"[^>]*checked|checked[^>]*value="s-0-202608271400"/);
   });
 

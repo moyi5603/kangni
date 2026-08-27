@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { addSignupField, defaultSignupFields, setSignupFieldGroups } from '../../../activities/model/signupFields';
+import { initialActivities } from '../../../activities/model/activity';
 import { SignupForm } from './SignupForm';
 
 describe('SignupForm', () => {
@@ -105,6 +106,25 @@ describe('SignupForm', () => {
     expect(html).toContain('s4');
     expect(html).not.toContain('s5');
     expect(html).not.toContain('s6');
+  });
+
+  it('shows remaining seats for each session', () => {
+    const basketball = initialActivities.find((item) => item.id === 26)!;
+    const html = renderToStaticMarkup(
+      <SignupForm
+        types={['个人报名']}
+        fields={defaultSignupFields()}
+        scheduleType={basketball.scheduleType}
+        sessions={basketball.sessions}
+        activityId={26}
+        quotaLimit={50}
+        now={Date.parse('2026-08-27T11:00:00')}
+        onCancel={() => undefined}
+        onConfirm={() => undefined}
+      />,
+    );
+    expect(html).toContain('余49位');
+    expect(html).toContain('余50位');
   });
 
   it('prefills picked sessions when adjusting an existing signup', () => {
