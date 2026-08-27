@@ -6,6 +6,16 @@ import {
   type SignupField,
 } from './signupFields';
 import type { ApprovalNode } from './rules';
+import {
+  formatActivityScheduleTime,
+  generateRecurringSessions,
+  syncSessionBounds,
+  syncSignupEndAt,
+  formatScheduleSignupTime,
+  type ActivityScheduleType,
+  type ActivitySession,
+} from './activitySchedule';
+import { defaultCheckInSettings, ensureSessionCheckInTokens, CHECK_IN_ONCE_SESSION_ID, checkInTokenForSession, type CheckInSettings } from './activityCheckIn';
 
 const basketballImg = '/activities/basketball.jpg';
 const checkupImg = '/activities/checkup.jpg';
@@ -14,7 +24,7 @@ const openDayImg = '/activities/open-day.jpg';
 const shareImg = '/activities/share.jpg';
 const webinarImg = '/activities/webinar.jpg';
 
-export const ACTIVITY_MOCK_VERSION = 21;
+export const ACTIVITY_MOCK_VERSION = 31;
 export type { SignupField } from './signupFields';
 export const activityTypes = ['公司活动', '疗休养活动', '体检活动', '项目活动'] as const;
 export const visibilityOptions = ['全员', '按部门', '自定义人群', '导入人群'] as const;
@@ -68,13 +78,13 @@ export const orgDepartmentTree: OrgTreeNode[] = [
 ];
 
 const peopleByLeafDepartment: Record<string, string[]> = {
-  前端组: ['张悦', '李明', '孙新'],
-  后端组: ['王芳', '黄码'],
-  测试组: ['苏然', '郑测'],
-  总装车间: ['周工', '马装'],
+  前端组: ['张悦', '李明', '孙新', '何研'],
+  后端组: ['王芳', '黄码', '丁码'],
+  测试组: ['苏然', '郑测', '沈测'],
+  总装车间: ['周工', '马装', '韩装'],
   质检部: ['吴检'],
   华东大区: ['陈产品'],
-  华南大区: ['林销', '刘销'],
+  华南大区: ['林销', '刘销', '蒋销'],
   人力资源: ['赵人事'],
   财务: ['钱会'],
 };
@@ -95,6 +105,11 @@ const peoplePhones: Record<string, string> = {
   郑测: '13800001013',
   马装: '13800001014',
   刘销: '13800001015',
+  何研: '13800001016',
+  丁码: '13800001017',
+  沈测: '13800001018',
+  韩装: '13800001019',
+  蒋销: '13800001020',
 };
 
 export type OrgPerson = {
@@ -193,6 +208,13 @@ export type Activity = {
   tags: string[];
   startAt: string;
   endAt: string;
+  scheduleType: ActivityScheduleType;
+  repeatWeekday?: number;
+  timeStart?: string;
+  timeEnd?: string;
+  cycleStart?: string;
+  cycleEnd?: string;
+  sessions: ActivitySession[];
   location: string;
   organizer: string;
   phone: string;
@@ -206,6 +228,7 @@ export type Activity = {
   notifyOnPublish: boolean;
   signupStartAt: string;
   signupEndAt: string;
+  signupHoursBefore?: number;
   signupSettings: SignupSetting[];
   signupFields: SignupField[];
   itinerary: string;
@@ -218,11 +241,18 @@ export type Activity = {
   firstCommentPointsEnabled: boolean;
   ratingPointsEnabled: boolean;
   firstMomentPointsEnabled: boolean;
-  /** 是否开启精彩瞬间审核 */
+  /** 精彩瞬间不再审核，写入时恒为 false */
   momentAuditEnabled: boolean;
-  /** 是否开启报名审批流（从属于是否审核报名） */
+  /** 活动发布是否走审批（提交审批 / 审核活动），与报名审核无关 */
   activityApprovalEnabled: boolean;
   signupApprovalNodes: ApprovalNode[];
+  checkInEnabled: boolean;
+  checkInOpenMode: CheckInSettings['checkInOpenMode'];
+  checkInOpenMinutesBefore: number;
+  checkInValidAfterStart: number;
+  checkInValidAfterStartUnit: CheckInSettings['checkInValidAfterStartUnit'];
+  checkInDynamicQr: boolean;
+  checkInToken?: string;
   auditStatus: AuditStatus;
   publishStatus: PublishStatus;
   activityStatus: ActivityStatus;
@@ -235,6 +265,8 @@ const defaults: Pick<
   Activity,
   | 'coverUrl'
   | 'tags'
+  | 'scheduleType'
+  | 'sessions'
   | 'location'
   | 'organizer'
   | 'phone'
@@ -247,6 +279,7 @@ const defaults: Pick<
   | 'notifyOnPublish'
   | 'signupStartAt'
   | 'signupEndAt'
+  | 'signupHoursBefore'
   | 'signupSettings'
   | 'signupFields'
   | 'itinerary'
@@ -262,10 +295,18 @@ const defaults: Pick<
   | 'momentAuditEnabled'
   | 'activityApprovalEnabled'
   | 'signupApprovalNodes'
+  | 'checkInEnabled'
+  | 'checkInOpenMode'
+  | 'checkInOpenMinutesBefore'
+  | 'checkInValidAfterStart'
+  | 'checkInValidAfterStartUnit'
+  | 'checkInDynamicQr'
   | 'pinned'
 > = {
   coverUrl: '',
   tags: ['自愿参加'],
+  scheduleType: 'once',
+  sessions: [],
   location: '总部一号楼多功能厅',
   organizer: '陈产品',
   phone: '13800001111',
@@ -278,23 +319,36 @@ const defaults: Pick<
   notifyOnPublish: false,
   signupStartAt: '2026-08-01 09:00',
   signupEndAt: '2026-08-31 18:00',
-  signupSettings: [{ type: '个人报名', limit: 50, needAudit: true }],
+  signupHoursBefore: 0,
+  signupSettings: [{ type: '个人报名', limit: 50, needAudit: false }],
   signupFields: defaultSignupFields(),
   itinerary: '',
   extraFeeRule: '',
   signupPoints: 1,
-  firstCommentPoints: 10,
-  ratingPoints: 10,
-  firstMomentPoints: 10,
+  firstCommentPoints: 1,
+  ratingPoints: 1,
+  firstMomentPoints: 1,
   signupPointsEnabled: true,
-  firstCommentPointsEnabled: true,
-  ratingPointsEnabled: true,
-  firstMomentPointsEnabled: true,
+  firstCommentPointsEnabled: false,
+  ratingPointsEnabled: false,
+  firstMomentPointsEnabled: false,
   momentAuditEnabled: false,
   activityApprovalEnabled: false,
   signupApprovalNodes: [],
+  ...defaultCheckInSettings(),
   pinned: false,
 };
+
+const mockCheckInStatic = {
+  checkInEnabled: true,
+  checkInOpenMode: 'before_start' as const,
+  checkInOpenMinutesBefore: 30,
+  checkInValidAfterStart: 3,
+  checkInValidAfterStartUnit: 'day' as const,
+  checkInDynamicQr: false,
+};
+
+const mockCheckInDynamic = { ...mockCheckInStatic, checkInDynamicQr: true };
 
 function fieldsWith(...keys: string[]): SignupField[] {
   return keys.reduce((fields, key) => addSignupField(fields, key), defaultSignupFields());
@@ -385,6 +439,21 @@ export const initialActivities: Activity[] = [
     category: '培训',
     startAt: '2026-08-18 09:30',
     endAt: '2026-08-20 17:30',
+    scheduleType: 'series',
+    sessions: [
+      { id: 'onboard-1', startAt: '2026-08-18 09:30', endAt: '2026-08-18 17:30' },
+      { id: 'onboard-2', startAt: '2026-08-19 09:30', endAt: '2026-08-19 17:30' },
+      { id: 'onboard-3', startAt: '2026-08-20 09:30', endAt: '2026-08-20 17:30' },
+    ],
+    signupHoursBefore: 0,
+    signupEndAt: syncSignupEndAt(
+      [
+        { id: 'onboard-1', startAt: '2026-08-18 09:30', endAt: '2026-08-18 17:30' },
+        { id: 'onboard-2', startAt: '2026-08-19 09:30', endAt: '2026-08-19 17:30' },
+        { id: 'onboard-3', startAt: '2026-08-20 09:30', endAt: '2026-08-20 17:30' },
+      ],
+      0,
+    ),
     location: '培训中心 3 楼',
     visibility: '自定义人群',
     customPeople: ['张悦', '李明', '王芳'],
@@ -409,7 +478,7 @@ export const initialActivities: Activity[] = [
         { name: '技术组', limit: 36 },
         { name: '业务组', limit: 24 },
       ],
-      ['部门', '岗位'],
+      ['手机号', '年龄', '部门', '岗位'],
     ),
   },
   {
@@ -430,6 +499,7 @@ export const initialActivities: Activity[] = [
       '请提前测试音频设备，提问请使用会议举手功能。',
     ),
     auditStatus: '待审核',
+    activityApprovalEnabled: true,
     publishStatus: '未发布',
     activityStatus: '未开始',
     createdAt: '2026-08-10 16:40:00',
@@ -486,6 +556,7 @@ export const initialActivities: Activity[] = [
       '分享提纲需会前补充完整后再提交审核。',
     ),
     auditStatus: '已驳回',
+    activityApprovalEnabled: true,
     publishStatus: '未发布',
     activityStatus: '已结束',
     createdAt: '2026-06-18 11:02:00',
@@ -498,7 +569,21 @@ export const initialActivities: Activity[] = [
     type: '体检活动',
     category: '公益',
     startAt: '2026-10-18 08:30',
-    endAt: '2026-10-18 12:00',
+    endAt: '2026-10-25 12:00',
+    scheduleType: 'series',
+    sessions: ensureSessionCheckInTokens([
+      { id: 'checkup-1', startAt: '2026-10-18 08:30', endAt: '2026-10-18 12:00' },
+      { id: 'checkup-2', startAt: '2026-10-25 08:30', endAt: '2026-10-25 12:00' },
+    ]),
+    ...mockCheckInStatic,
+    signupHoursBefore: 0,
+    signupEndAt: syncSignupEndAt(
+      [
+        { id: 'checkup-1', startAt: '2026-10-18 08:30', endAt: '2026-10-18 12:00' },
+        { id: 'checkup-2', startAt: '2026-10-25 08:30', endAt: '2026-10-25 12:00' },
+      ],
+      0,
+    ),
     coverUrl: checkupImg,
     detailHtml: detailBlock(
       checkupImg,
@@ -538,6 +623,7 @@ export const initialActivities: Activity[] = [
       '请提前阅读议题材料，现场关闭手机铃声。',
     ),
     auditStatus: '待提交',
+    activityApprovalEnabled: true,
     publishStatus: '未发布',
     activityStatus: '未开始',
     createdAt: '2026-08-18 09:20:00',
@@ -545,43 +631,68 @@ export const initialActivities: Activity[] = [
     signupSettings: [{ type: '个人报名', limit: 30, needAudit: true, minSeniorityYears: 3 }],
     signupFields: fieldsWith('工号', '岗位'),
   },
-  {
-    ...defaults,
-    id: 8,
-    title: '安全专项培训',
-    type: '公司活动',
-    category: '培训',
-    tags: ['全员'],
-    startAt: '2026-10-08 09:00',
-    endAt: '2026-10-08 12:00',
-    location: '培训中心 1 楼',
-    organizer: '陈产品',
-    visibility: '导入人群',
-    importFileName: '安全专项培训可见人群.csv',
-    importedPeople: mockPeople(50, '学员'),
-    coverUrl: webinarImg,
-    detailHtml: detailBlock(
-      webinarImg,
-      '安全专项培训课堂',
-      '按导入名单组织安全生产专项培训，覆盖一线和相关岗位人员。请凭通知入场。',
-      ['09:00 签到与开场', '09:20 安全法规与案例', '11:00 考核说明'],
-      '请携带工牌，迟到超过 15 分钟视为缺勤。',
-    ),
-    auditStatus: '待提交',
-    publishStatus: '未发布',
-    activityStatus: '未开始',
-    createdAt: '2026-08-18 10:05:00',
-    publishedAt: '',
-  },
+  (() => {
+    const sessions = ensureSessionCheckInTokens(
+      generateRecurringSessions({
+        repeatWeekday: 5,
+        timeStart: '09:00',
+        timeEnd: '12:00',
+        cycleStart: '2026-10-02',
+        cycleEnd: '2026-10-30',
+      }),
+    );
+    return {
+      ...defaults,
+      id: 8,
+      title: '安全专项培训',
+      type: '公司活动',
+      category: '培训',
+      tags: ['全员'],
+      ...mockCheckInDynamic,
+      location: '培训中心 1 楼',
+      organizer: '陈产品',
+      visibility: '导入人群',
+      importFileName: '安全专项培训可见人群.csv',
+      importedPeople: mockPeople(50, '学员'),
+      coverUrl: webinarImg,
+      scheduleType: 'recurring',
+      repeatWeekday: 5,
+      timeStart: '09:00',
+      timeEnd: '12:00',
+      cycleStart: '2026-10-02',
+      cycleEnd: '2026-10-30',
+      sessions,
+      ...syncSessionBounds(sessions),
+      signupHoursBefore: 0,
+      signupEndAt: syncSignupEndAt(sessions, 0),
+      detailHtml: detailBlock(
+        webinarImg,
+        '安全专项培训课堂',
+        '按导入名单组织安全生产专项培训，覆盖一线和相关岗位人员。周五上午循环开班，可按场次报名。',
+        ['09:00 签到与开场', '09:20 安全法规与案例', '11:00 考核说明'],
+        '请携带工牌，迟到超过 15 分钟视为缺勤。',
+      ),
+      auditStatus: '待提交',
+      activityApprovalEnabled: true,
+      publishStatus: '未发布',
+      activityStatus: '未开始',
+      createdAt: '2026-08-18 10:05:00',
+      publishedAt: '',
+    };
+  })(),
   publishedClient({
     id: 9,
     title: '中秋员工晚会',
     type: '公司活动',
     category: '文化',
-    startAt: '2026-09-12 18:00',
-    endAt: '2026-09-12 21:00',
+    pinned: true,
+    startAt: '2026-08-27 14:00',
+    endAt: '2026-12-30 14:00',
     coverUrl: openDayImg,
     publishedAt: '2026-08-12 09:30:00',
+    ...mockCheckInStatic,
+    checkInValidAfterStart: 125,
+    checkInToken: checkInTokenForSession({ id: CHECK_IN_ONCE_SESSION_ID }),
     signupSettings: [{ type: '个人报名', limit: 120, needAudit: false }],
     signupFields: companionSignupFields(2, ['姓名', '手机号'], ['性别']),
     detailHtml: detailBlock(openDayImg, '中秋员工晚会', '中秋节员工晚会含节目汇演、抽奖和家书环节，欢迎携家属观演。', ['18:00 签到入场', '18:30 节目演出', '20:30 抽奖与合影'], '请提前在线上领取电子门票。'),
@@ -596,6 +707,8 @@ export const initialActivities: Activity[] = [
     location: '城郊生态园',
     coverUrl: webinarImg,
     publishedAt: '2026-08-11 14:00:00',
+    ...mockCheckInDynamic,
+    checkInToken: checkInTokenForSession({ id: CHECK_IN_ONCE_SESSION_ID }),
     detailHtml: detailBlock(webinarImg, '公益植树日', '走进城郊生态园参与植树和环保宣讲，完成当日公益时数登记。', ['08:30 集合出发', '10:00 植树', '14:00 环保课堂'], '请穿着便于行走的鞋服，现场发放工具。'),
   }),
   publishedClient({
@@ -793,6 +906,66 @@ export const initialActivities: Activity[] = [
     publishedAt: '2026-07-02 11:00:00',
     detailHtml: detailBlock(openDayImg, '家庭日郊游', '员工家庭日郊游已举办完成，适合带家属回顾活动照片。', ['上午亲子游戏', '中午野餐', '下午自由参观'], '相册将保留至年底。'),
   }),
+  publishedClient((() => {
+    const sessions = ensureSessionCheckInTokens(
+      generateRecurringSessions({
+        repeatWeekday: 4,
+        timeStart: '14:00',
+        timeEnd: '23:00',
+        cycleStart: '2026-08-27',
+        cycleEnd: '2026-12-31',
+      }),
+    );
+    return {
+      id: 26,
+      title: '周四篮球夜',
+      ...mockCheckInStatic,
+      type: '公司活动',
+      category: '体育',
+      pinned: true,
+      location: '总部球馆',
+      coverUrl: basketballImg,
+      scheduleType: 'recurring',
+      repeatWeekday: 4,
+      timeStart: '14:00',
+      timeEnd: '23:00',
+      cycleStart: '2026-08-27',
+      cycleEnd: '2026-12-31',
+      sessions,
+      ...syncSessionBounds(sessions),
+      signupHoursBefore: 0,
+      signupEndAt: syncSignupEndAt(sessions, 0),
+      signupFields: fieldsWith('手机号', '年龄'),
+      detailHtml: detailBlock(basketballImg, '周四篮球夜', '每周四下午到晚上固定开场，可按场次报名。', ['13:40 热身', '14:00 开打', '23:00 收场'], '请自备室内鞋。'),
+    };
+  })()),
+  publishedClient({
+    id: 27,
+    title: '新人导师工作坊',
+    type: '项目活动',
+    category: '培训',
+    pinned: true,
+    location: '培训中心 2 楼',
+    coverUrl: webinarImg,
+    scheduleType: 'series',
+    ...mockCheckInDynamic,
+    sessions: ensureSessionCheckInTokens([
+      { id: 's-0-202609050900', startAt: '2026-09-05 09:00', endAt: '2026-09-05 12:00' },
+      { id: 's-1-202609120900', startAt: '2026-09-12 09:00', endAt: '2026-09-12 12:00' },
+    ]),
+    startAt: '2026-09-05 09:00',
+    endAt: '2026-09-12 12:00',
+    signupHoursBefore: 0,
+    signupEndAt: syncSignupEndAt(
+      [
+        { id: 's-0-202609050900', startAt: '2026-09-05 09:00', endAt: '2026-09-05 12:00' },
+        { id: 's-1-202609120900', startAt: '2026-09-12 09:00', endAt: '2026-09-12 12:00' },
+      ],
+      0,
+    ),
+    signupFields: fieldsWith('手机号', '年龄'),
+    detailHtml: detailBlock(webinarImg, '新人导师工作坊', '两场工作坊可任选参加。', ['开场破冰', '案例研讨', '复盘'], '请携带工牌入场。'),
+  }),
 ];
 
 function mockPeople(count: number, prefix: string): string[] {
@@ -805,7 +978,26 @@ export function formatCustomCrowdVisibility(people: string[], years?: number): s
 }
 
 export function formatActivityTime(activity: Activity): string {
-  return `${activity.startAt} ~ ${activity.endAt}`;
+  return formatActivityScheduleTime({
+    scheduleType: activity.scheduleType ?? 'once',
+    startAt: activity.startAt,
+    endAt: activity.endAt,
+    repeatWeekday: activity.repeatWeekday,
+    timeStart: activity.timeStart,
+    timeEnd: activity.timeEnd,
+    cycleStart: activity.cycleStart,
+    cycleEnd: activity.cycleEnd,
+    sessions: activity.sessions ?? [],
+  });
+}
+
+export function formatActivitySignupTime(activity: Activity): string {
+  return formatScheduleSignupTime({
+    scheduleType: activity.scheduleType ?? 'once',
+    signupStartAt: activity.signupStartAt,
+    signupEndAt: activity.signupEndAt,
+    signupHoursBefore: activity.signupHoursBefore,
+  });
 }
 
 export function getActivityLifecycleStatus(
@@ -855,5 +1047,5 @@ export function grantPrizeBlockReason(activity: Pick<Activity, 'publishStatus' |
 export const activityReviewer = '苏然';
 
 export function emptySignupSetting(): SignupSetting {
-  return { type: '', needAudit: true };
+  return { type: '', needAudit: false };
 }

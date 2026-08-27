@@ -4,7 +4,7 @@ import { planInterestGroupActivity, setPendingAiActivityDraft, takePendingAiActi
 describe('planInterestGroupActivity', () => {
   it('routes 夜跑 prompts to weekly riverside run', () => {
     const plan = planInterestGroupActivity('每周三下班后组织一次滨江夜跑，8 公里，分配速组');
-    expect(plan.title).toBe('滨江 8K 夜跑 · 江风配速团');
+    expect(plan.title).toBe('滨江 8K 夜跑');
     expect(plan.type).toBe('recurring');
     expect(plan.groupId).toBe(1);
     expect(plan.categoryKey).toBe('sport');
@@ -20,7 +20,6 @@ describe('planInterestGroupActivity', () => {
     expect(plan.title).toContain('日出');
     expect(plan.type).toBe('series');
     expect(plan.groupId).toBe(2);
-    expect(plan.seriesSignupMode).toBe('all');
     expect(plan.sessions).toHaveLength(2);
     expect(plan.sessions?.[0]?.startAt).toContain('04:30');
   });

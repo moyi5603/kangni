@@ -44,25 +44,32 @@ describe('activityPointRules', () => {
         firstCommentPointsMax: undefined,
         ratingPointsMax: undefined,
       } as Partial<ActivityPointRules>).firstCommentPointsMax,
-    ).toBe(10);
+    ).toBe(1);
     expect(
       normalizeActivityPointRules({
         ...defaultActivityPointRules,
         firstMomentPointsMax: undefined,
       } as Partial<ActivityPointRules>).firstMomentPointsMax,
-    ).toBe(10);
+    ).toBe(1);
   });
 
   it('requires first-comment, rating and first-moment max to be non-negative integers', () => {
     expect(validateActivityPointRules({ ...defaultActivityPointRules, firstCommentPointsMax: -1 })).toBe(
-      '活动首评积分上限须为不小于 0 的整数',
+      '活动评论积分须为不小于 0 的整数',
     );
     expect(validateActivityPointRules({ ...defaultActivityPointRules, ratingPointsMax: 1.2 })).toBe(
-      '活动打分积分上限须为不小于 0 的整数',
+      '活动打分积分须为不小于 0 的整数',
     );
     expect(validateActivityPointRules({ ...defaultActivityPointRules, firstMomentPointsMax: -1 })).toBe(
-      '精彩瞬间积分上限须为不小于 0 的整数',
+      '精彩瞬间积分须为不小于 0 的整数',
     );
+    expect(
+      validateActivityPointRules({
+        ...defaultActivityPointRules,
+        firstCommentPointsMax: 10,
+        firstCommentPointsDailyMax: 5,
+      }),
+    ).toBe('活动评论每日上限不能小于单次积分');
   });
 
   it('defaults activity values to signup min, cap maxima, and all enabled', () => {

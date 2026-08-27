@@ -71,10 +71,17 @@ describe('course comment store', () => {
 
   it('rejects pending comments', () => {
     const pending = listComments(1).find((item) => item.status === '待审核')!;
-    expect(rejectCourseComment(pending.id)).toBe(true);
+    expect(rejectCourseComment(pending.id, '内容不当')).toBe(true);
     expect(listComments(1).find((item) => item.id === pending.id)?.status).toBe('已驳回');
+    expect(listComments(1).find((item) => item.id === pending.id)?.rejectReason).toBe('内容不当');
     expect(listVisibleComments(1, '李明').some((item) => item.id === pending.id)).toBe(true);
     expect(listVisibleComments(1, '陈产品').some((item) => item.id === pending.id)).toBe(false);
+  });
+
+  it('rejects pending comments without reason', () => {
+    const pending = listComments(1).find((item) => item.status === '待审核')!;
+    expect(rejectCourseComment(pending.id)).toBe(true);
+    expect(listComments(1).find((item) => item.id === pending.id)?.rejectReason).toBeUndefined();
   });
 
   it('batch approves and rejects', () => {

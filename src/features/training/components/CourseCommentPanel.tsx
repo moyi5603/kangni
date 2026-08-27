@@ -4,6 +4,7 @@ import type { TableColumnsType } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { SearchField, SearchPanel } from '../../../shared/ui/ListPage';
+import { useRejectReasonPrompt } from '../../../shared/ui/RejectReasonModal';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import { employeeAvatarColor, employeeAvatarLetter } from '../../activities/model/employeeAvatar';
 import {
@@ -46,6 +47,7 @@ function modalFooter(_: ReactNode, extra: { OkBtn: React.FC; CancelBtn: React.FC
 
 export function CourseCommentPanel({ courseId }: { courseId: number }) {
   const { message, modal } = App.useApp();
+  const { promptReject, rejectReasonModal } = useRejectReasonPrompt();
   const data = useCourseComments(courseId);
   const [draft, setDraft] = useState<CommentQuery>(emptyQuery);
   const [query, setQuery] = useState<CommentQuery>(emptyQuery);
@@ -103,14 +105,11 @@ export function CourseCommentPanel({ courseId }: { courseId: number }) {
   };
 
   const rejectOne = (record: CourseCommentRecord) => {
-    modal.confirm({
+    promptReject({
       title: `确认驳回「${record.author}」的评论？`,
-      content: '驳回后仅评论作者本人可见。',
-      okText: '确认',
-      cancelText: '取消',
-      footer: modalFooter,
-      onOk: () => {
-        if (rejectCourseComment(record.id)) {
+      description: '驳回后仅评论作者本人可见。',
+      onConfirm: (reason) => {
+        if (rejectCourseComment(record.id, reason)) {
           message.success(`已驳回「${record.author}」的评论`);
         }
       },
@@ -240,14 +239,11 @@ export function CourseCommentPanel({ courseId }: { courseId: number }) {
               {selectedPendingIds.length ? (
                 <Button
                   onClick={() =>
-                    modal.confirm({
+                    promptReject({
                       title: `确认驳回已选 ${selectedPendingIds.length} 条待审核评论？`,
-                      content: '驳回后仅评论作者本人可见。',
-                      okText: '确认',
-                      cancelText: '取消',
-                      footer: modalFooter,
-                      onOk: () => {
-                        const count = rejectCourseComments(selectedPendingIds);
+                      description: '驳回后仅评论作者本人可见。',
+                      onConfirm: (reason) => {
+                        const count = rejectCourseComments(selectedPendingIds, reason);
                         message.success(`已驳回 ${count} 条评论`);
                         setSelectedRowKeys((keys) => keys.filter((key) => !selectedPendingIds.includes(Number(key))));
                       },
@@ -306,6 +302,7 @@ export function CourseCommentPanel({ courseId }: { courseId: number }) {
           }}
         />
       </Card>
+      {rejectReasonModal}
     </div>
   );
 }

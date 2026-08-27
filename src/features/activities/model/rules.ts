@@ -83,6 +83,13 @@ export function formatApprovalNodeSummary(node: ApprovalNode): string {
   return `${mode}（${who}）`;
 }
 
+export function formatSignupAuditSummary(needAudit: boolean | undefined, nodes: ApprovalNode[] | undefined): string {
+  if (!needAudit) return '无需审核';
+  if (!nodes?.length) return '需要审核';
+  const flow = nodes.map((node, index) => `第 ${index + 1} 节点：${formatApprovalNodeSummary(node)}`).join('；');
+  return `需要审核；${flow}`;
+}
+
 export function createApprovalNode(): ApprovalNode {
   return {
     id: `node-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -147,7 +154,7 @@ export const initialRules: ActivityTypeRule[] = activityTypes.map((type) => {
   if (type === '公司活动') {
     return {
       ...emptyRule(type),
-      momentAuditEnabled: true,
+      momentAuditEnabled: false,
       approvalEnabled: true,
       approvalNodes: [
         { id: 'company-1', assigneeMode: 'people', reviewerIds: ['张悦', '李明'] },

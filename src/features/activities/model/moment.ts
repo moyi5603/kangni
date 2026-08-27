@@ -56,6 +56,10 @@ export function isPlayableMomentVideo(url?: string): boolean {
   return url.startsWith('data:video') || /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url);
 }
 
+export function momentCoverUrl(moment: Pick<MomentRecord, 'imageUrls' | 'videoUrl'>): string | undefined {
+  return moment.imageUrls[0] || moment.videoUrl;
+}
+
 export function inferMomentType(imageUrls: string[], videoUrl?: string): MomentType | undefined {
   const hasImages = imageUrls.length > 0;
   const hasVideo = Boolean(videoUrl);
@@ -96,8 +100,8 @@ export function submitBlockReason(activityStatus: ActivityStatus, approvedSignup
   return undefined;
 }
 
-export function nextStatusOnSubmit(auditEnabled: boolean): MomentStatus {
-  return auditEnabled ? '待审核' : '已通过';
+export function nextStatusOnSubmit(): MomentStatus {
+  return '已通过';
 }
 
 export function isPending(status: MomentStatus): boolean {
@@ -132,9 +136,14 @@ export function validateComposer(draft: MomentDraft): string | undefined {
   return undefined;
 }
 
+/** Empty allowed. Non-empty must be ≤ max. */
 export function validateRejectReason(reason: string): string | undefined {
   const text = reason.trim();
-  if (!text) return '请填写驳回原因';
   if (text.length > MOMENT_REJECT_REASON_MAX) return `驳回原因不能超过 ${MOMENT_REJECT_REASON_MAX} 字`;
   return undefined;
+}
+
+export function normalizeRejectReason(reason?: string): string | undefined {
+  const text = (reason ?? '').trim();
+  return text || undefined;
 }

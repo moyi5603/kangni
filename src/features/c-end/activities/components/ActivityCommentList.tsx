@@ -10,16 +10,18 @@ import { IconLike } from './Icons';
 
 function CommentActions({
   item,
+  viewerName,
   onLike,
   onReply,
   onDeleteRequest,
 }: {
   item: CommentRecord;
+  viewerName: string;
   onLike: (id: number) => void;
   onReply: (id: number, replyToName: string) => void;
   onDeleteRequest: (id: number) => void;
 }) {
-  const liked = item.likedBy.includes(DEMO_SIGNUP_USER.name);
+  const liked = item.likedBy.includes(viewerName);
   return (
     <div className="c-activity-comment-toolbar">
       <time dateTime={item.createdAt}>{formatCommentDisplayTime(item.createdAt)}</time>
@@ -36,7 +38,7 @@ function CommentActions({
       <button type="button" className="c-comment-reply" onClick={() => onReply(item.id, item.author)}>
         回复
       </button>
-      {item.author === DEMO_SIGNUP_USER.name ? (
+      {item.author === viewerName ? (
         <button type="button" className="c-comment-delete" onClick={() => onDeleteRequest(item.id)}>
           删除
         </button>
@@ -53,6 +55,7 @@ export function ActivityCommentList({
   onDelete,
   surface,
   hideTitle,
+  viewerName = DEMO_SIGNUP_USER.name,
 }: {
   threads: CommentThread[];
   totalCount: number;
@@ -61,6 +64,7 @@ export function ActivityCommentList({
   onDelete: (id: number) => void;
   surface: 'h5' | 'pc';
   hideTitle?: boolean;
+  viewerName?: string;
 }) {
   const [pendingId, setPendingId] = useState<number>();
   const [draft, setDraft] = useState('');
@@ -136,7 +140,7 @@ export function ActivityCommentList({
           </div>
         ) : null}
         <div className="c-comment-composer-row">
-          <EmployeeAvatar name={DEMO_SIGNUP_USER.name} />
+          <EmployeeAvatar name={viewerName} />
           <input
             id="activity-comment-box"
             className="c-comment-composer-field"
@@ -163,7 +167,7 @@ export function ActivityCommentList({
                   <span>{thread.root.author}</span>
                 </div>
                 <p>{thread.root.content}</p>
-                <CommentActions item={thread.root} onLike={onLike} onReply={startReply} onDeleteRequest={setPendingId} />
+                <CommentActions item={thread.root} viewerName={viewerName} onLike={onLike} onReply={startReply} onDeleteRequest={setPendingId} />
                 {thread.replies.length > 0 ? (
                   <ul className="c-activity-comment-replies">
                     {thread.replies.map((reply) => (
@@ -174,7 +178,7 @@ export function ActivityCommentList({
                             <span>{reply.replyLabel}</span>
                           </div>
                           <p>{reply.content}</p>
-                          <CommentActions item={reply} onLike={onLike} onReply={startReply} onDeleteRequest={setPendingId} />
+                          <CommentActions item={reply} viewerName={viewerName} onLike={onLike} onReply={startReply} onDeleteRequest={setPendingId} />
                         </div>
                       </li>
                     ))}

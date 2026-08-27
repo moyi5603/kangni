@@ -1,12 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildAutoAwardResults,
+  buildAwardRewardGrants,
   canDeleteAward,
+  canEnterAwardResult,
+  canGrantAwardRewards,
   canToggleResultPublic,
+  grantAwardRewardsBlockReason,
+  resultPublicityBlockReason,
+  nominationSortFieldOf,
+  resolveAwardResults,
   resolveAwardStatus,
   resolveResultPublicityLabel,
+  sortAwardsByPin,
   type AwardRecord,
   validateAwardTimeOrder,
 } from './award';
+import type { AwardNominationRecord } from './awardNomination';
 
 const base: AwardRecord = {
   id: 1,
@@ -40,6 +50,14 @@ const base: AwardRecord = {
   nomineeImportFileName: '',
   publishStatus: '未发布',
   autoPublishOnEnd: false,
+  commentsEnabled: true,
+  commentsNeedAudit: false,
+  voteSortRule: '按票数',
+  coverUrl: '/activities/share.jpg',
+  pinned: false,
+  results: [],
+  rewardsGranted: false,
+  rewardGrants: [],
   resultPublic: false,
   publicityLocked: false,
   nominationCount: 0,
@@ -90,11 +108,100 @@ describe('award guards', () => {
     expect(canToggleResultPublic(base, '2026-08-05 12:00:00')).toBe(false);
     expect(canToggleResultPublic(base, '2026-08-21 12:00:00')).toBe(true);
   });
+
+  it('blocks publishing results until they are entered', () => {
+    expect(resultPublicityBlockReason(base, '2026-08-21 12:00:00', true)).toBe('请先录入评优结果');
+    expect(resultPublicityBlockReason({ ...base, results: [{ rank: 1, rankTitle: '一等奖', nominationId: 1, nominationTitle: '甲', nominees: ['张悦'], voteCount: 3, nominator: '王芳' }] }, '2026-08-21 12:00:00', true)).toBeNull();
+    expect(resultPublicityBlockReason(base, '2026-08-05 12:00:00', true)).toBe('结束后才可公示结果');
+    expect(resultPublicityBlockReason({ ...base, publicityLocked: true, resultPublic: true }, '2026-08-21 12:00:00', false)).toBeNull();
+  });
 });
 
-describe('validateAwardTimeOrder', () => {
-  it('requires nominate before vote', () => {
-    expect(validateAwardTimeOrder('2026-08-10 00:00:00', '2026-08-20 00:00:00')).toBe(true);
-    expect(validateAwardTimeOrder('2026-08-20 00:00:00', '2026-08-10 00:00:00')).toBe(false);
+describe('nominationSortFieldOf', () => {
+  it('maps vote sort rule to nomination columns', () => {
+    expect(nominationSortFieldOf('按时间')).toBe('createdAt');
+    expect(nominationSortFieldOf('按票数')).toBe('voteCount');
+  });
+});
+
+describe('pin and results', () => {
+  it('allows entering results only after end and unpublished', () => {
+    expect(canEnterAwardResult(base, '2026-08-05 12:00:00')).toBe(false);
+    expect(canEnterAwardResult({ ...base, autoPublishOnEnd: true }, '2026-08-21 12:00:00')).toBe(false);
+    expect(canEnterAwardResult({ ...base, publicityLocked: true, resultPublic: false }, '2026-08-21 12:00:00')).toBe(true);
+    expect(canEnterAwardResult({ ...base, publicityLocked: true, resultPublic: false, rewardsGranted: true }, '2026-08-21 12:00:00')).toBe(false);
+  });
+
+  it('sorts pinned awards first', () => {
+    const rows = [
+      { ...base, id: 1, pinned: false },
+      { ...base, id: 2, pinned: true },
+      { ...base, id: 3, pinned: false },
+    ];
+    expect(sortAwardsByPin(rows).map((item) => item.id)).toEqual([2, 1, 3]);
+  });
+
+  it('builds auto results from passed nominations by vote', () => {
+    const nominations: AwardNominationRecord[] = [
+      {
+        id: 10,
+        awardId: 1,
+        title: '乙',
+        nominees: ['李明'],
+        reason: 'r',
+        highlights: ['h'],
+        voteCount: 10,
+        reviewStatus: '已通过',
+        nominator: '王芳',
+        createdAt: '2026-08-01 10:00:00',
+      },
+      {
+        id: 11,
+        awardId: 1,
+        title: '甲',
+        nominees: ['张悦'],
+        reason: 'r',
+        highlights: ['h'],
+        voteCount: 30,
+        reviewStatus: '已通过',
+        nominator: '陈产品',
+        createdAt: '2026-08-02 10:00:00',
+      },
+      {
+        id: 12,
+        awardId: 1,
+        title: '待审',
+        nominees: ['陈产品'],
+        reason: 'r',
+        highlights: ['h'],
+        voteCount: 99,
+        reviewStatus: '待审核',
+        nominator: '张悦',
+        createdAt: '2026-08-03 10:00:00',
+      },
+    ];
+    const rows = buildAutoAwardResults(base, nominations);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ rank: 1, rankTitle: '一等奖', nominationId: 11, nominationTitle: '甲', voteCount: 30 });
+  });
+
+  it('prefers saved results over auto build', () => {
+    const saved = [{ rank: 1, rankTitle: '一等奖', nominationId: 99, nominationTitle: '手工', nominees: ['张悦'], voteCount: 1, nominator: '王芳' }];
+    expect(resolveAwardResults({ ...base, results: saved }, [], '2026-08-21 00:00:00').map((item) => item.nominationTitle)).toEqual(['手工']);
+  });
+
+  it('grants rank rewards to every nominee and then locks edits', () => {
+    const results = [
+      { rank: 1, rankTitle: '一等奖', nominationId: 1, nominationTitle: '甲', nominees: ['张悦', '李明'], voteCount: 3, nominator: '王芳' },
+    ];
+    expect(canGrantAwardRewards(base, '2026-08-05 12:00:00')).toBe(false);
+    expect(canGrantAwardRewards(base, '2026-08-21 12:00:00')).toBe(true);
+    expect(grantAwardRewardsBlockReason(base, '2026-08-21 12:00:00', [])).toBe('请先录入评优结果');
+    expect(grantAwardRewardsBlockReason({ ...base, rewardsGranted: true }, '2026-08-21 12:00:00', results)).toBe('奖励已发放，结果不可修改');
+    expect(grantAwardRewardsBlockReason(base, '2026-08-21 12:00:00', results)).toBeNull();
+    expect(buildAwardRewardGrants(base, results)).toEqual([
+      { name: '张悦', rank: 1, rankTitle: '一等奖', nominationTitle: '甲', points: 100, medalId: undefined, certificateId: undefined },
+      { name: '李明', rank: 1, rankTitle: '一等奖', nominationTitle: '甲', points: 100, medalId: undefined, certificateId: undefined },
+    ]);
   });
 });

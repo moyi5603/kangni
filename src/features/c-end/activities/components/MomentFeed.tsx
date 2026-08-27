@@ -11,6 +11,7 @@ import {
   useCanSubmitMoment,
   useClientMoments,
 } from '../../../activities/model/momentStore';
+import { formatCEndDateTime } from '../../formatDateTime';
 import { H5DeleteSheet } from '../h5/H5DeleteSheet';
 import { PcDeleteModal } from '../pc/PcDeleteModal';
 import { EmployeeAvatar } from './EmployeeAvatar';
@@ -20,7 +21,16 @@ type MediaViewer =
   | { kind: 'images'; urls: string[]; index: number }
   | { kind: 'video'; url: string };
 
-function MomentMediaViewer({
+export type { MediaViewer };
+
+const SWIPE_PX = 40;
+
+export function swipeViewerIndex(index: number, count: number, deltaX: number): number {
+  if (count <= 1 || Math.abs(deltaX) < SWIPE_PX) return index;
+  return deltaX < 0 ? (index + 1) % count : (index - 1 + count) % count;
+}
+
+export function MomentMediaViewer({
   viewer,
   onClose,
   onIndex,
@@ -31,6 +41,7 @@ function MomentMediaViewer({
 }) {
   const playable = viewer.kind === 'video' && isPlayableMomentVideo(viewer.url);
   const count = viewer.kind === 'images' ? viewer.urls.length : 1;
+  const originX = useRef<number | null>(null);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -83,7 +94,26 @@ function MomentMediaViewer({
         </>
       ) : null}
       {viewer.kind === 'images' ? (
-        <img src={viewer.urls[viewer.index]} alt="" onClick={(event) => event.stopPropagation()} />
+        <div
+          className="c-moment-viewer-stage"
+          onPointerDown={(event) => {
+            originX.current = event.clientX;
+            event.stopPropagation();
+          }}
+          onPointerUp={(event) => {
+            event.stopPropagation();
+            if (originX.current == null) return;
+            onIndex(swipeViewerIndex(viewer.index, count, event.clientX - originX.current));
+            originX.current = null;
+          }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="c-moment-viewer-track" style={{ transform: `translateX(-${viewer.index * 100}%)` }}>
+            {viewer.urls.map((url, index) => (
+              <img key={`${url}-${index}`} src={url} alt="" />
+            ))}
+          </div>
+        </div>
       ) : playable ? (
         <video src={viewer.url} controls autoPlay playsInline onClick={(event) => event.stopPropagation()} />
       ) : (
@@ -142,14 +172,14 @@ function MomentLine({
   );
 }
 
-function MomentCard({
+export function MomentCard({
   moment,
-  onEdit,
   surface,
+  activityTitle,
 }: {
   moment: MomentRecord;
-  onEdit: (record: MomentRecord) => void;
   surface: 'h5' | 'pc';
+  activityTitle?: string;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [composing, setComposing] = useState(false);
@@ -198,8 +228,7 @@ function MomentCard({
         <EmployeeAvatar name={moment.author} size="md" />
         <div className="c-moment-meta-main">
           <strong>{moment.author}</strong>
-          {moment.status === '待审核' ? <span className="c-moment-flag">审核中</span> : null}
-          {moment.status === '已驳回' ? <span className="c-moment-flag is-reject">已驳回</span> : null}
+          {activityTitle ? <p className="c-moment-from">{activityTitle}</p> : null}
         </div>
       </div>
       {moment.content ? <p className="c-moment-body">{moment.content}</p> : null}
@@ -232,18 +261,10 @@ function MomentCard({
           <span className="c-moment-play" aria-hidden />
         </button>
       ) : null}
-      {moment.status === '已驳回' ? (
-        <div className="c-moment-reject">
-          <p>驳回原因：{moment.rejectReason}</p>
-          <button className="c-btn c-btn-primary" type="button" onClick={() => onEdit(moment)}>
-            修改后再提
-          </button>
-        </div>
-      ) : null}
       {passed ? (
         <>
           <div className="c-moment-foot">
-            <time dateTime={moment.createdAt}>{moment.createdAt.slice(0, 16)}</time>
+            <time dateTime={moment.createdAt}>{formatCEndDateTime(moment.createdAt.slice(0, 16))}</time>
             <div className="c-moment-more-wrap" ref={menuRef}>
               {menuOpen ? (
                 <div className="c-moment-pop" role="menu">
@@ -404,7 +425,7 @@ export function MomentFeed({
       {moments.length === 0 ? (
         <p className="c-empty">还没有精彩瞬间</p>
       ) : (
-        moments.map((item) => <MomentCard key={item.id} moment={item} onEdit={onCompose} surface={surface} />)
+        moments.map((item) => <MomentCard key={item.id} moment={item} surface={surface} />)
       )}
     </section>
   );

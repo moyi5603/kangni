@@ -24,6 +24,9 @@ import type { TableColumnsType, UploadFile } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { SearchField, SearchPanel } from '../../../shared/ui/ListPage';
+import { TableEllipsisText } from '../../../shared/ui/TableEllipsisText';
+import { TableRowActions, type TableRowAction } from '../../../shared/ui/TableRowActions';
+import { useRejectReasonPrompt } from '../../../shared/ui/RejectReasonModal';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import {
   activitySignupTypes,
@@ -34,6 +37,11 @@ import {
   withDisabledPeople,
   type Activity,
 } from '../model/activity';
+import {
+  formatPickedSessionsLabel,
+  needsSessionPick,
+} from '../model/activitySchedule';
+import { formatSignupCheckIns } from '../model/activityCheckIn';
 import { downloadSignupImportTemplate, parseSignupImportCsv } from '../model/signupImport';
 import {
   downloadSignupExport,
@@ -94,8 +102,8 @@ function nowText() {
 function modalFooter(_: ReactNode, extra: { OkBtn: React.FC; CancelBtn: React.FC }) {
   return (
     <Space>
-      <extra.OkBtn />
       <extra.CancelBtn />
+      <extra.OkBtn />
     </Space>
   );
 }
@@ -154,19 +162,40 @@ export function SurveyList({ activity }: { activity: Activity }) {
       title: '操作',
       key: 'action',
       fixed: 'right',
+      align: 'right' as const,
       width: 140,
       render: (_, record) => (
-        <Space>
-          <Button type="link" aria-label={`详情 ${record.title}`} onClick={() => openEditor(record, 'view')}>详情</Button>
-          <Button type="link" aria-label={`编辑 ${record.title}`} onClick={() => openEditor(record, 'edit')}>编辑</Button>
-        </Space>
+        <TableRowActions
+          actions={[
+            {
+              key: 'detail',
+              label: '详情',
+              ariaLabel: `详情 ${record.title}`,
+              onClick: () => openEditor(record, 'view'),
+            },
+            {
+              key: 'edit',
+              label: '编辑',
+              ariaLabel: `编辑 ${record.title}`,
+              onClick: () => openEditor(record, 'edit'),
+            },
+          ]}
+          moreAriaLabel={`更多操作 ${record.title}`}
+        />
       ),
     },
   ];
   return (
     <RelatedTable
       query={null}
-      toolbar={null}
+      toolbar={
+        <>
+          <Typography.Text>共 {data.length} 条</Typography.Text>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>
+            新建问卷
+          </Button>
+        </>
+      }
       batch={
         selectedRowKeys.length ? (
           <Flex className="batch-toolbar" justify="space-between" align="center">
@@ -211,7 +240,18 @@ export function SurveyList({ activity }: { activity: Activity }) {
         <Modal
           title={mode === 'create' ? '新建问卷' : mode === 'edit' ? '编辑问卷' : '问卷详情'}
           open={open}
-          footer={mode === 'view' ? <Space><Button type="primary" onClick={() => setMode('edit')}>编辑</Button><Button onClick={() => setOpen(false)}>关闭</Button></Space> : modalFooter}
+          footer={
+            mode === 'view' ? (
+              <Space>
+                <Button onClick={() => setOpen(false)}>关闭</Button>
+                <Button type="primary" onClick={() => setMode('edit')}>
+                  编辑
+                </Button>
+              </Space>
+            ) : (
+              modalFooter
+            )
+          }
           onOk={save}
           onCancel={() => setOpen(false)}
           okText="确认"
@@ -250,13 +290,13 @@ export function ApprovalList({ activity }: { activity: Activity }) {
   const columns: TableColumnsType<ApprovalRecord> = [
     { title: '审批动作', dataIndex: 'action', width: 110 },
     { title: '处理人', dataIndex: 'operator', width: 120 },
-    { title: '意见', dataIndex: 'comment', render: (value: string) => value || '—' },
+    { title: '意见', dataIndex: 'comment', ellipsis: true, render: (value: string) => <TableEllipsisText text={value || '—'} /> },
     { title: '处理时间', dataIndex: 'createdAt', width: 180 },
   ];
   return (
     <RelatedTable
       query={null}
-      toolbar={null}
+      toolbar={<Typography.Text>共 {data.length} 条</Typography.Text>}
       batch={null}
       table={
         <Table
@@ -281,6 +321,7 @@ export function ApprovalList({ activity }: { activity: Activity }) {
 
 export function SignupList({ activity }: { activity: Activity }) {
   const { message, modal } = App.useApp();
+  const { promptReject, rejectReasonModal } = useRejectReasonPrompt();
   const data = useRelated('signups', activity.id);
   const signupFields = useMemo(() => activity.signupFields ?? [], [activity.signupFields]);
   const defaultSignupType = useMemo(
@@ -338,14 +379,17 @@ export function SignupList({ activity }: { activity: Activity }) {
     });
   };
   const rejectOne = (record: SignupRecord) => {
-    modal.confirm({
+    promptReject({
       title: `确认驳回「${record.name}」的报名？`,
-      content: '驳回后该人员将无法参加本活动。',
-      okText: '确认',
-      cancelText: '取消',
-      footer: modalFooter,
-      onOk: () => {
-        patchRelated('signups', (list) => list.map((item) => (item.id === record.id ? { ...item, status: '已驳回' } : item)));
+      description: '驳回后该人员将无法参加本活动。',
+      onConfirm: (reason) => {
+        patchRelated('signups', (list) =>
+          list.map((item) =>
+            item.id === record.id
+              ? { ...item, status: '已驳回' as const, rejectReason: reason || undefined }
+              : item,
+          ),
+        );
         message.success(`已驳回「${record.name}」的报名`);
       },
     });
@@ -428,20 +472,58 @@ export function SignupList({ activity }: { activity: Activity }) {
     setImportOpen(false);
     setImportList([]);
   };
-  const batchStatus = (status: SignupRecord['status'], label: string) => {
+  const batchStatus = (status: SignupRecord['status'], label: string, reason?: string) => {
     const targets = selected.filter((item) => item.status === '待审核');
     if (!targets.length) {
       message.info('已选报名均不是待审核状态');
       return;
     }
     const ids = new Set(targets.map((item) => item.id));
-    patchRelated('signups', (list) => list.map((item) => (ids.has(item.id) ? { ...item, status } : item)));
+    const rejectReason = status === '已驳回' ? reason || undefined : undefined;
+    patchRelated('signups', (list) =>
+      list.map((item) =>
+        ids.has(item.id)
+          ? {
+              ...item,
+              status,
+              rejectReason: status === '已驳回' ? rejectReason : status === '已通过' ? undefined : item.rejectReason,
+            }
+          : item,
+      ),
+    );
     message.success(`已${label} ${targets.length} 条报名`);
     setSelectedRowKeys(selectedRowKeys.filter((key) => !ids.has(Number(key))));
   };
   const columns: TableColumnsType<SignupRecord> = [
-    { title: '姓名', dataIndex: 'name', width: 110 },
-    { title: '部门', dataIndex: 'department', width: 120 },
+    {
+      title: '姓名',
+      dataIndex: 'name',
+      width: 110,
+      ellipsis: true,
+      render: (value: string) => <TableEllipsisText text={value} />,
+    },
+    {
+      title: '部门',
+      dataIndex: 'department',
+      width: 120,
+      ellipsis: true,
+      render: (value: string) => <TableEllipsisText text={value || '—'} />,
+    },
+    ...(needsSessionPick(activity.scheduleType)
+      ? [
+          {
+            title: '场次',
+            key: 'sessions',
+            width: 260,
+            ellipsis: true,
+            render: (_: unknown, record: SignupRecord) => (
+              <TableEllipsisText
+                text={formatPickedSessionsLabel(activity.sessions ?? [], resolveSignupRecordAnswers(record)['场次']) || '—'}
+              />
+            ),
+          },
+        ]
+      : []),
     ...(signupFields.length
       ? [
           {
@@ -449,47 +531,73 @@ export function SignupList({ activity }: { activity: Activity }) {
             key: 'collection',
             width: 220,
             ellipsis: true,
-            render: (_: unknown, record: SignupRecord) =>
-              formatSignupAnswersSummary(signupFields, resolveSignupRecordAnswers(record)),
+            render: (_: unknown, record: SignupRecord) => (
+              <TableEllipsisText text={formatSignupAnswersSummary(signupFields, resolveSignupRecordAnswers(record))} />
+            ),
           },
         ]
       : []),
     { title: '状态', dataIndex: 'status', width: 110, render: (value: string) => <Tag color={statusColor[value]}>{value}</Tag> },
     { title: '报名时间', dataIndex: 'createdAt', width: 180 },
+    ...(activity.checkInEnabled
+      ? [
+          {
+            title: '签到',
+            key: 'checkIn',
+            width: 220,
+            ellipsis: true,
+            render: (_: unknown, record: SignupRecord) => (
+              <TableEllipsisText text={formatSignupCheckIns(record.checkIns, activity.sessions ?? [])} />
+            ),
+          },
+        ]
+      : []),
     {
       title: '操作',
       key: 'action',
       fixed: 'right',
-      width: signupFields.length ? 200 : 160,
-      render: (_, record) => (
-        <Space>
-          {signupFields.length ? (
-            <Button type="link" aria-label={`查看 ${record.name} 的报名详情`} onClick={() => setDetailRecord(record)}>
-              报名详情
-            </Button>
-          ) : null}
-          {record.status === '待审核' ? (
-            <>
-              <Button
-                type="link"
-                aria-label={`通过 ${record.name} 的报名`}
-                onClick={() => {
-                  patchRelated('signups', (list) => list.map((item) => (item.id === record.id ? { ...item, status: '已通过' } : item)));
-                  message.success(`已通过「${record.name}」的报名`);
-                }}
-              >
-                通过
-              </Button>
-              <Button type="link" aria-label={`驳回 ${record.name} 的报名`} onClick={() => rejectOne(record)}>
-                驳回
-              </Button>
-            </>
-          ) : null}
-          <Button type="link" aria-label={`删除 ${record.name} 的报名`} onClick={() => deleteOne(record)}>
-            删除
-          </Button>
-        </Space>
-      ),
+      align: 'right' as const,
+      width: 220,
+      render: (_, record) => {
+        const actions: TableRowAction[] = [];
+        if (signupFields.length) {
+          actions.push({
+            key: 'detail',
+            label: '报名详情',
+            ariaLabel: `查看 ${record.name} 的报名详情`,
+            onClick: () => setDetailRecord(record),
+          });
+        }
+        if (record.status === '待审核') {
+          actions.push({
+            key: 'approve',
+            label: '通过',
+            ariaLabel: `通过 ${record.name} 的报名`,
+            onClick: () => {
+              patchRelated('signups', (list) =>
+                list.map((item) =>
+                  item.id === record.id ? { ...item, status: '已通过' as const, rejectReason: undefined } : item,
+                ),
+              );
+              message.success(`已通过「${record.name}」的报名`);
+            },
+          });
+          actions.push({
+            key: 'reject',
+            label: '驳回',
+            ariaLabel: `驳回 ${record.name} 的报名`,
+            onClick: () => rejectOne(record),
+          });
+        }
+        actions.push({
+          key: 'delete',
+          label: '删除',
+          ariaLabel: `删除 ${record.name} 的报名`,
+          danger: true,
+          onClick: () => deleteOne(record),
+        });
+        return <TableRowActions actions={actions} moreAriaLabel={`更多操作 ${record.name}`} />;
+      },
     },
   ];
   return (
@@ -523,19 +631,26 @@ export function SignupList({ activity }: { activity: Activity }) {
         </SearchPanel>
       }
       toolbar={
-        <Space>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>添加人员</Button>
-          <Button icon={<UploadOutlined />} onClick={() => { setImportList([]); setImportOpen(true); }}>批量导入</Button>
-          <Button
-            icon={<DownloadOutlined />}
-            onClick={() => {
-              downloadSignupExport(activity.title, signupFields, filtered);
-              message.success(`已导出 ${filtered.length} 条报名`);
-            }}
-          >
-            导出
-          </Button>
-        </Space>
+        <>
+          <Typography.Text>共 {filtered.length} 条</Typography.Text>
+          <Space>
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={() => {
+                downloadSignupExport(activity.title, signupFields, filtered, activity.sessions ?? []);
+                message.success(`已导出 ${filtered.length} 条报名`);
+              }}
+            >
+              导出
+            </Button>
+            <Button icon={<UploadOutlined />} onClick={() => { setImportList([]); setImportOpen(true); }}>
+              批量导入
+            </Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>
+              添加人员
+            </Button>
+          </Space>
+        </>
       }
       batch={
         selectedRowKeys.length ? (
@@ -560,13 +675,10 @@ export function SignupList({ activity }: { activity: Activity }) {
               </Button>
               <Button
                 onClick={() =>
-                  modal.confirm({
+                  promptReject({
                     title: `确认驳回已选 ${selectedRowKeys.length} 条报名？`,
-                    content: '仅待审核记录会被驳回，报名人将无法参加该活动。',
-                    okText: '确认',
-                    cancelText: '取消',
-                    footer: modalFooter,
-                    onOk: () => batchStatus('已驳回', '驳回'),
+                    description: '仅待审核记录会被驳回，报名人将无法参加该活动。',
+                    onConfirm: (reason) => batchStatus('已驳回', '驳回', reason),
                   })
                 }
               >
@@ -668,14 +780,33 @@ export function SignupList({ activity }: { activity: Activity }) {
                 bordered
                 column={1}
                 size="small"
-                items={signupFields.map((field) => ({
-                  key: field.key,
-                  label: field.label,
-                  children: formatSignupAnswerValue(field, resolveSignupRecordAnswers(detailRecord)[field.key]),
-                }))}
+                items={[
+                  ...(needsSessionPick(activity.scheduleType)
+                    ? [
+                        {
+                          key: '场次',
+                          label: '场次',
+                          children:
+                            formatPickedSessionsLabel(
+                              activity.sessions ?? [],
+                              resolveSignupRecordAnswers(detailRecord)['场次'],
+                            ) || '—',
+                        },
+                      ]
+                    : []),
+                  ...signupFields.map((field) => ({
+                    key: field.key,
+                    label: field.label,
+                    children: formatSignupAnswerValue(field, resolveSignupRecordAnswers(detailRecord)[field.key]),
+                  })),
+                  ...(detailRecord.rejectReason
+                    ? [{ key: 'rejectReason', label: '驳回原因', children: detailRecord.rejectReason }]
+                    : []),
+                ]}
               />
             ) : null}
           </Modal>
+          {rejectReasonModal}
         </>
       }
     />
@@ -723,7 +854,12 @@ export function CommentList({ activity }: { activity: Activity }) {
     setSelectedRowKeys([]);
   };
   const columns: TableColumnsType<CommentRecord> = [
-    { title: '评论内容', dataIndex: 'content' },
+    {
+      title: '评论内容',
+      dataIndex: 'content',
+      ellipsis: true,
+      render: (value: string) => <TableEllipsisText text={value} />,
+    },
     {
       title: '回复',
       key: 'reply',
@@ -752,11 +888,21 @@ export function CommentList({ activity }: { activity: Activity }) {
       title: '操作',
       key: 'action',
       fixed: 'right',
+      align: 'right' as const,
       width: 88,
       render: (_, record) => (
-        <Button type="link" aria-label={`删除 ${record.author} 的评论`} onClick={() => deleteOne(record)}>
-          删除
-        </Button>
+        <TableRowActions
+          actions={[
+            {
+              key: 'delete',
+              label: '删除',
+              ariaLabel: `删除 ${record.author} 的评论`,
+              danger: true,
+              onClick: () => deleteOne(record),
+            },
+          ]}
+          moreAriaLabel={`更多操作 ${record.author}`}
+        />
       ),
     },
   ];
@@ -787,7 +933,7 @@ export function CommentList({ activity }: { activity: Activity }) {
           </SearchField>
         </SearchPanel>
       }
-      toolbar={null}
+      toolbar={<Typography.Text>共 {filtered.length} 条</Typography.Text>}
       batch={
         selectedRowKeys.length ? (
           <Flex className="batch-toolbar" justify="space-between" align="center">
@@ -853,7 +999,7 @@ function RelatedTable({
     <div className="page-stack">
       {query}
       <Card>
-        {toolbar ? <div className="table-toolbar">{toolbar}</div> : null}
+        <div className="table-toolbar">{toolbar}</div>
         {batch}
         {table}
       </Card>

@@ -3,6 +3,9 @@ import {
   toCEndHash,
   toH5CourseListHash,
   toH5ExamListHash,
+  toH5InterestGroupsHash,
+  toH5VoteListHash,
+  toPcVoteListHash,
   toPcCourseListHash,
   toPcExamListHash,
 } from '../../../app/navigation';
@@ -15,6 +18,9 @@ const entries = [
   { title: '课程 H5', hint: '课程列表 · 手机', href: toH5CourseListHash() },
   { title: '考试 PC', hint: '考试列表 · 宽屏门户', href: toPcExamListHash() },
   { title: '考试 H5', hint: '考试列表 · 手机', href: toH5ExamListHash() },
+  { title: '投票 PC', hint: '普通投票 · 宽屏门户', href: toPcVoteListHash() },
+  { title: '投票 H5', hint: '普通投票 · 手机', href: toH5VoteListHash() },
+  { title: '兴趣小组 H5', hint: '兴趣小组 · 手机', href: toH5InterestGroupsHash() },
 ] as const;
 
 export function CEndPortal() {

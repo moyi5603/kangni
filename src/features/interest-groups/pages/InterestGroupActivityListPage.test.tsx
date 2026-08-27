@@ -16,10 +16,14 @@ describe('InterestGroupActivityListPage', () => {
     expect(html).toContain('新建活动');
     expect(html).toContain('AI 策划');
     expect(html).toContain('审核状态');
-    expect(html).toContain('发布状态');
+    expect(html).toContain('举办方式');
+    expect(html).toContain('活动标题');
     expect(html).toContain('详情');
     expect(html).toContain('编辑');
+    expect(html).toContain('复制');
     expect(html).toContain('待审核');
+    expect(html).not.toContain('发布状态');
+    expect(html).not.toContain('报名情况');
     expect(html).toContain('运动健身');
     expect(html).toContain('学习充电');
   });
@@ -29,7 +33,7 @@ describe('InterestGroupActivityListPage', () => {
     expect(html).toContain('滨江 8K 夜跑');
     expect(html).not.toContain('活动管理');
     expect(html).not.toContain('所属小组');
-    expect(html).toContain('活动名称');
+    expect(html).toContain('活动标题');
     expect(html).toContain('详情');
     expect(html).toContain('AI 策划');
     expect(html).not.toContain('夏季共读三期');

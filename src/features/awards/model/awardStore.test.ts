@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { __resetAwardStoreForTests, getAward, removeAward, setAwardResultPublic, upsertAward, useAwards } from './awardStore';
+import { __resetAwardStoreForTests, getAward, grantAwardRewards, removeAward, setAwardResultPublic, setAwardResults, upsertAward, useAwards } from './awardStore';
 import { initialAwards, type AwardRecord } from './award';
 
 function sample(overrides: Partial<AwardRecord> = {}): AwardRecord {
@@ -33,6 +33,17 @@ describe('awardStore', () => {
     setAwardResultPublic(4, false);
     expect(getAward(4)?.resultPublic).toBe(false);
     expect(getAward(4)?.publicityLocked).toBe(true);
+  });
+
+  it('grants rewards to winners and blocks later result edits', () => {
+    const results = [{ rank: 1, rankTitle: '一等奖', nominationId: 1, nominationTitle: '甲', nominees: ['张悦'], voteCount: 3, nominator: '王芳' }];
+    const grants = [{ name: '张悦', rank: 1, rankTitle: '一等奖', nominationTitle: '甲', points: 500, medalId: 'star', certificateId: 1 }];
+    expect(grantAwardRewards(5, results, grants)).toBe(true);
+    expect(getAward(5)?.rewardsGranted).toBe(true);
+    expect(getAward(5)?.results).toEqual(results);
+    expect(getAward(5)?.rewardGrants).toHaveLength(1);
+    expect(setAwardResults(5, [])).toBe(false);
+    expect(grantAwardRewards(5, results, grants)).toBe(false);
   });
 });
 

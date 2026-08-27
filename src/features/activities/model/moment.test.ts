@@ -5,9 +5,12 @@ import {
   formatMomentCommentLine,
   inferMomentType,
   isPlayableMomentVideo,
+  momentCoverUrl,
   momentImageGridMod,
+  MOMENT_REJECT_REASON_MAX,
   submitBlockReason,
   validateComposer,
+  validateRejectReason,
 } from './moment';
 
 describe('moment submit rules', () => {
@@ -83,6 +86,57 @@ describe('formatMomentCommentLine', () => {
   });
 });
 
+describe('momentCoverUrl', () => {
+  it('uses the first image, else the video url as cover', () => {
+    expect(
+      momentCoverUrl({
+        id: 1,
+        activityId: 1,
+        author: 'a',
+        content: '',
+        type: '图文类型',
+        imageUrls: ['/first.jpg', '/second.jpg'],
+        status: '已通过',
+        createdAt: '',
+        updatedAt: '',
+        likedBy: [],
+        comments: [],
+      }),
+    ).toBe('/first.jpg');
+    expect(
+      momentCoverUrl({
+        id: 2,
+        activityId: 1,
+        author: 'a',
+        content: '',
+        type: '视频',
+        imageUrls: [],
+        videoUrl: '/poster.jpg',
+        status: '已通过',
+        createdAt: '',
+        updatedAt: '',
+        likedBy: [],
+        comments: [],
+      }),
+    ).toBe('/poster.jpg');
+    expect(
+      momentCoverUrl({
+        id: 3,
+        activityId: 1,
+        author: 'a',
+        content: '',
+        type: '图文类型',
+        imageUrls: [],
+        status: '已通过',
+        createdAt: '',
+        updatedAt: '',
+        likedBy: [],
+        comments: [],
+      }),
+    ).toBeUndefined();
+  });
+});
+
 describe('isPlayableMomentVideo', () => {
   it('accepts video data URLs and file extensions, not image posters', () => {
     expect(isPlayableMomentVideo('data:video/mp4;base64,aaa')).toBe(true);
@@ -100,5 +154,19 @@ describe('momentImageGridMod', () => {
     expect(momentImageGridMod(4)).toBe('is-4');
     expect(momentImageGridMod(5)).toBe('is-3');
     expect(momentImageGridMod(9)).toBe('is-3');
+  });
+});
+
+describe('validateRejectReason', () => {
+  it('allows empty reason (optional)', () => {
+    expect(validateRejectReason('')).toBeUndefined();
+    expect(validateRejectReason('   ')).toBeUndefined();
+  });
+
+  it('caps length when provided', () => {
+    expect(validateRejectReason('ok')).toBeUndefined();
+    expect(validateRejectReason('字'.repeat(MOMENT_REJECT_REASON_MAX + 1))).toBe(
+      `驳回原因不能超过 ${MOMENT_REJECT_REASON_MAX} 字`,
+    );
   });
 });

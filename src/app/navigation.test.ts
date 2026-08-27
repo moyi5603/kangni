@@ -11,6 +11,17 @@ import {
   toCEndPortalHash,
   toH5CourseListHash,
   toH5ExamListHash,
+  toH5VoteListHash,
+  toH5VoteRecordsHash,
+  toH5VoteRecordHash,
+  toH5VoteDetailHash,
+  toH5VoteTakingHash,
+  toH5VoteResultsHash,
+  toPcVoteListHash,
+  toPcVoteRecordsHash,
+  toPcVoteDetailHash,
+  toPcVoteTakingHash,
+  toPcVoteResultsHash,
   toH5ExamPrepHash,
   toH5ExamTakingHash,
   toH5ExamResultHash,
@@ -29,6 +40,13 @@ import {
   toPcExamRankHash,
   toH5FavoritesHash,
   toH5MySignupsHash,
+  toH5ActivityListHash,
+  toH5PastMomentsHash,
+  toPcActivityListHash,
+  toPcPastMomentsHash,
+  toH5HonorHash,
+  toH5HonorAdminHash,
+  toH5InterestGroupsHash,
   toPcFavoritesHash,
   toPcMySignupsHash,
   toCEndSignupHash,
@@ -142,6 +160,36 @@ describe('C-end navigation', () => {
     expect(toPcMySignupsHash()).toBe('#/c/pc/my');
   });
 
+  it('parses the activity list secondary page before numeric ids', () => {
+    expect(parseCEndHash('#/c/h5/list')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'activity-list',
+    });
+    expect(parseCEndHash('#/c/pc/list')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'activity-list',
+    });
+    expect(toH5ActivityListHash()).toBe('#/c/h5/list');
+    expect(toPcActivityListHash()).toBe('#/c/pc/list');
+  });
+
+  it('parses the past-moments secondary page before numeric ids', () => {
+    expect(parseCEndHash('#/c/h5/moments')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'past-moments',
+    });
+    expect(parseCEndHash('#/c/pc/moments')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'past-moments',
+    });
+    expect(toH5PastMomentsHash()).toBe('#/c/h5/moments');
+    expect(toPcPastMomentsHash()).toBe('#/c/pc/moments');
+  });
+
   it('parses the H5 course list page', () => {
     expect(parseCEndHash('#/c/h5/courses')).toEqual({
       kind: 'c-end',
@@ -164,6 +212,123 @@ describe('C-end navigation', () => {
 
   it('builds the H5 exam list hash', () => {
     expect(toH5ExamListHash()).toBe('#/c/h5/exams');
+  });
+
+  it('parses and builds the H5 vote list hash', () => {
+    expect(parseCEndHash('#/c/h5/votes')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'votes',
+    });
+    expect(toH5VoteListHash()).toBe('#/c/h5/votes');
+    expect(parseCEndHash('#/c/h5/votes/mine')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'vote-records',
+    });
+    expect(toH5VoteRecordsHash()).toBe('#/c/h5/votes/mine');
+    expect(parseCEndHash('#/c/h5/votes/mine/1')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'vote-record',
+      voteResponseId: 1,
+    });
+    expect(toH5VoteRecordHash(1)).toBe('#/c/h5/votes/mine/1');
+    expect(parseCEndHash('#/c/h5/votes/mine/nope')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'vote-record',
+    });
+    expect(parseCEndHash('#/c/h5/vote-2')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'vote-detail',
+      voteId: 2,
+    });
+    expect(toH5VoteDetailHash(2)).toBe('#/c/h5/vote-2');
+    expect(parseCEndHash('#/c/h5/vote-2/take')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'vote-taking',
+      voteId: 2,
+    });
+    expect(toH5VoteTakingHash(2)).toBe('#/c/h5/vote-2/take');
+    expect(parseCEndHash('#/c/h5/vote-2/results')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'vote-results',
+      voteId: 2,
+    });
+    expect(toH5VoteResultsHash(2)).toBe('#/c/h5/vote-2/results');
+  });
+
+  it('parses and builds the PC vote hashes', () => {
+    expect(parseCEndHash('#/c/pc/votes')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'votes',
+    });
+    expect(toPcVoteListHash()).toBe('#/c/pc/votes');
+    expect(parseCEndHash('#/c/pc/votes/mine')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'vote-records',
+    });
+    expect(toPcVoteRecordsHash()).toBe('#/c/pc/votes/mine');
+    expect(parseCEndHash('#/c/pc/vote-2')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'vote-detail',
+      voteId: 2,
+    });
+    expect(toPcVoteDetailHash(2)).toBe('#/c/pc/vote-2');
+    expect(parseCEndHash('#/c/pc/vote-2/take')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'vote-taking',
+      voteId: 2,
+    });
+    expect(toPcVoteTakingHash(2)).toBe('#/c/pc/vote-2/take');
+    expect(parseCEndHash('#/c/pc/vote-2/results')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'vote-results',
+      voteId: 2,
+    });
+    expect(toPcVoteResultsHash(2)).toBe('#/c/pc/vote-2/results');
+  });
+
+  it('parses the H5 interest groups home', () => {
+    expect(parseCEndHash('#/c/h5/interest-groups')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'interest-groups',
+    });
+  });
+
+  it('builds the H5 interest groups hash', () => {
+    expect(toH5InterestGroupsHash()).toBe('#/c/h5/interest-groups');
+  });
+
+  it('parses the H5 honor page', () => {
+    expect(parseCEndHash('#/c/h5/honor')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'honor',
+    });
+  });
+
+  it('builds the H5 honor hash', () => {
+    expect(toH5HonorHash()).toBe('#/c/h5/honor');
+  });
+
+  it('parses the H5 honor admin page', () => {
+    expect(parseCEndHash('#/c/h5/honor-admin')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'honor-admin',
+    });
+    expect(toH5HonorAdminHash()).toBe('#/c/h5/honor-admin');
   });
 
   it('parses the H5 exam prep page from list card hashes', () => {
@@ -392,6 +557,15 @@ describe('C-end navigation', () => {
     });
     expect(toCEndSignupHash('h5', 2)).toBe('#/c/h5/2/signup');
     expect(toCEndSignupHash('pc', 9)).toBe('#/c/pc/9/signup');
+  });
+
+  it('parses activity check-in page and strips query', () => {
+    expect(parseCEndHash('#/c/h5/26/checkin?s=s-a&t=tok')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      activityId: 26,
+      h5Page: 'checkin',
+    });
   });
 
   it('ignores unknown extra segments and keeps the activity detail', () => {
@@ -707,13 +881,18 @@ describe('interest-groups application', () => {
     expect(keys.indexOf('interest-groups')).toBe(keys.indexOf('awards') - 1);
   });
 
-  it('uses four first-level menus in order', () => {
+  it('uses five first-level menus in order', () => {
     expect(applicationMenus['interest-groups']).toEqual([
       { key: 'interest-group-overview', icon: 'dashboard', label: '概览' },
       { key: 'interest-group-list', icon: 'team', label: '小组管理' },
       { key: 'interest-group-activities', icon: 'calendar', label: '活动管理' },
       { key: 'interest-group-categories', icon: 'appstore', label: '分类管理' },
+      { key: 'interest-group-rules', icon: 'fileText', label: '规则设置' },
     ]);
+    expect(parseLocationHash('#/interest-groups/interest-group-rules')).toEqual({
+      application: 'interest-groups',
+      page: 'interest-group-rules',
+    });
   });
 
   it('parses leaf hashes and falls back to 概览', () => {
@@ -778,16 +957,16 @@ describe('awards application', () => {
     });
     const keys = applications.map((item) => item.key);
     expect(keys.indexOf('awards')).toBe(keys.indexOf('interest-groups') + 1);
-    expect(keys.indexOf('awards')).toBe(keys.indexOf('training') - 1);
+    expect(keys.indexOf('awards')).toBe(keys.indexOf('voting') - 1);
   });
 
-  it('uses four first-level menus including 评优证书', () => {
+  it('uses three first-level menus including 评优证书', () => {
     expect(applicationMenus.awards).toEqual([
       { key: 'award-overview', icon: 'dashboard', label: '概览' },
       { key: 'award-list', icon: 'trophy', label: '评优管理' },
       { key: 'award-certificates', icon: 'gift', label: '评优证书' },
-      { key: 'award-rules', icon: 'fileText', label: '规则设置' },
     ]);
+    expect(applicationMenus.awards.some((item) => item.key === 'award-rules')).toBe(false);
   });
 
   it('parses leaf hashes, hidden form pages, and falls back to 概览', () => {
@@ -805,7 +984,7 @@ describe('awards application', () => {
     });
     expect(parseLocationHash('#/awards/award-rules')).toEqual({
       application: 'awards',
-      page: 'award-rules',
+      page: 'award-overview',
     });
     expect(parseLocationHash('#/awards/award-create')).toEqual({
       application: 'awards',
@@ -837,6 +1016,92 @@ describe('awards application', () => {
   it('stays out of the top-bar direct applications', () => {
     const keys = getDirectApplications(4).map((item) => item.key);
     expect(keys).not.toContain('awards');
+  });
+});
+
+describe('voting application', () => {
+  it('registers the app under 员工与组织 after 评优', () => {
+    expect(getApplication('voting')).toEqual({
+      key: 'voting',
+      label: '投票',
+      category: '员工与组织',
+      icon: 'checkSquare',
+      defaultPage: 'vote-overview',
+    });
+    const keys = applications.map((item) => item.key);
+    expect(keys.indexOf('voting')).toBe(keys.indexOf('awards') + 1);
+    expect(keys.indexOf('voting')).toBe(keys.indexOf('training') - 1);
+  });
+
+  it('uses two first-level menus without 规则设置', () => {
+    expect(applicationMenus.voting).toEqual([
+      { key: 'vote-overview', icon: 'dashboard', label: '概览' },
+      { key: 'vote-list', icon: 'checkSquare', label: '投票管理' },
+    ]);
+  });
+
+  it('parses leaf hashes, hidden form pages, and falls back to 概览', () => {
+    expect(parseLocationHash('#/voting/vote-overview')).toEqual({
+      application: 'voting',
+      page: 'vote-overview',
+    });
+    expect(parseLocationHash('#/voting/vote-list')).toEqual({
+      application: 'voting',
+      page: 'vote-list',
+    });
+    expect(parseLocationHash('#/voting/vote-rules')).toEqual({
+      application: 'voting',
+      page: 'vote-overview',
+    });
+    expect(parseLocationHash('#/voting/vote-create')).toEqual({
+      application: 'voting',
+      page: 'vote-create',
+    });
+    expect(parseLocationHash('#/voting/vote-edit/2')).toEqual({
+      application: 'voting',
+      page: 'vote-edit',
+      recordId: '2',
+    });
+    expect(parseLocationHash('#/voting/vote-detail/2')).toEqual({
+      application: 'voting',
+      page: 'vote-detail',
+      recordId: '2',
+    });
+    expect(parseLocationHash('#/voting/vote-detail/2/results')).toEqual({
+      application: 'voting',
+      page: 'vote-detail',
+      recordId: '2',
+      tab: 'results',
+    });
+    expect(parseLocationHash('#/voting/vote-detail/2/records')).toEqual({
+      application: 'voting',
+      page: 'vote-detail',
+      recordId: '2',
+      tab: 'records',
+    });
+    expect(parseLocationHash('#/voting/vote-detail/2/comments')).toEqual({
+      application: 'voting',
+      page: 'vote-detail',
+      recordId: '2',
+      tab: 'comments',
+    });
+    expect(siderSelectedKey('vote-create')).toBe('vote-list');
+    expect(siderSelectedKey('vote-edit')).toBe('vote-list');
+    expect(siderSelectedKey('vote-detail')).toBe('vote-list');
+    expect(parseLocationHash('#/voting')).toEqual({
+      application: 'voting',
+      page: 'vote-overview',
+    });
+    expect(parseLocationHash('#/voting/not-a-page')).toEqual({
+      application: 'voting',
+      page: 'vote-overview',
+    });
+  });
+
+  it('stays out of the top-bar direct applications', () => {
+    const keys = getDirectApplications(4).map((item) => item.key);
+    expect(keys).toEqual(['workbench', 'organization', 'products', 'orders']);
+    expect(keys).not.toContain('voting');
   });
 });
 

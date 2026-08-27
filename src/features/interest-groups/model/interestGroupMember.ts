@@ -9,6 +9,7 @@ export type InterestGroupMember = {
   role: 'lead' | 'member';
   status: InterestGroupMemberStatus;
   joinedAt: string;
+  rejectReason?: string;
 };
 
 export const interestGroupMemberRoleLabels: Record<InterestGroupMember['role'], string> = {

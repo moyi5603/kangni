@@ -9,6 +9,48 @@ import {
 } from '../model/activityPointRules';
 import { getActivityPointRules, saveActivityPointRules, useActivityPointRules } from '../model/activityPointRulesStore';
 
+const intRules = [
+  { required: true, message: '请输入积分' },
+  { type: 'integer' as const, min: 0, message: '须为不小于 0 的整数' },
+];
+
+function GrantAndDailyFields({
+  pointsName,
+  dailyName,
+}: {
+  pointsName: keyof ActivityPointRules;
+  dailyName: keyof ActivityPointRules;
+}) {
+  return (
+    <Space align="center" wrap>
+      <Form.Item name={pointsName} noStyle rules={intRules}>
+        <InputNumber min={0} precision={0} style={{ width: 96 }} placeholder="积分" />
+      </Form.Item>
+      <span>积分，每日上限</span>
+      <Form.Item
+        name={dailyName}
+        noStyle
+        dependencies={[pointsName]}
+        rules={[
+          ...intRules,
+          ({ getFieldValue }) => ({
+            validator(_, value) {
+              const points = getFieldValue(pointsName);
+              if (typeof value === 'number' && typeof points === 'number' && value < points) {
+                return Promise.reject(new Error('每日上限不能小于单次积分'));
+              }
+              return Promise.resolve();
+            },
+          }),
+        ]}
+      >
+        <InputNumber min={0} precision={0} style={{ width: 96 }} placeholder="每日上限" />
+      </Form.Item>
+      <span>积分</span>
+    </Space>
+  );
+}
+
 export function ActivityRulesPage() {
   const { message } = App.useApp();
   const stored = useActivityPointRules();
@@ -58,7 +100,7 @@ export function ActivityRulesPage() {
         onValuesChange={() => setDirty(true)}
       >
         <Card title="活动积分" className="activity-point-rules-card">
-          <Form.Item label="报名活动可得积分" required>
+          <Form.Item label="活动积分" required>
             <Space align="center">
               <Form.Item
                 name="signupPointsMin"
@@ -94,35 +136,14 @@ export function ActivityRulesPage() {
               <span>积分</span>
             </Space>
           </Form.Item>
-          <Form.Item
-            name="firstCommentPointsMax"
-            label="活动首评最多可得"
-            rules={[
-              { required: true, message: '请输入首评积分上限' },
-              { type: 'integer', min: 0, message: '须为不小于 0 的整数' },
-            ]}
-          >
-            <InputNumber min={0} precision={0} style={{ width: 160 }} addonAfter="积分" placeholder="上限" />
+          <Form.Item label="活动评论可得" required>
+            <GrantAndDailyFields pointsName="firstCommentPointsMax" dailyName="firstCommentPointsDailyMax" />
           </Form.Item>
-          <Form.Item
-            name="ratingPointsMax"
-            label="活动打分最多可得"
-            rules={[
-              { required: true, message: '请输入打分积分上限' },
-              { type: 'integer', min: 0, message: '须为不小于 0 的整数' },
-            ]}
-          >
-            <InputNumber min={0} precision={0} style={{ width: 160 }} addonAfter="积分" placeholder="上限" />
+          <Form.Item label="活动打分可得" required>
+            <GrantAndDailyFields pointsName="ratingPointsMax" dailyName="ratingPointsDailyMax" />
           </Form.Item>
-          <Form.Item
-            name="firstMomentPointsMax"
-            label="活动首次发布精彩瞬间最多可得"
-            rules={[
-              { required: true, message: '请输入精彩瞬间积分上限' },
-              { type: 'integer', min: 0, message: '须为不小于 0 的整数' },
-            ]}
-          >
-            <InputNumber min={0} precision={0} style={{ width: 160 }} addonAfter="积分" placeholder="上限" />
+          <Form.Item label="发布精彩瞬间可得" required>
+            <GrantAndDailyFields pointsName="firstMomentPointsMax" dailyName="firstMomentPointsDailyMax" />
           </Form.Item>
         </Card>
         <div className="sticky-form-actions">

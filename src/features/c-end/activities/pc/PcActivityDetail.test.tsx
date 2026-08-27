@@ -21,14 +21,26 @@ describe('PC activity detail', () => {
     expect(html).toContain('c-detail-info-card');
     expect(html).toContain('活动介绍');
     expect(html).toContain('发起人：');
-    expect(html).toContain('总名额：');
-    expect(html).toContain('分类：培训');
-    expect(html).toContain('活动时间：08-18 09:30 ~ 08-20 17:30');
-    expect(html).toContain('报名时间：08-01 09:00 ~ 08-31 18:00');
+    expect(html).toContain('每场名额：');
+    expect(html).not.toContain('分类：培训');
+    const cover = html.slice(html.indexOf('c-detail-cover'), html.indexOf('c-article-body'));
+    expect(cover).toContain('c-cover-badges');
+    expect(cover).toContain('c-cover-title');
+    expect(cover).toContain('新员工入职训练营');
+    expect(cover.indexOf('c-cover-badges')).toBeLessThan(cover.indexOf('c-cover-title'));
+    expect(cover.indexOf('进行中')).toBeLessThan(cover.indexOf('置顶'));
+    expect(cover.indexOf('置顶')).toBeLessThan(cover.indexOf('系列活动'));
+    expect(cover.indexOf('系列活动')).toBeLessThan(cover.indexOf('培训'));
+    expect(cover).toContain('c-pill is-category');
+    expect(cover).toContain('c-pill is-format');
+    expect(html).not.toContain('c-detail-heading');
+    expect(html).toContain('活动时间：首场 08-18 09:30 ~ 08-18 17:30 · 共 3 场');
+    expect(html).toContain('报名时间：08-01 09:00 起，每场开场时截止');
     expect(html).not.toContain('活动时间：2026-');
     expect(html).not.toContain('报名时间：2026-');
-    expect(html).toContain('已报名 54 人');
-    expect(html).toContain('href="tel:13800001111"');
+    expect(html).not.toContain('已报名 54 人');
+    expect(html).not.toContain('联系电话');
+    expect(html).not.toContain('href="tel:');
     expect(article).toBeGreaterThan(-1);
     expect(aside).toBeGreaterThan(article);
     expect(cta).toBeGreaterThan(aside);
@@ -36,11 +48,14 @@ describe('PC activity detail', () => {
     expect(html).not.toContain('活动评分');
   });
 
-  it('shows the rating block in the aside after the activity ends', () => {
+  it('shows the rating block above comments after the activity ends', () => {
     const html = renderToStaticMarkup(<PcActivityDetail id={1} />);
     const aside = html.slice(html.indexOf('<aside class="c-pc-side">'));
-    expect(aside).toContain('活动评分');
-    expect(aside).toContain('aria-label="评 5 星"');
+    expect(aside).not.toContain('活动评分');
+    expect(html).toContain('活动评分');
+    expect(html).toContain('aria-label="评 5 星"');
+    expect(html.indexOf('pc-activity-intro')).toBeLessThan(html.indexOf('c-activity-rating'));
+    expect(html.indexOf('c-activity-rating')).toBeLessThan(html.indexOf('id="activity-social"'));
   });
 
   it('does not keep core activity facts only in the aside', () => {
@@ -49,28 +64,46 @@ describe('PC activity detail', () => {
 
     expect(aside).not.toContain('发起人：');
     expect(aside).not.toContain('联系电话：');
+    expect(aside).not.toContain('分类：培训');
+    expect(aside).not.toContain('c-pill is-category');
+    expect(aside).not.toContain('进行中');
     expect(aside).toContain('class="c-cta"');
-    expect(aside).toContain('总名额：60 人');
-    expect(aside).toContain('已报名 54 人');
+    expect(aside).toContain('每场名额：60 人');
+    expect(aside).not.toContain('已报名 54 人');
+    expect(aside).not.toContain('c-quota-card');
+    expect(aside.indexOf('每场名额：60 人')).toBeLessThan(aside.indexOf('c-signup-people'));
+    expect(aside.indexOf('c-signup-people')).toBeLessThan(aside.indexOf('c-engage'));
+  });
+
+  it('puts recent sessions under quota in the aside', () => {
+    const html = renderToStaticMarkup(<PcActivityDetail id={26} />);
+    const aside = html.slice(html.indexOf('<aside class="c-pc-side">'));
+    const card = html.slice(html.indexOf('c-detail-info-card'), html.indexOf('c-detail-content-section'));
+    expect(aside).toContain('最近场次');
+    expect(aside).toContain('已报1场');
+    expect(aside.indexOf('每场名额')).toBeLessThan(aside.indexOf('最近场次'));
+    expect(aside.indexOf('最近场次')).toBeLessThan(aside.indexOf('c-signup-people'));
+    expect(card).not.toContain('最近场次');
   });
 
   it('keeps quota out of the left info card', () => {
     const html = renderToStaticMarkup(<PcActivityDetail id={2} />);
     const card = html.slice(html.indexOf('c-detail-info-card'), html.indexOf('c-detail-content-section'));
-    expect(card).toContain('分类：培训');
+    expect(card).not.toContain('分类：培训');
     expect(card).not.toContain('总名额：');
     expect(card).not.toContain('已报名 54 人');
   });
 
   it('summarizes approved signup people instead of tiling them', () => {
     const html = renderToStaticMarkup(<PcActivityDetail id={2} />);
-    const block = html.slice(html.indexOf('c-signup-people'), html.indexOf('id="activity-social"'));
-    expect(block).toContain('已报名人员（50）');
-    expect(block).toContain('+45');
-    expect(block).toContain('查看名单');
-    expect(block).toContain('c-avatar');
-    expect(block).not.toContain('前端组');
-    expect(block).not.toContain('王芳');
+    const aside = html.slice(html.indexOf('<aside class="c-pc-side">'));
+    expect(aside).toContain('已报名人员（50）');
+    expect(aside).not.toContain('c-quota-card');
+    expect(aside).toContain('+45');
+    expect(aside).toContain('查看名单');
+    expect(aside).toContain('c-avatar');
+    expect(aside).not.toContain('前端组');
+    expect(aside).not.toContain('王芳');
   });
 
   it('renders a missing activity as a recovery state', () => {
@@ -81,9 +114,15 @@ describe('PC activity detail', () => {
     expect(html).not.toContain('c-pc-detail');
   });
 
-  it('lets a signed-up user cancel before the deadline', () => {
-    const html = renderToStaticMarkup(<PcActivityDetail id={2} />);
+  it('lets a signed-up user cancel a one-off activity before the deadline', () => {
+    const html = renderToStaticMarkup(<PcActivityDetail id={9} />);
     expect(html).toContain('取消报名');
+  });
+
+  it('lets a signed-up user adjust remaining sessions instead of cancel', () => {
+    const html = renderToStaticMarkup(<PcActivityDetail id={26} />);
+    expect(html).toContain('调整报名');
+    expect(html).not.toContain('取消报名');
   });
 
   it('puts social actions above the signup CTA and lists comments in the article', () => {
@@ -117,6 +156,13 @@ describe('PC activity detail', () => {
     expect(html).not.toContain('c-social-tab');
     expect(html).not.toContain('精彩瞬间');
     expect(html).toContain('id="activity-comments"');
+  });
+
+  it('opens the existing session list when adjusting', () => {
+    const html = renderToStaticMarkup(<PcActivityDetail id={26} signupOpen />);
+    expect(html).toContain('调整报名');
+    expect(html).toContain('参加场次');
+    expect(html).toContain('保存场次');
   });
 
   it('collects signup info in a dialog on the detail page', () => {

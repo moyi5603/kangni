@@ -499,16 +499,9 @@ export function InterestGroupMomentListPage({ activityId, groupId }: InterestGro
         width={b2bStandards.form.modalWidth}
         destroyOnHidden
       >
-        <Form form={rejectForm} layout="horizontal" className="edit-form" requiredMark labelWrap={false} validateTrigger="onBlur">
-          <Form.Item
-            name="reason"
-            label="驳回原因"
-            rules={[
-              { required: true, whitespace: true, message: '请填写驳回原因' },
-              { max: 200, message: '驳回原因不能超过 200 字' },
-            ]}
-          >
-            <Input.TextArea rows={4} maxLength={200} showCount placeholder="请填写驳回原因，作者改完后可再提交" />
+        <Form form={rejectForm} layout="horizontal" className="edit-form" requiredMark={false} labelWrap={false} validateTrigger="onBlur">
+          <Form.Item name="reason" label="驳回原因" extra="选填" rules={[{ max: 200, message: '驳回原因不能超过 200 字' }]}>
+            <Input.TextArea rows={4} maxLength={200} showCount placeholder="选填，作者改完后可再提交" />
           </Form.Item>
         </Form>
       </Modal>

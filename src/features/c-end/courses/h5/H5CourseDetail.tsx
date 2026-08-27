@@ -6,10 +6,10 @@ import { useCEndToast } from '../../activities/components/CEndToast';
 import { H5CommentSheet } from '../../activities/h5/H5CommentSheet';
 import {
   courseCommentStatusLabel,
-  formatCourseCommentDisplayTime,
   submitCourseComment,
   useVisibleCourseComments,
 } from '../../../training/model/courseCommentStore';
+import { formatCEndDateTime } from '../../formatDateTime';
 import { toggleCourseFavorite, toggleCourseLike, useCourseEngagement } from '../../../training/model/courseEngagementStore';
 import { useCourseCommentConfig } from '../../../training/model/trainingStore';
 import { getClientCourse, getCourseLearning } from '../model/clientCourse';
@@ -58,7 +58,7 @@ export function H5CourseDetail({ id }: { id: number }) {
         id: item.id,
         author: item.author,
         text: item.text,
-        time: formatCourseCommentDisplayTime(item.createdAt),
+        time: formatCEndDateTime(item.createdAt.replace(/:\d{2}$/, '')),
         statusLabel: courseCommentStatusLabel(item.status),
       })),
     [commentRecords],

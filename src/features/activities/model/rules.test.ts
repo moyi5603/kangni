@@ -7,6 +7,7 @@ import {
   formatApprovalNodeSummary,
   listCreatableTypeOptions,
   prepareRulesForSave,
+  formatSignupAuditSummary,
   type ActivityTypeRule,
 } from './rules';
 
@@ -86,5 +87,15 @@ describe('formatApprovalNodeSummary', () => {
     expect(
       formatApprovalNodeSummary({ id: '3', assigneeMode: 'parentLevelLeader', reviewerIds: [] }),
     ).toBe('上级部门负责人');
+  });
+});
+
+describe('formatSignupAuditSummary', () => {
+  it('uses one label for off, admin, and node flow', () => {
+    expect(formatSignupAuditSummary(false, [])).toBe('无需审核');
+    expect(formatSignupAuditSummary(true, [])).toBe('需要审核');
+    expect(
+      formatSignupAuditSummary(true, [{ id: '1', assigneeMode: 'sameLevelLeader', reviewerIds: [] }]),
+    ).toBe('需要审核；第 1 节点：本级部门负责人');
   });
 });

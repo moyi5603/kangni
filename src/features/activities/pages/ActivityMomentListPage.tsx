@@ -1,5 +1,4 @@
-import { useMemo, useState, type Key, type ReactNode } from 'react';
-import { DownOutlined } from '@ant-design/icons';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
   App,
   Button,
@@ -7,17 +6,13 @@ import {
   DatePicker,
   Descriptions,
   Drawer,
-  Dropdown,
   Empty,
   Flex,
-  Form,
   Image,
   Input,
-  Modal,
   Select,
   Space,
   Table,
-  Tag,
   Tooltip,
   Typography,
 } from 'antd';
@@ -25,26 +20,13 @@ import type { TableColumnsType } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { SearchField, SearchPanel } from '../../../shared/ui/ListPage';
+import { TableRowActions, type TableRowAction } from '../../../shared/ui/TableRowActions';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import { personDepartment, type Activity } from '../model/activity';
-import { excerpt, isPending, momentStatuses, momentTypes, type MomentRecord } from '../model/moment';
-import {
-  approveMoments,
-  deleteMoment,
-  deleteMomentComment,
-  deleteMomentReply,
-  momentCommentTotal,
-  rejectMoments,
-  useMoments,
-} from '../model/momentStore';
+import { excerpt, momentTypes, type MomentRecord } from '../model/moment';
+import { deleteMoment, deleteMomentComment, deleteMomentReply, momentCommentTotal, useMoments } from '../model/momentStore';
 
 type DateRange = [Dayjs | null, Dayjs | null] | null;
-
-const statusColor: Record<string, string> = {
-  待审核: 'warning',
-  已通过: 'success',
-  已驳回: 'error',
-};
 
 function optionsOf(values: readonly string[]) {
   return values.map((value) => ({ value, label: value }));
@@ -61,8 +43,8 @@ function inDayRange(value: string, range: DateRange) {
 function modalFooter(_: ReactNode, extra: { OkBtn: React.FC; CancelBtn: React.FC }) {
   return (
     <Space>
-      <extra.OkBtn />
       <extra.CancelBtn />
+      <extra.OkBtn />
     </Space>
   );
 }
@@ -75,103 +57,30 @@ function playableVideo(url?: string) {
 export function ActivityMomentListPage({ activity }: { activity: Activity }) {
   const { message, modal } = App.useApp();
   const data = useMoments(activity.id);
-  const [draft, setDraft] = useState<{ content: string; type?: MomentRecord['type']; status?: MomentRecord['status']; author: string; createdAt: DateRange }>({
+  const [draft, setDraft] = useState<{ content: string; type?: MomentRecord['type']; author: string; createdAt: DateRange }>({
     content: '',
     author: '',
     createdAt: null,
   });
   const [query, setQuery] = useState(draft);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState<MomentRecord>();
-  const [rejectOpen, setRejectOpen] = useState(false);
-  const [rejectIds, setRejectIds] = useState<number[]>([]);
-  const [rejectForm] = Form.useForm<{ reason: string }>();
   const filtered = useMemo(
     () =>
       data.filter(
         (item) =>
           (!query.content || item.content.includes(query.content)) &&
           (!query.type || item.type === query.type) &&
-          (!query.status || item.status === query.status) &&
           (!query.author || item.author.includes(query.author)) &&
           inDayRange(item.createdAt, query.createdAt),
       ),
     [data, query],
   );
-  const selected = data.filter((item) => selectedRowKeys.includes(item.id));
   const viewing = current ? data.find((item) => item.id === current.id) : undefined;
 
   const openDetail = (record: MomentRecord) => {
     setCurrent(record);
     setOpen(true);
-  };
-
-  const runApprove = (ids: number[]) => {
-    const result = approveMoments(ids);
-    if (!result.done && result.skipped) {
-      message.info('已选瞬间均不可审核');
-      return;
-    }
-    if (result.skipped) {
-      message.success(`已通过 ${result.done} 条瞬间，${result.skipped} 条非待审核已跳过`);
-      setSelectedRowKeys(selected.filter((item) => item.status !== '待审核').map((item) => item.id));
-    } else {
-      message.success(`已通过 ${result.done} 条瞬间`);
-      setSelectedRowKeys((keys) => keys.filter((key) => !ids.includes(Number(key))));
-    }
-  };
-
-  const confirmApprove = (records: MomentRecord[]) => {
-    if (records.length === 1) {
-      const record = records[0];
-      modal.confirm({
-        title: `确认通过「${excerpt(record.content)}」？`,
-        content: '通过后员工端可见。',
-        okText: '确认',
-        cancelText: '取消',
-        footer: modalFooter,
-        onOk: () => runApprove([record.id]),
-      });
-      return;
-    }
-    modal.confirm({
-      title: `确认通过已选 ${records.length} 条瞬间？`,
-      content: '待审核将变为已通过，员工端可见。其他状态保持不变。',
-      okText: '确认',
-      cancelText: '取消',
-      footer: modalFooter,
-      onOk: () => runApprove(records.map((item) => item.id)),
-    });
-  };
-
-  const openReject = (ids: number[]) => {
-    setRejectIds(ids);
-    rejectForm.resetFields();
-    setRejectOpen(true);
-  };
-
-  const submitReject = async () => {
-    const values = await rejectForm.validateFields();
-    const result = rejectMoments(rejectIds, values.reason);
-    if ('ok' in result && result.ok === false) {
-      message.error(result.message);
-      return;
-    }
-    if (!('done' in result)) return;
-    if (!result.done && result.skipped) {
-      message.info('已选瞬间均不可审核');
-      setRejectOpen(false);
-      return;
-    }
-    if (result.skipped) {
-      message.success(`已驳回 ${result.done} 条瞬间，${result.skipped} 条非待审核已跳过`);
-      setSelectedRowKeys(selected.filter((item) => item.status !== '待审核').map((item) => item.id));
-    } else {
-      message.success(`已驳回 ${result.done} 条瞬间`);
-      setSelectedRowKeys((keys) => keys.filter((key) => !rejectIds.includes(Number(key))));
-    }
-    setRejectOpen(false);
   };
 
   const confirmDelete = (record: MomentRecord) => {
@@ -183,7 +92,6 @@ export function ActivityMomentListPage({ activity }: { activity: Activity }) {
       footer: modalFooter,
       onOk: () => {
         deleteMoment(record.id);
-        setSelectedRowKeys((keys) => keys.filter((key) => key !== record.id));
         if (current?.id === record.id) setOpen(false);
         message.success(`已删除「${excerpt(record.content)}」`);
       },
@@ -232,7 +140,6 @@ export function ActivityMomentListPage({ activity }: { activity: Activity }) {
     },
     { title: '类型', dataIndex: 'type', width: 80 },
     { title: '提交人', dataIndex: 'author', width: 100 },
-    { title: '状态', dataIndex: 'status', width: 100, render: (value: string) => <Tag color={statusColor[value]}>{value}</Tag> },
     { title: '点赞', dataIndex: 'likedBy', width: 80, align: 'right', render: (value: string[]) => value.length },
     { title: '评论', key: 'comments', width: 80, align: 'right', render: (_, record) => momentCommentTotal(record) },
     { title: '提交时间', dataIndex: 'createdAt', width: 180 },
@@ -240,56 +147,42 @@ export function ActivityMomentListPage({ activity }: { activity: Activity }) {
       title: '操作',
       key: 'action',
       fixed: 'right',
-      width: 220,
-      render: (_, record) => (
-        <Space>
-          <Button type="link" aria-label={`详情 ${excerpt(record.content)}`} onClick={() => openDetail(record)}>
-            详情
-          </Button>
-          {isPending(record.status) ? (
-            <>
-              <Button type="link" aria-label={`通过 ${excerpt(record.content)}`} onClick={() => confirmApprove([record])}>
-                通过
-              </Button>
-              <Button type="link" aria-label={`驳回 ${excerpt(record.content)}`} onClick={() => openReject([record.id])}>
-                驳回
-              </Button>
-              <Dropdown
-                trigger={['click']}
-                menu={{
-                  items: [{ key: 'delete', label: '删除', danger: true, onClick: () => confirmDelete(record) }],
-                }}
-              >
-                <Button type="link" aria-label={`更多操作 ${excerpt(record.content)}`}>
-                  更多 <DownOutlined />
-                </Button>
-              </Dropdown>
-            </>
-          ) : (
-            <Button type="link" aria-label={`删除 ${excerpt(record.content)}`} onClick={() => confirmDelete(record)}>
-              删除
-            </Button>
-          )}
-        </Space>
-      ),
+      align: 'right' as const,
+      width: 140,
+      render: (_, record) => {
+        const actions: TableRowAction[] = [
+          {
+            key: 'detail',
+            label: '详情',
+            ariaLabel: `详情 ${excerpt(record.content)}`,
+            onClick: () => openDetail(record),
+          },
+          {
+            key: 'delete',
+            label: '删除',
+            ariaLabel: `删除 ${excerpt(record.content)}`,
+            danger: true,
+            onClick: () => confirmDelete(record),
+          },
+        ];
+        return <TableRowActions actions={actions} moreAriaLabel={`更多操作 ${excerpt(record.content)}`} />;
+      },
     },
   ];
 
-  const hasFilter = Boolean(query.content || query.type || query.status || query.author || query.createdAt);
+  const hasFilter = Boolean(query.content || query.type || query.author || query.createdAt);
 
   return (
     <div className="page-stack">
       <SearchPanel
         onSearch={() => {
           setQuery(draft);
-          setSelectedRowKeys([]);
           message.success('查询完成');
         }}
         onReset={() => {
           const empty = { content: '', author: '', createdAt: null as DateRange };
           setDraft(empty);
           setQuery(empty);
-          setSelectedRowKeys([]);
         }}
       >
         <SearchField label="内容">
@@ -301,33 +194,20 @@ export function ActivityMomentListPage({ activity }: { activity: Activity }) {
         <SearchField label="提交人">
           <Input allowClear placeholder="请输入提交人" value={draft.author} onChange={(event) => setDraft((currentDraft) => ({ ...currentDraft, author: event.target.value }))} />
         </SearchField>
-        <SearchField label="状态">
-          <Select allowClear placeholder="全部状态" value={draft.status} onChange={(value) => setDraft((currentDraft) => ({ ...currentDraft, status: value }))} options={optionsOf(momentStatuses)} />
-        </SearchField>
         <SearchField label="提交时间">
           <DatePicker.RangePicker style={{ width: '100%' }} value={draft.createdAt} onChange={(value) => setDraft((currentDraft) => ({ ...currentDraft, createdAt: value }))} />
         </SearchField>
       </SearchPanel>
       <Card>
-        {selectedRowKeys.length ? (
-          <Flex className="batch-toolbar" justify="space-between" align="center">
-            <Typography.Text>
-              已选择 <strong>{selectedRowKeys.length}</strong> 项
-            </Typography.Text>
-            <Space>
-              <Button onClick={() => confirmApprove(selected)}>批量通过</Button>
-              <Button onClick={() => openReject(selected.map((item) => item.id))}>批量驳回</Button>
-              <Button onClick={() => setSelectedRowKeys([])}>取消选择</Button>
-            </Space>
-          </Flex>
-        ) : null}
+        <div className="table-toolbar">
+          <Typography.Text>共 {filtered.length} 条</Typography.Text>
+        </div>
         <Table
           rowKey="id"
           sticky
-          rowSelection={{ selectedRowKeys, preserveSelectedRowKeys: true, onChange: setSelectedRowKeys }}
           columns={columns}
           dataSource={filtered}
-          scroll={{ x: 1100 }}
+          scroll={{ x: 900 }}
           pagination={{
             pageSize: b2bStandards.table.pageSize,
             pageSizeOptions: [...b2bStandards.table.pageSizeOptions],
@@ -344,21 +224,16 @@ export function ActivityMomentListPage({ activity }: { activity: Activity }) {
         width={b2bStandards.form.drawerWidth}
         destroyOnHidden
         footer={
-          viewing && isPending(viewing.status) ? (
+          viewing ? (
             <Space>
-              <Button type="primary" onClick={() => confirmApprove([viewing])}>
-                通过
+              <Button danger onClick={() => confirmDelete(viewing)}>
+                删除
               </Button>
-              <Button onClick={() => openReject([viewing.id])}>驳回</Button>
-              <Button onClick={() => setOpen(false)}>关闭</Button>
-            </Space>
-          ) : (
-            <Space>
               <Button type="primary" onClick={() => setOpen(false)}>
                 关闭
               </Button>
             </Space>
-          )
+          ) : null
         }
       >
         {viewing ? (
@@ -370,9 +245,7 @@ export function ActivityMomentListPage({ activity }: { activity: Activity }) {
                 { label: '内容', children: viewing.content || '—' },
                 { label: '类型', children: viewing.type },
                 { label: '提交人', children: viewing.author },
-                { label: '状态', children: <Tag color={statusColor[viewing.status]}>{viewing.status}</Tag> },
                 { label: '提交时间', children: viewing.createdAt },
-                ...(viewing.rejectReason ? [{ label: '驳回原因', children: viewing.rejectReason }] : []),
                 { label: '点赞', children: viewing.likedBy.length },
               ]}
             />
@@ -437,23 +310,6 @@ export function ActivityMomentListPage({ activity }: { activity: Activity }) {
           </Space>
         ) : null}
       </Drawer>
-      <Modal
-        title={rejectIds.length > 1 ? `驳回已选 ${rejectIds.length} 条瞬间` : '驳回瞬间'}
-        open={rejectOpen}
-        footer={modalFooter}
-        onOk={submitReject}
-        onCancel={() => setRejectOpen(false)}
-        okText="确认"
-        cancelText="取消"
-        width={b2bStandards.form.modalWidth}
-        destroyOnHidden
-      >
-        <Form form={rejectForm} layout="horizontal" className="edit-form" requiredMark labelWrap={false} validateTrigger="onBlur">
-          <Form.Item name="reason" label="驳回原因" rules={[{ required: true, whitespace: true, message: '请填写驳回原因' }, { max: 200, message: '驳回原因不能超过 200 字' }]}>
-            <Input.TextArea rows={4} maxLength={200} showCount placeholder="请填写驳回原因，作者改完后可再提交" />
-          </Form.Item>
-        </Form>
-      </Modal>
     </div>
   );
 }

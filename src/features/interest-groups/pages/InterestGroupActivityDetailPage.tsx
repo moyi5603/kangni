@@ -4,15 +4,13 @@ import {
   Breadcrumb,
   Button,
   Card,
-  Col,
+  Collapse,
   Descriptions,
   Empty,
   Flex,
   Image,
   Popconfirm,
-  Row,
   Space,
-  Statistic,
   Table,
   Tabs,
   Tag,
@@ -23,15 +21,20 @@ import type { TableColumnsType } from 'antd';
 import {
   canDeleteInterestGroupActivity,
   canTerminateInterestGroupActivity,
-  displayInterestGroupActivityStatus,
-  formatDeadline,
   formatInterestGroupActivityTime,
   formatInterestGroupPublishedAt,
+  formatInterestGroupSignupTime,
+  getInterestGroupLifecycleStatus,
   interestGroupActivityTypeLabels,
-  seriesSignupModeLabels,
-  weekdayLabel,
+  lifecycleStatusColor,
   type InterestGroupActivity,
 } from '../model/interestGroupActivity';
+import { formatCustomCrowdVisibility } from '../../activities/model/activity';
+import { formatSignupAuditSummary } from '../../activities/model/rules';
+import { formatActivityPointGrant } from '../../activities/model/activityPointRules';
+import { formatSessionLabel, needsSessionPick, sessionSignupEndAt, signupQuotaLabel } from '../../activities/model/activitySchedule';
+import { signupFieldInputTypeLabels, type SignupField } from '../../activities/model/signupFields';
+import { TableEllipsisText } from '../../../shared/ui/TableEllipsisText';
 import type { InterestGroupSignup } from '../model/interestGroupSignup';
 import { InterestGroupCommentListPage } from './InterestGroupCommentListPage';
 import { InterestGroupMomentListPage } from './InterestGroupMomentListPage';
@@ -49,7 +52,7 @@ import {
 
 const detailTabs = [
   { key: 'detail', label: '详情' },
-  { key: 'signups', label: '报名情况' },
+  { key: 'signups', label: '报名' },
   { key: 'comments', label: '评论' },
   { key: 'moments', label: '精彩瞬间' },
 ] as const;
@@ -60,6 +63,26 @@ function dash(value: string | null | undefined): string {
 
 function hasHtmlContent(html: string): boolean {
   return html.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim().length > 0;
+}
+
+function formatSignupFieldConfig(field: SignupField): string {
+  if (field.inputType === 'radio' || field.inputType === 'checkbox') {
+    const options = (field.options ?? []).map((item) => item.trim()).filter(Boolean);
+    return options.length ? options.join('、') : '—';
+  }
+  if (field.inputType === 'group') {
+    const groups = field.groups ?? [];
+    return groups.length
+      ? groups.map((item) => `${item.name.trim() || '未命名'}（限 ${item.limit} 人）`).join('；')
+      : '—';
+  }
+  if (field.inputType === 'companion') {
+    const collect = (field.companionFields ?? []).join('、') || '—';
+    return `最多 ${field.companionMax ?? 0} 人；填写 ${collect}`;
+  }
+  if (field.digitOnly) return `仅数字${field.maxLength != null ? `；最多 ${field.maxLength} 字` : ''}`;
+  if (field.maxLength != null) return `最多 ${field.maxLength} 字`;
+  return '—';
 }
 
 type DetailTab = (typeof detailTabs)[number]['key'];
@@ -81,6 +104,7 @@ type InterestGroupActivityDetailPageProps = {
   tab?: string;
   onBack: () => void;
   onEdit: (id: number) => void;
+  onCopy?: (id: number) => void;
   onTabChange: (tab: DetailTab) => void;
 };
 
@@ -89,6 +113,7 @@ export function InterestGroupActivityDetailPage({
   tab,
   onBack,
   onEdit,
+  onCopy,
   onTabChange,
 }: InterestGroupActivityDetailPageProps) {
   const { message } = App.useApp();
@@ -125,13 +150,22 @@ export function InterestGroupActivityDetailPage({
   }
 
   const group = activity.groupId != null ? groups.find((item) => item.id === activity.groupId) : undefined;
-  const time = formatInterestGroupActivityTime(activity);
+  const lifecycleStatus = getInterestGroupLifecycleStatus(activity);
   const activityComments = comments.filter((item) => item.activityId === activity.id);
   const activityMoments = moments.filter((item) => item.activityId === activity.id);
   const activitySignups = signups.filter((item) => item.activityId === activity.id);
-  const statusLabel = displayInterestGroupActivityStatus(activity);
   const deletable = canDeleteInterestGroupActivity(activity);
   const terminable = canTerminateInterestGroupActivity(activity);
+  const visibilityText =
+    activity.visibility === '按部门'
+      ? `按部门：${activity.departments.join('、') || '—'}`
+      : activity.visibility === '自定义人群'
+        ? formatCustomCrowdVisibility(activity.customPeople)
+        : activity.visibility === '导入人群'
+          ? `导入人群：${activity.importFileName || '—'}${activity.importedPeople.length ? `（${activity.importedPeople.length} 人）` : ''}`
+          : '全员';
+  const signupFields = activity.signupFields ?? [];
+  const hasSeniorityLimit = activity.minSeniorityYears != null;
   const terminate = () => {
     const result = terminateInterestGroupActivity(activity.id);
     if (!result.ok) {
@@ -182,29 +216,25 @@ export function InterestGroupActivityDetailPage({
             <div className="activity-detail-header-copy">
               <Space wrap>
                 <Tag>{getInterestGroupCategoryLabel(activity.categoryKey, categories)}</Tag>
-                {activity.type === 'series' && activity.seriesSignupMode ? (
-                  <Tag>{seriesSignupModeLabels[activity.seriesSignupMode]}</Tag>
+                {activity.auditStatus !== '已通过' && activity.auditStatus !== '无需审核' ? (
+                  <Tag color={activity.auditStatus === '已驳回' ? 'error' : activity.auditStatus === '待审核' ? 'warning' : 'default'}>
+                    {activity.auditStatus}
+                  </Tag>
                 ) : null}
-                <Tag color={activity.auditStatus === '已通过' ? 'success' : activity.auditStatus === '已驳回' ? 'error' : activity.auditStatus === '待审核' ? 'warning' : 'default'}>
-                  {activity.auditStatus}
-                </Tag>
-                <Tag color={activity.publishStatus === '已发布' ? 'success' : 'default'}>{activity.publishStatus}</Tag>
-                <Tag color={statusLabel === '已终止' ? 'error' : statusLabel === '进行中' || statusLabel === '报名中' ? 'processing' : 'default'}>
-                  {statusLabel}
-                </Tag>
+                <Tag color={lifecycleStatusColor[lifecycleStatus]}>{lifecycleStatus}</Tag>
               </Space>
-              <Typography.Title level={3} style={{ marginTop: 8 }}>
+              <Typography.Title level={3} style={{ marginTop: 8, marginBottom: 0 }}>
                 {activity.title}
               </Typography.Title>
-              <Typography.Text type="secondary">
-                {time.date} {time.time}
-              </Typography.Text>
             </div>
           </Flex>
-          <Space>
+          <Space wrap className="activity-detail-header-actions">
             <Button type="primary" onClick={() => onEdit(activity.id)}>
               编辑
             </Button>
+            {onCopy ? (
+              <Button onClick={() => onCopy(activity.id)}>复制创建</Button>
+            ) : null}
             {terminable ? (
               <Popconfirm title="确认终止该活动？终止后不可再编辑。" onConfirm={terminate}>
                 <Button danger>终止</Button>
@@ -229,20 +259,23 @@ export function InterestGroupActivityDetailPage({
             )}
           </Space>
         </Flex>
-        <Row gutter={16} style={{ marginTop: 24 }}>
-          <Col xs={12} sm={6}>
-            <Statistic title="已报名" value={activity.signedCount} suffix={`/ ${activity.capacity}`} />
-          </Col>
-          <Col xs={12} sm={6}>
-            <Statistic title="点赞" value={activity.likeCount} />
-          </Col>
-          <Col xs={12} sm={6}>
-            <Statistic title="评论" value={activityComments.length} />
-          </Col>
-          <Col xs={12} sm={6}>
-            <Statistic title="精彩瞬间" value={activityMoments.length} />
-          </Col>
-        </Row>
+        <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+          活动时间：{formatInterestGroupActivityTime(activity)}
+        </Typography.Text>
+        <Typography.Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
+          报名时间：{formatInterestGroupSignupTime(activity)}
+        </Typography.Text>
+        <Typography.Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
+          活动地点：{dash(activity.location)}
+        </Typography.Text>
+        <div className="activity-detail-header-metrics" style={{ marginTop: 16 }}>
+          <Space size={32} wrap>
+            <Typography.Text>报名人数 {activity.signedCount}{activity.capacity ? ` / ${activity.capacity}` : ''}</Typography.Text>
+            <Typography.Text>评论数 {activityComments.length}</Typography.Text>
+            <Typography.Text>精彩瞬间数 {activityMoments.length}</Typography.Text>
+            <Typography.Text>点赞 {activity.likeCount}</Typography.Text>
+          </Space>
+        </div>
       </Card>
       <Tabs
         destroyOnHidden
@@ -256,44 +289,49 @@ export function InterestGroupActivityDetailPage({
               <div className="page-stack">
                 <Card title="活动信息">
                   <Descriptions
+                    className="activity-detail-descriptions"
                     column={{ xs: 1, sm: 2, lg: 3 }}
                     items={[
-                      {
-                        label: '封面图片',
-                        span: 3,
-                        children: activity.coverUrl ? (
-                          <Image className="activity-cover-preview" src={activity.coverUrl} width={240} alt="活动封面" />
-                        ) : (
-                          '—'
-                        ),
-                      },
                       { label: '活动标题', children: activity.title },
-                      { label: '类型', children: interestGroupActivityTypeLabels[activity.type] },
                       { label: '分类', children: dash(getInterestGroupCategoryLabel(activity.categoryKey, categories)) },
+                      { label: '举办方式', children: interestGroupActivityTypeLabels[activity.type] },
                       { label: '所属小组', children: group?.name ?? '未归属小组' },
-                      { label: '报名截止', children: formatDeadline(activity) },
-                      { label: '活动时间', children: `${time.date} ${time.time}` },
+                      { label: '报名时间', children: formatInterestGroupSignupTime(activity) },
+                      { label: '活动时间', children: formatInterestGroupActivityTime(activity) },
                       { label: '活动地点', children: dash(activity.location) },
-                      { label: '报名总人数', children: activity.capacity > 0 ? activity.capacity : '—' },
-                      { label: '小组负责人', children: dash(activity.hostName) },
-                      { label: '审核状态', children: activity.auditStatus },
-                      { label: '发布状态', children: activity.publishStatus },
+                      { label: signupQuotaLabel(activity.type), children: activity.capacity > 0 ? activity.capacity : '—' },
                       { label: '创建时间', children: activity.createdAt },
                       { label: '发布时间', children: formatInterestGroupPublishedAt(activity.publishedAt) },
-                      ...(activity.type === 'recurring'
-                        ? [
-                            {
-                              label: '重复规则',
-                              children: (activity.repeatWeekdays ?? []).map(weekdayLabel).join('、') || '—',
-                            },
-                          ]
-                        : []),
-                      ...(activity.type === 'series' && activity.seriesSignupMode
-                        ? [{ label: '系列报名', children: seriesSignupModeLabels[activity.seriesSignupMode] }]
-                        : []),
                     ]}
                   />
                 </Card>
+                {needsSessionPick(activity.type) && activity.sessions.length ? (
+                  <Card title="场次">
+                    <Table
+                      size="small"
+                      pagination={false}
+                      rowKey="id"
+                      dataSource={activity.sessions}
+                      columns={[
+                        {
+                          title: '场次',
+                          ellipsis: true,
+                          render: (_: unknown, session, index) => (
+                            <TableEllipsisText text={formatSessionLabel(session, index)} />
+                          ),
+                        },
+                        { title: '开始', dataIndex: 'startAt', width: 180 },
+                        { title: '结束', dataIndex: 'endAt', width: 180 },
+                        {
+                          title: '报名截止',
+                          width: 180,
+                          render: (_: unknown, session) => sessionSignupEndAt(session.startAt, activity.signupHoursBefore ?? 0),
+                        },
+                        { title: '人数上限', width: 100, render: () => (activity.capacity > 0 ? activity.capacity : '—') },
+                      ]}
+                    />
+                  </Card>
+                ) : null}
                 <Card title="活动详情">
                   {hasHtmlContent(activity.detailHtml) ? (
                     <div
@@ -304,34 +342,92 @@ export function InterestGroupActivityDetailPage({
                     <Empty description="暂无详情" />
                   )}
                 </Card>
-                {activity.sessions?.length ? (
-                  <Card title="场次安排">
-                    <Table
-                      size="small"
-                      rowKey="id"
-                      pagination={false}
-                      dataSource={activity.sessions}
-                      columns={[
-                        { title: '场次', render: (_, __, index) => `第 ${index + 1} 场` },
-                        { title: '开始', dataIndex: 'startAt' },
-                        { title: '结束', dataIndex: 'endAt' },
-                        { title: '报名', render: (_, record) => `${record.signedCount}/${record.capacity}` },
-                        {
-                          title: '状态',
-                          dataIndex: 'status',
-                          render: (value: InterestGroupActivity['status']) =>
-                            displayInterestGroupActivityStatus({ ...activity, status: value, signedCount: 0 }),
-                        },
-                      ]}
-                    />
-                  </Card>
-                ) : null}
+                <Card styles={{ body: { paddingBlock: 0 } }} className="advanced-settings-card">
+                  <Collapse
+                    ghost
+                    className="advanced-settings-collapse"
+                    defaultActiveKey={[]}
+                    items={[
+                      {
+                        key: 'advanced',
+                        label: '高级设置',
+                        forceRender: true,
+                        children: (
+                          <Space direction="vertical" size="middle" style={{ width: '100%', paddingBottom: 16 }}>
+                            <Card title="可见范围" size="small">
+                              <Descriptions
+                                column={{ xs: 1, sm: 2, lg: 3 }}
+                                items={[
+                                  { label: '可见范围', children: visibilityText },
+                                  { label: '发送消息通知', children: activity.notifyOnPublish ? '开启' : '关闭' },
+                                ]}
+                              />
+                            </Card>
+                            <Card title="活动设置" size="small">
+                              <Descriptions
+                                column={{ xs: 1, sm: 2, lg: 3 }}
+                                items={[
+                                  {
+                                    label: '是否审核报名',
+                                    children: formatSignupAuditSummary(activity.needAudit, activity.signupApprovalNodes),
+                                  },
+                                  { label: '报名司龄限制', children: hasSeniorityLimit ? '有限制' : '无限制' },
+                                  ...(hasSeniorityLimit
+                                    ? [{ label: '司龄要满', children: `${activity.minSeniorityYears} 年` }]
+                                    : []),
+                                  {
+                                    label: '活动积分',
+                                    children: formatActivityPointGrant(activity.signupPointsEnabled, activity.signupPoints),
+                                  },
+                                ]}
+                              />
+                            </Card>
+                            <Card title="报名信息收集" size="small">
+                              {signupFields.length ? (
+                                <Table
+                                  size="small"
+                                  pagination={false}
+                                  rowKey="key"
+                                  dataSource={signupFields}
+                                  columns={[
+                                    { title: '字段名称', dataIndex: 'label', width: 140, ellipsis: true, render: (value: string) => <TableEllipsisText text={value} /> },
+                                    {
+                                      title: '类型',
+                                      dataIndex: 'inputType',
+                                      width: 96,
+                                      render: (value: SignupField['inputType']) => signupFieldInputTypeLabels[value],
+                                    },
+                                    {
+                                      title: '必填',
+                                      dataIndex: 'required',
+                                      width: 72,
+                                      render: (value: boolean) => (value ? '是' : '否'),
+                                    },
+                                    {
+                                      title: '配置',
+                                      ellipsis: true,
+                                      render: (_: unknown, field: SignupField) => (
+                                        <TableEllipsisText text={formatSignupFieldConfig(field)} />
+                                      ),
+                                    },
+                                  ]}
+                                />
+                              ) : (
+                                <Empty description="暂无收集字段" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                              )}
+                            </Card>
+                          </Space>
+                        ),
+                      },
+                    ]}
+                  />
+                </Card>
               </div>
             ),
           },
           {
             key: 'signups',
-            label: '报名情况',
+            label: '报名',
             children: visited.has('signups') ? (
               <Card>
                 <Table

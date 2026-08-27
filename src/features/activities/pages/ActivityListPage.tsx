@@ -1,11 +1,10 @@
 import { useMemo, useState, type Key, type ReactNode } from 'react';
-import { DownOutlined, PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import {
   App,
   Button,
   Card,
   DatePicker,
-  Dropdown,
   Empty,
   Flex,
   Form,
@@ -16,13 +15,14 @@ import {
   Space,
   Table,
   Tag,
-  Tooltip,
   Typography,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { ListPageHeading, SearchField, SearchPanel } from '../../../shared/ui/ListPage';
+import { TableEllipsisText } from '../../../shared/ui/TableEllipsisText';
+import { TableRowActions, type TableRowAction } from '../../../shared/ui/TableRowActions';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import {
   auditStatuses,
@@ -38,15 +38,22 @@ import {
   type AuditStatus,
   type LifecycleStatus,
 } from '../model/activity';
+import {
+  activityScheduleTypeLabels,
+  activityScheduleTypes,
+  type ActivityScheduleType,
+} from '../model/activitySchedule';
 import { ActivityReviewModal } from '../components/ActivityReviewModal';
 import { patchActivities, submitActivitiesForApproval, useActivities } from '../model/activityStore';
 import { useCategories } from '../model/categoryStore';
+import { ActivityQrCheckInPage } from './ActivityQrCheckInPage';
 
 type DateRange = [Dayjs | null, Dayjs | null] | null;
 
 type ActivityQuery = {
   title: string;
   category?: string;
+  scheduleType?: ActivityScheduleType;
   activityTime: DateRange;
   auditStatus?: AuditStatus;
   lifecycleStatus?: LifecycleStatus;
@@ -98,8 +105,8 @@ function nowText() {
 function confirmFooter(_: ReactNode, extra: { OkBtn: React.FC; CancelBtn: React.FC }) {
   return (
     <Space>
-      <extra.OkBtn />
       <extra.CancelBtn />
+      <extra.OkBtn />
     </Space>
   );
 }
@@ -117,12 +124,14 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [reviewing, setReviewing] = useState<Activity>();
+  const [qrActivity, setQrActivity] = useState<Activity>();
   const [categoryForm] = Form.useForm<{ category: string }>();
   const filtered = useMemo(() => {
     const rows = data.filter(
       (item) =>
         (!query.title || item.title.includes(query.title)) &&
         (!query.category || item.category === query.category) &&
+        (!query.scheduleType || (item.scheduleType ?? 'once') === query.scheduleType) &&
         overlapsRange(item.startAt, item.endAt, query.activityTime) &&
         (!query.auditStatus || item.auditStatus === query.auditStatus) &&
         (!query.lifecycleStatus || getActivityLifecycleStatus(item) === query.lifecycleStatus) &&
@@ -134,6 +143,7 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
   const hasActiveQuery = Boolean(
     query.title ||
       query.category ||
+      query.scheduleType ||
       query.activityTime ||
       query.auditStatus ||
       query.lifecycleStatus ||
@@ -147,6 +157,7 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
   };
 
   const openDetail = (record: Activity) => onNavigate('activity-detail', String(record.id));
+  const copyOne = (record: Activity) => onNavigate('activity-create', String(record.id));
 
   const selectedActivities = data.filter((item) => selectedRowKeys.includes(item.id));
 
@@ -278,17 +289,25 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
         <Space>
           {record.pinned ? <Tag color="blue">置顶</Tag> : null}
           <Button type="link" className="table-link" onClick={() => openDetail(record)}>
-            {value}
+            <TableEllipsisText text={value} />
           </Button>
         </Space>
       ),
     },
-    { title: '分类', dataIndex: 'category', width: 90 },
+    { title: '分类', dataIndex: 'category', width: 90, render: (value: string) => <TableEllipsisText text={value} /> },
+    {
+      title: '举办方式',
+      key: 'scheduleType',
+      width: 110,
+      render: (_, record) => (
+        <TableEllipsisText text={activityScheduleTypeLabels[record.scheduleType ?? 'once']} />
+      ),
+    },
     {
       title: '活动时间',
       key: 'activityTime',
       width: 280,
-      render: (_, record) => formatActivityTime(record),
+      render: (_, record) => <TableEllipsisText text={formatActivityTime(record)} />,
     },
     {
       title: '审核状态',
@@ -316,65 +335,88 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
       title: '操作',
       key: 'action',
       fixed: 'right',
+      align: 'right',
       width: 220,
-      render: (_, record) => (
-        <Space>
-          <Button type="link" aria-label={`详情 ${record.title}`} onClick={() => openDetail(record)}>
-            详情
-          </Button>
-          <Button type="link" aria-label={`编辑 ${record.title}`} onClick={() => openEditor(record)}>
-            编辑
-          </Button>
-          {canSubmitApproval(record) ? (
-            <Button type="link" aria-label={`提交审批 ${record.title}`} onClick={() => submitOne(record)}>
-              提交审批
-            </Button>
-          ) : canReviewActivity(record) ? (
-            <Button type="link" aria-label={`审核 ${record.title}`} onClick={() => setReviewing(record)}>
-              审核
-            </Button>
-          ) : record.publishStatus === '已发布' ? (
-            <Button type="link" aria-label={`撤销 ${record.title}`} onClick={() => revokeOne(record)}>
-              撤销
-            </Button>
-          ) : canPublishActivity(record) ? (
-            <Button type="link" aria-label={`发布 ${record.title}`} onClick={() => publishOne(record)}>
-              发布
-            </Button>
-          ) : (
-            <Tooltip title="仅审批通过或无需审核的活动可以发布">
-              <span>
-                <Button type="link" disabled aria-label={`发布 ${record.title}`}>
-                  发布
-                </Button>
-              </span>
-            </Tooltip>
-          )}
-          <Dropdown
-            trigger={['click']}
-            menu={{
-              items: [
-                {
-                  key: 'pin',
-                  label: record.pinned ? '取消置顶' : '置顶',
-                  onClick: () => togglePin(record),
-                },
-              ],
-            }}
-          >
-            <Button type="link" aria-label={`更多操作 ${record.title}`}>
-              更多 <DownOutlined />
-            </Button>
-          </Dropdown>
-        </Space>
-      ),
+      render: (_, record) => {
+        const statusAction: TableRowAction = canSubmitApproval(record)
+          ? {
+              key: 'submit',
+              label: '提交审批',
+              ariaLabel: `提交审批 ${record.title}`,
+              onClick: () => submitOne(record),
+            }
+          : canReviewActivity(record)
+            ? {
+                key: 'review',
+                label: '审核',
+                ariaLabel: `审核 ${record.title}`,
+                onClick: () => setReviewing(record),
+              }
+            : record.publishStatus === '已发布'
+              ? {
+                  key: 'revoke',
+                  label: '撤销',
+                  ariaLabel: `撤销 ${record.title}`,
+                  onClick: () => revokeOne(record),
+                }
+              : {
+                  key: 'publish',
+                  label: '发布',
+                  ariaLabel: `发布 ${record.title}`,
+                  onClick: () => publishOne(record),
+                  disabled: !canPublishActivity(record),
+                  tooltip: canPublishActivity(record) ? undefined : '仅审批通过或无需审核的活动可以发布',
+                };
+        return (
+          <TableRowActions
+            moreAriaLabel={`更多操作 ${record.title}`}
+            actions={[
+              {
+                key: 'detail',
+                label: '详情',
+                ariaLabel: `详情 ${record.title}`,
+                onClick: () => openDetail(record),
+              },
+              ...(record.checkInEnabled
+                ? [
+                    {
+                      key: 'checkin-qr',
+                      label: '签到码',
+                      ariaLabel: `签到码 ${record.title}`,
+                      onClick: () => setQrActivity(record),
+                    },
+                  ]
+                : []),
+              {
+                key: 'edit',
+                label: '编辑',
+                ariaLabel: `编辑 ${record.title}`,
+                onClick: () => openEditor(record),
+              },
+              {
+                key: 'copy',
+                label: '复制',
+                ariaLabel: `复制 ${record.title}`,
+                onClick: () => copyOne(record),
+              },
+              statusAction,
+              {
+                key: 'pin',
+                label: record.pinned ? '取消置顶' : '置顶',
+                ariaLabel: record.pinned ? `取消置顶 ${record.title}` : `置顶 ${record.title}`,
+                onClick: () => togglePin(record),
+              },
+            ]}
+          />
+        );
+      },
     },
   ];
 
   return (
     <div className="page-stack">
       <ListPageHeading paths={['活动', '活动管理']} title="活动管理" subtitle="查询并维护活动基础信息、审核、发布与状态。" />
-      {/* 收起态前三项：活动标题、分类、活动时间；审核与状态等条件展开后可见 */}
+      {/* 收起态前三项：活动标题、分类、举办方式；活动时间与审核等条件展开后可见 */}
       <SearchPanel
         onSearch={() => {
           setQuery(draft);
@@ -400,6 +442,15 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
             value={draft.category}
             onChange={(value) => setDraft((current) => ({ ...current, category: value }))}
             options={categoryOptions}
+          />
+        </SearchField>
+        <SearchField label="举办方式">
+          <Select
+            allowClear
+            placeholder="全部方式"
+            value={draft.scheduleType}
+            onChange={(value) => setDraft((current) => ({ ...current, scheduleType: value }))}
+            options={activityScheduleTypes.map((value) => ({ value, label: activityScheduleTypeLabels[value] }))}
           />
         </SearchField>
         <SearchField label="活动时间">
@@ -443,13 +494,16 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
           />
         </SearchField>
       </SearchPanel>
-      <Card>
+      <Card className="list-table-card">
         <div className="table-toolbar">
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>
-            新建活动
-          </Button>
+          <Typography.Text>共 {filtered.length} 条</Typography.Text>
+          <Space>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>
+              新建活动
+            </Button>
+          </Space>
         </div>
-        {selectedRowKeys.length > 0 && (
+        {selectedRowKeys.length > 0 ? (
           <Flex className="batch-toolbar" justify="space-between" align="center">
             <Typography.Text>
               已选择 <strong>{selectedRowKeys.length}</strong> 项
@@ -487,37 +541,34 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
               <Button onClick={() => setSelectedRowKeys([])}>取消选择</Button>
             </Space>
           </Flex>
-        )}
-        {filtered.length ? (
-          <Table
-            rowKey="id"
-            sticky
-            rowSelection={{
-              selectedRowKeys,
-              preserveSelectedRowKeys: true,
-              onChange: setSelectedRowKeys,
-            }}
-            columns={columns}
-            dataSource={filtered}
-            scroll={{ x: 1680 }}
-            pagination={{
-              pageSize: b2bStandards.table.pageSize,
-              pageSizeOptions: [...b2bStandards.table.pageSizeOptions],
-              showSizeChanger: b2bStandards.table.showSizeChanger,
-              showTotal: (total) => `共 ${total} 条`,
-            }}
-          />
-        ) : (
-          <Empty description={hasActiveQuery ? '没有符合条件的活动' : b2bStandards.table.emptyText} />
-        )}
+        ) : null}
+        <Table
+          rowKey="id"
+          sticky
+          rowSelection={{
+            selectedRowKeys,
+            preserveSelectedRowKeys: true,
+            onChange: setSelectedRowKeys,
+          }}
+          columns={columns}
+          dataSource={filtered}
+          scroll={{ x: 1780 }}
+          pagination={{
+            pageSize: b2bStandards.table.pageSize,
+            pageSizeOptions: [...b2bStandards.table.pageSizeOptions],
+            showSizeChanger: b2bStandards.table.showSizeChanger,
+            showTotal: (total) => `共 ${total} 条`,
+          }}
+          locale={{ emptyText: <Empty description={hasActiveQuery ? '没有符合条件的活动' : b2bStandards.table.emptyText} /> }}
+        />
       </Card>
       <Modal
         title={`设置分类 · 已选 ${selectedRowKeys.length} 项`}
         open={categoryModalOpen}
         footer={(_, { OkBtn, CancelBtn }) => (
           <Space>
-            <OkBtn />
             <CancelBtn />
+            <OkBtn />
           </Space>
         )}
         onOk={applyCategory}
@@ -532,6 +583,16 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
             <Select placeholder="请选择分类" options={enabledCategoryOptions} />
           </Form.Item>
         </Form>
+      </Modal>
+      <Modal
+        title={qrActivity ? `「${qrActivity.title}」签到码` : '签到码'}
+        open={Boolean(qrActivity)}
+        onCancel={() => setQrActivity(undefined)}
+        footer={<Button onClick={() => setQrActivity(undefined)}>关闭</Button>}
+        width={720}
+        destroyOnHidden
+      >
+        {qrActivity ? <ActivityQrCheckInPage activity={qrActivity} /> : null}
       </Modal>
       <ActivityReviewModal activity={reviewing} open={Boolean(reviewing)} onClose={() => setReviewing(undefined)} />
     </div>

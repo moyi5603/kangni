@@ -10,11 +10,30 @@ import {
   type CompanionPerson,
   type SignupField,
 } from '../../../activities/model/signupFields';
+import { formatCEndDateTimeInText } from '../../formatDateTime';
 import { DEMO_SIGNUP_USER } from '../model/signupStore';
+import {
+  formatSessionLabel,
+  isSessionSignupOpen,
+  listClientSignupSessions,
+  needsSessionPick,
+  parseSessionIds,
+  validateSessionPick,
+  type ActivityScheduleType,
+  type ActivitySession,
+} from '../../../activities/model/activitySchedule';
 
 type SignupFormProps = {
   types: string[];
   fields: SignupField[];
+  scheduleType?: ActivityScheduleType;
+  sessions?: ActivitySession[];
+  signupStartAt?: string;
+  signupEndAt?: string;
+  signupHoursBefore?: number;
+  now?: number;
+  initialAnswers?: Record<string, string>;
+  mode?: 'create' | 'adjust';
   onCancel: () => void;
   onConfirm: (type: string, answers: Record<string, string>) => void;
 };
@@ -40,12 +59,30 @@ function emptyCompanionPerson(collect: CompanionCollectField[]): CompanionPerson
   return person;
 }
 
-export function SignupForm({ types, fields, onCancel, onConfirm }: SignupFormProps) {
+export function SignupForm({
+  types,
+  fields,
+  scheduleType,
+  sessions = [],
+  signupStartAt,
+  signupEndAt,
+  signupHoursBefore,
+  now = Date.now(),
+  initialAnswers,
+  mode = 'create',
+  onCancel,
+  onConfirm,
+}: SignupFormProps) {
   const collectFields = needsSignupForm(fields);
   const [type, setType] = useState(types[0] ?? '');
-  const [answers, setAnswers] = useState(() => prefillSignupAnswers(collectFields ? fields : [], demoProfile()));
+  const [answers, setAnswers] = useState(() => ({
+    ...prefillSignupAnswers(collectFields ? fields : [], demoProfile()),
+    ...initialAnswers,
+  }));
   const [error, setError] = useState<string>();
-  const canSubmit = types.length > 0 && Boolean(type);
+  const needSessionPick = needsSessionPick(scheduleType) && sessions.length > 0;
+  const pickableSessions = needSessionPick ? listClientSignupSessions(sessions, now) : [];
+  const canSubmit = types.length > 0 && Boolean(type) && (!needSessionPick || pickableSessions.length > 0);
 
   const setAnswer = (key: string, value: string) => {
     setAnswers((current) => ({ ...current, [key]: value }));
@@ -61,7 +98,27 @@ export function SignupForm({ types, fields, onCancel, onConfirm }: SignupFormPro
       onSubmit={(event) => {
         event.preventDefault();
         if (!canSubmit) return;
-        const payload = collectFields ? answers : prefillSignupAnswers(fields, demoProfile());
+        const payload = {
+          ...(collectFields ? answers : prefillSignupAnswers(fields, demoProfile())),
+          ...(needSessionPick && pickableSessions.length ? { 场次: answers['场次'] ?? '' } : {}),
+        };
+        if (needSessionPick && pickableSessions.length) {
+          const picked = parseSessionIds(payload['场次']);
+          if (!(mode === 'adjust' && picked.length === 0)) {
+            const invalidSession = validateSessionPick(
+              scheduleType,
+              pickableSessions,
+              picked,
+              signupStartAt && signupEndAt
+                ? { signupStartAt, signupEndAt, signupHoursBefore, now }
+                : undefined,
+            );
+            if (invalidSession) {
+              setError(invalidSession);
+              return;
+            }
+          }
+        }
         if (collectFields) {
           const invalid = validateSignupAnswers(fields, payload);
           if (invalid) {
@@ -72,7 +129,46 @@ export function SignupForm({ types, fields, onCancel, onConfirm }: SignupFormPro
         onConfirm(type, payload);
       }}
     >
-      <p className="c-signup-legend">确认报名</p>
+      <p className="c-signup-legend">{mode === 'adjust' ? '调整报名' : '确认报名'}</p>
+      {needSessionPick && pickableSessions.length === 0 ? (
+        <p className="c-signup-hint">暂无可以报名的场次</p>
+      ) : null}
+      {needSessionPick && pickableSessions.length > 0 ? (
+        <fieldset className="c-signup-field">
+          <legend>参加场次 *</legend>
+          <div className="c-signup-options" role="group" aria-label="参加场次">
+            {pickableSessions.map((session) => {
+              const index = sessions.findIndex((item) => item.id === session.id);
+              const picked = parseSessionIds(answers['场次']);
+              const checked = picked.includes(session.id);
+              const closed =
+                Boolean(signupStartAt && signupEndAt) &&
+                !isSessionSignupOpen(
+                  session,
+                  { signupStartAt: signupStartAt!, signupEndAt: signupEndAt!, signupHoursBefore },
+                  now,
+                );
+              return (
+                <label key={session.id} className={`c-signup-option${checked ? ' is-checked' : ''}${closed ? ' is-disabled' : ''}`}>
+                  <input
+                    type="checkbox"
+                    name="场次"
+                    value={session.id}
+                    checked={checked}
+                    disabled={closed}
+                    onChange={() => {
+                      if (closed) return;
+                      setAnswer('场次', toggleCheckbox(answers['场次'] ?? '', session.id));
+                    }}
+                  />
+                  {formatCEndDateTimeInText(formatSessionLabel(session, index < 0 ? 0 : index))}
+                  {closed ? '（已截止）' : ''}
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+      ) : null}
       {collectFields ? (
         <div className="c-signup-fields">
           {fields.map((field) => {
@@ -235,7 +331,7 @@ export function SignupForm({ types, fields, onCancel, onConfirm }: SignupFormPro
       {error ? <p className="c-signup-error">{error}</p> : null}
       <div className="c-signup-actions">
         <button className="c-btn c-btn-primary" type="submit" disabled={!canSubmit}>
-          确认报名
+          {mode === 'adjust' ? '保存场次' : '确认报名'}
         </button>
         <button className="c-btn c-btn-ghost" type="button" onClick={onCancel}>
           取消

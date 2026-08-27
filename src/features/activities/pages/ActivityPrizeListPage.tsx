@@ -16,11 +16,13 @@ import {
   Table,
   Tooltip,
   TreeSelect,
+  Typography,
   Upload,
 } from 'antd';
 import type { TableColumnsType, UploadFile } from 'antd';
 import dayjs from 'dayjs';
 import { SearchField, SearchPanel } from '../../../shared/ui/ListPage';
+import { TableEllipsisText } from '../../../shared/ui/TableEllipsisText';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import {
   grantPrizeBlockReason,
@@ -273,17 +275,18 @@ export function ActivityPrizeListPage({ activity }: { activity: Activity }) {
   };
 
   const columns: TableColumnsType<PrizeRecord> = [
-    { title: '姓名', dataIndex: 'name', width: 110 },
+    { title: '姓名', dataIndex: 'name', width: 110, ellipsis: true, render: (value: string) => <TableEllipsisText text={value} /> },
     { title: '手机号', dataIndex: 'phone', width: 130 },
-    { title: '部门', dataIndex: 'department', width: 120 },
+    { title: '部门', dataIndex: 'department', width: 120, ellipsis: true, render: (value: string) => <TableEllipsisText text={value || '—'} /> },
     { title: '类型', dataIndex: 'type', width: 90 },
     {
       title: '奖品信息',
       key: 'medal',
+      ellipsis: true,
       render: (_, record) => (
         <Flex align="center" gap={8}>
           {record.medalImageUrl ? <Image src={record.medalImageUrl} width={32} height={32} alt={record.medalName} /> : null}
-          <span>{record.medalName}</span>
+          <TableEllipsisText text={record.medalName} />
         </Flex>
       ),
     },
@@ -313,6 +316,7 @@ export function ActivityPrizeListPage({ activity }: { activity: Activity }) {
       </SearchPanel>
       <Card>
         <div className="table-toolbar">
+          <Typography.Text>共 {filtered.length} 条</Typography.Text>
           {grantBlocked ? (
             <Tooltip title={grantBlocked}>
               <span>
@@ -353,10 +357,10 @@ export function ActivityPrizeListPage({ activity }: { activity: Activity }) {
         }}
         footer={
           <Space>
+            <Button onClick={closeGrant}>取消</Button>
             <Button type="primary" onClick={() => void saveGrant()}>
               确认
             </Button>
-            <Button onClick={closeGrant}>取消</Button>
           </Space>
         }
       >

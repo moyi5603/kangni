@@ -5,6 +5,8 @@ import {
   canReviewNomination,
   initialAwardNominations,
   nominationCounts,
+  normalizeHighlights,
+  validateHighlights,
   validateNominees,
   type AwardNominationRecord,
   type NominationReviewStatus,
@@ -59,11 +61,11 @@ export function addAwardNomination(input: {
   title: string;
   nominees: string[];
   reason: string;
-  highlights: string;
+  highlights: string[];
 }): string | null {
   const award = getAward(input.awardId);
   if (!award) return '评优不存在';
-  const error = validateNominees(award.type, input.nominees);
+  const error = validateNominees(award.type, input.nominees) ?? validateHighlights(input.highlights);
   if (error) return error;
   const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
   nominations = [
@@ -73,9 +75,9 @@ export function addAwardNomination(input: {
       title: input.title.trim(),
       nominees: input.nominees,
       reason: input.reason.trim(),
-      highlights: input.highlights.trim(),
+      highlights: normalizeHighlights(input.highlights),
       voteCount: 0,
-      reviewStatus: '待审核',
+      reviewStatus: '已通过',
       nominator: '产品管理员',
       createdAt: now,
     },
@@ -86,10 +88,23 @@ export function addAwardNomination(input: {
   return null;
 }
 
-export function reviewAwardNomination(id: number, reviewStatus: NominationReviewStatus): boolean {
+export function reviewAwardNomination(
+  id: number,
+  reviewStatus: NominationReviewStatus,
+  rejectReason?: string,
+): boolean {
   const current = nominations.find((item) => item.id === id);
   if (!current || !canReviewNomination(current)) return false;
-  nominations = nominations.map((item) => (item.id === id ? { ...item, reviewStatus } : item));
+  const reason = reviewStatus === '已驳回' ? (rejectReason ?? '').trim() || undefined : undefined;
+  nominations = nominations.map((item) =>
+    item.id === id
+      ? {
+          ...item,
+          reviewStatus,
+          rejectReason: reason,
+        }
+      : item,
+  );
   syncAwardCounts(current.awardId);
   emit();
   return true;

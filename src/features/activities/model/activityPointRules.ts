@@ -1,11 +1,14 @@
-export const ACTIVITY_POINT_RULES_MOCK_VERSION = 3;
+export const ACTIVITY_POINT_RULES_MOCK_VERSION = 5;
 
 export type ActivityPointRules = {
   signupPointsMin: number;
   signupPointsMax: number;
   firstCommentPointsMax: number;
+  firstCommentPointsDailyMax: number;
   ratingPointsMax: number;
+  ratingPointsDailyMax: number;
   firstMomentPointsMax: number;
+  firstMomentPointsDailyMax: number;
 };
 
 export type ActivityPointValues = {
@@ -22,9 +25,12 @@ export type ActivityPointValues = {
 export const defaultActivityPointRules: ActivityPointRules = {
   signupPointsMin: 1,
   signupPointsMax: 20,
-  firstCommentPointsMax: 10,
-  ratingPointsMax: 10,
-  firstMomentPointsMax: 10,
+  firstCommentPointsMax: 1,
+  firstCommentPointsDailyMax: 10,
+  ratingPointsMax: 1,
+  ratingPointsDailyMax: 10,
+  firstMomentPointsMax: 1,
+  firstMomentPointsDailyMax: 10,
 };
 
 export const initialActivityPointRules: ActivityPointRules = { ...defaultActivityPointRules };
@@ -38,8 +44,17 @@ export function normalizeActivityPointRules(rules: Partial<ActivityPointRules> |
     signupPointsMin: asNonNegativeInt(rules?.signupPointsMin, defaultActivityPointRules.signupPointsMin),
     signupPointsMax: asNonNegativeInt(rules?.signupPointsMax, defaultActivityPointRules.signupPointsMax),
     firstCommentPointsMax: asNonNegativeInt(rules?.firstCommentPointsMax, defaultActivityPointRules.firstCommentPointsMax),
+    firstCommentPointsDailyMax: asNonNegativeInt(
+      rules?.firstCommentPointsDailyMax,
+      defaultActivityPointRules.firstCommentPointsDailyMax,
+    ),
     ratingPointsMax: asNonNegativeInt(rules?.ratingPointsMax, defaultActivityPointRules.ratingPointsMax),
+    ratingPointsDailyMax: asNonNegativeInt(rules?.ratingPointsDailyMax, defaultActivityPointRules.ratingPointsDailyMax),
     firstMomentPointsMax: asNonNegativeInt(rules?.firstMomentPointsMax, defaultActivityPointRules.firstMomentPointsMax),
+    firstMomentPointsDailyMax: asNonNegativeInt(
+      rules?.firstMomentPointsDailyMax,
+      defaultActivityPointRules.firstMomentPointsDailyMax,
+    ),
   };
 }
 
@@ -57,9 +72,15 @@ export function validateActivityPointRules(rules: ActivityPointRules): string | 
     requireNonNegativeInt(rules.signupPointsMin, '报名积分下限须为不小于 0 的整数') ??
     requireNonNegativeInt(rules.signupPointsMax, '报名积分上限须为不小于 0 的整数') ??
     (rules.signupPointsMax < rules.signupPointsMin ? '报名积分上限不能小于下限' : undefined) ??
-    requireNonNegativeInt(rules.firstCommentPointsMax, '活动首评积分上限须为不小于 0 的整数') ??
-    requireNonNegativeInt(rules.ratingPointsMax, '活动打分积分上限须为不小于 0 的整数') ??
-    requireNonNegativeInt(rules.firstMomentPointsMax, '精彩瞬间积分上限须为不小于 0 的整数')
+    requireNonNegativeInt(rules.firstCommentPointsMax, '活动评论积分须为不小于 0 的整数') ??
+    requireNonNegativeInt(rules.firstCommentPointsDailyMax, '活动评论每日上限须为不小于 0 的整数') ??
+    (rules.firstCommentPointsDailyMax < rules.firstCommentPointsMax ? '活动评论每日上限不能小于单次积分' : undefined) ??
+    requireNonNegativeInt(rules.ratingPointsMax, '活动打分积分须为不小于 0 的整数') ??
+    requireNonNegativeInt(rules.ratingPointsDailyMax, '活动打分每日上限须为不小于 0 的整数') ??
+    (rules.ratingPointsDailyMax < rules.ratingPointsMax ? '活动打分每日上限不能小于单次积分' : undefined) ??
+    requireNonNegativeInt(rules.firstMomentPointsMax, '精彩瞬间积分须为不小于 0 的整数') ??
+    requireNonNegativeInt(rules.firstMomentPointsDailyMax, '精彩瞬间每日上限须为不小于 0 的整数') ??
+    (rules.firstMomentPointsDailyMax < rules.firstMomentPointsMax ? '精彩瞬间每日上限不能小于单次积分' : undefined)
   );
 }
 

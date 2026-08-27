@@ -31,6 +31,7 @@ import {
   getInterestGroupMembers,
   setInterestGroupMemberStatus,
 } from './interestGroupStore';
+import { igActivityAlignDefaults } from './interestGroupActivity';
 
 describe('interestGroupStore delete rules', () => {
   beforeEach(() => {
@@ -57,6 +58,7 @@ describe('interestGroupStore delete rules', () => {
 
   it('creates unpublished draft then submit/review/publish and blocks delete when signed', () => {
     const created = upsertInterestGroupActivity({
+      ...igActivityAlignDefaults(),
       coverUrl: '/activities/share.jpg',
       title: '测试新建活动',
       groupId: 1,
@@ -64,7 +66,8 @@ describe('interestGroupStore delete rules', () => {
       type: 'once',
       startAt: '2026-08-24 19:00',
       endAt: '2026-08-24 21:00',
-      deadlineMode: 'none',
+      signupStartAt: '2026-08-01 09:00',
+      signupEndAt: '2026-08-24 18:00',
       location: '总部',
       capacity: 10,
       detailHtml: '<p>ok</p>',
@@ -121,6 +124,18 @@ describe('interestGroupStore delete rules', () => {
   it('rejects pending moment with reason', () => {
     expect(rejectInterestGroupMoments([2], '信息不完整')).toEqual({ done: 1, skipped: 0 });
     expect(getInterestGroupMoments().find((item) => item.id === 2)?.rejectReason).toBe('信息不完整');
+  });
+
+  it('rejects pending moment without reason', () => {
+    expect(rejectInterestGroupMoments([2], '')).toEqual({ done: 1, skipped: 0 });
+    expect(getInterestGroupMoments().find((item) => item.id === 2)?.rejectReason).toBeUndefined();
+  });
+
+  it('rejects pending member with optional reason', () => {
+    expect(setInterestGroupMemberStatus(2, ['林销'], '已驳回', '资料不全')).toEqual({ done: 1, skipped: 0 });
+    expect(getInterestGroupMembers().find((item) => item.groupId === 2 && item.employeeId === '林销')?.rejectReason).toBe(
+      '资料不全',
+    );
   });
 
   it('deletes moment and its comments', () => {

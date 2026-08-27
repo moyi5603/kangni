@@ -27,6 +27,7 @@ import {
   canTerminateInterestGroupActivity,
   countGroupActivities,
   groupHasOngoingActivity,
+  igActivityAlignDefaults,
   initialInterestGroupActivities,
   type InterestGroupActivity,
   type InterestGroupActivityFormValues,
@@ -37,6 +38,7 @@ import {
   type InterestGroupMemberStatus,
 } from './interestGroupMember';
 import { INTEREST_GROUP_COMMENT_MOCK_VERSION, initialInterestGroupComments, type InterestGroupComment } from './interestGroupComment';
+import { generateRecurringSessions, syncSessionBounds, createSessionId } from '../../activities/model/activitySchedule';
 import { removeCommentsAndDescendants } from '../../activities/model/commentTree';
 import type { CommentRecord } from '../../activities/model/related';
 import {
@@ -44,7 +46,7 @@ import {
   initialInterestGroupMoments,
   type InterestGroupMoment,
 } from './interestGroupMoment';
-import { validateRejectReason } from '../../activities/model/moment';
+import { validateRejectReason, normalizeRejectReason } from '../../activities/model/moment';
 import { initialInterestGroupSignups, type InterestGroupSignup } from './interestGroupSignup';
 
 let mockVersion = INTEREST_GROUP_MOCK_VERSION;
@@ -218,11 +220,13 @@ export function setInterestGroupMemberStatus(
   groupId: number,
   employeeIds: string[],
   status: Exclude<InterestGroupMemberStatus, '待审核'>,
+  rejectReason?: string,
 ): { done: number; skipped: number } {
   syncMockData();
   const idSet = new Set(employeeIds);
   let done = 0;
   let skipped = 0;
+  const reason = status === '已驳回' ? normalizeRejectReason(rejectReason) : undefined;
   members = members.map((item) => {
     if (item.groupId !== groupId || !idSet.has(item.employeeId)) return item;
     if (item.role === 'lead' || item.status !== '待审核') {
@@ -230,7 +234,11 @@ export function setInterestGroupMemberStatus(
       return item;
     }
     done += 1;
-    return { ...item, status };
+    return {
+      ...item,
+      status,
+      rejectReason: status === '已驳回' ? reason : undefined,
+    };
   });
   if (done) emit();
   return { done, skipped };
@@ -428,20 +436,37 @@ export function upsertInterestGroup(values: InterestGroupFormValues, id?: number
 
 function buildActivityFromForm(values: InterestGroupActivityFormValues, current?: InterestGroupActivity): InterestGroupActivity {
   const group = groups.find((item) => item.id === values.groupId);
-  const sessions =
-    values.type === 'series'
-      ? (values.sessions ?? []).map((session, index) => ({
-          id: current?.sessions?.[index]?.id ?? `s-${Date.now()}-${index}`,
-          startAt: session.startAt,
-          endAt: session.endAt,
-          capacity: values.capacity,
-          signedCount: current?.sessions?.[index]?.signedCount ?? 0,
-          status: current?.sessions?.[index]?.status ?? ('upcoming' as const),
-        }))
-      : values.type === 'recurring'
-        ? current?.sessions
-        : undefined;
+  const align = igActivityAlignDefaults();
+  let sessions = current?.sessions ?? [];
+  if (values.type === 'once') {
+    sessions = [];
+  } else if (values.type === 'recurring' && values.repeatWeekday != null && values.timeStart && values.timeEnd && values.cycleStart && values.cycleEnd) {
+    sessions = generateRecurringSessions({
+      repeatWeekday: values.repeatWeekday,
+      timeStart: values.timeStart,
+      timeEnd: values.timeEnd,
+      cycleStart: values.cycleStart,
+      cycleEnd: values.cycleEnd,
+    }).map((session, index) => ({
+      ...session,
+      capacity: values.capacity,
+      signedCount: current?.sessions?.[index]?.signedCount ?? 0,
+      status: current?.sessions?.[index]?.status ?? ('upcoming' as const),
+    }));
+  } else if (values.type === 'series') {
+    sessions = (values.sessions ?? []).map((session, index) => ({
+      id: current?.sessions?.[index]?.id ?? createSessionId(session.startAt, index),
+      startAt: session.startAt,
+      endAt: session.endAt,
+      capacity: values.capacity,
+      signedCount: current?.sessions?.[index]?.signedCount ?? 0,
+      status: current?.sessions?.[index]?.status ?? ('upcoming' as const),
+    }));
+  }
+  const bounds = syncSessionBounds(sessions.map(({ id, startAt, endAt }) => ({ id, startAt, endAt })));
   return {
+    ...align,
+    ...current,
     id: current?.id ?? Math.max(0, ...activities.map((item) => item.id)) + 1,
     groupId: values.groupId,
     title: values.title.trim(),
@@ -455,16 +480,30 @@ function buildActivityFromForm(values: InterestGroupActivityFormValues, current?
     status: current?.status ?? 'upcoming',
     detailHtml: values.detailHtml,
     likeCount: current?.likeCount ?? 0,
-    startAt: values.type === 'once' ? values.startAt : current?.startAt,
-    endAt: values.type === 'once' ? values.endAt : current?.endAt,
-    repeatWeekdays: values.type === 'recurring' ? (current?.repeatWeekdays ?? (values.repeatWeekday != null ? [values.repeatWeekday] : [])) : undefined,
-    timeStart: values.type === 'recurring' ? values.timeStart : current?.timeStart,
-    timeEnd: values.type === 'recurring' ? values.timeEnd : current?.timeEnd,
+    startAt: values.type === 'once' ? values.startAt : bounds.startAt || current?.startAt,
+    endAt: values.type === 'once' ? values.endAt : bounds.endAt || current?.endAt,
+    repeatWeekday: values.type === 'recurring' ? values.repeatWeekday : undefined,
+    timeStart: values.type === 'recurring' ? values.timeStart : undefined,
+    timeEnd: values.type === 'recurring' ? values.timeEnd : undefined,
+    cycleStart: values.type === 'recurring' ? values.cycleStart : undefined,
+    cycleEnd: values.type === 'recurring' ? values.cycleEnd : undefined,
     sessions,
-    seriesSignupMode: values.type === 'series' ? values.seriesSignupMode ?? 'independent' : undefined,
-    deadlineMode: values.deadlineMode,
-    deadlineAt: values.deadlineMode === 'fixed' ? values.deadlineAt : undefined,
-    deadlineHoursBefore: values.deadlineMode === 'hours_before' ? values.deadlineHoursBefore : undefined,
+    signupStartAt: values.signupStartAt,
+    signupEndAt: values.type === 'once' ? values.signupEndAt : values.signupEndAt || current?.signupEndAt || align.signupEndAt,
+    signupHoursBefore: values.type === 'once' ? 0 : values.signupHoursBefore ?? 0,
+    visibility: values.visibility,
+    departments: values.departments,
+    customPeople: values.customPeople,
+    importFileName: values.importFileName,
+    importedPeople: values.importedPeople,
+    notifyOnPublish: values.notifyOnPublish,
+    needAudit: values.needAudit,
+    minSeniorityYears: values.minSeniorityYears,
+    signupApprovalNodes: values.signupApprovalNodes,
+    signupFields: values.signupFields,
+    signupPoints: values.signupPoints,
+    signupPointsEnabled: values.signupPointsEnabled,
+    pinned: current?.pinned ?? false,
     createdAt: current?.createdAt ?? dayjs().format('YYYY-MM-DD HH:mm:ss'),
     auditStatus: current?.auditStatus ?? '待提交',
     publishStatus: current?.publishStatus ?? '未发布',
@@ -491,6 +530,12 @@ export function upsertInterestGroupActivity(values: InterestGroupActivityFormVal
   return created;
 }
 
+export function patchInterestGroupActivities(updater: (list: InterestGroupActivity[]) => InterestGroupActivity[]) {
+  syncMockData();
+  activities = updater(activities);
+  emit();
+}
+
 export function submitInterestGroupActivities(ids: number[]): number {
   syncMockData();
   const idSet = new Set(ids);
@@ -513,7 +558,7 @@ export function reviewInterestGroupActivity(id: number, pass: boolean, comment: 
       ? {
           ...item,
           auditStatus: pass ? '已通过' : '已驳回',
-          rejectReason: pass ? undefined : comment.trim(),
+          rejectReason: pass ? undefined : normalizeRejectReason(comment),
         }
       : item,
   );
@@ -686,7 +731,7 @@ export function rejectInterestGroupMoments(
       return item;
     }
     done += 1;
-    return { ...item, status: '已驳回' as const, rejectReason: reason.trim(), updatedAt: stamp };
+    return { ...item, status: '已驳回' as const, rejectReason: normalizeRejectReason(reason), updatedAt: stamp };
   });
   emit();
   return { done, skipped };

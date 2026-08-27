@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { patchRelated, restoreRelatedSignups } from '../../../activities/model/related';
+import { initialActivities } from '../../../activities/model/activity';
 import { ApprovedSignupPeople } from './ApprovedSignupPeople';
 
 function seedApprovedPeople(activityId: number, count: number) {
@@ -40,6 +41,7 @@ describe('Approved signup people', () => {
   it('opens the full approved list in a panel', () => {
     const html = renderToStaticMarkup(<ApprovedSignupPeople activityId={2} open />);
     expect(html).toContain('role="dialog"');
+    expect(html).toContain('c-signup-people-body');
     expect(html).toContain('c-signup-people-list is-cols-4');
     expect(html).toContain('张悦');
     expect(html).toContain('前端组');
@@ -67,5 +69,25 @@ describe('Approved signup people', () => {
     expect(html).toContain('placeholder="搜索姓名或部门"');
     expect(html).toContain('同事1');
     expect(html).not.toContain('同事2');
+  });
+
+  it('tabs approved people by unfinished session without an all tab', () => {
+    const basketball = initialActivities.find((item) => item.id === 26)!;
+    const now = Date.parse('2026-08-27T11:00:00');
+    const first = renderToStaticMarkup(
+      <ApprovedSignupPeople activity={basketball} activityId={26} open now={now} />,
+    );
+    expect(first).toContain('c-signup-people-body');
+    expect(first).not.toContain('全部');
+    expect(first).toContain('8/27');
+    expect(first).toContain('9/3');
+    expect(first).toContain('陈产品');
+
+    const later = renderToStaticMarkup(
+      <ApprovedSignupPeople activity={basketball} activityId={26} open now={now} peopleTab="s-1-202609031400" />,
+    );
+    const dialog = later.slice(later.indexOf('role="dialog"'));
+    expect(dialog).toContain('没有匹配的报名人员');
+    expect(dialog).not.toContain('陈产品');
   });
 });

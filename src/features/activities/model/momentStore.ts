@@ -4,10 +4,8 @@ import {
   canSubmitMoment,
   commentCount,
   inferMomentType,
-  nextStatusOnSubmit,
   submitBlockReason,
   validateComposer,
-  validateRejectReason,
   visibleOnClient,
   type MomentDraft,
   type MomentRecord,
@@ -20,6 +18,8 @@ export const MOMENT_VIEWER = DEMO_SIGNUP_USER.name;
 const openDayImg = '/activities/open-day.jpg';
 const onboardingImg = '/activities/onboarding.jpg';
 const basketballImg = '/activities/basketball.jpg';
+const checkupImg = '/activities/checkup.jpg';
+const shareImg = '/activities/share.jpg';
 
 const initialMoments: MomentRecord[] = [
   {
@@ -138,7 +138,7 @@ const initialMoments: MomentRecord[] = [
     content: '产线参观这一段想发到部门群。',
     type: '图文类型',
     imageUrls: [openDayImg],
-    status: '待审核',
+    status: '已通过',
     createdAt: '2026-04-12 17:10:00',
     updatedAt: '2026-04-12 17:10:00',
     likedBy: [],
@@ -150,11 +150,23 @@ const initialMoments: MomentRecord[] = [
     author: '陈产品',
     content: '午餐交流拍糊了，再补一张。',
     type: '图文类型',
-    imageUrls: [onboardingImg],
-    status: '已驳回',
-    rejectReason: '画面模糊，请换一张更清晰的现场照片后再提交。',
+    imageUrls: [onboardingImg, openDayImg, basketballImg, checkupImg, shareImg],
+    status: '已通过',
     createdAt: '2026-04-12 17:40:00',
     updatedAt: '2026-04-12 18:05:00',
+    likedBy: [],
+    comments: [],
+  },
+  {
+    id: 6,
+    activityId: 1,
+    author: '赵人事',
+    content: '展厅合影补一张。',
+    type: '图文类型',
+    imageUrls: [checkupImg],
+    status: '已通过',
+    createdAt: '2026-04-12 15:00:00',
+    updatedAt: '2026-04-12 15:00:00',
     likedBy: [],
     comments: [],
   },
@@ -286,10 +298,6 @@ export function useAllMoments(): MomentRecord[] {
   return list;
 }
 
-export function isMomentAuditEnabled(activity: Pick<Activity, 'momentAuditEnabled'>): boolean {
-  return Boolean(activity.momentAuditEnabled);
-}
-
 export function hasApprovedSignup(activityId: number, phone = DEMO_SIGNUP_USER.phone): boolean {
   return getRelatedList('signups').some(
     (item) => item.activityId === activityId && item.phone === phone && item.status === '已通过',
@@ -334,7 +342,7 @@ export function submitMoment(activity: Activity, draft: MomentDraft, author = MO
   const type = inferMomentType(draft.imageUrls, draft.videoUrl);
   if (!type) return { ok: false, message: '请上传图片或视频' };
   const stamp = nowText();
-  const status = nextStatusOnSubmit(isMomentAuditEnabled(activity));
+  const status = '已通过' as const;
   moments = [
     {
       id: nextId(moments),
@@ -369,7 +377,7 @@ export function resubmitMoment(id: number, activity: Activity, draft: MomentDraf
   const type = inferMomentType(draft.imageUrls, draft.videoUrl);
   if (!type) return { ok: false, message: '请上传图片或视频' };
   const stamp = nowText();
-  const status = nextStatusOnSubmit(isMomentAuditEnabled(activity));
+  const status = '已通过' as const;
   const updated = patchMoment(id, (item) => ({
     ...item,
     content: draft.content.trim(),
@@ -380,43 +388,6 @@ export function resubmitMoment(id: number, activity: Activity, draft: MomentDraf
     updatedAt: stamp,
   }));
   return updated ? { ok: true } : { ok: false, message: '瞬间不存在' };
-}
-
-export function approveMoments(ids: number[]): { done: number; skipped: number } {
-  const idSet = new Set(ids);
-  let done = 0;
-  let skipped = 0;
-  moments = moments.map((item) => {
-    if (!idSet.has(item.id)) return item;
-    if (item.status !== '待审核') {
-      skipped += 1;
-      return item;
-    }
-    done += 1;
-    return { ...item, status: '已通过' as const, rejectReason: undefined, updatedAt: nowText() };
-  });
-  emit();
-  return { done, skipped };
-}
-
-export function rejectMoments(ids: number[], reason: string): { done: number; skipped: number } | { ok: false; message: string } {
-  const invalid = validateRejectReason(reason);
-  if (invalid) return { ok: false, message: invalid };
-  const idSet = new Set(ids);
-  let done = 0;
-  let skipped = 0;
-  const stamp = nowText();
-  moments = moments.map((item) => {
-    if (!idSet.has(item.id)) return item;
-    if (item.status !== '待审核') {
-      skipped += 1;
-      return item;
-    }
-    done += 1;
-    return { ...item, status: '已驳回' as const, rejectReason: reason.trim(), updatedAt: stamp };
-  });
-  emit();
-  return { done, skipped };
 }
 
 export function deleteMoment(id: number): boolean {

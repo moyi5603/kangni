@@ -1,4 +1,10 @@
 import { useState } from 'react';
+import type { Activity } from '../../../activities/model/activity';
+import {
+  formatSessionChipDate,
+  listClientSignupSessions,
+  shouldShowRecentSessions,
+} from '../../../activities/model/activitySchedule';
 import { useRelated } from '../../../activities/model/related';
 import {
   approvedSignupPeople,
@@ -29,22 +35,40 @@ function PeopleList({ people }: { people: ApprovedSignupPerson[] }) {
 
 export function ApprovedSignupPeople({
   activityId,
+  activity,
   surface = 'h5',
   open: initialOpen = false,
   query = '',
+  peopleTab,
+  now = Date.now(),
 }: {
   activityId: number;
+  activity?: Activity;
   surface?: 'h5' | 'pc';
   open?: boolean;
   query?: string;
+  peopleTab?: string;
+  now?: number;
 }) {
   useRelated('signups', activityId);
   const people = approvedSignupPeople(activityId);
+  const sessionTabs =
+    activity && shouldShowRecentSessions(activity.scheduleType, activity.sessions ?? [], now)
+      ? listClientSignupSessions(activity.sessions ?? [], now)
+      : [];
   const [open, setOpen] = useState(initialOpen);
   const [keyword, setKeyword] = useState(query);
+  const [tab, setTab] = useState(peopleTab ?? sessionTabs[0]?.id ?? 'all');
   const preview = people.slice(0, SIGNUP_PEOPLE_PREVIEW_LIMIT);
   const leftover = people.length - preview.length;
-  const visible = filterApprovedSignupPeople(people, keyword);
+  const activeTab =
+    sessionTabs.length === 0
+      ? 'all'
+      : sessionTabs.some((session) => session.id === tab)
+        ? tab
+        : sessionTabs[0]!.id;
+  const tabPeople = activeTab === 'all' ? people : approvedSignupPeople(activityId, activeTab);
+  const visible = filterApprovedSignupPeople(tabPeople, keyword);
   const showSearch = people.length > SIGNUP_PEOPLE_PREVIEW_LIMIT;
 
   return (
@@ -85,11 +109,27 @@ export function ApprovedSignupPeople({
             onClick={(event) => event.stopPropagation()}
           >
             <div className="c-signup-people-panel-head">
-              <h2 id="signup-people-dialog-title">已报名人员（{people.length}）</h2>
+              <h2 id="signup-people-dialog-title">已报名人员（{visible.length}）</h2>
               <button className="c-btn c-btn-ghost" type="button" onClick={() => setOpen(false)}>
                 关闭
               </button>
             </div>
+            {sessionTabs.length > 0 ? (
+              <div className="c-tabs c-signup-people-tabs" role="tablist" aria-label="按场次查看">
+                {sessionTabs.map((session) => (
+                  <button
+                    key={session.id}
+                    className={`c-tab${activeTab === session.id ? ' is-active' : ''}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === session.id}
+                    onClick={() => setTab(session.id)}
+                  >
+                    {formatSessionChipDate(session.startAt)}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             {showSearch ? (
               <input
                 className="c-signup-people-search"
@@ -100,7 +140,9 @@ export function ApprovedSignupPeople({
                 onChange={(event) => setKeyword(event.target.value)}
               />
             ) : null}
-            <PeopleList people={visible} />
+            <div className="c-signup-people-body">
+              <PeopleList people={visible} />
+            </div>
           </div>
         </div>
       ) : null}

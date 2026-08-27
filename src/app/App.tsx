@@ -56,11 +56,15 @@ import { InterestGroupActivityDetailPage } from '../features/interest-groups/pag
 import { InterestGroupActivityFormPage } from '../features/interest-groups/pages/InterestGroupActivityFormPage';
 import { InterestGroupActivityListPage } from '../features/interest-groups/pages/InterestGroupActivityListPage';
 import { InterestGroupCategoryListPage } from '../features/interest-groups/pages/InterestGroupCategoryListPage';
+import { InterestGroupActivityRulesPage } from '../features/interest-groups/pages/InterestGroupActivityRulesPage';
 import { InterestGroupDetailPage } from '../features/interest-groups/pages/InterestGroupDetailPage';
 import { AwardCertificateListPage } from '../features/awards/pages/AwardCertificateListPage';
 import { AwardDetailPage } from '../features/awards/pages/AwardDetailPage';
 import { AwardFormPage } from '../features/awards/pages/AwardFormPage';
 import { AwardListPage } from '../features/awards/pages/AwardListPage';
+import { VoteDetailPage } from '../features/voting/pages/VoteDetailPage';
+import { VoteFormPage } from '../features/voting/pages/VoteFormPage';
+import { VoteListPage } from '../features/voting/pages/VoteListPage';
 import { InterestGroupListPage } from '../features/interest-groups/pages/InterestGroupListPage';
 import { b2bStandards } from '../shared/design-system/generated/b2b-standards.generated';
 import { CEndApp } from './CEndApp';
@@ -150,6 +154,8 @@ export function App() {
         activityId={cEnd.activityId}
         courseId={cEnd.courseId}
         examId={cEnd.examId}
+        voteId={cEnd.voteId}
+        voteResponseId={cEnd.voteResponseId}
         h5Page={cEnd.h5Page}
       />
     );
@@ -542,6 +548,8 @@ function AdminApp() {
             />
           ) : page === 'interest-group-categories' ? (
             <InterestGroupCategoryListPage />
+          ) : page === 'interest-group-rules' ? (
+            <InterestGroupActivityRulesPage />
           ) : page === 'interest-group-activity-detail' ? (
             <InterestGroupActivityDetailPage
               key={recordId ?? 'detail'}
@@ -549,6 +557,7 @@ function AdminApp() {
               tab={tab}
               onBack={() => goToPage('interest-group-activities')}
               onEdit={(id) => goToPage('interest-group-activity-edit', String(id))}
+              onCopy={(id) => goToPage('interest-group-activity-create', String(id))}
               onTabChange={(nextTab) => {
                 setTab(nextTab);
                 syncLocation(application, 'interest-group-activity-detail', recordId, nextTab);
@@ -578,6 +587,28 @@ function AdminApp() {
             />
           ) : page === 'award-certificates' ? (
             <AwardCertificateListPage />
+          ) : page === 'vote-list' ? (
+            <VoteListPage onNavigate={goToPage} />
+          ) : page === 'vote-create' || page === 'vote-edit' ? (
+            <VoteFormPage
+              key={`${page}-${recordId ?? 'new'}`}
+              mode={page === 'vote-edit' ? 'edit' : 'create'}
+              recordId={recordId}
+              onBack={() => goToPage('vote-list')}
+              onNavigate={goToPage}
+            />
+          ) : page === 'vote-detail' ? (
+            <VoteDetailPage
+              key={recordId ?? 'detail'}
+              recordId={recordId}
+              tab={tab}
+              onBack={() => goToPage('vote-list')}
+              onEdit={(id) => goToPage('vote-edit', id)}
+              onTabChange={(nextTab) => {
+                setTab(nextTab);
+                syncLocation(application, 'vote-detail', recordId, nextTab);
+              }}
+            />
           ) : (
             <PlaceholderPage
               breadcrumbItems={breadcrumbItems}

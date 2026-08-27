@@ -1,0 +1,542 @@
+.c-h5-shell.is-vote .c-h5-vote-mine , .c-pc-shell.is-vote .c-h5-vote-mine {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 4px;
+  color: var(--c-text);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-card , .c-pc-shell.is-vote .c-h5-vote-card {
+  display: block;
+  padding: 14px 16px;
+  border-radius: var(--c-radius);
+  background: var(--c-card);
+  box-shadow: var(--c-shadow);
+  color: inherit;
+  text-decoration: none;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-title , .c-pc-shell.is-vote .c-h5-vote-title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-time , .c-pc-shell.is-vote .c-h5-vote-time {
+  margin: 0 0 10px;
+  color: var(--c-muted);
+  font-size: 13px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-cta , .c-pc-shell.is-vote .c-h5-vote-cta {
+  color: var(--c-orange);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.c-h5-shell.is-vote.is-detail .c-h5-vote-detail, .c-pc-shell.is-vote.is-detail .c-h5-vote-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 16px 8px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-hero , .c-pc-shell.is-vote .c-h5-vote-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px;
+  border-radius: var(--c-radius);
+  background: var(--c-card);
+  box-shadow: var(--c-shadow);
+}
+
+.c-h5-shell.is-vote .c-h5-vote-intro , .c-pc-shell.is-vote .c-h5-vote-intro {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-stats , .c-pc-shell.is-vote .c-h5-vote-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-stats li , .c-pc-shell.is-vote .c-h5-vote-stats li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 64px;
+  padding: 12px 14px;
+  border-radius: var(--c-radius);
+  background: var(--c-card);
+  box-shadow: var(--c-shadow);
+}
+
+.c-h5-shell.is-vote .c-h5-vote-stats small , .c-pc-shell.is-vote .c-h5-vote-stats small {
+  color: var(--c-muted);
+  font-size: 12px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-stats strong , .c-pc-shell.is-vote .c-h5-vote-stats strong {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-panel, .c-pc-shell.is-vote .c-h5-vote-panel,
+.c-h5-shell.is-vote .c-h5-vote-results , .c-pc-shell.is-vote .c-h5-vote-results {
+  padding: 14px 16px;
+  border-radius: var(--c-radius);
+  background: var(--c-card);
+  box-shadow: var(--c-shadow);
+}
+
+.c-h5-shell.is-vote .c-h5-vote-panel h2, .c-pc-shell.is-vote .c-h5-vote-panel h2,
+.c-h5-shell.is-vote .c-h5-vote-section , .c-pc-shell.is-vote .c-h5-vote-section {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.c-h5-shell.is-vote .c-activity-comment-toolbar button, .c-pc-shell.is-vote .c-activity-comment-toolbar button,
+.c-h5-shell.is-vote .c-comment-composer-send, .c-pc-shell.is-vote .c-comment-composer-send,
+.c-h5-shell.is-vote .c-comment-composer-clear , .c-pc-shell.is-vote .c-comment-composer-clear {
+  color: var(--c-orange);
+}
+
+.c-h5-shell.is-vote .c-comment-composer-send:disabled , .c-pc-shell.is-vote .c-comment-composer-send:disabled {
+  color: rgb(24 24 27 / 28%);
+}
+
+.c-h5-shell.is-vote .c-comment-composer-field:focus , .c-pc-shell.is-vote .c-comment-composer-field:focus {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-orange) 28%, transparent);
+}
+
+.c-h5-shell.is-vote .c-activity-comment:last-child , .c-pc-shell.is-vote .c-activity-comment:last-child {
+  border-bottom: 0;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-kv , .c-pc-shell.is-vote .c-h5-vote-kv {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-kv div , .c-pc-shell.is-vote .c-h5-vote-kv div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-kv dt , .c-pc-shell.is-vote .c-h5-vote-kv dt {
+  color: var(--c-muted);
+}
+
+.c-h5-shell.is-vote .c-h5-vote-kv dd , .c-pc-shell.is-vote .c-h5-vote-kv dd {
+  margin: 0;
+  font-weight: 500;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-quota, .c-pc-shell.is-vote .c-h5-vote-quota,
+.c-h5-shell.is-vote .c-h5-vote-hint , .c-pc-shell.is-vote .c-h5-vote-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-hint , .c-pc-shell.is-vote .c-h5-vote-hint {
+  margin-top: 6px;
+  color: var(--c-muted);
+}
+
+.c-h5-shell.is-vote .c-h5-vote-rules , .c-pc-shell.is-vote .c-h5-vote-rules {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--c-text);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-results , .c-pc-shell.is-vote .c-h5-vote-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-results .c-h5-vote-q , .c-pc-shell.is-vote .c-h5-vote-results .c-h5-vote-q {
+  box-shadow: none;
+  padding: 0;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-q , .c-pc-shell.is-vote .c-h5-vote-q {
+  padding: 14px 16px;
+  border-radius: var(--c-radius);
+  background: var(--c-card);
+}
+
+.c-h5-shell.is-vote .c-h5-vote-q h2 , .c-pc-shell.is-vote .c-h5-vote-q h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-q h2 small , .c-pc-shell.is-vote .c-h5-vote-q h2 small {
+  margin-left: 8px;
+  color: var(--c-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-choices , .c-pc-shell.is-vote .c-h5-vote-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-choice , .c-pc-shell.is-vote .c-h5-vote-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-height: 44px;
+  padding: 12px;
+  border: 1px solid rgb(24 24 27 / 10%);
+  border-radius: 10px;
+  background: #fff;
+  color: inherit;
+  text-align: left;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-choice.is-on , .c-pc-shell.is-vote .c-h5-vote-choice.is-on {
+  border-color: var(--c-orange);
+  background: color-mix(in srgb, var(--c-orange) 8%, #fff);
+}
+
+.c-h5-shell.is-vote.is-snapshot .c-h5-vote-choice, .c-pc-shell.is-vote.is-snapshot .c-h5-vote-choice,
+.c-h5-shell.is-vote.is-snapshot .c-h5-vote-score, .c-pc-shell.is-vote.is-snapshot .c-h5-vote-score {
+  cursor: default;
+  pointer-events: none;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-choice:active:not(:disabled) , .c-pc-shell.is-vote .c-h5-vote-choice:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.c-h5-shell.is-vote .c-h5-vote-choice:disabled , .c-pc-shell.is-vote .c-h5-vote-choice:disabled {
+  opacity: 0.7;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-choice-copy , .c-pc-shell.is-vote .c-h5-vote-choice-copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-choice-copy strong , .c-pc-shell.is-vote .c-h5-vote-choice-copy strong {
+  font-size: inherit;
+  font-weight: 500;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-choice em , .c-pc-shell.is-vote .c-h5-vote-choice em {
+  color: var(--c-muted);
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.45;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-choices.is-image.is-stack , .c-pc-shell.is-vote .c-h5-vote-choices.is-image.is-stack {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-choice.is-image.is-stack , .c-pc-shell.is-vote .c-h5-vote-choice.is-image.is-stack {
+  align-items: stretch;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-choice.is-image.is-stack .c-h5-vote-choice-copy , .c-pc-shell.is-vote .c-h5-vote-choice.is-image.is-stack .c-h5-vote-choice-copy {
+  width: 100%;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-choice.is-image.is-stack img , .c-pc-shell.is-vote .c-h5-vote-choice.is-image.is-stack img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-choice.is-image.is-stack .c-h5-vote-person-avatar , .c-pc-shell.is-vote .c-h5-vote-choice.is-image.is-stack .c-h5-vote-person-avatar {
+  width: 100%;
+  aspect-ratio: 1;
+  font-size: 28px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-choice.is-image.is-row , .c-pc-shell.is-vote .c-h5-vote-choice.is-image.is-row {
+  flex-direction: row;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-choice.is-image.is-row img , .c-pc-shell.is-vote .c-h5-vote-choice.is-image.is-row img {
+  width: 96px;
+  height: 96px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.c-h5-shell.is-vote .c-h5-vote-person-avatar , .c-pc-shell.is-vote .c-h5-vote-person-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #fff;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 8px;
+}
+.c-h5-shell.is-vote .c-h5-vote-choice.is-image.is-row .c-h5-vote-person-avatar , .c-pc-shell.is-vote .c-h5-vote-choice.is-image.is-row .c-h5-vote-person-avatar {
+  width: 96px;
+  height: 96px;
+  font-size: 28px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-choice.is-image.is-row .c-h5-vote-choice-copy , .c-pc-shell.is-vote .c-h5-vote-choice.is-image.is-row .c-h5-vote-choice-copy {
+  justify-content: flex-start;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-choice.is-image.is-row .c-h5-vote-choice-copy strong , .c-pc-shell.is-vote .c-h5-vote-choice.is-image.is-row .c-h5-vote-choice-copy strong {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  word-break: break-all;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-choice.is-image.is-row .c-h5-vote-choice-copy em , .c-pc-shell.is-vote .c-h5-vote-choice.is-image.is-row .c-h5-vote-choice-copy em {
+  display: -webkit-box;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+  word-break: break-all;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-text , .c-pc-shell.is-vote .c-h5-vote-text {
+  width: 100%;
+  min-height: 88px;
+  padding: 12px;
+  border: 1px solid rgb(24 24 27 / 10%);
+  border-radius: 10px;
+  resize: vertical;
+  font: inherit;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-scores , .c-pc-shell.is-vote .c-h5-vote-scores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-score , .c-pc-shell.is-vote .c-h5-vote-score {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid rgb(24 24 27 / 10%);
+  border-radius: 10px;
+  background: #fff;
+  color: inherit;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-score.is-on , .c-pc-shell.is-vote .c-h5-vote-score.is-on {
+  border-color: var(--c-orange);
+  background: color-mix(in srgb, var(--c-orange) 8%, #fff);
+}
+
+.c-h5-shell.is-vote .c-h5-vote-bar , .c-pc-shell.is-vote .c-h5-vote-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-bar-meta , .c-pc-shell.is-vote .c-h5-vote-bar-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-bar-meta b , .c-pc-shell.is-vote .c-h5-vote-bar-meta b {
+  margin-left: 6px;
+  color: var(--c-orange);
+  font-weight: 600;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-bar-track , .c-pc-shell.is-vote .c-h5-vote-bar-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eceff3;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-bar-track span , .c-pc-shell.is-vote .c-h5-vote-bar-track span {
+  display: block;
+  height: 100%;
+  background: var(--c-orange);
+}
+
+.c-h5-shell.is-vote .c-h5-vote-avg, .c-pc-shell.is-vote .c-h5-vote-avg,
+.c-h5-shell.is-vote .c-h5-vote-collect , .c-pc-shell.is-vote .c-h5-vote-collect {
+  margin: 0;
+  color: var(--c-muted);
+  font-size: 13px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-avg p , .c-pc-shell.is-vote .c-h5-vote-avg p {
+  margin: 0 0 4px;
+}
+
+.c-h5-shell.is-vote .c-h5-cta-bar .c-cta , .c-pc-shell.is-vote .c-h5-cta-bar .c-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.c-pc-shell.is-vote .c-pc-vote-catalog .c-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.c-pc-shell.is-vote .c-pc-vote-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.c-pc-shell.is-vote .c-pc-vote-mine {
+  color: var(--c-orange);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.c-pc-shell.is-vote .c-pc-vote-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 16px;
+}
+
+.c-pc-shell.is-vote .c-pc-vote-nav .c-back-link {
+  margin: 0;
+}
+
+.c-pc-shell.is-vote .c-pc-vote-board {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.c-pc-shell.is-vote .c-h5-vote-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.c-pc-shell.is-vote .c-pc-side .c-quota-line {
+  margin: 12px 0 0;
+}
+
+.c-pc-shell.is-vote .c-pc-side .c-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: none;
+  margin-top: 16px;
+  text-decoration: none;
+}
+
+.c-pc-shell.is-vote.is-detail .c-h5-vote-detail {
+  max-width: none;
+  padding: 0;
+  gap: 16px;
+}
+
+.c-pc-shell.is-vote .c-h5-vote-panel,
+.c-pc-shell.is-vote .c-h5-vote-results {
+  padding: 20px 24px;
+}
+
+.c-pc-shell.is-vote .c-h5-vote-choices.is-image.is-stack {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.c-pc-shell.is-vote .c-h5-vote-choices.is-image.is-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 1100px) {
+  .c-pc-shell.is-vote .c-pc-vote-grid,
+  .c-pc-shell.is-vote .c-h5-vote-choices.is-image.is-stack {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .c-pc-shell.is-vote .c-h5-vote-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .c-pc-shell.is-vote .c-pc-vote-grid,
+  .c-pc-shell.is-vote .c-pc-vote-board,
+  .c-pc-shell.is-vote .c-h5-vote-choices.is-image.is-stack,
+  .c-pc-shell.is-vote .c-h5-vote-choices.is-image.is-row {
+    grid-template-columns: 1fr;
+  }
+
+  .c-pc-shell.is-vote .c-pc-detail {
+    grid-template-columns: minmax(0, 1fr) 240px;
+  }
+
+  .c-pc-shell.is-vote .c-pc-side {
+    position: sticky;
+    top: 72px;
+  }
+}

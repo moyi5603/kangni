@@ -99,6 +99,7 @@ describe('H5 my signups', () => {
     expect(html).toContain('已驳回');
     expect(html).toContain('中秋员工晚会');
     expect(html).toContain('年度体检安排');
+    expect(html).toContain('周四篮球夜');
     expect(html).not.toContain('新员工入职训练营');
     expect(html).not.toContain('春季员工开放日');
     expect(html).not.toContain('秋季消防演练');

@@ -7,10 +7,10 @@ import { PcCommentModal } from '../../activities/pc/PcCommentModal';
 import { PcActivityShell } from '../../activities/pc/PcActivityShell';
 import {
   courseCommentStatusLabel,
-  formatCourseCommentDisplayTime,
   submitCourseComment,
   useVisibleCourseComments,
 } from '../../../training/model/courseCommentStore';
+import { formatCEndDateTime } from '../../formatDateTime';
 import { toggleCourseFavorite, toggleCourseLike, useCourseEngagement } from '../../../training/model/courseEngagementStore';
 import { useCourseCommentConfig } from '../../../training/model/trainingStore';
 import { getClientCourse, getCourseLearning } from '../model/clientCourse';
@@ -40,7 +40,7 @@ export function PcCourseDetail({ id }: { id: number }) {
         id: item.id,
         author: item.author,
         text: item.text,
-        time: formatCourseCommentDisplayTime(item.createdAt),
+        time: formatCEndDateTime(item.createdAt.replace(/:\d{2}$/, '')),
         statusLabel: courseCommentStatusLabel(item.status),
       })),
     [commentRecords],

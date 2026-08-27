@@ -1,7 +1,7 @@
 import { useActivities } from '../../../activities/model/activityStore';
 import { goCEnd } from '../../../../app/navigation';
 import { getPublishedActivity, signupCta, signupTypes } from '../model/clientActivity';
-import { submitSignup, useHasSignedUp } from '../model/signupStore';
+import { getUserSignupAnswers, saveClientSignup, useHasSignedUp } from '../model/signupStore';
 import { useCEndToast } from '../components/CEndToast';
 import { SignupForm } from '../components/SignupForm';
 import { H5ActivityShell } from './H5ActivityShell';
@@ -26,6 +26,7 @@ export function H5SignupPage({ id }: { id: number }) {
   }
 
   const types = signupTypes(activity);
+  const adjusting = signedUp;
   const back = () => goCEnd('h5', activity.id);
 
   const confirm = (type: string, answers: Record<string, string>) => {
@@ -35,16 +36,30 @@ export function H5SignupPage({ id }: { id: number }) {
       back();
       return;
     }
-    const result = submitSignup(activity.id, type, answers);
-    toast.show(result === 'ok' ? '报名成功' : '已报名');
+    const result = saveClientSignup(activity.id, type, answers);
+    toast.show(
+      result === 'ok' ? (adjusting ? '已更新报名' : '报名成功') : result === 'cancelled' ? '已取消报名' : '已报名',
+    );
     back();
   };
 
   return (
-    <H5ActivityShell title="填写报名信息" onBack={back}>
+    <H5ActivityShell title={adjusting ? '调整报名' : '填写报名信息'} onBack={back}>
       <div className="c-signup-page">
         <p className="c-signup-page-title">{activity.title}</p>
-        <SignupForm types={types} fields={activity.signupFields} onCancel={back} onConfirm={confirm} />
+        <SignupForm
+          types={types}
+          fields={activity.signupFields}
+          scheduleType={activity.scheduleType}
+          sessions={activity.sessions}
+          signupStartAt={activity.signupStartAt}
+          signupEndAt={activity.signupEndAt}
+          signupHoursBefore={activity.signupHoursBefore}
+          initialAnswers={adjusting ? getUserSignupAnswers(activity.id) : undefined}
+          mode={adjusting ? 'adjust' : 'create'}
+          onCancel={back}
+          onConfirm={confirm}
+        />
       </div>
     </H5ActivityShell>
   );

@@ -1,5 +1,12 @@
 import { useMemo, useSyncExternalStore } from 'react';
 import { getActivity } from '../../../activities/model/activityStore';
+import { evaluateCheckIn, type CheckInResult } from '../../../activities/model/activityCheckIn';
+import {
+  listClientSignupSessions,
+  needsSessionPick,
+  parseSessionIds,
+  stringifySessionIds,
+} from '../../../activities/model/activitySchedule';
 import {
   getRelatedList,
   patchRelated,
@@ -61,6 +68,30 @@ export const DEMO_CLIENT_SIGNUPS: readonly ClientSignup[] = [
     createdAt: '2026-04-12 10:00:00',
   },
   {
+    activityId: 26,
+    name: DEMO_SIGNUP_USER.name,
+    phone: DEMO_SIGNUP_USER.phone,
+    type: '个人报名',
+    status: '已通过',
+    createdAt: '2026-08-20 16:00:00',
+  },
+  {
+    activityId: 27,
+    name: DEMO_SIGNUP_USER.name,
+    phone: DEMO_SIGNUP_USER.phone,
+    type: '个人报名',
+    status: '已通过',
+    createdAt: '2026-08-21 10:00:00',
+  },
+  {
+    activityId: 10,
+    name: DEMO_SIGNUP_USER.name,
+    phone: DEMO_SIGNUP_USER.phone,
+    type: '个人报名',
+    status: '已通过',
+    createdAt: '2026-08-21 11:00:00',
+  },
+  {
     activityId: 12,
     name: DEMO_SIGNUP_USER.name,
     phone: DEMO_SIGNUP_USER.phone,
@@ -70,7 +101,7 @@ export const DEMO_CLIENT_SIGNUPS: readonly ClientSignup[] = [
   },
 ];
 
-const DEMO_RELATED_IDS: Record<number, number> = { 2: 4, 6: 15, 9: 16, 1: 14, 12: 17 };
+const DEMO_RELATED_IDS: Record<number, number> = { 2: 4, 6: 15, 9: 16, 1: 14, 12: 17, 26: 18, 27: 19, 10: 20 };
 
 function isClientStatus(status: SignupRecord['status']): status is ClientSignupStatus {
   return (CLIENT_STATUSES as readonly string[]).includes(status);
@@ -105,9 +136,10 @@ function nextSignupId(list: SignupRecord[]): number {
 
 function signupStatusFor(activityId: number, type: string): ClientSignupStatus {
   const activity = getActivity(activityId);
-  const setting = activity?.signupSettings.find((item) => item.type.trim() === type);
-  if (!setting) return '已通过';
-  return setting.needAudit ? '待审核' : '已通过';
+  if (!activity) return '已通过';
+  const setting =
+    activity.signupSettings.find((item) => item.type.trim() === type.trim()) ?? activity.signupSettings[0];
+  return setting?.needAudit ? '待审核' : '已通过';
 }
 
 export function hasSignedUp(activityId: number, phone = DEMO_SIGNUP_USER.phone): boolean {
@@ -116,6 +148,70 @@ export function hasSignedUp(activityId: number, phone = DEMO_SIGNUP_USER.phone):
 
 export function getUserSignups(phone: string = DEMO_SIGNUP_USER.phone): ClientSignup[] {
   return visibleRows(phone).map(toClientSignup);
+}
+
+export function getUserSignupRecord(activityId: number, phone = DEMO_SIGNUP_USER.phone): SignupRecord | undefined {
+  return getRelatedList('signups').find(
+    (item) =>
+      item.activityId === activityId &&
+      (item.accountPhone ?? item.phone) === phone &&
+      isClientStatus(item.status),
+  );
+}
+
+export function getUserSignupAnswers(activityId: number, phone = DEMO_SIGNUP_USER.phone): Record<string, string> {
+  return { ...(getUserSignupRecord(activityId, phone)?.answers ?? {}) };
+}
+
+export function updateSignup(
+  activityId: number,
+  type: string,
+  answers: Record<string, string> = {},
+  now = Date.now(),
+): 'ok' | 'missing' | 'no-type' | 'cancelled' {
+  const trimmed = type.trim();
+  if (!trimmed) return 'no-type';
+  const current = getUserSignupRecord(activityId);
+  if (!current) return 'missing';
+  const activity = getActivity(activityId);
+  const extras: Record<string, string> = { ...(current.answers ?? {}) };
+  for (const [key, value] of Object.entries(answers)) {
+    if (key === '姓名' || key === '手机号' || key === '部门') continue;
+    if (value.trim()) extras[key] = value.trim();
+    else delete extras[key];
+  }
+  if (activity && needsSessionPick(activity.scheduleType)) {
+    const pickable = new Set(listClientSignupSessions(activity.sessions ?? [], now).map((item) => item.id));
+    const kept = parseSessionIds(current.answers?.['场次']).filter((id) => !pickable.has(id));
+    const next = stringifySessionIds([...kept, ...parseSessionIds(answers['场次'])]);
+    if (!next) return cancelSignup(activityId, now) === 'ok' ? 'cancelled' : 'missing';
+    extras['场次'] = next;
+  }
+  patchRelated('signups', (list) =>
+    list.map((item) =>
+      item.id === current.id
+        ? {
+            ...item,
+            signupType: trimmed,
+            name: answers['姓名']?.trim() || item.name,
+            phone: answers['手机号']?.trim() || item.phone,
+            department: answers['部门']?.trim() || item.department,
+            answers: Object.keys(extras).length ? extras : undefined,
+          }
+        : item,
+    ),
+  );
+  return 'ok';
+}
+
+export function saveClientSignup(
+  activityId: number,
+  type: string,
+  answers: Record<string, string> = {},
+  now = Date.now(),
+): 'ok' | 'duplicate' | 'no-type' | 'missing' | 'cancelled' {
+  if (hasSignedUp(activityId)) return updateSignup(activityId, type, answers, now);
+  return submitSignup(activityId, type, answers);
 }
 
 export function submitSignup(
@@ -169,6 +265,29 @@ export function cancelSignup(activityId: number, now = Date.now()): 'ok' | 'miss
     ),
   );
   return 'ok';
+}
+
+export function applyActivityCheckIn(
+  activityId: number,
+  sessionId: string,
+  token: string,
+  now = Date.now(),
+  phone = DEMO_SIGNUP_USER.phone,
+): CheckInResult {
+  const activity = getActivity(activityId);
+  if (!activity) return { ok: false, reason: 'disabled' };
+  const signup = getRelatedList('signups').find(
+    (item) => item.activityId === activityId && (item.accountPhone ?? item.phone) === phone,
+  );
+  const result = evaluateCheckIn({ activity, sessionId, token, signup, now });
+  if (!result.ok || result.already || !signup) return result;
+  const at = formatSignupTime(new Date(now));
+  patchRelated('signups', (list) =>
+    list.map((item) =>
+      item.id === signup.id ? { ...item, checkIns: { ...item.checkIns, [sessionId]: at } } : item,
+    ),
+  );
+  return result;
 }
 
 export function loadDemoSignups() {

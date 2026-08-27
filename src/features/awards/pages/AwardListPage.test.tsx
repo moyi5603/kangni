@@ -17,6 +17,9 @@ describe('AwardListPage', () => {
     expect(html).toContain('结果是否公示');
     expect(html).toContain('详情');
     expect(html).toContain('结果公示');
+    expect(html).toContain('置顶');
+    expect(html).toContain('录入结果');
+    expect(html).toContain('发放奖励');
     expect(html).toContain('2026 年度优秀员工');
     expect(html).not.toContain('本页先占位');
   });

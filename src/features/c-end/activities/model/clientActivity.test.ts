@@ -1,13 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { initialActivities, type Activity } from '../../../activities/model/activity';
+import type { MomentRecord } from '../../../activities/model/moment';
 import { patchRelated, restoreRelatedComments, restoreRelatedSignups } from '../../../activities/model/related';
 import {
   approvedSignupPeople,
   favoriteViews,
   filterApprovedSignupPeople,
+  sessionOccupiedCount,
+  userSignedRecentSessionCount,
+  filterActivitiesByTitle,
+  filterByTab,
+  HOME_ACTIVITY_PREVIEW_LIMIT,
+  HOME_PAST_HIGHLIGHT_LIMIT,
+  PC_ACTIVITY_PREVIEW_LIMIT,
+  PC_PAST_HIGHLIGHT_LIMIT,
+  listPastHighlightMoments,
+  pastHighlightMoments,
   filterSignupsByTitle,
   formatPcDateTime,
   formatPcDateTimeRange,
+  formatShortActivityDate,
+  isSignupOpen,
   groupClientSignups,
   hasHomeFavoritesPane,
   hasHomeSignupsPane,
@@ -97,6 +110,20 @@ describe('client activity signup model', () => {
     ]);
     expect(filterApprovedSignupPeople(people, '前端').map((item) => item.name)).toEqual(['张悦']);
     expect(filterApprovedSignupPeople(people, '')).toHaveLength(50);
+  });
+
+  it('filters approved people by picked session', () => {
+    expect(approvedSignupPeople(26).map((item) => item.name)).toEqual(['陈产品']);
+    expect(approvedSignupPeople(26, 's-0-202608271400').map((item) => item.name)).toEqual(['陈产品']);
+    expect(approvedSignupPeople(26, 's-1-202609031400')).toEqual([]);
+  });
+
+  it('counts occupied seats and the current user signed unfinished sessions per session', () => {
+    const basketball = initialActivities.find((item) => item.id === 26)!;
+    const now = Date.parse('2026-08-27T11:00:00');
+    expect(sessionOccupiedCount(26, 's-0-202608271400')).toBe(1);
+    expect(sessionOccupiedCount(26, 's-1-202609031400')).toBe(0);
+    expect(userSignedRecentSessionCount(basketball, DEMO_SIGNUP_USER.phone, now)).toBe(1);
   });
 
   it('groups signups by activity status and sorts newest first', () => {
@@ -290,6 +317,67 @@ describe('client activity signup model', () => {
     expect(filterSignupsByTitle([party, invalid], '活动已失效').map((item) => item.signup.activityId)).toEqual([-1]);
     expect(filterSignupsByTitle([party], 'PARTY')).toEqual([]);
   });
+
+  it('filters activities by title', () => {
+    const openDay = { ...baseActivity, title: '春季员工开放日' };
+    const camp = { ...baseActivity, id: 2, title: '新员工入职训练营' };
+
+    expect(filterActivitiesByTitle([openDay, camp], '训练营').map((item) => item.id)).toEqual([2]);
+    expect(filterActivitiesByTitle([openDay, camp], ' 开放 ').map((item) => item.id)).toEqual([openDay.id]);
+    expect(filterActivitiesByTitle([openDay, camp], '   ')).toEqual([openDay, camp]);
+    expect(filterActivitiesByTitle([openDay, camp], 'PARTY')).toEqual([]);
+  });
+
+  it('limits the home catalog preview to three H5 activities and six PC activities', () => {
+    expect(HOME_ACTIVITY_PREVIEW_LIMIT).toBe(3);
+    expect(PC_ACTIVITY_PREVIEW_LIMIT).toBe(6);
+  });
+
+  it('takes three newest approved moments on H5 and five on PC', () => {
+    const ended = { ...baseActivity, id: 1, activityStatus: '已结束' as const };
+    const live = { ...baseActivity, id: 2, activityStatus: '进行中' as const };
+    const stamp = (day: string): MomentRecord => ({
+      id: Number(day),
+      activityId: 1,
+      author: 'a',
+      content: `m${day}`,
+      type: '图文类型',
+      imageUrls: [`/${day}.jpg`],
+      status: '已通过',
+      createdAt: `2026-01-${day} 12:00:00`,
+      updatedAt: `2026-01-${day} 12:00:00`,
+      likedBy: [],
+      comments: [],
+    });
+
+    expect(HOME_PAST_HIGHLIGHT_LIMIT).toBe(3);
+    expect(PC_PAST_HIGHLIGHT_LIMIT).toBe(5);
+    const pool = [
+      stamp('01'),
+      { ...stamp('04'), id: 4 },
+      { ...stamp('05'), id: 5, status: '待审核' as const },
+      { ...stamp('03'), id: 3 },
+      { ...stamp('09'), id: 9, activityId: 2 },
+      { ...stamp('02'), id: 2, imageUrls: [] },
+      { ...stamp('02'), id: 7, createdAt: '2026-01-02 18:00:00', imageUrls: ['/7.jpg'] },
+      { ...stamp('08'), id: 8, createdAt: '2026-01-01 18:00:00', imageUrls: ['/8.jpg'] },
+      { ...stamp('06'), id: 6, activityId: 9 },
+    ];
+    const unpublishedEnded = {
+      ...baseActivity,
+      id: 9,
+      publishStatus: '未发布' as const,
+      activityStatus: '已结束' as const,
+    };
+
+    expect(pastHighlightMoments(pool, [ended, live, unpublishedEnded]).map((item) => item.id)).toEqual([4, 3, 7]);
+    expect(pastHighlightMoments(pool, [ended, live, unpublishedEnded], PC_PAST_HIGHLIGHT_LIMIT).map((item) => item.id)).toEqual([
+      4, 3, 7, 8, 1,
+    ]);
+    expect(listPastHighlightMoments(pool, [ended, live, unpublishedEnded]).map((item) => item.id)).toEqual([
+      4, 3, 7, 8, 1,
+    ]);
+  });
 });
 
 describe('signup store user records', () => {
@@ -326,6 +414,23 @@ describe('signupCta cancel window', () => {
 
   it('lets a signed-up user cancel before the signup deadline', () => {
     expect(signupCta(open, true, now, { allowCancel: true })).toEqual({ label: '取消报名', enabled: true, action: 'cancel' });
+  });
+
+  it('opens session adjust instead of cancel for multi-session signups', () => {
+    const series = {
+      ...open,
+      scheduleType: 'series' as const,
+      signupHoursBefore: 0,
+      sessions: [
+        { id: 'a', startAt: '2026-08-27 14:00', endAt: '2026-08-27 23:00' },
+        { id: 'b', startAt: '2026-09-03 14:00', endAt: '2026-09-03 23:00' },
+      ],
+    };
+    expect(signupCta(series, true, now, { allowCancel: true })).toEqual({
+      label: '调整报名',
+      enabled: true,
+      action: 'adjust',
+    });
   });
 
   it('keeps signed-up list labels as 已报名', () => {
@@ -414,5 +519,26 @@ describe('PC datetime display', () => {
     expect(formatPcDateTimeRange('2026-12-31 09:00', '2027-01-01 18:00', now)).toBe(
       '12-31 09:00 ~ 2027-01-01 18:00',
     );
+  });
+});
+
+describe('short activity date', () => {
+  it('keeps month/day for once activities', () => {
+    expect(formatShortActivityDate(baseActivity)).toBe('04/12');
+  });
+
+  it('summarizes recurring and series', () => {
+    const recurring = initialActivities.find((item) => item.id === 26);
+    const series = initialActivities.find((item) => item.id === 27);
+    expect(recurring).toBeDefined();
+    expect(series).toBeDefined();
+    expect(formatShortActivityDate(recurring!)).toMatch(/^每周四 · \d+场$/);
+    expect(formatShortActivityDate(series!)).toMatch(/^首场 \d{2}\/\d{2} · \d+场$/);
+  });
+
+  it('keeps multi-session signup open while a later session is still open', () => {
+    const series = initialActivities.find((item) => item.id === 27)!;
+    expect(isSignupOpen(series, Date.parse('2026-09-06T12:00:00'))).toBe(true);
+    expect(isSignupOpen(series, Date.parse('2026-09-12T13:00:00'))).toBe(false);
   });
 });

@@ -3,6 +3,7 @@ import { goPcExamResult, toPcExamRankHash, toPcExamResultHash, toPcExamTakingHas
 import { PcActivityShell } from '../../activities/pc/PcActivityShell';
 import { RetakeExamDialog } from '../components/RetakeExamDialog';
 import { getClientExamRecordBoard } from '../model/clientExamResult';
+import { formatCEndDateTime } from '../../formatDateTime';
 
 export function PcExamRecords({ id }: { id: number }) {
   const [askRetake, setAskRetake] = useState(false);
@@ -34,7 +35,7 @@ export function PcExamRecords({ id }: { id: number }) {
                     <a href={toPcExamResultHash(id)}>
                       <span>
                         <strong>{item.title}</strong>
-                        <em>{item.submittedAt}</em>
+                        <em>{formatCEndDateTime(item.submittedAt)}</em>
                       </span>
                       <b>{item.score}分</b>
                     </a>

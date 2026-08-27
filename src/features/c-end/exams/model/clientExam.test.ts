@@ -92,6 +92,7 @@ describe('client exam catalog', () => {
 
   it('formats card time as MM-DD HH:mm:ss', () => {
     expect(formatExamCardTime('2026-08-01 09:00:00')).toBe('08-01 09:00:00');
+    expect(formatExamCardTime('2025-08-01 09:00:00')).toBe('2025-08-01 09:00:00');
   });
 
   it('joins exam start and end into one range field', () => {

@@ -1,4 +1,5 @@
 import { collectCategoryIds, findCategoryNode, type CategoryNode } from '../../../../shared/category-tree/categoryTree';
+import { formatCEndDateTime } from '../../formatDateTime';
 import { calculateExamTotalScore, type ExamRecord, type ExamStatus } from '../../../exams/model/exam';
 import { getExam, getExamCategoryTree, getExams } from '../../../exams/model/examStore';
 import { getClientExamResult } from './clientExamResult';
@@ -201,10 +202,8 @@ export function pathAfterSelectingExamL1(l1Id: number | null): ExamFilterPath {
   return { l1Id, l2Id: 'all', l3Id: 'all' };
 }
 
-export function formatExamCardTime(value: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2}:\d{2})$/.exec(value.trim());
-  if (!match) return value;
-  return `${match[2]}-${match[3]} ${match[4]}`;
+export function formatExamCardTime(value: string, now = new Date()): string {
+  return formatCEndDateTime(value, now);
 }
 
 export function formatExamCardRange(startAt: string, endAt: string): string {

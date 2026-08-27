@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AWARD_MOCK_VERSION, initialAwards, type AwardPublishStatus, type AwardRecord } from './award';
+import { AWARD_MOCK_VERSION, initialAwards, type AwardPublishStatus, type AwardRecord, type AwardResultRow, type AwardRewardGrant } from './award';
 
 let mockVersion = AWARD_MOCK_VERSION;
 let awards = [...initialAwards];
@@ -55,6 +55,32 @@ export function setAwardResultPublic(id: number, resultPublic: boolean): boolean
   if (!current) return false;
   awards = awards.map((item) =>
     item.id === id ? { ...item, resultPublic, publicityLocked: true } : item,
+  );
+  emit();
+  return true;
+}
+
+export function setAwardPinned(id: number, pinned: boolean): boolean {
+  const current = awards.find((item) => item.id === id);
+  if (!current) return false;
+  awards = awards.map((item) => (item.id === id ? { ...item, pinned } : item));
+  emit();
+  return true;
+}
+
+export function setAwardResults(id: number, results: AwardResultRow[]): boolean {
+  const current = awards.find((item) => item.id === id);
+  if (!current || current.rewardsGranted) return false;
+  awards = awards.map((item) => (item.id === id ? { ...item, results } : item));
+  emit();
+  return true;
+}
+
+export function grantAwardRewards(id: number, results: AwardResultRow[], grants: AwardRewardGrant[]): boolean {
+  const current = awards.find((item) => item.id === id);
+  if (!current || current.rewardsGranted || !results.length || !grants.length) return false;
+  awards = awards.map((item) =>
+    item.id === id ? { ...item, results, rewardsGranted: true, rewardGrants: grants } : item,
   );
   emit();
   return true;

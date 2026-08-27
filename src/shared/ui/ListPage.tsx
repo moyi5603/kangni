@@ -1,5 +1,5 @@
 import { Children, useState, type CSSProperties, type ReactNode } from 'react';
-import { DownOutlined, UpOutlined } from '@ant-design/icons';
+import { DownOutlined, ReloadOutlined, SearchOutlined, UpOutlined } from '@ant-design/icons';
 import { Breadcrumb, Button, Card, Flex, Space, Tabs, Typography } from 'antd';
 import type { TabsProps } from 'antd';
 
@@ -28,10 +28,12 @@ export function SearchPanel({
   children,
   onSearch,
   onReset,
+  columns = 4,
 }: {
   children: ReactNode;
   onSearch: () => void;
   onReset: () => void;
+  columns?: 2 | 4;
 }) {
   const fields = Children.toArray(children);
   const collapsible = fields.length > 3;
@@ -44,23 +46,25 @@ export function SearchPanel({
   } as CSSProperties;
   return (
     <Card className="search-card" variant="borderless">
-      <div className="search-fields" style={actionRows}>
+      <div className={`search-fields${columns === 2 ? ' search-fields--2' : ''}`} style={actionRows}>
         {visibleFields}
         <div className="search-actions">
           <Space wrap={false}>
-            <Button type="primary" onClick={onSearch}>
+            <Button type="primary" icon={<SearchOutlined />} onClick={onSearch}>
               查询
             </Button>
-            <Button onClick={onReset}>重置</Button>
-            {collapsible && (
+            <Button icon={<ReloadOutlined />} onClick={onReset}>
+              重置
+            </Button>
+            {collapsible ? (
               <Button
-                type="link"
+                aria-expanded={expanded}
                 icon={expanded ? <UpOutlined /> : <DownOutlined />}
                 onClick={() => setExpanded((value) => !value)}
               >
                 {expanded ? '收起' : '展开'}
               </Button>
-            )}
+            ) : null}
           </Space>
         </div>
       </div>

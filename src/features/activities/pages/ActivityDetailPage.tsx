@@ -1,33 +1,38 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { App, Breadcrumb, Button, Card, Collapse, Descriptions, Empty, Flex, Image, Space, Table, Tabs, Tag, Typography } from 'antd';
 import dayjs from 'dayjs';
+import { TableEllipsisText } from '../../../shared/ui/TableEllipsisText';
 import { ActivityReviewModal } from '../components/ActivityReviewModal';
-import { ActivityClientPreviewModal } from '../components/ActivityClientPreviewModal';
 import { ActivityStatsRow } from '../components/ActivityStatsRow';
 import { patchActivities, submitActivitiesForApproval, useActivities } from '../model/activityStore';
 import {
   canReviewActivity,
   canSubmitApproval,
   formatActivityTime,
+  formatActivitySignupTime,
   formatCustomCrowdVisibility,
   formatPublishedAt,
   getActivityLifecycleStatus,
   lifecycleStatusColor,
   type SignupField,
 } from '../model/activity';
-import { formatApprovalNodeSummary } from '../model/rules';
+import { formatSignupAuditSummary } from '../model/rules';
 import { formatActivityPointGrant } from '../model/activityPointRules';
+import { formatCheckInRuleSummary } from '../model/activityCheckIn';
+import { activityScheduleTypeLabels, signupQuotaLabel } from '../model/activitySchedule';
 import { signupFieldInputTypeLabels } from '../model/signupFields';
 import { ActivityMomentListPage } from './ActivityMomentListPage';
 import { ActivityPrizeListPage } from './ActivityPrizeListPage';
+import { ActivityQrCheckInPage } from './ActivityQrCheckInPage';
 import { CommentList, SignupList } from './ActivityRelatedListPage';
 
 const detailTabs = [
   { key: 'detail', label: '详情' },
   { key: 'signups', label: '报名' },
+  { key: 'checkin', label: '签到码' },
   { key: 'comments', label: '评论' },
   { key: 'moments', label: '精彩瞬间' },
-  { key: 'prizes', label: '奖品发放' },
+  { key: 'prizes', label: '奖品发放（康尼通过权限控制不显示此功能）' },
 ] as const;
 
 type DetailTab = (typeof detailTabs)[number]['key'];
@@ -64,6 +69,15 @@ function isDetailTab(value: string | undefined): value is DetailTab {
   return !!value && detailTabs.some((tab) => tab.key === value);
 }
 
+function confirmFooter(_: ReactNode, extra: { OkBtn: React.FC; CancelBtn: React.FC }) {
+  return (
+    <Space>
+      <extra.CancelBtn />
+      <extra.OkBtn />
+    </Space>
+  );
+}
+
 type ActivityDetailPageProps = {
   recordId?: string;
   tab?: string;
@@ -77,7 +91,6 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
   const { message, modal } = App.useApp();
   const activities = useActivities();
   const [reviewOpen, setReviewOpen] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
   const activeTab: DetailTab = isDetailTab(tab) ? tab : 'detail';
   const [visited, setVisited] = useState<ReadonlySet<string>>(() => new Set([activeTab]));
   useEffect(() => {
@@ -122,12 +135,7 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
       content: '提交后审核状态变为待审核。',
       okText: '确认',
       cancelText: '取消',
-      footer: (_, { OkBtn, CancelBtn }) => (
-        <Space>
-          <OkBtn />
-          <CancelBtn />
-        </Space>
-      ),
+      footer: confirmFooter,
       onOk: () => {
         submitActivitiesForApproval([activity.id], dayjs().format('YYYY-MM-DD HH:mm:ss'));
         message.success(`已提交「${activity.title}」审批`);
@@ -141,12 +149,7 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
       content: '截止时间将改为现在，C 端立即不可报名。如需恢复，请在编辑页修改报名时间。',
       okText: '确认',
       cancelText: '取消',
-      footer: (_, { OkBtn, CancelBtn }) => (
-        <Space>
-          <OkBtn />
-          <CancelBtn />
-        </Space>
-      ),
+      footer: confirmFooter,
       onOk: () => {
         patchActivities((list) =>
           list.map((item) => (item.id === activity.id ? { ...item, signupEndAt: dayjs().format('YYYY-MM-DD HH:mm') } : item)),
@@ -162,12 +165,7 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
       content: '删除后不可恢复。',
       okText: '确认',
       cancelText: '取消',
-      footer: (_, { OkBtn, CancelBtn }) => (
-        <Space>
-          <OkBtn />
-          <CancelBtn />
-        </Space>
-      ),
+      footer: confirmFooter,
       onOk: () => {
         patchActivities((list) => list.filter((item) => item.id !== activity.id));
         message.success(`已删除「${activity.title}」`);
@@ -186,72 +184,89 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
         ]}
       />
       <Card className="activity-detail-header-card">
-        <Flex justify="space-between" align="flex-start" wrap gap={16}>
-          <Flex align="stretch" gap={16} className="activity-detail-header-main">
-            <div className="activity-detail-cover-wrap">
-              {activity.coverUrl ? (
-                <Image src={activity.coverUrl} alt="活动封面" className="activity-detail-cover" />
-              ) : (
-                <div className="activity-detail-cover-placeholder">暂无封面</div>
-              )}
-            </div>
-            <div className="activity-detail-header-copy">
-              <Space wrap size={[8, 8]}>
-                <Tag>{activity.category}</Tag>
-                <Tag color={lifecycleStatusColor[lifecycleStatus]}>{lifecycleStatus}</Tag>
-                {activity.auditStatus !== '已通过' && activity.auditStatus !== '无需审核' ? (
-                  <Tag
-                    color={
-                      activity.auditStatus === '已驳回'
-                        ? 'error'
-                        : activity.auditStatus === '待审核'
-                          ? 'warning'
-                          : 'default'
-                    }
-                  >
-                    {activity.auditStatus}
-                  </Tag>
+        <Flex align="stretch" gap={16} className="activity-detail-header-main">
+          <div className="activity-detail-cover-wrap">
+            {activity.coverUrl ? (
+              <Image src={activity.coverUrl} alt="活动封面" className="activity-detail-cover" />
+            ) : (
+              <div className="activity-detail-cover-placeholder">暂无封面</div>
+            )}
+          </div>
+          <div className="activity-detail-header-copy">
+            <Flex className="activity-detail-title-row" justify="space-between" align="flex-start" gap={16} wrap>
+              <div className="activity-detail-title-block">
+                <Space wrap size={[8, 8]}>
+                  <Tag>{activity.category}</Tag>
+                  <Tag color={lifecycleStatusColor[lifecycleStatus]}>{lifecycleStatus}</Tag>
+                  {activity.auditStatus !== '已通过' && activity.auditStatus !== '无需审核' ? (
+                    <Tag
+                      color={
+                        activity.auditStatus === '已驳回'
+                          ? 'error'
+                          : activity.auditStatus === '待审核'
+                            ? 'warning'
+                            : 'default'
+                      }
+                    >
+                      {activity.auditStatus}
+                    </Tag>
+                  ) : null}
+                </Space>
+                <Typography.Title level={3} style={{ marginTop: 8, marginBottom: 0 }}>
+                  {activity.title}
+                </Typography.Title>
+              </div>
+              <Space wrap className="activity-detail-header-actions">
+                {showReview ? (
+                  <Button type="primary" aria-label="审核" onClick={() => setReviewOpen(true)}>
+                    审核
+                  </Button>
+                ) : showSubmit ? (
+                  <Button type="primary" aria-label="提交审批" onClick={submit}>
+                    提交审批
+                  </Button>
+                ) : (
+                  <Button type="primary" aria-label="编辑" onClick={() => onEdit(activity.id)}>
+                    编辑
+                  </Button>
+                )}
+                {showReview || showSubmit ? (
+                  <Button aria-label="编辑" onClick={() => onEdit(activity.id)}>
+                    编辑
+                  </Button>
                 ) : null}
+                <Button aria-label="复制创建" onClick={() => onCopy(activity.id)}>
+                  复制创建
+                </Button>
+                {activity.checkInEnabled ? (
+                  <Button aria-label="签到码" onClick={() => changeTab('checkin')}>
+                    签到码
+                  </Button>
+                ) : null}
+                {signupOpen ? (
+                  <Button aria-label="截止报名" onClick={closeSignup}>
+                    截止报名
+                  </Button>
+                ) : null}
+                <Button danger aria-label="删除" onClick={remove}>
+                  删除
+                </Button>
               </Space>
-              <Typography.Title level={3} style={{ marginTop: 8, marginBottom: 4 }}>
-                {activity.title}
-              </Typography.Title>
-              <Typography.Text type="secondary" style={{ display: 'block' }}>
-                活动时间：{formatActivityTime(activity)}
-              </Typography.Text>
-              <Typography.Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
-                报名时间：{activity.signupStartAt} ~ {activity.signupEndAt}
-              </Typography.Text>
-              <Typography.Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
-                活动地点：{dash(activity.location)}
-              </Typography.Text>
+            </Flex>
+            <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+              活动时间：{formatActivityTime(activity)}
+            </Typography.Text>
+            <Typography.Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
+              报名时间：{formatActivitySignupTime(activity)}
+            </Typography.Text>
+            <Typography.Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
+              活动地点：{dash(activity.location)}
+            </Typography.Text>
+            <div className="activity-detail-header-metrics">
+              <ActivityStatsRow activity={activity} embedded />
             </div>
-          </Flex>
-          <Space wrap>
-            {showReview ? (
-              <Button type="primary" onClick={() => setReviewOpen(true)}>
-                审核
-              </Button>
-            ) : null}
-            {showSubmit ? (
-              <Button type="primary" onClick={submit}>
-                提交审批
-              </Button>
-            ) : null}
-            <Button onClick={() => setPreviewOpen(true)}>预览</Button>
-            <Button type="primary" onClick={() => onEdit(activity.id)}>
-              编辑
-            </Button>
-            <Button onClick={() => onCopy(activity.id)}>复制创建</Button>
-            {signupOpen ? <Button onClick={closeSignup}>截止报名</Button> : null}
-            <Button danger onClick={remove}>
-              删除
-            </Button>
-          </Space>
+          </div>
         </Flex>
-        <div style={{ marginTop: 24 }}>
-          <ActivityStatsRow activity={activity} embedded />
-        </div>
       </Card>
       <Tabs
         destroyOnHidden
@@ -265,25 +280,17 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
               <div className="page-stack">
                 <Card title="活动信息">
                   <Descriptions
+                    className="activity-detail-descriptions"
                     column={{ xs: 1, sm: 2, lg: 3 }}
                     items={[
-                      {
-                        label: '封面图片',
-                        span: 3,
-                        children: activity.coverUrl ? (
-                          <Image className="activity-cover-preview" src={activity.coverUrl} width={240} alt="活动封面" />
-                        ) : (
-                          '—'
-                        ),
-                      },
                       { label: '活动标题', children: activity.title },
                       { label: '分类', children: dash(activity.category) },
-                      { label: '报名时间', children: `${activity.signupStartAt} ~ ${activity.signupEndAt}` },
+                      { label: '举办方式', children: activityScheduleTypeLabels[activity.scheduleType ?? 'once'] },
+                      { label: '报名时间', children: formatActivitySignupTime(activity) },
                       { label: '活动时间', children: formatActivityTime(activity) },
                       { label: '活动地点', children: dash(activity.location) },
-                      { label: '报名总人数', children: signupTotalLimit > 0 ? signupTotalLimit : '—' },
+                      { label: signupQuotaLabel(activity.scheduleType), children: signupTotalLimit > 0 ? signupTotalLimit : '—' },
                       { label: '发起人', children: dash(activity.organizer) },
-                      { label: '联系电话', children: dash(activity.phone) },
                       { label: '创建时间', children: activity.createdAt },
                       { label: '发布时间', children: formatPublishedAt(activity.publishedAt) },
                     ]}
@@ -308,6 +315,7 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
                       {
                         key: 'advanced',
                         label: '高级设置',
+                        forceRender: true,
                         children: (
                           <Space direction="vertical" size="middle" style={{ width: '100%', paddingBottom: 16 }}>
                             <Card title="可见范围" size="small">
@@ -316,7 +324,7 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
                                 items={[
                                   { label: '可见范围', children: visibilityText },
                                   {
-                                    label: '是否发送消息通知',
+                                    label: '发送消息通知',
                                     children: activity.notifyOnPublish ? '开启' : '关闭',
                                   },
                                 ]}
@@ -328,24 +336,10 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
                                 items={[
                                   {
                                     label: '是否审核报名',
-                                    children: signupSetting?.needAudit ? '需要审核' : '无需审核',
+                                    children: formatSignupAuditSummary(signupSetting?.needAudit, activity.signupApprovalNodes),
                                   },
-                                  ...(signupSetting?.needAudit
-                                    ? [
-                                        {
-                                          label: '是否开启报名审批流',
-                                          children: activity.activityApprovalEnabled
-                                            ? activity.signupApprovalNodes?.length
-                                              ? activity.signupApprovalNodes
-                                                  .map((node, index) => `第 ${index + 1} 节点：${formatApprovalNodeSummary(node)}`)
-                                                  .join('；')
-                                              : '开启（未设置节点）'
-                                            : '未开启，由管理员进行审核',
-                                        },
-                                      ]
-                                    : []),
                                   {
-                                    label: '报名是否有司龄限制',
+                                    label: '报名司龄限制',
                                     children: hasSeniorityLimit ? '有限制' : '无限制',
                                   },
                                   ...(hasSeniorityLimit
@@ -356,14 +350,8 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
                                         },
                                       ]
                                     : []),
-                                  {
-                                    label: '是否开启精彩瞬间审核',
-                                    children: activity.momentAuditEnabled ? '开启' : '关闭',
-                                  },
-                                  { label: '报名活动可得积分', children: formatActivityPointGrant(activity.signupPointsEnabled, activity.signupPoints) },
-                                  { label: '活动首评可得积分', children: formatActivityPointGrant(activity.firstCommentPointsEnabled, activity.firstCommentPoints) },
-                                  { label: '活动打分可得积分', children: formatActivityPointGrant(activity.ratingPointsEnabled, activity.ratingPoints) },
-                                  { label: '首次发布精彩瞬间可得积分', children: formatActivityPointGrant(activity.firstMomentPointsEnabled, activity.firstMomentPoints) },
+                                  { label: '活动积分', children: formatActivityPointGrant(activity.signupPointsEnabled, activity.signupPoints) },
+                                  { label: '扫码签到', children: formatCheckInRuleSummary(activity) },
                                 ]}
                               />
                             </Card>
@@ -375,7 +363,7 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
                                   rowKey="key"
                                   dataSource={signupFields}
                                   columns={[
-                                    { title: '字段名称', dataIndex: 'label', width: 140 },
+                                    { title: '字段名称', dataIndex: 'label', width: 140, ellipsis: true, render: (value: string) => <TableEllipsisText text={value} /> },
                                     {
                                       title: '类型',
                                       dataIndex: 'inputType',
@@ -390,7 +378,10 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
                                     },
                                     {
                                       title: '配置',
-                                      render: (_: unknown, field: SignupField) => formatSignupFieldConfig(field),
+                                      ellipsis: true,
+                                      render: (_: unknown, field: SignupField) => (
+                                        <TableEllipsisText text={formatSignupFieldConfig(field)} />
+                                      ),
                                     },
                                   ]}
                                 />
@@ -408,13 +399,13 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
             ),
           },
           { key: 'signups', label: '报名', children: visited.has('signups') ? <SignupList activity={activity} /> : null },
+          { key: 'checkin', label: '签到码', children: visited.has('checkin') ? <ActivityQrCheckInPage activity={activity} /> : null },
           { key: 'comments', label: '评论', children: visited.has('comments') ? <CommentList activity={activity} /> : null },
           { key: 'moments', label: '精彩瞬间', children: visited.has('moments') ? <ActivityMomentListPage activity={activity} /> : null },
-          { key: 'prizes', label: '奖品发放', children: visited.has('prizes') ? <ActivityPrizeListPage activity={activity} /> : null },
+          { key: 'prizes', label: '奖品发放（康尼通过权限控制不显示此功能）', children: visited.has('prizes') ? <ActivityPrizeListPage activity={activity} /> : null },
         ]}
       />
       <ActivityReviewModal activity={activity} open={reviewOpen} onClose={() => setReviewOpen(false)} />
-      <ActivityClientPreviewModal activity={activity} open={previewOpen} onClose={() => setPreviewOpen(false)} />
     </div>
   );
 }

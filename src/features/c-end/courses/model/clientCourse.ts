@@ -1,8 +1,8 @@
 import {
   courseCommentStatusLabel,
-  formatCourseCommentDisplayTime,
   listVisibleComments,
 } from '../../../training/model/courseCommentStore';
+import { formatCEndDateTime } from '../../formatDateTime';
 import { getCourseLikeCount } from '../../../training/model/courseEngagementStore';
 import {
   findCategoryNode,
@@ -230,7 +230,7 @@ export function getCourseLearning(id: number): CourseLearning | undefined {
     id: item.id,
     author: item.author,
     text: item.text,
-    time: formatCourseCommentDisplayTime(item.createdAt),
+    time: formatCEndDateTime(item.createdAt.replace(/:\d{2}$/, '')),
     statusLabel: courseCommentStatusLabel(item.status),
   }));
   return {

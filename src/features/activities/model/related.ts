@@ -55,6 +55,8 @@ export type SignupRecord = BaseRecord & {
   status: SignupStatus;
   accountPhone?: string;
   answers?: Record<string, string>;
+  rejectReason?: string;
+  checkIns?: Record<string, string>;
 };
 
 export type CommentRecord = BaseRecord & {
@@ -162,9 +164,44 @@ const initialRelated: RelatedMaps = {
     { id: 12, activityId: 2, name: '赵人事', phone: '13800001009', signupType: '个人报名', department: '人力资源', status: '已通过', createdAt: '2026-08-08 13:12:00' },
     { id: 13, activityId: 2, name: '钱会', phone: '13800001010', signupType: '个人报名', department: '财务', status: '已取消', createdAt: '2026-08-09 15:30:00' },
     { id: 5, activityId: 4, name: '苏然', phone: '13800001004', signupType: '个人报名', department: '生产中心', status: '已驳回', createdAt: '2026-08-12 16:22:00' },
-    { id: 15, activityId: 6, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '职能中心', status: '已通过', createdAt: '2026-08-17 16:00:00' },
+    { id: 15, activityId: 6, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '职能中心', status: '已通过', createdAt: '2026-08-17 16:00:00', answers: { 场次: 'checkup-1' } },
     { id: 16, activityId: 9, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '职能中心', status: '已通过', createdAt: '2026-08-16 16:00:00' },
     { id: 17, activityId: 12, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '职能中心', status: '已驳回', createdAt: '2026-04-12 10:00:00' },
+    {
+      id: 18,
+      activityId: 26,
+      name: '陈产品',
+      phone: '13800001111',
+      signupType: '个人报名',
+      department: '职能中心',
+      status: '已通过',
+      createdAt: '2026-08-20 16:00:00',
+      accountPhone: '13800001111',
+      answers: { 场次: 's-0-202608271400' },
+    },
+    {
+      id: 19,
+      activityId: 27,
+      name: '陈产品',
+      phone: '13800001111',
+      signupType: '个人报名',
+      department: '职能中心',
+      status: '已通过',
+      createdAt: '2026-08-21 10:00:00',
+      accountPhone: '13800001111',
+      answers: { 场次: 's-0-202609050900' },
+    },
+    {
+      id: 20,
+      activityId: 10,
+      name: '陈产品',
+      phone: '13800001111',
+      signupType: '个人报名',
+      department: '职能中心',
+      status: '已通过',
+      createdAt: '2026-08-21 11:00:00',
+      accountPhone: '13800001111',
+    },
     ...extraPinnedCampApprovedSignups(),
   ],
   comments: [

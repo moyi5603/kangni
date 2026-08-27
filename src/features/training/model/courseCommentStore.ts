@@ -11,6 +11,7 @@ export type CourseCommentRecord = {
   text: string;
   createdAt: string;
   status: CourseCommentStatus;
+  rejectReason?: string;
 };
 
 /** C 端作者侧状态文案 */
@@ -191,7 +192,7 @@ export function deleteCourseComments(ids: number[]): number {
 export function approveCourseComment(id: number): boolean {
   const target = comments.find((item) => item.id === id);
   if (!target || (target.status !== '待审核' && target.status !== '已驳回')) return false;
-  comments = comments.map((item) => (item.id === id ? { ...item, status: '已通过' as const } : item));
+  comments = comments.map((item) => (item.id === id ? { ...item, status: '已通过' as const, rejectReason: undefined } : item));
   emit();
   return true;
 }
@@ -202,27 +203,31 @@ export function approveCourseComments(ids: number[]): number {
   comments = comments.map((item) => {
     if (!idSet.has(item.id) || (item.status !== '待审核' && item.status !== '已驳回')) return item;
     count += 1;
-    return { ...item, status: '已通过' as const };
+    return { ...item, status: '已通过' as const, rejectReason: undefined };
   });
   if (count > 0) emit();
   return count;
 }
 
-export function rejectCourseComment(id: number): boolean {
+export function rejectCourseComment(id: number, reason?: string): boolean {
   const target = comments.find((item) => item.id === id);
   if (!target || target.status !== '待审核') return false;
-  comments = comments.map((item) => (item.id === id ? { ...item, status: '已驳回' as const } : item));
+  const rejectReason = (reason ?? '').trim() || undefined;
+  comments = comments.map((item) =>
+    item.id === id ? { ...item, status: '已驳回' as const, rejectReason } : item,
+  );
   emit();
   return true;
 }
 
-export function rejectCourseComments(ids: number[]): number {
+export function rejectCourseComments(ids: number[], reason?: string): number {
   const idSet = new Set(ids);
   let count = 0;
+  const rejectReason = (reason ?? '').trim() || undefined;
   comments = comments.map((item) => {
     if (!idSet.has(item.id) || item.status !== '待审核') return item;
     count += 1;
-    return { ...item, status: '已驳回' as const };
+    return { ...item, status: '已驳回' as const, rejectReason };
   });
   if (count > 0) emit();
   return count;

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { initialActivities } from '../../../activities/model/activity';
 import { getPublishedActivity } from '../model/clientActivity';
-import { MomentFeed } from './MomentFeed';
+import { MomentFeed, MomentMediaViewer, swipeViewerIndex } from './MomentFeed';
 
 describe('MomentFeed avatars', () => {
   it('shows author avatars on moments, not on comments', () => {
@@ -45,5 +45,29 @@ describe('MomentFeed avatars', () => {
     expect(html).toContain('播放视频');
     expect(html).toContain('c-moment-media-btn');
     expect(html).not.toContain('c-moment-viewer');
+  });
+
+  it('swipes to the next or previous image past a distance threshold', () => {
+    expect(swipeViewerIndex(0, 4, -50)).toBe(1);
+    expect(swipeViewerIndex(1, 4, 50)).toBe(0);
+    expect(swipeViewerIndex(0, 4, 50)).toBe(3);
+    expect(swipeViewerIndex(0, 4, -10)).toBe(0);
+    expect(swipeViewerIndex(0, 1, -80)).toBe(0);
+  });
+
+  it('renders a horizontal track so multi-image viewers can swipe', () => {
+    const html = renderToStaticMarkup(
+      <MomentMediaViewer
+        viewer={{ kind: 'images', urls: ['/a.jpg', '/b.jpg', '/c.jpg'], index: 1 }}
+        onClose={() => undefined}
+        onIndex={() => undefined}
+      />,
+    );
+    expect(html).toContain('c-moment-viewer-track');
+    expect(html).toContain('aria-label="查看大图"');
+    expect(html).toContain('/a.jpg');
+    expect(html).toContain('/b.jpg');
+    expect(html).toContain('/c.jpg');
+    expect(html).toContain('2 / 3');
   });
 });

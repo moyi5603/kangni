@@ -5,7 +5,8 @@ import {
   canReviewInterestGroupActivity,
   canSubmitInterestGroupActivity,
   canTerminateInterestGroupActivity,
-  displayInterestGroupActivityStatus,
+  getInterestGroupLifecycleStatus,
+  igActivityAlignDefaults,
   totalSignedCount,
   validateInterestGroupActivityForm,
   type InterestGroupActivity,
@@ -13,6 +14,7 @@ import {
 } from './interestGroupActivity';
 
 const base: InterestGroupActivity = {
+  ...igActivityAlignDefaults(),
   id: 1,
   groupId: 1,
   title: '测试',
@@ -28,7 +30,6 @@ const base: InterestGroupActivity = {
   likeCount: 0,
   startAt: '2026-06-01 19:00',
   endAt: '2026-06-01 21:00',
-  deadlineMode: 'none',
   createdAt: '2026-05-01 10:00:00',
   auditStatus: '已通过',
   publishStatus: '已发布',
@@ -60,12 +61,15 @@ describe('interest group activity rules', () => {
     expect(canTerminateInterestGroupActivity({ ...base, status: 'ended' })).toBe(false);
   });
 
-  it('shows 已满员 when full and not ended', () => {
-    expect(displayInterestGroupActivityStatus({ ...base, signedCount: 10, status: 'upcoming' })).toBe('已满员');
+  it('maps lifecycle like the activities app', () => {
+    expect(getInterestGroupLifecycleStatus(base)).toBe('未开始');
+    expect(getInterestGroupLifecycleStatus({ ...base, publishStatus: '未发布' })).toBe('未发布');
+    expect(getInterestGroupLifecycleStatus({ ...base, status: 'cancelled' })).toBe('已结束');
   });
 
-  it('requires exactly one weekday for recurring', () => {
+  it('requires cycle range for recurring', () => {
     const values: InterestGroupActivityFormValues = {
+      ...igActivityAlignDefaults(),
       coverUrl: '/x.jpg',
       title: '夜跑',
       groupId: 1,
@@ -73,13 +77,17 @@ describe('interest group activity rules', () => {
       type: 'recurring',
       timeStart: '19:00',
       timeEnd: '21:00',
-      deadlineMode: 'none',
       location: '南门',
       capacity: 20,
-      detailHtml: '',
+      detailHtml: '<p>ok</p>',
+      signupStartAt: '2026-05-01 09:00',
+      signupHoursBefore: 0,
     };
     expect(validateInterestGroupActivityForm(values, true)).toBe('请选择重复的周几');
-    expect(validateInterestGroupActivityForm({ ...values, repeatWeekday: 4 }, true)).toBeNull();
+    expect(validateInterestGroupActivityForm({ ...values, repeatWeekday: 4 }, true)).toBe('请选择周期起止日期');
+    expect(
+      validateInterestGroupActivityForm({ ...values, repeatWeekday: 4, cycleStart: '2026-06-01', cycleEnd: '2026-06-30' }, true),
+    ).toBeNull();
   });
 
   it('gates publish and review like the activities app', () => {

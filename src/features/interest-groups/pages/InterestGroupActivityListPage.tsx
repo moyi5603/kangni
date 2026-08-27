@@ -4,44 +4,48 @@ import {
   App,
   Button,
   Card,
+  DatePicker,
   Empty,
   Flex,
-  Image,
+  Form,
   Input,
+  Modal,
   Popconfirm,
-  Progress,
   Select,
   Space,
   Table,
   Tag,
-  Tooltip,
   Typography,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
+import type { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
 import { ListPageHeading, SearchField, SearchPanel } from '../../../shared/ui/ListPage';
+import { TableEllipsisText } from '../../../shared/ui/TableEllipsisText';
+import { TableRowActions, type TableRowAction } from '../../../shared/ui/TableRowActions';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import {
   canPublishInterestGroupActivity,
   canReviewInterestGroupActivity,
   canSubmitInterestGroupActivity,
-  displayInterestGroupActivityStatus,
   formatInterestGroupActivityTime,
   formatInterestGroupPublishedAt,
-  interestGroupActivityStatusLabels,
+  getInterestGroupLifecycleStatus,
   interestGroupActivityTypeLabels,
   interestGroupAuditStatuses,
-  interestGroupPublishStatuses,
+  interestGroupLifecycleStatuses,
+  lifecycleStatusColor,
   type InterestGroupActivity,
-  type InterestGroupActivityStatus,
   type InterestGroupActivityType,
   type InterestGroupAuditStatus,
-  type InterestGroupPublishStatus,
 } from '../model/interestGroupActivity';
+import type { LifecycleStatus } from '../../activities/model/activity';
 import { buildInterestGroupCategoryOptions, getInterestGroupCategoryLabel } from '../model/interestGroupCategory';
 import { InterestGroupActivityAiModal } from '../components/InterestGroupActivityAiModal';
 import { InterestGroupActivityReviewModal } from '../components/InterestGroupActivityReviewModal';
 import { setPendingAiActivityDraft } from '../model/interestGroupActivityPlan';
 import {
+  patchInterestGroupActivities,
   publishInterestGroupActivities,
   submitInterestGroupActivities,
   unpublishInterestGroupActivities,
@@ -50,25 +54,21 @@ import {
   useInterestGroups,
 } from '../model/interestGroupStore';
 
+type DateRange = [Dayjs | null, Dayjs | null] | null;
+
 type Query = {
   title: string;
   groupId?: number | 'unassigned';
   type?: InterestGroupActivityType;
-  status?: InterestGroupActivityStatus;
   categoryKey?: string;
   auditStatus?: InterestGroupAuditStatus;
-  publishStatus?: InterestGroupPublishStatus;
+  lifecycleStatus?: LifecycleStatus;
+  activityTime: DateRange;
+  createdAt: DateRange;
+  publishedAt: DateRange;
 };
 
-const emptyQuery: Query = { title: '' };
-
-const statusColor: Record<string, string> = {
-  报名中: 'processing',
-  进行中: 'processing',
-  已满员: 'warning',
-  已结束: 'default',
-  已终止: 'error',
-};
+const emptyQuery: Query = { title: '', activityTime: null, createdAt: null, publishedAt: null };
 
 const auditColor: Record<InterestGroupAuditStatus, string> = {
   待提交: 'default',
@@ -78,10 +78,24 @@ const auditColor: Record<InterestGroupAuditStatus, string> = {
   无需审核: 'default',
 };
 
-const publishColor: Record<InterestGroupPublishStatus, string> = {
-  未发布: 'default',
-  已发布: 'success',
-};
+function inDayRange(value: string, range: DateRange) {
+  if (!value) return !range?.[0] && !range?.[1];
+  if (!range?.[0] && !range?.[1]) return true;
+  const time = dayjs(value);
+  if (range[0] && time.isBefore(range[0].startOf('day'))) return false;
+  if (range[1] && time.isAfter(range[1].endOf('day'))) return false;
+  return true;
+}
+
+function overlapsRange(startAt: string, endAt: string, range: DateRange) {
+  if (!range?.[0] && !range?.[1]) return true;
+  if (!startAt && !endAt) return true;
+  const start = dayjs(startAt || endAt);
+  const end = dayjs(endAt || startAt);
+  if (range[0] && end.isBefore(range[0])) return false;
+  if (range[1] && start.isAfter(range[1].endOf('day'))) return false;
+  return true;
+}
 
 function confirmFooter(_: ReactNode, extra: { OkBtn: FC; CancelBtn: FC }) {
   return (
@@ -113,31 +127,34 @@ export function InterestGroupActivityListPage({
   const [aiOpen, setAiOpen] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [reviewing, setReviewing] = useState<InterestGroupActivity>();
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [categoryForm] = Form.useForm<{ categoryKey: string }>();
   const groupNames = useMemo(() => new Map(groups.map((item) => [item.id, item.name])), [groups]);
   const categoryOptions = useMemo(
     () => buildInterestGroupCategoryOptions(categories, { includeUncategorized: true }),
     [categories],
   );
 
-  const filtered = useMemo(
-    () =>
-      activities.filter((item) => {
-        if (groupId != null && item.groupId !== groupId) return false;
-        if (groupId == null && query.groupId === 'unassigned' && item.groupId != null) return false;
-        if (groupId == null && typeof query.groupId === 'number' && item.groupId !== query.groupId) return false;
-        if (query.type && item.type !== query.type) return false;
-        if (query.status && item.status !== query.status) return false;
-        if (query.categoryKey && item.categoryKey !== query.categoryKey) return false;
-        if (query.auditStatus && item.auditStatus !== query.auditStatus) return false;
-        if (query.publishStatus && item.publishStatus !== query.publishStatus) return false;
-        if (query.title) {
-          const name = groupLabel(item.groupId, groupNames);
-          if (!item.title.includes(query.title) && !name.includes(query.title)) return false;
-        }
-        return true;
-      }),
-    [activities, groupId, groupNames, query],
-  );
+  const filtered = useMemo(() => {
+    const rows = activities.filter((item) => {
+      if (groupId != null && item.groupId !== groupId) return false;
+      if (groupId == null && query.groupId === 'unassigned' && item.groupId != null) return false;
+      if (groupId == null && typeof query.groupId === 'number' && item.groupId !== query.groupId) return false;
+      if (query.type && item.type !== query.type) return false;
+      if (query.categoryKey && item.categoryKey !== query.categoryKey) return false;
+      if (query.auditStatus && item.auditStatus !== query.auditStatus) return false;
+      if (query.lifecycleStatus && getInterestGroupLifecycleStatus(item) !== query.lifecycleStatus) return false;
+      if (!overlapsRange(item.startAt ?? '', item.endAt ?? '', query.activityTime)) return false;
+      if (!inDayRange(item.createdAt, query.createdAt)) return false;
+      if (!inDayRange(item.publishedAt, query.publishedAt)) return false;
+      if (query.title) {
+        const name = groupLabel(item.groupId, groupNames);
+        if (!item.title.includes(query.title) && !name.includes(query.title)) return false;
+      }
+      return true;
+    });
+    return [...rows].sort((left, right) => Number(right.pinned) - Number(left.pinned));
+  }, [activities, groupId, groupNames, query]);
 
   const selectedActivities = activities.filter((item) => selectedRowKeys.includes(item.id));
 
@@ -231,16 +248,34 @@ export function InterestGroupActivityListPage({
     setSelectedRowKeys([]);
   };
 
+  const togglePin = (record: InterestGroupActivity) => {
+    patchInterestGroupActivities((list) => list.map((item) => (item.id === record.id ? { ...item, pinned: !item.pinned } : item)));
+    message.success(record.pinned ? `已取消置顶「${record.title}」` : `已置顶「${record.title}」`);
+  };
+
+  const copyOne = (record: InterestGroupActivity) => onNavigate('interest-group-activity-create', String(record.id));
+
+  const applyCategory = async () => {
+    const values = await categoryForm.validateFields();
+    patchInterestGroupActivities((list) =>
+      list.map((item) => (selectedRowKeys.includes(item.id) ? { ...item, categoryKey: values.categoryKey } : item)),
+    );
+    setCategoryModalOpen(false);
+    message.success(`已将 ${selectedRowKeys.length} 个活动设为「${getInterestGroupCategoryLabel(values.categoryKey, categories)}」`);
+    setSelectedRowKeys([]);
+  };
+
   const columns: TableColumnsType<InterestGroupActivity> = [
     {
-      title: '活动名称',
+      title: '活动标题',
       dataIndex: 'title',
-      ellipsis: true,
+      fixed: 'left',
+      width: 200,
       render: (value: string, record) => (
         <Space>
-          <Image src={record.coverUrl} width={48} height={48} style={{ objectFit: 'cover', borderRadius: 8 }} preview={false} />
+          {record.pinned ? <Tag color="blue">置顶</Tag> : null}
           <Button type="link" className="table-link" onClick={() => openDetail(record)}>
-            {value}
+            <TableEllipsisText text={value} />
           </Button>
         </Space>
       ),
@@ -251,7 +286,7 @@ export function InterestGroupActivityListPage({
             title: '所属小组',
             dataIndex: 'groupId',
             width: 140,
-            render: (value: number | null) => groupLabel(value, groupNames),
+            render: (value: number | null) => <TableEllipsisText text={groupLabel(value, groupNames)} />,
           } satisfies TableColumnsType<InterestGroupActivity>[number],
         ]
       : []),
@@ -259,41 +294,19 @@ export function InterestGroupActivityListPage({
       title: '分类',
       dataIndex: 'categoryKey',
       width: 110,
-      render: (value: string) => {
-        const label = getInterestGroupCategoryLabel(value, categories);
-        return value ? <Tag>{label}</Tag> : '—';
-      },
+      render: (value: string) => <TableEllipsisText text={getInterestGroupCategoryLabel(value, categories) || '—'} />,
     },
     {
-      title: '类型',
+      title: '举办方式',
       dataIndex: 'type',
-      width: 100,
-      render: (value: InterestGroupActivity['type']) => interestGroupActivityTypeLabels[value],
+      width: 110,
+      render: (value: InterestGroupActivity['type']) => <TableEllipsisText text={interestGroupActivityTypeLabels[value]} />,
     },
     {
-      title: '时间',
-      key: 'time',
-      width: 180,
-      render: (_, record) => {
-        const time = formatInterestGroupActivityTime(record);
-        return (
-          <div>
-            <div>{time.date}</div>
-            <span style={{ color: 'rgba(0,0,0,0.45)' }}>{time.time}</span>
-          </div>
-        );
-      },
-    },
-    {
-      title: '报名',
-      key: 'signup',
-      width: 140,
-      render: (_, record) => (
-        <div>
-          <div>{`${record.signedCount}/${record.capacity}`}</div>
-          <Progress percent={Math.round((record.signedCount / Math.max(record.capacity, 1)) * 100)} size="small" showInfo={false} />
-        </div>
-      ),
+      title: '活动时间',
+      key: 'activityTime',
+      width: 280,
+      render: (_, record) => <TableEllipsisText text={formatInterestGroupActivityTime(record)} />,
     },
     {
       title: '审核状态',
@@ -302,20 +315,15 @@ export function InterestGroupActivityListPage({
       render: (value: InterestGroupAuditStatus) => <Tag color={auditColor[value]}>{value}</Tag>,
     },
     {
-      title: '发布状态',
-      dataIndex: 'publishStatus',
+      title: '状态',
+      key: 'lifecycleStatus',
       width: 110,
-      render: (value: InterestGroupPublishStatus) => <Tag color={publishColor[value]}>{value}</Tag>,
-    },
-    {
-      title: '活动状态',
-      key: 'status',
-      width: 100,
       render: (_, record) => {
-        const label = displayInterestGroupActivityStatus(record);
-        return <Tag color={statusColor[label]}>{label}</Tag>;
+        const status = getInterestGroupLifecycleStatus(record);
+        return <Tag color={lifecycleStatusColor[status]}>{status}</Tag>;
       },
     },
+    { title: '创建时间', dataIndex: 'createdAt', width: 170 },
     {
       title: '发布时间',
       dataIndex: 'publishedAt',
@@ -325,55 +333,92 @@ export function InterestGroupActivityListPage({
     {
       title: '操作',
       key: 'action',
-      width: 220,
       fixed: 'right',
-      render: (_, record) => (
-        <Space>
-          <Button type="link" aria-label={`详情 ${record.title}`} onClick={() => openDetail(record)}>
-            详情
-          </Button>
-          <Button type="link" aria-label={`编辑 ${record.title}`} onClick={() => openEditor(record)}>
-            编辑
-          </Button>
-          {canSubmitInterestGroupActivity(record) ? (
-            <Button type="link" aria-label={`提交审批 ${record.title}`} onClick={() => submitOne(record)}>
-              提交审批
-            </Button>
-          ) : canReviewInterestGroupActivity(record) ? (
-            <Button type="link" aria-label={`审核 ${record.title}`} onClick={() => setReviewing(record)}>
-              审核
-            </Button>
-          ) : record.publishStatus === '已发布' ? (
-            <Button type="link" aria-label={`撤销 ${record.title}`} onClick={() => revokeOne(record)}>
-              撤销
-            </Button>
-          ) : canPublishInterestGroupActivity(record) ? (
-            <Button type="link" aria-label={`发布 ${record.title}`} onClick={() => publishOne(record)}>
-              发布
-            </Button>
-          ) : (
-            <Tooltip title="仅审批通过或无需审核的活动可以发布">
-              <span>
-                <Button type="link" disabled aria-label={`发布 ${record.title}`}>
-                  发布
-                </Button>
-              </span>
-            </Tooltip>
-          )}
-        </Space>
-      ),
+      align: 'right',
+      width: 220,
+      render: (_, record) => {
+        const statusAction: TableRowAction = canSubmitInterestGroupActivity(record)
+          ? {
+              key: 'submit',
+              label: '提交审批',
+              ariaLabel: `提交审批 ${record.title}`,
+              onClick: () => submitOne(record),
+            }
+          : canReviewInterestGroupActivity(record)
+            ? {
+                key: 'review',
+                label: '审核',
+                ariaLabel: `审核 ${record.title}`,
+                onClick: () => setReviewing(record),
+              }
+            : record.publishStatus === '已发布'
+              ? {
+                  key: 'revoke',
+                  label: '撤销',
+                  ariaLabel: `撤销 ${record.title}`,
+                  onClick: () => revokeOne(record),
+                }
+              : {
+                  key: 'publish',
+                  label: '发布',
+                  ariaLabel: `发布 ${record.title}`,
+                  onClick: () => publishOne(record),
+                  disabled: !canPublishInterestGroupActivity(record),
+                  tooltip: canPublishInterestGroupActivity(record) ? undefined : '仅审批通过或无需审核的活动可以发布',
+                };
+        return (
+          <TableRowActions
+            moreAriaLabel={`更多操作 ${record.title}`}
+            actions={[
+              {
+                key: 'detail',
+                label: '详情',
+                ariaLabel: `详情 ${record.title}`,
+                onClick: () => openDetail(record),
+              },
+              {
+                key: 'edit',
+                label: '编辑',
+                ariaLabel: `编辑 ${record.title}`,
+                onClick: () => openEditor(record),
+              },
+              {
+                key: 'copy',
+                label: '复制',
+                ariaLabel: `复制 ${record.title}`,
+                onClick: () => copyOne(record),
+              },
+              statusAction,
+              {
+                key: 'pin',
+                label: record.pinned ? '取消置顶' : '置顶',
+                ariaLabel: record.pinned ? `取消置顶 ${record.title}` : `置顶 ${record.title}`,
+                onClick: () => togglePin(record),
+              },
+            ]}
+          />
+        );
+      },
     },
   ];
 
   const hasQuery = Boolean(
-    query.title || query.groupId || query.type || query.status || query.categoryKey || query.auditStatus || query.publishStatus,
+    query.title ||
+      query.groupId ||
+      query.type ||
+      query.categoryKey ||
+      query.auditStatus ||
+      query.lifecycleStatus ||
+      query.activityTime ||
+      query.createdAt ||
+      query.publishedAt,
   );
   const createPage = 'interest-group-activity-create' as const;
 
   return (
     <div className="page-stack">
       {groupId == null ? (
-        <ListPageHeading paths={['兴趣小组', '活动管理']} title="活动管理" subtitle="查询并维护活动基础信息、审核、发布和活动状态。" />
+        <ListPageHeading paths={['兴趣小组', '活动管理']} title="活动管理" subtitle="查询并维护活动基础信息、审核、发布与状态。" />
       ) : null}
       <SearchPanel
         onSearch={() => setQuery(draft)}
@@ -404,13 +449,30 @@ export function InterestGroupActivityListPage({
             />
           </SearchField>
         ) : null}
-        <SearchField label="活动类型">
+        <SearchField label="分类">
           <Select
             allowClear
-            placeholder="全部类型"
+            placeholder="全部分类"
+            value={draft.categoryKey}
+            onChange={(value) => setDraft((current) => ({ ...current, categoryKey: value }))}
+            options={categoryOptions}
+          />
+        </SearchField>
+        <SearchField label="举办方式">
+          <Select
+            allowClear
+            placeholder="全部方式"
             value={draft.type}
             onChange={(value) => setDraft((current) => ({ ...current, type: value }))}
             options={Object.entries(interestGroupActivityTypeLabels).map(([value, label]) => ({ value, label }))}
+          />
+        </SearchField>
+        <SearchField label="活动时间">
+          <DatePicker.RangePicker
+            showTime
+            style={{ width: '100%' }}
+            value={draft.activityTime}
+            onChange={(value) => setDraft((current) => ({ ...current, activityTime: value }))}
           />
         </SearchField>
         <SearchField label="审核状态">
@@ -422,36 +484,33 @@ export function InterestGroupActivityListPage({
             options={interestGroupAuditStatuses.map((value) => ({ value, label: value }))}
           />
         </SearchField>
-        <SearchField label="发布状态">
+        <SearchField label="状态">
           <Select
             allowClear
             placeholder="全部状态"
-            value={draft.publishStatus}
-            onChange={(value) => setDraft((current) => ({ ...current, publishStatus: value }))}
-            options={interestGroupPublishStatuses.map((value) => ({ value, label: value }))}
+            value={draft.lifecycleStatus}
+            onChange={(value) => setDraft((current) => ({ ...current, lifecycleStatus: value }))}
+            options={interestGroupLifecycleStatuses.map((value) => ({ value, label: value }))}
           />
         </SearchField>
-        <SearchField label="活动状态">
-          <Select
-            allowClear
-            placeholder="全部状态"
-            value={draft.status}
-            onChange={(value) => setDraft((current) => ({ ...current, status: value }))}
-            options={Object.entries(interestGroupActivityStatusLabels).map(([value, label]) => ({ value, label }))}
+        <SearchField label="创建时间">
+          <DatePicker.RangePicker
+            style={{ width: '100%' }}
+            value={draft.createdAt}
+            onChange={(value) => setDraft((current) => ({ ...current, createdAt: value }))}
           />
         </SearchField>
-        <SearchField label="分类">
-          <Select
-            allowClear
-            placeholder="全部分类"
-            value={draft.categoryKey}
-            onChange={(value) => setDraft((current) => ({ ...current, categoryKey: value }))}
-            options={categoryOptions}
+        <SearchField label="发布时间">
+          <DatePicker.RangePicker
+            style={{ width: '100%' }}
+            value={draft.publishedAt}
+            onChange={(value) => setDraft((current) => ({ ...current, publishedAt: value }))}
           />
         </SearchField>
       </SearchPanel>
-      <Card>
+      <Card className="list-table-card">
         <div className="table-toolbar">
+          <Typography.Text>共 {filtered.length} 条</Typography.Text>
           <Space>
             <Button
               type="primary"
@@ -490,6 +549,14 @@ export function InterestGroupActivityListPage({
               >
                 <Button>撤销</Button>
               </Popconfirm>
+              <Button
+                onClick={() => {
+                  categoryForm.resetFields();
+                  setCategoryModalOpen(true);
+                }}
+              >
+                设置分类
+              </Button>
               <Button onClick={() => setSelectedRowKeys([])}>取消选择</Button>
             </Space>
           </Flex>
@@ -524,6 +591,28 @@ export function InterestGroupActivityListPage({
         }}
       />
       <InterestGroupActivityReviewModal activity={reviewing} open={Boolean(reviewing)} onClose={() => setReviewing(undefined)} />
+      <Modal
+        title={`设置分类 · 已选 ${selectedRowKeys.length} 项`}
+        open={categoryModalOpen}
+        footer={(_, { OkBtn, CancelBtn }) => (
+          <Space>
+            <CancelBtn />
+            <OkBtn />
+          </Space>
+        )}
+        onOk={applyCategory}
+        onCancel={() => setCategoryModalOpen(false)}
+        okText="确认"
+        cancelText="取消"
+        width={b2bStandards.form.modalWidth}
+      >
+        <Typography.Paragraph type="secondary">将覆盖已选活动的当前分类，保存后立即生效。</Typography.Paragraph>
+        <Form form={categoryForm} layout="horizontal" className="edit-form" requiredMark validateTrigger="onBlur">
+          <Form.Item name="categoryKey" label="分类" rules={[{ required: true, message: '请选择分类' }]}>
+            <Select placeholder="请选择分类" options={categoryOptions} />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }

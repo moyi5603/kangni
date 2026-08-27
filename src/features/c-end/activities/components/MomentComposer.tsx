@@ -9,7 +9,7 @@ import {
   type MomentDraft,
   type MomentRecord,
 } from '../../../activities/model/moment';
-import { isMomentAuditEnabled, resubmitMoment, submitMoment } from '../../../activities/model/momentStore';
+import { resubmitMoment, submitMoment } from '../../../activities/model/momentStore';
 
 function readAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
@@ -60,8 +60,7 @@ export function MomentComposer({ activity, editing, onCancel, onSuccess }: Momen
       setError(result.message);
       return;
     }
-    const audit = isMomentAuditEnabled(activity);
-    onSuccess(audit ? '已提交，待审核' : '发布成功');
+    onSuccess('发布成功');
   };
 
   const showAdd = !videoUrl && imageUrls.length < MOMENT_IMAGE_MAX;

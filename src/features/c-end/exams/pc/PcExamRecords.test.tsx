@@ -18,7 +18,7 @@ describe('PC exam records', () => {
     expect(html).toContain('class="c-pc-side"');
     expect(html).toContain('考试记录（仅展示最近10次的考试记录）');
     expect(html).toContain('项目管理认证');
-    expect(html).toContain('2026-08-03 19:35');
+    expect(html).toContain('08-03 19:35');
     expect(html).toContain('100分');
     expect(html).toContain('50分');
     expect(html).toContain('本次考试将保留最高分作为最终分数');

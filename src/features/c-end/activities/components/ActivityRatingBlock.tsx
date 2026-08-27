@@ -13,11 +13,9 @@ import { useCEndToast } from './CEndToast';
 export function ActivityRatingBlock({
   activityId,
   status,
-  preview = false,
 }: {
   activityId: number;
   status: string;
-  preview?: boolean;
 }) {
   useActivityRatings();
   const toast = useCEndToast();
@@ -26,7 +24,7 @@ export function ActivityRatingBlock({
   const average = activityRatingAverage(activityId);
   const count = activityRatingCount(activityId);
   const mine = getActivityRating(activityId, DEMO_SIGNUP_USER.phone);
-  const canRate = !preview && canSubmitActivityRating(activityId, DEMO_SIGNUP_USER.phone);
+  const canRate = canSubmitActivityRating(activityId, DEMO_SIGNUP_USER.phone);
 
   return (
     <section className="c-activity-rating" aria-label="活动评分">

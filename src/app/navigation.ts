@@ -51,6 +51,7 @@ export const applications: ApplicationMeta[] = [
   { key: 'experience', label: '员工体验', category: '员工与组织', icon: 'heart', defaultPage: 'experience-articles' },
   { key: 'interest-groups', label: '兴趣小组', category: '员工与组织', icon: 'team', defaultPage: 'interest-group-overview' },
   { key: 'awards', label: '评优', category: '员工与组织', icon: 'trophy', defaultPage: 'award-overview' },
+  { key: 'voting', label: '投票', category: '员工与组织', icon: 'checkSquare', defaultPage: 'vote-overview' },
   { key: 'training', label: '课程', category: '员工与组织', icon: 'book', defaultPage: 'training-overview' },
   { key: 'skills-contest', label: '技能大赛', category: '员工与组织', icon: 'trophy', defaultPage: 'contest-list' },
   { key: 'exam', label: '考试练习', category: '员工与组织', icon: 'fileText', defaultPage: 'exam-list' },
@@ -134,12 +135,16 @@ export const applicationMenus: Record<string, MenuNode[]> = {
     { key: 'interest-group-list', icon: 'team', label: '小组管理' },
     { key: 'interest-group-activities', icon: 'calendar', label: '活动管理' },
     { key: 'interest-group-categories', icon: 'appstore', label: '分类管理' },
+    { key: 'interest-group-rules', icon: 'fileText', label: '规则设置' },
   ],
   awards: [
     { key: 'award-overview', icon: 'dashboard', label: '概览' },
     { key: 'award-list', icon: 'trophy', label: '评优管理' },
     { key: 'award-certificates', icon: 'gift', label: '评优证书' },
-    { key: 'award-rules', icon: 'fileText', label: '规则设置' },
+  ],
+  voting: [
+    { key: 'vote-overview', icon: 'dashboard', label: '概览' },
+    { key: 'vote-list', icon: 'checkSquare', label: '投票管理' },
   ],
   training: [
     { key: 'training-overview', icon: 'dashboard', label: '概览' },
@@ -253,13 +258,25 @@ export type H5Page =
   | 'course-detail'
   | 'favorites'
   | 'signup'
+  | 'checkin'
   | 'exams'
   | 'exam-prep'
   | 'exam-taking'
   | 'exam-result'
   | 'exam-review'
   | 'exam-records'
-  | 'exam-rank';
+  | 'exam-rank'
+  | 'honor'
+  | 'honor-admin'
+  | 'interest-groups'
+  | 'votes'
+  | 'vote-records'
+  | 'vote-record'
+  | 'vote-detail'
+  | 'vote-taking'
+  | 'vote-results'
+  | 'activity-list'
+  | 'past-moments';
 
 export type CEndLocation =
   | { kind: 'admin' }
@@ -270,6 +287,8 @@ export type CEndLocation =
       activityId?: number;
       courseId?: number;
       examId?: number;
+      voteId?: number;
+      voteResponseId?: number;
       h5Page?: H5Page;
     };
 
@@ -283,8 +302,8 @@ function examFlowPage(extra?: string): H5Page {
 }
 
 export function parseCEndHash(hash: string): CEndLocation {
-  const path = hash.replace(/^#\/?/, '').trim();
-  const [scope, surface, rawId, extra] = path.split('/');
+  const path = hash.replace(/^#\/?/, '').trim().split('?')[0] ?? '';
+  const [scope, surface, rawId, extra, tail] = path.split('/');
   if (scope !== 'c') return { kind: 'admin' };
   if (!surface) return { kind: 'preview' };
   if (surface === 'course') {
@@ -313,6 +332,8 @@ export function parseCEndHash(hash: string): CEndLocation {
   if (surface !== 'h5' && surface !== 'pc') return { kind: 'admin' };
   if (rawId == null || rawId === '') return { kind: 'c-end', surface };
   if (rawId === 'my') return { kind: 'c-end', surface, h5Page: 'my' };
+  if (rawId === 'list') return { kind: 'c-end', surface, h5Page: 'activity-list' };
+  if (rawId === 'moments') return { kind: 'c-end', surface, h5Page: 'past-moments' };
   if (rawId === 'courses' || rawId === 'courses-mall') {
     if (extra) {
       const courseId = Number(extra);
@@ -323,6 +344,9 @@ export function parseCEndHash(hash: string): CEndLocation {
     return { kind: 'c-end', surface, h5Page: 'courses' };
   }
   if (rawId === 'favorites') return { kind: 'c-end', surface, h5Page: 'favorites' };
+  if (rawId === 'honor-admin') return { kind: 'c-end', surface, h5Page: 'honor-admin' };
+  if (rawId === 'honor') return { kind: 'c-end', surface, h5Page: 'honor' };
+  if (rawId === 'interest-groups') return { kind: 'c-end', surface, h5Page: 'interest-groups' };
   if (rawId === 'exams') {
     if (extra) {
       const examId = Number(extra);
@@ -331,6 +355,27 @@ export function parseCEndHash(hash: string): CEndLocation {
       }
     }
     return { kind: 'c-end', surface, h5Page: 'exams' };
+  }
+  if (rawId === 'votes') {
+    if (extra === 'mine') {
+      if (tail) {
+        const voteResponseId = Number(tail);
+        return Number.isFinite(voteResponseId)
+          ? { kind: 'c-end', surface, h5Page: 'vote-record', voteResponseId }
+          : { kind: 'c-end', surface, h5Page: 'vote-record' };
+      }
+      return { kind: 'c-end', surface, h5Page: 'vote-records' };
+    }
+    return { kind: 'c-end', surface, h5Page: 'votes' };
+  }
+  const voteToken = /^vote-(\d+)$/.exec(rawId);
+  if (voteToken) {
+    return {
+      kind: 'c-end',
+      surface,
+      h5Page: extra === 'take' ? 'vote-taking' : extra === 'results' ? 'vote-results' : 'vote-detail',
+      voteId: Number(voteToken[1]),
+    };
   }
   const examToken = /^exam-(\d+)$/.exec(rawId);
   if (examToken) {
@@ -348,6 +393,7 @@ export function parseCEndHash(hash: string): CEndLocation {
   const activityId = Number(rawId);
   const parsed = Number.isFinite(activityId) ? activityId : -1;
   if (extra === 'signup') return { kind: 'c-end', surface, activityId: parsed, h5Page: 'signup' };
+  if (extra === 'checkin') return { kind: 'c-end', surface, activityId: parsed, h5Page: 'checkin' };
   return { kind: 'c-end', surface, activityId: parsed };
 }
 
@@ -379,6 +425,30 @@ export function toH5MySignupsHash(): string {
   return '#/c/h5/my';
 }
 
+export function toH5ActivityListHash(): string {
+  return '#/c/h5/list';
+}
+
+export function toPcActivityListHash(): string {
+  return '#/c/pc/list';
+}
+
+export function goCEndActivityList(surface: CEndSurface) {
+  window.location.hash = surface === 'h5' ? toH5ActivityListHash() : toPcActivityListHash();
+}
+
+export function toH5PastMomentsHash(): string {
+  return '#/c/h5/moments';
+}
+
+export function toPcPastMomentsHash(): string {
+  return '#/c/pc/moments';
+}
+
+export function goCEndPastMoments(surface: CEndSurface) {
+  window.location.hash = surface === 'h5' ? toH5PastMomentsHash() : toPcPastMomentsHash();
+}
+
 export function goH5MySignups() {
   window.location.hash = toH5MySignupsHash();
 }
@@ -389,6 +459,122 @@ export function toH5CourseListHash(): string {
 
 export function toH5ExamListHash(): string {
   return '#/c/h5/exams';
+}
+
+export function toVoteListHash(surface: CEndSurface): string {
+  return `#/c/${surface}/votes`;
+}
+
+export function toH5VoteListHash(): string {
+  return toVoteListHash('h5');
+}
+
+export function toPcVoteListHash(): string {
+  return toVoteListHash('pc');
+}
+
+export function goVoteList(surface: CEndSurface) {
+  window.location.hash = toVoteListHash(surface);
+}
+
+export function goH5VoteList() {
+  goVoteList('h5');
+}
+
+export function toVoteRecordsHash(surface: CEndSurface): string {
+  return `#/c/${surface}/votes/mine`;
+}
+
+export function toH5VoteRecordsHash(): string {
+  return toVoteRecordsHash('h5');
+}
+
+export function toPcVoteRecordsHash(): string {
+  return toVoteRecordsHash('pc');
+}
+
+export function goVoteRecords(surface: CEndSurface) {
+  window.location.hash = toVoteRecordsHash(surface);
+}
+
+export function goH5VoteRecords() {
+  goVoteRecords('h5');
+}
+
+export function toH5VoteRecordHash(id: number): string {
+  return `#/c/h5/votes/mine/${id}`;
+}
+
+export function toVoteDetailHash(surface: CEndSurface, id: number): string {
+  return `#/c/${surface}/vote-${id}`;
+}
+
+export function toH5VoteDetailHash(id: number): string {
+  return toVoteDetailHash('h5', id);
+}
+
+export function toPcVoteDetailHash(id: number): string {
+  return toVoteDetailHash('pc', id);
+}
+
+export function goVoteDetail(surface: CEndSurface, id: number) {
+  window.location.hash = toVoteDetailHash(surface, id);
+}
+
+export function goH5VoteDetail(id: number) {
+  goVoteDetail('h5', id);
+}
+
+export function toVoteTakingHash(surface: CEndSurface, id: number): string {
+  return `#/c/${surface}/vote-${id}/take`;
+}
+
+export function toH5VoteTakingHash(id: number): string {
+  return toVoteTakingHash('h5', id);
+}
+
+export function toPcVoteTakingHash(id: number): string {
+  return toVoteTakingHash('pc', id);
+}
+
+export function toVoteResultsHash(surface: CEndSurface, id: number): string {
+  return `#/c/${surface}/vote-${id}/results`;
+}
+
+export function toH5VoteResultsHash(id: number): string {
+  return toVoteResultsHash('h5', id);
+}
+
+export function toPcVoteResultsHash(id: number): string {
+  return toVoteResultsHash('pc', id);
+}
+
+export function goVoteResults(surface: CEndSurface, id: number) {
+  window.location.hash = toVoteResultsHash(surface, id);
+}
+
+export function goH5VoteResults(id: number) {
+  goVoteResults('h5', id);
+}
+
+export function toH5InterestGroupsHash(): string {
+  return '#/c/h5/interest-groups';
+}
+
+export function goH5InterestGroups() {
+  window.location.hash = toH5InterestGroupsHash();
+}
+
+export function toH5HonorHash(): string {
+  return '#/c/h5/honor';
+}
+
+export function goH5Honor() {
+  window.location.hash = toH5HonorHash();
+}
+
+export function toH5HonorAdminHash(): string {
+  return '#/c/h5/honor-admin';
 }
 
 export function goH5ExamList() {
@@ -589,6 +775,9 @@ export function parseLocationHash(hash: string): { application: string; page: st
     'award-create',
     'award-edit',
     'award-detail',
+    'vote-create',
+    'vote-edit',
+    'vote-detail',
   ];
   if (pageKey && (isLeafMenuKey(menus, pageKey) || extraPages.includes(pageKey))) {
     return tab ? { application: application.key, page: pageKey, recordId, tab } : { application: application.key, page: pageKey, recordId };
@@ -644,6 +833,9 @@ export function siderSelectedKey(page: string): string {
   }
   if (page === 'award-create' || page === 'award-edit' || page === 'award-detail') {
     return 'award-list';
+  }
+  if (page === 'vote-create' || page === 'vote-edit' || page === 'vote-detail') {
+    return 'vote-list';
   }
   return page;
 }

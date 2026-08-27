@@ -8,6 +8,8 @@ import {
   resetClientSignups,
   submitSignup,
   cancelSignup,
+  applyActivityCheckIn,
+  updateSignup,
 } from './signupStore';
 
 describe('signup store', () => {
@@ -107,7 +109,7 @@ describe('signup store', () => {
 
   it('cancels before the signup deadline and frees the seat', () => {
     loadDemoSignups();
-    expect(cancelSignup(2, Date.parse('2026-08-21T12:00:00'))).toBe('ok');
+    expect(cancelSignup(2, Date.parse('2026-08-19T12:00:00'))).toBe('ok');
     expect(getUserSignups().some((item) => item.activityId === 2)).toBe(false);
     expect(getRelatedList('signups').find((item) => item.id === 4)?.status).toBe('已取消');
     expect(submitSignup(2, '个人报名')).toBe('ok');
@@ -143,11 +145,14 @@ describe('signup store', () => {
     const list = getUserSignups();
     const byId = Object.fromEntries(list.map((signup) => [signup.activityId, signup]));
 
-    expect(list).toHaveLength(5);
+    expect(list).toHaveLength(8);
     expect(byId[2]?.status).toBe('已通过');
     expect(byId[6]?.status).toBe('已通过');
     expect(byId[9]?.status).toBe('已通过');
     expect(byId[1]?.status).toBe('已通过');
+    expect(byId[26]?.status).toBe('已通过');
+    expect(byId[27]?.status).toBe('已通过');
+    expect(byId[10]?.status).toBe('已通过');
     expect(byId[12]?.status).toBe('已驳回');
     expect(byId[3]).toBeUndefined();
     expect(byId[2]!.createdAt > byId[6]!.createdAt).toBe(true);
@@ -158,5 +163,31 @@ describe('signup store', () => {
     loadDemoSignups();
     resetClientSignups();
     expect(getUserSignups()).toEqual([]);
+  });
+
+  it('writes a session check-in onto the approved basketball signup', () => {
+    restoreRelatedSignups();
+    const activity = getActivity(26);
+    const session = activity?.sessions[0];
+    expect(session).toBeTruthy();
+    const now = Date.parse(session!.startAt.replace(' ', 'T')) + 5 * 60 * 1000;
+    const token = session!.checkInToken ?? `ck-${session!.id}`;
+    expect(applyActivityCheckIn(26, session!.id, token, now)).toEqual({ ok: true, already: false });
+    expect(applyActivityCheckIn(26, session!.id, token, now)).toEqual({ ok: true, already: true });
+    const row = getRelatedList('signups').find((item) => item.id === 18);
+    expect(row?.checkIns?.[session!.id]).toMatch(/^\d{4}-\d{2}-\d{2} /);
+  });
+
+  it('updates unfinished session picks on an existing signup', () => {
+    restoreRelatedSignups();
+    expect(updateSignup(26, '个人报名', { 场次: 's-1-202609031400' }, Date.parse('2026-08-27T11:00:00'))).toBe('ok');
+    const row = getRelatedList('signups').find((item) => item.id === 18);
+    expect(row?.answers?.['场次']).toBe('s-1-202609031400');
+  });
+
+  it('cancels when adjust removes every remaining session', () => {
+    restoreRelatedSignups();
+    expect(updateSignup(26, '个人报名', { 场次: '' }, Date.parse('2026-08-27T11:00:00'))).toBe('cancelled');
+    expect(getUserSignups().some((item) => item.activityId === 26)).toBe(false);
   });
 });

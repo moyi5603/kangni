@@ -16,6 +16,8 @@ function activity(partial: Partial<Activity> & Pick<Activity, 'id' | 'title'>): 
     tags: [],
     startAt: '2026-09-01 09:00',
     endAt: '2026-09-01 18:00',
+    scheduleType: 'once',
+    sessions: [],
     location: '总部',
     organizer: '张悦',
     phone: '13800001001',

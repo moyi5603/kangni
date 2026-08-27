@@ -23,7 +23,7 @@ describe('ActivitySocialTabs', () => {
     expect(html).toContain('c-social-panel');
     expect(html).toContain('aria-selected="true"');
     expect(html).toContain('评论 26');
-    expect(html).toContain('精彩瞬间');
+    expect(html).toContain('精彩瞬间 4');
     expect(html).toContain('开放日讲解很清楚');
     expect(html).not.toContain('开场致辞很有感染力');
     expect(html).not.toContain('发布瞬间');
@@ -80,5 +80,6 @@ describe('ActivitySocialTabs', () => {
     expect(html).toContain('小组讨论花絮，导师点评很到位。');
     expect(html).not.toContain('发布瞬间');
     expect(html).toContain('role="tablist"');
+    expect(html).toContain('精彩瞬间 1');
   });
 });

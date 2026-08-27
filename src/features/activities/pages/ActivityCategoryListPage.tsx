@@ -3,6 +3,8 @@ import { PlusOutlined } from '@ant-design/icons';
 import { App, Button, Card, Empty, Flex, Form, Input, Modal, Select, Space, Table, Tag, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { ListPageHeading, SearchField, SearchPanel } from '../../../shared/ui/ListPage';
+import { TableEllipsisText } from '../../../shared/ui/TableEllipsisText';
+import { TableRowActions } from '../../../shared/ui/TableRowActions';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import { categoryStatuses, type ActivityCategoryRecord, type CategoryStatus } from '../model/category';
 import { isCategoryInUse, removeCategory, setCategoryStatus, upsertCategory, useCategories } from '../model/categoryStore';
@@ -26,8 +28,8 @@ function optionsOf(values: readonly string[]) {
 function modalFooter(_: ReactNode, extra: { OkBtn: React.FC; CancelBtn: React.FC }) {
   return (
     <Space>
-      <extra.OkBtn />
       <extra.CancelBtn />
+      <extra.OkBtn />
     </Space>
   );
 }
@@ -107,7 +109,7 @@ export function ActivityCategoryListPage() {
   };
 
   const columns: TableColumnsType<ActivityCategoryRecord> = [
-    { title: '分类名称', dataIndex: 'name' },
+    { title: '分类名称', dataIndex: 'name', render: (value: string) => <TableEllipsisText text={value} /> },
     {
       title: '状态',
       dataIndex: 'status',
@@ -118,23 +120,33 @@ export function ActivityCategoryListPage() {
       title: '操作',
       key: 'action',
       fixed: 'right',
-      width: 220,
+      align: 'right',
+      width: 180,
       render: (_, record) => (
-        <Space>
-          <Button type="link" aria-label={`编辑 ${record.name}`} onClick={() => openEditor(record)}>
-            编辑
-          </Button>
-          <Button type="link" aria-label={`删除 ${record.name}`} onClick={() => deleteOne(record)}>
-            删除
-          </Button>
-          <Button
-            type="link"
-            aria-label={record.status === '启用' ? `禁用 ${record.name}` : `启用 ${record.name}`}
-            onClick={() => toggleStatus(record)}
-          >
-            {record.status === '启用' ? '禁用' : '启用'}
-          </Button>
-        </Space>
+        <TableRowActions
+          moreAriaLabel={`更多操作 ${record.name}`}
+          actions={[
+            {
+              key: 'edit',
+              label: '编辑',
+              ariaLabel: `编辑 ${record.name}`,
+              onClick: () => openEditor(record),
+            },
+            {
+              key: 'toggle',
+              label: record.status === '启用' ? '禁用' : '启用',
+              ariaLabel: record.status === '启用' ? `禁用 ${record.name}` : `启用 ${record.name}`,
+              onClick: () => toggleStatus(record),
+            },
+            {
+              key: 'delete',
+              label: '删除',
+              ariaLabel: `删除 ${record.name}`,
+              danger: true,
+              onClick: () => deleteOne(record),
+            },
+          ]}
+        />
       ),
     },
   ];
@@ -170,11 +182,14 @@ export function ActivityCategoryListPage() {
           />
         </SearchField>
       </SearchPanel>
-      <Card>
+      <Card className="list-table-card">
         <div className="table-toolbar">
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>
-            新建分类
-          </Button>
+          <Typography.Text>共 {filtered.length} 条</Typography.Text>
+          <Space>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>
+              新建分类
+            </Button>
+          </Space>
         </div>
         {selectedRowKeys.length ? (
           <Flex className="batch-toolbar" justify="space-between" align="center">

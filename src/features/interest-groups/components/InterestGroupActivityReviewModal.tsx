@@ -22,10 +22,6 @@ export function InterestGroupActivityReviewModal({
 
   const decide = async (pass: boolean) => {
     const comment = String((await form.validateFields()).comment ?? '').trim();
-    if (!pass && !comment) {
-      form.setFields([{ name: 'comment', errors: ['驳回时请填写意见'] }]);
-      return;
-    }
     if (!activity || !canReviewInterestGroupActivity(activity)) {
       message.info('当前活动不可审核');
       return;
@@ -56,8 +52,8 @@ export function InterestGroupActivityReviewModal({
       }
     >
       <Form form={form} layout="horizontal" className="edit-form" requiredMark={false} validateTrigger="onBlur">
-        <Form.Item name="comment" label="意见" extra="通过可不填。驳回必须填写意见。">
-          <Input.TextArea rows={3} maxLength={200} showCount placeholder="请输入审核意见" />
+        <Form.Item name="comment" label="意见" extra="选填。驳回时可填写驳回原因。">
+          <Input.TextArea rows={3} maxLength={200} showCount placeholder="选填，驳回时可填写原因" />
         </Form.Item>
       </Form>
     </Modal>

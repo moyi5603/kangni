@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   Checkbox,
+  Collapse,
   DatePicker,
   Flex,
   Form,
@@ -30,12 +31,14 @@ import {
   nomineeScopes,
   validateAwardTimeOrder,
   visibilityModes,
+  voteSortRules,
   type AwardRankPrize,
   type AwardRecord,
   type AwardType,
   type NominatorMode,
   type NomineeScope,
   type VisibilityMode,
+  type VoteSortRule,
 } from '../model/award';
 import { useAwardCertificates } from '../model/awardCertificateStore';
 import { generateAwardCriteria, generateAwardIntro, generateAwardName } from '../model/awardAiAssist';
@@ -80,6 +83,10 @@ type FormValues = {
   nomineeDepartments?: string[];
   nomineeImportFileName?: string;
   autoPublishOnEnd: boolean;
+  commentsEnabled: boolean;
+  commentsNeedAudit: boolean;
+  voteSortRule: VoteSortRule;
+  coverUrl: string;
 };
 
 function optionsOf(values: readonly string[]) {
@@ -97,6 +104,11 @@ function downloadCrowdImportTemplate(filename: string) {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+function toCoverFileList(coverUrl: string): UploadFile[] {
+  if (!coverUrl) return [];
+  return [{ uid: '-1', name: '评优封面', status: 'done', url: coverUrl, thumbUrl: coverUrl }];
 }
 
 function toImportFileList(fileName: string): UploadFile[] {
@@ -184,6 +196,7 @@ export function AwardFormPage({ mode, recordId, onBack, onNavigate }: Props) {
   const [visibilityImportList, setVisibilityImportList] = useState<UploadFile[]>([]);
   const [nominatorImportList, setNominatorImportList] = useState<UploadFile[]>([]);
   const [nomineeImportList, setNomineeImportList] = useState<UploadFile[]>([]);
+  const [coverList, setCoverList] = useState<UploadFile[]>([]);
   const [certificateModalOpen, setCertificateModalOpen] = useState(false);
   const [certificateRankField, setCertificateRankField] = useState<number | null>(null);
   const editing = mode === 'edit' ? getAward(Number(recordId)) : undefined;
@@ -192,6 +205,7 @@ export function AwardFormPage({ mode, recordId, onBack, onNavigate }: Props) {
   const visibility = Form.useWatch('visibility', form);
   const nominatorMode = Form.useWatch('nominatorMode', form);
   const nomineeScope = Form.useWatch('nomineeScope', form);
+  const commentsEnabled = Form.useWatch('commentsEnabled', form) ?? true;
 
   useEffect(() => {
     if (mode === 'edit' && !editing) {
@@ -211,6 +225,10 @@ export function AwardFormPage({ mode, recordId, onBack, onNavigate }: Props) {
         nominatorMode: '全员',
         nomineeScope: '全员',
         autoPublishOnEnd: false,
+        commentsEnabled: true,
+        commentsNeedAudit: false,
+        voteSortRule: '按票数',
+        coverUrl: '',
         visibilityImportFileName: '',
         nominatorImportFileName: '',
         nomineeImportFileName: '',
@@ -218,6 +236,7 @@ export function AwardFormPage({ mode, recordId, onBack, onNavigate }: Props) {
       setVisibilityImportList([]);
       setNominatorImportList([]);
       setNomineeImportList([]);
+      setCoverList([]);
       setDirty(false);
       return;
     }
@@ -249,10 +268,15 @@ export function AwardFormPage({ mode, recordId, onBack, onNavigate }: Props) {
       nomineeDepartments: editing.nomineeDepartments,
       nomineeImportFileName: editing.nomineeImportFileName,
       autoPublishOnEnd: editing.autoPublishOnEnd,
+      commentsEnabled: editing.commentsEnabled,
+      commentsNeedAudit: editing.commentsNeedAudit,
+      voteSortRule: editing.voteSortRule,
+      coverUrl: editing.coverUrl,
     });
     setVisibilityImportList(toImportFileList(editing.visibilityImportFileName));
     setNominatorImportList(toImportFileList(editing.nominatorImportFileName));
     setNomineeImportList(toImportFileList(editing.nomineeImportFileName));
+    setCoverList(toCoverFileList(editing.coverUrl));
     setDirty(false);
   }, [mode, editing, form]);
 
@@ -341,6 +365,14 @@ export function AwardFormPage({ mode, recordId, onBack, onNavigate }: Props) {
       nomineeImportFileName: values.nomineeScope === '导入人群' ? values.nomineeImportFileName ?? '' : '',
       publishStatus: editing?.publishStatus ?? '未发布',
       autoPublishOnEnd: values.autoPublishOnEnd,
+      commentsEnabled: values.commentsEnabled,
+      commentsNeedAudit: values.commentsEnabled ? Boolean(values.commentsNeedAudit) : false,
+      voteSortRule: values.voteSortRule,
+      coverUrl: values.coverUrl,
+      pinned: editing?.pinned ?? false,
+      results: editing?.results ?? [],
+      rewardsGranted: editing?.rewardsGranted ?? false,
+      rewardGrants: editing?.rewardGrants ?? [],
       resultPublic: editing?.resultPublic ?? false,
       publicityLocked: editing?.publicityLocked ?? false,
       nominationCount: editing?.nominationCount ?? 0,
@@ -374,7 +406,7 @@ export function AwardFormPage({ mode, recordId, onBack, onNavigate }: Props) {
       />
       <Flex align="baseline" gap={16} wrap="wrap">
         <Typography.Title level={1}>{title}</Typography.Title>
-        <Typography.Text type="secondary">填写评优基础信息、名次奖励、可见范围与提名人规则后保存。</Typography.Text>
+        <Typography.Text type="secondary">填写评优基础信息、名次奖励与高级设置后保存。</Typography.Text>
       </Flex>
 
       <Form
@@ -385,7 +417,12 @@ export function AwardFormPage({ mode, recordId, onBack, onNavigate }: Props) {
         labelWrap={false}
         validateTrigger="onBlur"
         scrollToFirstError={{ focus: true }}
-        onValuesChange={() => setDirty(true)}
+        onValuesChange={(changed) => {
+          setDirty(true);
+          if ('commentsEnabled' in changed && !changed.commentsEnabled) {
+            form.setFieldValue('commentsNeedAudit', false);
+          }
+        }}
         initialValues={{
           type: '个人',
           winnerCount: 3,
@@ -395,6 +432,10 @@ export function AwardFormPage({ mode, recordId, onBack, onNavigate }: Props) {
           nominatorMode: '全员',
           nomineeScope: '全员',
           autoPublishOnEnd: false,
+          commentsEnabled: true,
+          commentsNeedAudit: false,
+          voteSortRule: '按票数',
+          coverUrl: '',
         }}
       >
         <Card title="基础信息">
@@ -415,6 +456,37 @@ export function AwardFormPage({ mode, recordId, onBack, onNavigate }: Props) {
           </Form.Item>
           <Form.Item name="type" label="评优类型" rules={[{ required: true, message: '请选择评优类型' }]}>
             <Radio.Group options={optionsOf(awardTypes)} />
+          </Form.Item>
+          <Form.Item label="封面图片" extra="支持 jpg / png" required>
+            <Upload
+              accept="image/*"
+              listType="picture-card"
+              maxCount={1}
+              fileList={coverList}
+              beforeUpload={() => false}
+              onChange={({ fileList }) => {
+                const file = fileList[0];
+                setCoverList(fileList.slice(-1));
+                if (file?.originFileObj) {
+                  const reader = new FileReader();
+                  reader.onload = () => form.setFieldValue('coverUrl', String(reader.result));
+                  reader.readAsDataURL(file.originFileObj);
+                } else {
+                  form.setFieldValue('coverUrl', file?.url ?? '');
+                }
+                setDirty(true);
+              }}
+            >
+              {coverList.length ? null : (
+                <button type="button" className="cover-upload-trigger" aria-label="上传封面">
+                  <PlusOutlined />
+                  <span>上传封面</span>
+                </button>
+              )}
+            </Upload>
+          </Form.Item>
+          <Form.Item name="coverUrl" hidden rules={[{ required: true, message: '请上传封面图' }]}>
+            <Input />
           </Form.Item>
         </Card>
 
@@ -503,8 +575,8 @@ export function AwardFormPage({ mode, recordId, onBack, onNavigate }: Props) {
         </Card>
 
         <Card title="名次奖励">
-          <Form.Item name="winnerCount" label="前 x 名" rules={[{ required: true, message: '请设置获奖名次数' }]} extra="1～10 名，每名单独设置奖项。">
-            <InputNumber min={1} max={10} precision={0} style={{ width: '100%' }} />
+          <Form.Item name="winnerCount" label="获奖名次数" rules={[{ required: true, message: '请设置获奖名次数' }]} extra="每名单独设置奖项。">
+            <InputNumber min={1} precision={0} style={{ width: '100%' }} />
           </Form.Item>
           <Form.List name="ranks">
             {(fields) => (
@@ -599,130 +671,176 @@ export function AwardFormPage({ mode, recordId, onBack, onNavigate }: Props) {
           </Form.List>
         </Card>
 
-        <Card title="范围">
-          <Form.Item name="visibility" label="可见范围" rules={[{ required: true, message: '请选择可见范围' }]}>
-            <Radio.Group options={optionsOf(visibilityModes)} />
-          </Form.Item>
-          {visibility === '按部门' ? (
-            <Form.Item name="visibilityDepartments" label="选择部门" rules={[{ required: true, message: '请选择部门' }]}>
-              <TreeSelect
-                treeData={orgDepartmentTree}
-                treeCheckable
-                treeDefaultExpandAll
-                showCheckedStrategy={TreeSelect.SHOW_PARENT}
-                showSearch={{ treeNodeFilterProp: 'title' }}
-                allowClear
-                placeholder="请选择部门"
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-          ) : null}
-          {visibility === '自定义人员' ? (
-            <Form.Item name="visibilityPeople" label="选择人员" rules={[{ required: true, message: '请选择人员' }]}>
-              <TreeSelect
-                treeData={orgPeoplePickerTree}
-                treeCheckable
-                treeDefaultExpandAll
-                showCheckedStrategy={TreeSelect.SHOW_CHILD}
-                showSearch={{ treeNodeFilterProp: 'title' }}
-                allowClear
-                placeholder="请按组织架构选择人员"
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-          ) : null}
-          {visibility === '导入人群' ? (
-            <CrowdImportField
-              name="visibilityImportFileName"
-              fileList={visibilityImportList}
-              templateName="评优可见人群导入模板.csv"
-              onFileListChange={(list) => {
-                setVisibilityImportList(list);
-                form.setFieldValue('visibilityImportFileName', list[0]?.name ?? '');
-                setDirty(true);
-              }}
-            />
-          ) : null}
+        <Card styles={{ body: { paddingBlock: 0 } }} className="advanced-settings-card">
+          <Collapse
+            ghost
+            className="advanced-settings-collapse"
+            defaultActiveKey={[]}
+            items={[
+              {
+                key: 'advanced',
+                label: '高级设置',
+                forceRender: true,
+                children: (
+                  <Space direction="vertical" size="middle" style={{ width: '100%', paddingBottom: 16 }}>
+                    <Card title="可见范围" size="small" className="activity-settings-card">
+                      <Form.Item name="visibility" label="可见范围" rules={[{ required: true, message: '请选择可见范围' }]}>
+                        <Radio.Group options={optionsOf(visibilityModes)} />
+                      </Form.Item>
+                      {visibility === '按部门' ? (
+                        <Form.Item name="visibilityDepartments" label="选择部门" rules={[{ required: true, message: '请选择部门' }]}>
+                          <TreeSelect
+                            treeData={orgDepartmentTree}
+                            treeCheckable
+                            treeDefaultExpandAll
+                            showCheckedStrategy={TreeSelect.SHOW_PARENT}
+                            showSearch={{ treeNodeFilterProp: 'title' }}
+                            allowClear
+                            placeholder="请选择部门"
+                            style={{ width: '100%' }}
+                          />
+                        </Form.Item>
+                      ) : null}
+                      {visibility === '自定义人员' ? (
+                        <Form.Item name="visibilityPeople" label="选择人员" rules={[{ required: true, message: '请选择人员' }]}>
+                          <TreeSelect
+                            treeData={orgPeoplePickerTree}
+                            treeCheckable
+                            treeDefaultExpandAll
+                            showCheckedStrategy={TreeSelect.SHOW_CHILD}
+                            showSearch={{ treeNodeFilterProp: 'title' }}
+                            allowClear
+                            placeholder="请按组织架构选择人员"
+                            style={{ width: '100%' }}
+                          />
+                        </Form.Item>
+                      ) : null}
+                      {visibility === '导入人群' ? (
+                        <CrowdImportField
+                          name="visibilityImportFileName"
+                          fileList={visibilityImportList}
+                          templateName="评优可见人群导入模板.csv"
+                          onFileListChange={(list) => {
+                            setVisibilityImportList(list);
+                            form.setFieldValue('visibilityImportFileName', list[0]?.name ?? '');
+                            setDirty(true);
+                          }}
+                        />
+                      ) : null}
+                    </Card>
 
-          <Form.Item name="nominatorMode" label="提名人" rules={[{ required: true, message: '请选择提名人' }]}>
-            <Radio.Group options={optionsOf(nominatorModes)} />
-          </Form.Item>
-          {nominatorMode === '指定部门' ? (
-            <Form.Item name="nominatorDepartments" label="提名部门" rules={[{ required: true, message: '请选择部门' }]}>
-              <TreeSelect
-                treeData={orgDepartmentTree}
-                treeCheckable
-                treeDefaultExpandAll
-                showCheckedStrategy={TreeSelect.SHOW_PARENT}
-                allowClear
-                placeholder="请选择部门"
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-          ) : null}
-          {nominatorMode === '指定人员' ? (
-            <Form.Item name="nominatorPeople" label="指定人员" rules={[{ required: true, message: '请选择人员' }]}>
-              <TreeSelect
-                treeData={orgPeoplePickerTree}
-                treeCheckable
-                treeDefaultExpandAll
-                showCheckedStrategy={TreeSelect.SHOW_CHILD}
-                allowClear
-                placeholder="请选择人员"
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-          ) : null}
-          {nominatorMode === '导入人群' ? (
-            <CrowdImportField
-              name="nominatorImportFileName"
-              fileList={nominatorImportList}
-              templateName="评优提名人导入模板.csv"
-              onFileListChange={(list) => {
-                setNominatorImportList(list);
-                form.setFieldValue('nominatorImportFileName', list[0]?.name ?? '');
-                setDirty(true);
-              }}
-            />
-          ) : null}
+                    <Card title="提名人" size="small" className="activity-settings-card">
+                      <Form.Item name="nominatorMode" label="提名人" rules={[{ required: true, message: '请选择提名人' }]}>
+                        <Radio.Group options={optionsOf(nominatorModes)} />
+                      </Form.Item>
+                      {nominatorMode === '指定部门' ? (
+                        <Form.Item name="nominatorDepartments" label="提名部门" rules={[{ required: true, message: '请选择部门' }]}>
+                          <TreeSelect
+                            treeData={orgDepartmentTree}
+                            treeCheckable
+                            treeDefaultExpandAll
+                            showCheckedStrategy={TreeSelect.SHOW_PARENT}
+                            allowClear
+                            placeholder="请选择部门"
+                            style={{ width: '100%' }}
+                          />
+                        </Form.Item>
+                      ) : null}
+                      {nominatorMode === '指定人员' ? (
+                        <Form.Item name="nominatorPeople" label="指定人员" rules={[{ required: true, message: '请选择人员' }]}>
+                          <TreeSelect
+                            treeData={orgPeoplePickerTree}
+                            treeCheckable
+                            treeDefaultExpandAll
+                            showCheckedStrategy={TreeSelect.SHOW_CHILD}
+                            allowClear
+                            placeholder="请选择人员"
+                            style={{ width: '100%' }}
+                          />
+                        </Form.Item>
+                      ) : null}
+                      {nominatorMode === '导入人群' ? (
+                        <CrowdImportField
+                          name="nominatorImportFileName"
+                          fileList={nominatorImportList}
+                          templateName="评优提名人导入模板.csv"
+                          onFileListChange={(list) => {
+                            setNominatorImportList(list);
+                            form.setFieldValue('nominatorImportFileName', list[0]?.name ?? '');
+                            setDirty(true);
+                          }}
+                        />
+                      ) : null}
 
-          <Form.Item name="nomineeScope" label="提名范围" rules={[{ required: true, message: '请选择提名范围' }]}>
-            <Radio.Group options={optionsOf(nomineeScopes)} />
-          </Form.Item>
-          {nomineeScope === '指定部门范围' ? (
-            <Form.Item name="nomineeDepartments" label="被提部门" rules={[{ required: true, message: '请选择部门范围' }]}>
-              <TreeSelect
-                treeData={orgDepartmentTree}
-                treeCheckable
-                treeDefaultExpandAll
-                showCheckedStrategy={TreeSelect.SHOW_PARENT}
-                allowClear
-                placeholder="请选择可被提名的部门"
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-          ) : null}
-          {nomineeScope === '导入人群' ? (
-            <CrowdImportField
-              name="nomineeImportFileName"
-              fileList={nomineeImportList}
-              templateName="评优被提名人导入模板.csv"
-              onFileListChange={(list) => {
-                setNomineeImportList(list);
-                form.setFieldValue('nomineeImportFileName', list[0]?.name ?? '');
-                setDirty(true);
-              }}
-            />
-          ) : null}
+                      <Form.Item name="nomineeScope" label="提名范围" rules={[{ required: true, message: '请选择提名范围' }]}>
+                        <Radio.Group options={optionsOf(nomineeScopes)} />
+                      </Form.Item>
+                      {nomineeScope === '指定部门范围' ? (
+                        <Form.Item name="nomineeDepartments" label="被提部门" rules={[{ required: true, message: '请选择部门范围' }]}>
+                          <TreeSelect
+                            treeData={orgDepartmentTree}
+                            treeCheckable
+                            treeDefaultExpandAll
+                            showCheckedStrategy={TreeSelect.SHOW_PARENT}
+                            allowClear
+                            placeholder="请选择可被提名的部门"
+                            style={{ width: '100%' }}
+                          />
+                        </Form.Item>
+                      ) : null}
+                      {nomineeScope === '导入人群' ? (
+                        <CrowdImportField
+                          name="nomineeImportFileName"
+                          fileList={nomineeImportList}
+                          templateName="评优被提名人导入模板.csv"
+                          onFileListChange={(list) => {
+                            setNomineeImportList(list);
+                            form.setFieldValue('nomineeImportFileName', list[0]?.name ?? '');
+                            setDirty(true);
+                          }}
+                        />
+                      ) : null}
+                    </Card>
 
-          <Form.Item
-            name="autoPublishOnEnd"
-            label="结束后自动公示"
-            valuePropName="checked"
-            extra="开启后按投票结果自动公示评优结果并发放奖励；未开启可手动上传获奖名单后再公示并发放奖励。"
-          >
-            <Switch />
-          </Form.Item>
+                    <Card title="投票" size="small" className="activity-settings-card">
+                      <Form.Item name="voteSortRule" label="投票排序规则" rules={[{ required: true, message: '请选择投票排序规则' }]}>
+                        <Radio.Group options={optionsOf(voteSortRules)} />
+                      </Form.Item>
+                    </Card>
+
+                    <Card title="公示与评论" size="small" className="activity-settings-card">
+                      <Form.Item
+                        name="autoPublishOnEnd"
+                        label="结束后自动公示"
+                        valuePropName="checked"
+                        extra="开启后按投票结果自动公示评优结果并发放奖励；未开启可手动上传获奖名单后再公示并发放奖励。"
+                      >
+                        <Switch checkedChildren="开启" unCheckedChildren="关闭" />
+                      </Form.Item>
+                      <Form.Item
+                        name="commentsEnabled"
+                        label="评论区"
+                        valuePropName="checked"
+                        extra="关闭后详情页不展示评论区。"
+                      >
+                        <Switch checkedChildren="开启" unCheckedChildren="关闭" />
+                      </Form.Item>
+                      {commentsEnabled ? (
+                        <Form.Item
+                          name="commentsNeedAudit"
+                          label="评论是否需要审核"
+                          valuePropName="checked"
+                          extra="开启后评论需审核通过才对外展示。"
+                        >
+                          <Switch checkedChildren="开启" unCheckedChildren="关闭" />
+                        </Form.Item>
+                      ) : null}
+                    </Card>
+                  </Space>
+                ),
+              },
+            ]}
+          />
         </Card>
 
         <div className="sticky-form-actions">

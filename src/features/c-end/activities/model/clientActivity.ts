@@ -1,9 +1,14 @@
 import { useSyncExternalStore } from 'react';
 import type { Activity } from '../../../activities/model/activity';
+import { momentCoverUrl, type MomentRecord } from '../../../activities/model/moment';
+import { weekdayLabel, hasOpenSessionSignup, needsSessionPick, parseSessionIds, listClientSignupSessions } from '../../../activities/model/activitySchedule';
 import { getRelatedList, subscribeRelated } from '../../../activities/model/related';
 import type { ClientSignup } from './signupStore';
 import { commentCount } from './activityComments';
 import { getFavoritedBy, getLikedBy, useEngagement } from './engagementStore';
+import { formatCEndDateTime, formatCEndDateTimeRange } from '../../formatDateTime';
+
+export { formatCEndDateTime as formatPcDateTime, formatCEndDateTimeRange as formatPcDateTimeRange };
 
 export function useLiveSocial() {
   useEngagement();
@@ -11,6 +16,10 @@ export function useLiveSocial() {
 }
 
 export const FEATURED_LIMIT = 8;
+export const HOME_ACTIVITY_PREVIEW_LIMIT = 3;
+export const PC_ACTIVITY_PREVIEW_LIMIT = 6;
+export const HOME_PAST_HIGHLIGHT_LIMIT = 3;
+export const PC_PAST_HIGHLIGHT_LIMIT = 5;
 export const HOME_SIGNUP_PREVIEW_LIMIT = 2;
 export const HOME_FAVORITE_PREVIEW_LIMIT = 2;
 
@@ -79,7 +88,17 @@ export function isSignupOpen(activity: Activity, now = Date.now()): boolean {
   const start = parseActivityDate(activity.signupStartAt);
   const end = parseActivityDate(activity.signupEndAt);
   if (!Number.isFinite(start) || !Number.isFinite(end)) return false;
-  return now >= start && now <= end;
+  if (now < start || now > end) return false;
+  if (!needsSessionPick(activity.scheduleType)) return true;
+  return hasOpenSessionSignup(
+    activity.sessions ?? [],
+    {
+      signupStartAt: activity.signupStartAt,
+      signupEndAt: activity.signupEndAt,
+      signupHoursBefore: activity.signupHoursBefore,
+    },
+    now,
+  );
 }
 
 export function featuredActivities(list: Activity[], now = Date.now()): Activity[] {
@@ -114,32 +133,22 @@ export function catalogActivities(list: Activity[], tab: ClientTabId, now = Date
 }
 
 export function formatShortActivityDate(activity: Activity): string {
-  const start = activity.startAt.slice(5, 10).replace('-', '/');
-  const end = activity.endAt.slice(5, 10).replace('-', '/');
+  if (activity.scheduleType === 'recurring') {
+    const count = activity.sessions?.length ?? 0;
+    return `每${weekdayLabel(activity.repeatWeekday ?? 0)} · ${count}场`;
+  }
+  if (activity.scheduleType === 'series') {
+    const first = activity.sessions?.[0]?.startAt ?? activity.startAt;
+    const date = formatCEndDateTime(first.slice(0, 10)).replace(/-/g, '/');
+    return `首场 ${date} · ${activity.sessions?.length ?? 0}场`;
+  }
+  const start = formatCEndDateTime(activity.startAt.slice(0, 10)).replace(/-/g, '/');
+  const end = formatCEndDateTime(activity.endAt.slice(0, 10)).replace(/-/g, '/');
   return start === end ? start : `${start} - ${end}`;
-}
-
-export function formatPcDateTime(value: string, now = new Date()): string {
-  if (!/^\d{4}-\d{2}-\d{2}/.test(value)) return value;
-  if (value.slice(0, 4) !== String(now.getFullYear())) return value;
-  return value.slice(5);
-}
-
-export function formatPcDateTimeRange(start: string, end: string, now = new Date()): string {
-  return `${formatPcDateTime(start, now)} ~ ${formatPcDateTime(end, now)}`;
 }
 
 export function getPublishedActivity(list: Activity[], id: number): Activity | undefined {
   return publishedActivities(list).find((item) => item.id === id);
-}
-
-/** B 端预览：按已发布展示，便于看 PC / H5 页面效果 */
-export function asClientPreviewActivity(activity: Activity): Activity {
-  return {
-    ...activity,
-    publishStatus: '已发布',
-    publishedAt: activity.publishedAt || activity.createdAt,
-  };
 }
 
 export function signupTypes(activity: Activity): string[] {
@@ -178,12 +187,41 @@ export type ApprovedSignupPerson = {
 
 export const SIGNUP_PEOPLE_PREVIEW_LIMIT = 5;
 
-export function approvedSignupPeople(activityId: number): ApprovedSignupPerson[] {
+export function approvedSignupPeople(activityId: number, sessionId?: string): ApprovedSignupPerson[] {
   return getRelatedList('signups')
     .filter((item) => item.activityId === activityId && item.status === '已通过')
+    .filter((item) => !sessionId || parseSessionIds(item.answers?.['场次']).includes(sessionId))
     .slice()
     .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
     .map((item) => ({ id: item.id, name: item.name, department: item.department }));
+}
+
+export function sessionOccupiedCount(activityId: number, sessionId: string): number {
+  return getRelatedList('signups').filter(
+    (item) =>
+      item.activityId === activityId &&
+      OCCUPIED_SIGNUP_STATUSES.has(item.status) &&
+      parseSessionIds(item.answers?.['场次']).includes(sessionId),
+  ).length;
+}
+
+export function userSignedRecentSessionCount(
+  activity: Activity,
+  phone: string,
+  now = Date.now(),
+): number {
+  const recent = new Set(listClientSignupSessions(activity.sessions ?? [], now).map((item) => item.id));
+  const picked = new Set(
+    getRelatedList('signups')
+      .filter(
+        (item) =>
+          item.activityId === activity.id &&
+          (item.accountPhone ?? item.phone) === phone &&
+          OCCUPIED_SIGNUP_STATUSES.has(item.status),
+      )
+      .flatMap((item) => parseSessionIds(item.answers?.['场次'])),
+  );
+  return [...recent].filter((id) => picked.has(id)).length;
 }
 
 export function filterApprovedSignupPeople(
@@ -267,7 +305,36 @@ export function filterSignupsByTitle(items: ClientSignupView[], query: string): 
   });
 }
 
-export type SignupCta = { label: string; enabled: boolean; action?: 'signup' | 'cancel' };
+export function filterActivitiesByTitle(list: Activity[], query: string): Activity[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return list;
+  return list.filter((item) => item.title.toLowerCase().includes(needle));
+}
+
+export function pastHighlightMoments(
+  moments: MomentRecord[],
+  activities: Activity[],
+  limit = HOME_PAST_HIGHLIGHT_LIMIT,
+): MomentRecord[] {
+  return listPastHighlightMoments(moments, activities).slice(0, limit);
+}
+
+export function listPastHighlightMoments(moments: MomentRecord[], activities: Activity[]): MomentRecord[] {
+  const endedIds = new Set(
+    clientVisibleActivities(activities)
+      .filter((item) => item.activityStatus === '已结束')
+      .map((item) => item.id),
+  );
+  return moments
+    .filter(
+      (item) =>
+        item.status === '已通过' && endedIds.has(item.activityId) && Boolean(momentCoverUrl(item)),
+    )
+    .slice()
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt) || right.id - left.id);
+}
+
+export type SignupCta = { label: string; enabled: boolean; action?: 'signup' | 'cancel' | 'adjust' };
 
 export function signupCta(
   activity: Activity,
@@ -276,15 +343,17 @@ export function signupCta(
   options: { allowCancel?: boolean } = {},
 ): SignupCta {
   if (activity.activityStatus === '已结束') return { label: '报名已结束', enabled: false };
-  const end = parseActivityDate(activity.signupEndAt);
-  const beforeDeadline = Number.isFinite(end) && now <= end;
-  if (signedUp) {
-    if (options.allowCancel && beforeDeadline) return { label: '取消报名', enabled: true, action: 'cancel' };
-    return { label: '已报名', enabled: false };
-  }
   const start = parseActivityDate(activity.signupStartAt);
   if (Number.isFinite(start) && now < start) return { label: '报名未开始', enabled: false };
-  if (!beforeDeadline && Number.isFinite(end)) return { label: '报名已截止', enabled: false };
+  const open = isSignupOpen(activity, now);
+  if (signedUp) {
+    if (options.allowCancel && open && needsSessionPick(activity.scheduleType)) {
+      return { label: '调整报名', enabled: true, action: 'adjust' };
+    }
+    if (options.allowCancel && open) return { label: '取消报名', enabled: true, action: 'cancel' };
+    return { label: '已报名', enabled: false };
+  }
+  if (!open) return { label: '报名已截止', enabled: false };
   return { label: '立即报名', enabled: true, action: 'signup' };
 }
 

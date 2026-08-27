@@ -1,3 +1,5 @@
+import type { ActivitySession } from './activitySchedule';
+import { formatPickedSessionsLabel } from './activitySchedule';
 import type { SignupRecord } from './related';
 import { parseCompanionPeople, type SignupField } from './signupFields';
 
@@ -52,13 +54,24 @@ function csvCell(value: string): string {
   return cell;
 }
 
-export function downloadSignupExport(title: string, fields: SignupField[], records: SignupRecord[]) {
-  const baseHeaders = ['姓名', '手机号', '部门', '状态', '报名时间'];
+export function downloadSignupExport(
+  title: string,
+  fields: SignupField[],
+  records: SignupRecord[],
+  sessions: ActivitySession[] = [],
+) {
+  const includeSessions = sessions.length > 0;
+  const baseHeaders = includeSessions
+    ? ['姓名', '手机号', '部门', '场次', '状态', '报名时间']
+    : ['姓名', '手机号', '部门', '状态', '报名时间'];
   const fieldHeaders = fields.map((field) => field.label);
   const headerLine = [...baseHeaders, ...fieldHeaders].map(csvCell).join(',');
   const lines = records.map((record) => {
     const answers = resolveSignupRecordAnswers(record);
-    const base = [record.name, record.phone, record.department, record.status, record.createdAt];
+    const sessionCell = includeSessions ? formatPickedSessionsLabel(sessions, answers['场次']) || '—' : '';
+    const base = includeSessions
+      ? [record.name, record.phone, record.department, sessionCell, record.status, record.createdAt]
+      : [record.name, record.phone, record.department, record.status, record.createdAt];
     const extras = fields.map((field) => formatSignupAnswerValue(field, answers[field.key]));
     return [...base, ...extras].map(csvCell).join(',');
   });

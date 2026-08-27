@@ -3,6 +3,7 @@ import { goH5ExamResult, toH5ExamRankHash, toH5ExamResultHash, toH5ExamTakingHas
 import { H5ActivityShell } from '../../activities/h5/H5ActivityShell';
 import { RetakeExamDialog } from '../components/RetakeExamDialog';
 import { getClientExamRecordBoard } from '../model/clientExamResult';
+import { formatCEndDateTime } from '../../formatDateTime';
 
 function RecordsBook() {
   return (
@@ -70,7 +71,7 @@ export function H5ExamRecords({ id }: { id: number }) {
                 <a href={toH5ExamResultHash(id)}>
                   <span>
                     <strong>{item.title}</strong>
-                    <em>{item.submittedAt}</em>
+                    <em>{formatCEndDateTime(item.submittedAt)}</em>
                   </span>
                   <b>
                     {item.score}分

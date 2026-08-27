@@ -3,9 +3,13 @@ import {
   canReviewNomination,
   filterNominations,
   formatNominatorInfo,
+  formatNomineeSummary,
   nominationCounts,
   sortNominations,
   validateNominees,
+  validateHighlights,
+  buildAwardNominationExportCsv,
+  initialAwardNominations,
   type AwardNominationRecord,
 } from './awardNomination';
 
@@ -16,7 +20,7 @@ function item(overrides: Partial<AwardNominationRecord> = {}): AwardNominationRe
     title: '研发协同小组',
     nominees: ['张悦', '李明'],
     reason: '跨组协作稳定交付',
-    highlights: '按时上线评优模块',
+    highlights: ['按时上线评优模块'],
     voteCount: 12,
     reviewStatus: '待审核',
     nominator: '产品管理员',
@@ -36,6 +40,16 @@ describe('validateNominees', () => {
     expect(validateNominees('团队', [])).toBe('请选择提名名单');
     expect(validateNominees('项目', ['张悦'])).toBeNull();
     expect(validateNominees('团队', ['张悦', '李明'])).toBeNull();
+  });
+});
+
+describe('validateHighlights', () => {
+  it('requires 1 to 3 non-empty highlights', () => {
+    expect(validateHighlights([])).toBe('至少填写 1 条核心亮点');
+    expect(validateHighlights(['', '  '])).toBe('至少填写 1 条核心亮点');
+    expect(validateHighlights(['按时交付'])).toBeNull();
+    expect(validateHighlights(['a', 'b', 'c'])).toBeNull();
+    expect(validateHighlights(['a', 'b', 'c', 'd'])).toBe('核心亮点最多 3 条');
   });
 });
 
@@ -93,11 +107,49 @@ describe('filterNominations', () => {
 
 describe('formatNominatorInfo', () => {
   it('shows name with department when known', () => {
-    expect(formatNominatorInfo('张悦')).toContain('张悦');
-    expect(formatNominatorInfo('张悦')).toMatch(/[（(]/);
+    expect(formatNominatorInfo('张悦')).toBe('张悦（前端组）');
+  });
+
+  it('does not include phone number', () => {
+    expect(formatNominatorInfo('张悦')).not.toMatch(/\d{11}/);
   });
 
   it('falls back to name when person is unknown', () => {
     expect(formatNominatorInfo('产品管理员')).toBe('产品管理员');
+  });
+});
+
+describe('formatNomineeSummary', () => {
+  it('joins short lists in full', () => {
+    expect(formatNomineeSummary(['张悦'])).toBe('张悦');
+    expect(formatNomineeSummary(['张悦', '李明'])).toBe('张悦、李明');
+  });
+
+  it('summarizes long lists with a count', () => {
+    const names = Array.from({ length: 20 }, (_, index) => `人${index + 1}`);
+    expect(formatNomineeSummary(names)).toBe('人1、人2 等20人');
+  });
+});
+
+describe('buildAwardNominationExportCsv', () => {
+  it('includes nomination columns and escapes commas', () => {
+    const csv = buildAwardNominationExportCsv([
+      item({ title: '突击,小队', nominees: ['张悦', '李明'], highlights: ['亮点A', '亮点B'] }),
+    ]);
+    expect(csv).toContain('提名标题,提名人,提名名单,推荐理由,核心亮点,票数,审核状态,提名时间');
+    expect(csv).toContain('"突击,小队"');
+    expect(csv).toContain('张悦、李明');
+    expect(csv).toContain('亮点A；亮点B');
+    expect(csv).toContain('待审核');
+  });
+});
+
+describe('award 5 seeds', () => {
+  it('provides several nominations for 上半年创新项目奖', () => {
+    const rows = initialAwardNominations.filter((item) => item.awardId === 5);
+    expect(rows.length).toBeGreaterThanOrEqual(8);
+    expect(rows.some((item) => item.title === '低代码工单试点')).toBe(true);
+    expect(rows.some((item) => item.reviewStatus === '待审核')).toBe(true);
+    expect(rows.some((item) => item.reviewStatus === '已驳回')).toBe(true);
   });
 });

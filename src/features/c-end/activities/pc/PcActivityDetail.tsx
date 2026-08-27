@@ -4,18 +4,18 @@ import { useActivities } from '../../../activities/model/activityStore';
 import { useApprovedSignup, useClientMoments } from '../../../activities/model/momentStore';
 import { useRelated } from '../../../activities/model/related';
 import { goCEnd } from '../../../../app/navigation';
-import type { Activity } from '../../../activities/model/activity';
 import { useCEndToast } from '../components/CEndToast';
 import { ActivityCommentList } from '../components/ActivityCommentList';
-import { ActivityDetailFacts } from '../components/ActivityDetailFacts';
+import { ActivityDetailFacts, ActivityQuotaLine } from '../components/ActivityDetailFacts';
 import { ActivitySocialTabs } from '../components/ActivitySocialTabs';
 import { ActivityRatingBlock } from '../components/ActivityRatingBlock';
 import { ApprovedSignupPeople } from '../components/ApprovedSignupPeople';
 import { DetailEngageBar } from '../components/DetailEngageBar';
+import { RecentSessionsStrip } from '../components/RecentSessionsStrip';
 import { ShareContactsPanel } from '../components/ShareContactsPanel';
 import { MomentFeed } from '../components/MomentFeed';
 import { shouldShowMomentsTab } from '../model/activitySocialTabs';
-import { StatusPill } from '../components/StatusPill';
+import { ActivityCoverOverlay } from '../components/StatusPill';
 import {
   commentCount,
   deleteActivityComment,
@@ -23,11 +23,12 @@ import {
   submitActivityComment,
   toggleCommentLike,
 } from '../model/activityComments';
+import { needsSessionPick } from '../../../activities/model/activitySchedule';
 import { needsSignupForm, prefillSignupAnswers } from '../../../activities/model/signupFields';
-import { getPublishedActivity, signupCta, signupLimit, signupOccupiedCount, signupTypes } from '../model/clientActivity';
+import { getPublishedActivity, signupCta, signupTypes } from '../model/clientActivity';
 import { shareConfirmMessage } from '../model/activityShare';
 import { toggleFavorite, toggleLike, useActivityEngagement } from '../model/engagementStore';
-import { cancelSignup, DEMO_SIGNUP_USER, submitSignup, useHasSignedUp } from '../model/signupStore';
+import { cancelSignup, DEMO_SIGNUP_USER, getUserSignupAnswers, saveClientSignup, useHasSignedUp } from '../model/signupStore';
 import { PcActivityShell } from './PcActivityShell';
 import { CancelSignupDialog } from '../components/CancelSignupDialog';
 import { PcMomentModal } from './PcMomentModal';
@@ -43,18 +44,13 @@ function withoutLeadingIntroductionHeading(html: string): string {
 
 export function PcActivityDetail({
   id,
-  activity: activityOverride,
-  preview = false,
   signupOpen: initialSignupOpen = false,
 }: {
   id: number;
-  activity?: Activity;
-  preview?: boolean;
   signupOpen?: boolean;
 }) {
   const activities = useActivities();
-  const stored = getPublishedActivity(activities, id);
-  const activity = activityOverride ?? stored;
+  const activity = getPublishedActivity(activities, id);
   const signedUp = useHasSignedUp(id);
   const toast = useCEndToast();
   const engagement = useActivityEngagement(id);
@@ -83,8 +79,6 @@ export function PcActivityDetail({
     );
   }
 
-  const occupied = signupOccupiedCount(id);
-  const limit = signupLimit(activity);
   const cta = signupCta(activity, signedUp, Date.now(), { allowCancel: true });
   const types = signupTypes(activity);
   const threads = listActivityCommentThreads(id);
@@ -95,17 +89,15 @@ export function PcActivityDetail({
   );
 
   const confirm = (type: string, answers: Record<string, string>) => {
-    if (preview) {
-      toast.show('预览中，无法报名');
-      return;
-    }
-    const result = submitSignup(activity.id, type, answers);
-    toast.show(result === 'ok' ? '报名成功' : '已报名');
+    const result = saveClientSignup(activity.id, type, answers);
+    toast.show(
+      result === 'ok' ? (signedUp ? '已更新报名' : '报名成功') : result === 'cancelled' ? '已取消报名' : '已报名',
+    );
   };
 
   const closeSignup = () => {
     setSignupOpen(false);
-    if (!preview) goCEnd('pc', activity.id);
+    goCEnd('pc', activity.id);
   };
 
   const submitSignupForm = (type: string, answers: Record<string, string>) => {
@@ -120,7 +112,7 @@ export function PcActivityDetail({
   };
 
   const openSignup = () => {
-    if (needsSignupForm(activity.signupFields) || types.length !== 1) {
+    if (needsSignupForm(activity.signupFields) || types.length !== 1 || needsSessionPick(activity.scheduleType)) {
       setSignupOpen(true);
       return;
     }
@@ -137,25 +129,18 @@ export function PcActivityDetail({
 
   return (
     <PcActivityShell>
-      {preview ? null : (
-        <button className="c-back-link" type="button" onClick={() => goCEnd('pc')}>
-          ← 返回列表
-        </button>
-      )}
+      <button className="c-back-link" type="button" onClick={() => goCEnd('pc')}>
+        ← 返回列表
+      </button>
       <div className="c-pc-detail">
         <article>
           <div className="c-detail-cover">
             {activity.coverUrl ? <img src={activity.coverUrl} alt="" /> : null}
+            <ActivityCoverOverlay activity={activity} />
           </div>
           <div className="c-detail-body c-article-body">
-            <header className="c-detail-heading">
-              <div className="c-detail-tags">
-                <StatusPill status={activity.activityStatus} />
-              </div>
-              <h2 className="c-detail-name">{activity.title}</h2>
-            </header>
             <section className="c-detail-info-card" aria-label="活动信息">
-              <ActivityDetailFacts activity={activity} occupied={occupied} omitCurrentYear hideQuota />
+              <ActivityDetailFacts activity={activity} hideQuota />
             </section>
             <section className="c-detail-content-section" aria-labelledby="pc-activity-intro">
               <h2 id="pc-activity-intro" className="c-detail-name c-detail-section">
@@ -163,7 +148,7 @@ export function PcActivityDetail({
               </h2>
               <div className="c-html" dangerouslySetInnerHTML={{ __html: detailHtml }} />
             </section>
-            <ApprovedSignupPeople activityId={id} surface="pc" />
+            <ActivityRatingBlock activityId={id} status={activity.activityStatus} />
             <ActivitySocialTabs
               activity={activity}
               tab={socialTab}
@@ -194,14 +179,9 @@ export function PcActivityDetail({
         </article>
         <aside className="c-pc-side">
           <h2 className="c-detail-name">{activity.title}</h2>
-          <div className="c-detail-tags">
-            <StatusPill status={activity.activityStatus} />
-          </div>
-          <div className="c-pc-side-quota" aria-label="报名名额">
-            <span>总名额：{limit !== undefined ? `${limit} 人` : '不限'}</span>
-            <span>已报名 {occupied} 人</span>
-          </div>
-          <ActivityRatingBlock activityId={id} status={activity.activityStatus} preview={preview} />
+          <ActivityQuotaLine activity={activity} />
+          <RecentSessionsStrip activity={activity} />
+          <ApprovedSignupPeople activity={activity} activityId={id} surface="pc" />
           <DetailEngageBar
             liked={engagement.liked}
             favorited={engagement.favorited}
@@ -225,10 +205,6 @@ export function PcActivityDetail({
             disabled={!cta.enabled}
             onClick={() => {
               if (!cta.enabled) return;
-              if (preview) {
-                toast.show('预览中，无法报名');
-                return;
-              }
               if (cta.action === 'cancel') setCancelOpen(true);
               else openSignup();
             }}
@@ -242,6 +218,13 @@ export function PcActivityDetail({
           title={activity.title}
           types={types}
           fields={activity.signupFields}
+          scheduleType={activity.scheduleType}
+          sessions={activity.sessions}
+          signupStartAt={activity.signupStartAt}
+          signupEndAt={activity.signupEndAt}
+          signupHoursBefore={activity.signupHoursBefore}
+          initialAnswers={signedUp ? getUserSignupAnswers(activity.id) : undefined}
+          mode={signedUp ? 'adjust' : 'create'}
           onCancel={closeSignup}
           onConfirm={submitSignupForm}
         />

@@ -33,6 +33,17 @@ describe('hasApprovedSignup', () => {
   });
 });
 
+describe('moment seed media', () => {
+  afterEach(() => {
+    restoreMoments();
+  });
+
+  it('gives the home-first lunch moment five images', () => {
+    expect(getMoment(4)?.content).toContain('午餐交流拍糊了');
+    expect(getMoment(4)?.imageUrls).toHaveLength(5);
+  });
+});
+
 describe('moment like and comment store', () => {
   afterEach(() => {
     restoreMoments();

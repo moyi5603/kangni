@@ -6,11 +6,11 @@ describe('related signups seed and subscribe', () => {
     restoreRelatedSignups();
   });
 
-  it('seeds 陈产品 with the C-end demo five rows', () => {
+  it('seeds 陈产品 with the C-end demo rows including basketball check-in', () => {
     const mine = getRelatedList('signups').filter((item) => item.phone === '13800001111');
     const byActivity = Object.fromEntries(mine.map((item) => [item.activityId, item]));
 
-    expect(mine).toHaveLength(5);
+    expect(mine).toHaveLength(8);
     expect(byActivity[2]).toMatchObject({
       id: 4,
       signupType: '个人报名',
@@ -41,6 +41,20 @@ describe('related signups seed and subscribe', () => {
       signupType: '个人报名',
       status: '已驳回',
       createdAt: '2026-04-12 10:00:00',
+    });
+    expect(byActivity[26]).toMatchObject({
+      id: 18,
+      status: '已通过',
+      answers: { 场次: 's-0-202608271400' },
+    });
+    expect(byActivity[27]).toMatchObject({
+      id: 19,
+      status: '已通过',
+      answers: { 场次: 's-0-202609050900' },
+    });
+    expect(byActivity[10]).toMatchObject({
+      id: 20,
+      status: '已通过',
     });
     expect(getRelatedList('signups').some((item) => item.phone === '13800001001')).toBe(true);
   });

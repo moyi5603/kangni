@@ -42,7 +42,7 @@ export function ActivitySocialTabs({
             aria-selected={current === 'moments'}
             onClick={() => onTabChange('moments')}
           >
-            精彩瞬间
+            精彩瞬间 {momentItems.length}
           </button>
         </div>
       ) : null}

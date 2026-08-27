@@ -27,24 +27,64 @@ describe('H5 activity detail engage', () => {
     expect(cta).toBeGreaterThan(comment);
     expect(html).toContain('id="activity-social"');
     expect(html).toContain('评论 26');
-    expect(html).toContain('精彩瞬间');
+    expect(html).toContain('精彩瞬间 5');
     expect(html).toContain('纪念品柜台要排队。');
     expect(html).not.toContain('开场致辞很有感染力');
     expect(html).toContain('活动评分');
     expect(html).toContain('4.3');
+    const cover = html.slice(html.indexOf('c-detail-cover'), html.indexOf('c-h5-detail'));
+    expect(cover).toContain('c-cover-badges');
+    expect(cover).toContain('c-cover-title');
+    expect(cover).toContain('员工开放日');
+    expect(cover.indexOf('c-cover-badges')).toBeLessThan(cover.indexOf('c-cover-title'));
+    expect(cover.indexOf('已结束')).toBeLessThan(cover.indexOf('单次活动'));
+    expect(cover.indexOf('单次活动')).toBeLessThan(cover.indexOf('文化'));
+    expect(cover).toContain('c-pill is-category');
+    expect(cover).toContain('c-pill is-format');
+    expect(html).not.toContain('分类：文化');
+    expect(html).not.toContain('c-detail-heading');
+    expect(html.indexOf('h5-activity-intro')).toBeLessThan(html.indexOf('c-activity-rating'));
+    expect(html.indexOf('c-activity-rating')).toBeLessThan(html.indexOf('id="activity-social"'));
   });
 
   it('shows category, times, quota and occupied seats on the info card', () => {
     const html = renderToStaticMarkup(<H5ActivityDetail id={2} />);
     const card = html.slice(html.indexOf('c-detail-info-card'));
-    expect(card).toContain('分类：培训');
-    expect(card).toContain('活动时间：2026-08-18 09:30 ~ 2026-08-20 17:30');
-    expect(card).toContain('报名时间：2026-08-01 09:00 ~ 2026-08-31 18:00');
-    expect(card).toContain('总名额：60 人');
-    expect(card).toContain('已报名 54 人');
-    expect(card).toContain('href="tel:13800001111"');
+    expect(card).not.toContain('分类：培训');
+    const cover = html.slice(html.indexOf('c-detail-cover'), html.indexOf('c-h5-detail'));
+    expect(cover.indexOf('进行中')).toBeLessThan(cover.indexOf('置顶'));
+    expect(cover.indexOf('置顶')).toBeLessThan(cover.indexOf('系列活动'));
+    expect(cover.indexOf('系列活动')).toBeLessThan(cover.indexOf('培训'));
+    expect(cover).toContain('c-cover-title');
+    expect(cover).toContain('c-pill is-category');
+    expect(cover).toContain('c-pill is-format');
+    expect(card).toContain('活动时间：首场 08-18 09:30 ~ 08-18 17:30 · 共 3 场');
+    expect(card).toContain('报名时间：08-01 09:00 起，每场开场时截止');
+    expect(card).toContain('每场名额：60 人');
+    expect(card).not.toContain('已报名 54 人');
+    expect(card).not.toContain('联系电话');
+    expect(card).not.toContain('href="tel:');
     expect(html).not.toContain('活动评分');
     expect(html).toContain('aria-label="分享"');
+    const start = html.indexOf('c-detail-info-card');
+    const infoCard = html.slice(start, html.indexOf('</section>', start));
+    expect(infoCard).not.toContain('c-quota-card');
+    expect(infoCard).toContain('每场名额：60 人');
+    expect(infoCard).toContain('c-signup-people');
+    expect(infoCard.indexOf('每场名额：60 人')).toBeLessThan(infoCard.indexOf('c-signup-people'));
+    expect(html.indexOf('</section>', start)).toBeLessThan(html.indexOf('h5-activity-intro'));
+  });
+
+  it('shows recent unfinished sessions on multi-session details after quota', () => {
+    const basketball = renderToStaticMarkup(<H5ActivityDetail id={26} />);
+    const card = basketball.slice(basketball.indexOf('c-detail-info-card'), basketball.indexOf('h5-activity-intro'));
+    expect(card).toContain('最近场次');
+    expect(card).toContain('已报1场');
+    expect(card.indexOf('每场名额')).toBeLessThan(card.indexOf('最近场次'));
+    expect(card.indexOf('最近场次')).toBeLessThan(card.indexOf('c-signup-people'));
+
+    const once = renderToStaticMarkup(<H5ActivityDetail id={1} />);
+    expect(once.slice(once.indexOf('c-detail-info-card'), once.indexOf('h5-activity-intro'))).not.toContain('最近场次');
   });
 
   it('lists all open-day threads on detail without view-all', () => {
@@ -82,10 +122,24 @@ describe('H5 activity detail engage', () => {
     expect(html).toContain('陈产品 回复 王芳');
   });
 
-  it('lets a signed-up user cancel before the deadline', () => {
-    const html = renderToStaticMarkup(<H5ActivityDetail id={2} />);
+  it('lets a signed-up user cancel a one-off activity before the deadline', () => {
+    const html = renderToStaticMarkup(<H5ActivityDetail id={9} />);
     expect(html).toContain('取消报名');
     expect(html).not.toMatch(/class="c-cta"[^>]*>已报名</);
+  });
+
+  it('lets a signed-up user adjust remaining sessions instead of cancel', () => {
+    const html = renderToStaticMarkup(<H5ActivityDetail id={26} />);
+    expect(html).toContain('调整报名');
+    expect(html).not.toContain('取消报名');
+  });
+
+  it('opens the session list to add or remove remaining sessions', () => {
+    const html = renderToStaticMarkup(<CEndApp surface="h5" activityId={26} h5Page="signup" />);
+    expect(html).toContain('调整报名');
+    expect(html).toContain('参加场次');
+    expect(html).toContain('保存场次');
+    expect(html).toMatch(/value="s-0-202608271400"[^>]*checked|checked[^>]*value="s-0-202608271400"/);
   });
 
   it('shows full comments when CEndApp opens an activity', () => {

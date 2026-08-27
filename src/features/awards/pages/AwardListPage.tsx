@@ -1,9 +1,10 @@
 import { useMemo, useState, type Key, type ReactNode } from 'react';
-import { PlusOutlined } from '@ant-design/icons';
+import { DownOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   App,
   Button,
   DatePicker,
+  Dropdown,
   Empty,
   Flex,
   Input,
@@ -22,18 +23,26 @@ import {
   awardStatuses,
   awardTypes,
   canDeleteAward,
+  canEnterAwardResult,
+  canGrantAwardRewards,
   canPublishAward,
   canToggleResultPublic,
   canUnpublishAward,
+  buildAwardRewardGrants,
+  grantAwardRewardsBlockReason,
+  resolveAwardResults,
   resolveAwardStatus,
   resolveResultPublicityLabel,
+  resultPublicityBlockReason,
   resultPublicityLabels,
+  sortAwardsByPin,
   type AwardRecord,
   type AwardStatus,
   type AwardType,
   type ResultPublicityLabel,
 } from '../model/award';
-import { removeAward, setAwardPublishStatus, setAwardResultPublic, useAwards } from '../model/awardStore';
+import { getAwardNominations } from '../model/awardNominationStore';
+import { grantAwardRewards, removeAward, setAwardPinned, setAwardPublishStatus, setAwardResultPublic, useAwards } from '../model/awardStore';
 
 type DateRange = [Dayjs | null, Dayjs | null] | null;
 
@@ -84,7 +93,11 @@ function nowStamp() {
   return dayjs().format('YYYY-MM-DD HH:mm:ss');
 }
 
-export function AwardListPage({ onNavigate }: { onNavigate: (page: string, recordId?: string) => void }) {
+export function AwardListPage({
+  onNavigate,
+}: {
+  onNavigate: (page: string, recordId?: string, tab?: string) => void;
+}) {
   const { message, modal } = App.useApp();
   const data = useAwards();
   const now = nowStamp();
@@ -93,7 +106,7 @@ export function AwardListPage({ onNavigate }: { onNavigate: (page: string, recor
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
 
   const filtered = useMemo(() => {
-    return data.filter((item) => {
+    const rows = data.filter((item) => {
       if (query.name && !item.name.includes(query.name.trim())) return false;
       if (query.status && resolveAwardStatus(item, now) !== query.status) return false;
       if (query.type && item.type !== query.type) return false;
@@ -105,6 +118,7 @@ export function AwardListPage({ onNavigate }: { onNavigate: (page: string, recor
       }
       return true;
     });
+    return sortAwardsByPin(rows);
   }, [data, query, now]);
 
   const hasActiveQuery = Boolean(
@@ -112,6 +126,11 @@ export function AwardListPage({ onNavigate }: { onNavigate: (page: string, recor
   );
 
   const clearSelection = () => setSelectedRowKeys([]);
+
+  const togglePin = (record: AwardRecord) => {
+    setAwardPinned(record.id, !record.pinned);
+    message.success(record.pinned ? `已取消置顶「${record.name}」` : `已置顶「${record.name}」`);
+  };
 
   const deleteOne = (record: AwardRecord) => {
     if (!canDeleteAward(record, now)) {
@@ -163,6 +182,11 @@ export function AwardListPage({ onNavigate }: { onNavigate: (page: string, recor
       return;
     }
     const next = resolveResultPublicityLabel(record, now) !== '已公示';
+    const blocked = resultPublicityBlockReason(record, now, next);
+    if (blocked) {
+      message.info(blocked);
+      return;
+    }
     modal.confirm({
       title: next ? `确认公示「${record.name}」的结果？` : `确认取消公示「${record.name}」？`,
       content: next ? '公示后可见范围内的员工可查看最终结果。' : '取消后结果将对员工隐藏。',
@@ -172,6 +196,27 @@ export function AwardListPage({ onNavigate }: { onNavigate: (page: string, recor
       onOk: () => {
         setAwardResultPublic(record.id, next);
         message.success(next ? '已公示结果' : '已取消公示');
+      },
+    });
+  };
+
+  const grantRewards = (record: AwardRecord) => {
+    const rows = resolveAwardResults(record, getAwardNominations(record.id), now);
+    const blocked = grantAwardRewardsBlockReason(record, now, rows);
+    if (blocked) {
+      message.info(blocked);
+      return;
+    }
+    const grants = buildAwardRewardGrants(record, rows);
+    modal.confirm({
+      title: `确认向「${record.name}」获奖名单发放奖励？`,
+      content: `将向 ${grants.length} 人按名次发放积分、勋章和证书。发放后不可修改结果。`,
+      okText: '确认',
+      cancelText: '取消',
+      footer: modalFooter,
+      onOk: () => {
+        grantAwardRewards(record.id, rows, grants);
+        message.success(`已向 ${grants.length} 人发放奖励`);
       },
     });
   };
@@ -204,9 +249,12 @@ export function AwardListPage({ onNavigate }: { onNavigate: (page: string, recor
       title: '评优名称',
       dataIndex: 'name',
       render: (value: string, record) => (
-        <Button type="link" className="table-link" onClick={() => onNavigate('award-detail', String(record.id))}>
-          {value}
-        </Button>
+        <Space>
+          {record.pinned ? <Tag color="blue">置顶</Tag> : null}
+          <Button type="link" className="table-link" onClick={() => onNavigate('award-detail', String(record.id))}>
+            {value}
+          </Button>
+        </Space>
       ),
     },
     {
@@ -252,33 +300,83 @@ export function AwardListPage({ onNavigate }: { onNavigate: (page: string, recor
         const isPublished = record.publishStatus === '已发布';
         const canResultPublic = canToggleResultPublic(record, now);
         const resultPublished = resolveResultPublicityLabel(record, now) === '已公示';
+        const canEnter = canEnterAwardResult(record, now);
+        const canGrant = canGrantAwardRewards(record, now);
+        const visible = [
+          {
+            key: 'detail',
+            label: '详情',
+            onClick: () => onNavigate('award-detail', String(record.id)),
+          },
+          {
+            key: 'edit',
+            label: '编辑',
+            onClick: () => onNavigate('award-edit', String(record.id)),
+          },
+          isPublished
+            ? { key: 'unpublish', label: '撤销', onClick: () => unpublishOne(record) }
+            : { key: 'publish', label: '发布', onClick: () => publishOne(record) },
+        ];
+        const more = [
+          { key: 'pin', label: record.pinned ? '取消置顶' : '置顶', onClick: () => togglePin(record) },
+          ...(canEnter
+            ? [
+                {
+                  key: 'enter-result',
+                  label: '录入结果',
+                  onClick: () => onNavigate('award-detail', String(record.id), 'results'),
+                },
+              ]
+            : []),
+          ...(canGrant
+            ? [
+                {
+                  key: 'grant-rewards',
+                  label: '发放奖励',
+                  onClick: () => grantRewards(record),
+                },
+              ]
+            : []),
+          ...(canDeleteAward(record, now)
+            ? [{ key: 'delete', label: '删除', danger: true as const, onClick: () => deleteOne(record) }]
+            : []),
+          ...(canResultPublic
+            ? [
+                {
+                  key: 'publicity',
+                  label: resultPublished ? '取消公示' : '结果公示',
+                  onClick: () => toggleResultPublic(record),
+                },
+              ]
+            : []),
+        ];
 
         return (
-          <Space wrap>
-            <Button type="link" aria-label={`详情 ${record.name}`} onClick={() => onNavigate('award-detail', String(record.id))}>
-              详情
-            </Button>
-            <Button type="link" aria-label={`编辑 ${record.name}`} onClick={() => onNavigate('award-edit', String(record.id))}>
-              编辑
-            </Button>
-            {isPublished ? (
-              <Button type="link" aria-label={`撤销 ${record.name}`} onClick={() => unpublishOne(record)}>
-                撤销
+          <Space wrap={false}>
+            {visible.map((action) => (
+              <Button key={action.key} type="link" aria-label={`${action.label} ${record.name}`} onClick={action.onClick}>
+                {action.label}
               </Button>
-            ) : (
-              <Button type="link" aria-label={`发布 ${record.name}`} onClick={() => publishOne(record)}>
-                发布
-              </Button>
-            )}
-            {canDeleteAward(record, now) ? (
-              <Button type="link" danger aria-label={`删除 ${record.name}`} onClick={() => deleteOne(record)}>
-                删除
-              </Button>
-            ) : null}
-            {canResultPublic ? (
-              <Button type="link" aria-label={`结果公示 ${record.name}`} onClick={() => toggleResultPublic(record)}>
-                {resultPublished ? '取消公示' : '结果公示'}
-              </Button>
+            ))}
+            {more.length ? (
+              <Dropdown
+                trigger={['click']}
+                menu={{
+                  items: more.map((action) => ({
+                    key: action.key,
+                    label: action.label,
+                    danger: 'danger' in action ? action.danger : undefined,
+                    onClick: action.onClick,
+                  })),
+                }}
+              >
+                <Button
+                  type="link"
+                  aria-label={`更多操作 ${record.name}：${more.map((action) => action.label).join('、')}`}
+                >
+                  更多 <DownOutlined />
+                </Button>
+              </Dropdown>
             ) : null}
           </Space>
         );

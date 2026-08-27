@@ -13,6 +13,7 @@ import {
   OverviewSegmentBar,
 } from '../../activities/components/ActivityOverviewVisuals';
 import { ListPageHeading } from '../../../shared/ui/ListPage';
+import { useRejectReasonPrompt } from '../../../shared/ui/RejectReasonModal';
 import {
   approveCourseComment,
   rejectCourseComment,
@@ -39,6 +40,7 @@ export function CourseOverviewPage({
   onNavigate: (page: string, recordId?: string, tab?: string) => void;
 }) {
   const { message, modal } = App.useApp();
+  const { promptReject, rejectReasonModal } = useRejectReasonPrompt();
   const courses = useCourses();
   const courseware = useCourseware();
   const records = useLearningRecords();
@@ -82,13 +84,11 @@ export function CourseOverviewPage({
   };
 
   const rejectOne = (record: CourseCommentRecord) => {
-    modal.confirm({
+    promptReject({
       title: `确认驳回「${record.author}」的评论？`,
-      content: '驳回后仅评论作者本人可见。',
-      okText: '确认',
-      cancelText: '取消',
-      onOk: () => {
-        if (rejectCourseComment(record.id)) {
+      description: '驳回后仅评论作者本人可见。',
+      onConfirm: (reason) => {
+        if (rejectCourseComment(record.id, reason)) {
           message.success(`已驳回「${record.author}」的评论`);
         }
       },
@@ -225,6 +225,7 @@ export function CourseOverviewPage({
           </Card>
         </Col>
       </Row>
+      {rejectReasonModal}
     </div>
   );
 }

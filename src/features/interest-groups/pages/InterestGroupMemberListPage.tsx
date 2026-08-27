@@ -23,6 +23,7 @@ import type { TableColumnsType } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { SearchField, SearchPanel } from '../../../shared/ui/ListPage';
+import { useRejectReasonPrompt } from '../../../shared/ui/RejectReasonModal';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import {
   departmentOptions,
@@ -81,6 +82,7 @@ function modalFooter(_: ReactNode, extra: { OkBtn: React.FC; CancelBtn: React.FC
 
 export function InterestGroupMemberListPage({ groupId }: { groupId: number }) {
   const { message, modal } = App.useApp();
+  const { promptReject, rejectReasonModal } = useRejectReasonPrompt();
   const all = useInterestGroupMembers();
   const data = useMemo(() => listInterestGroupMembers(groupId, all), [all, groupId]);
   const memberNames = useMemo(() => new Set(data.map((item) => item.employeeId)), [data]);
@@ -132,7 +134,7 @@ export function InterestGroupMemberListPage({ groupId }: { groupId: number }) {
     });
   };
 
-  const setStatus = (records: InterestGroupMember[], status: '已通过' | '已驳回', label: string) => {
+  const setStatus = (records: InterestGroupMember[], status: '已通过' | '已驳回', label: string, reason?: string) => {
     const targets = records.filter((item) => item.role !== 'lead' && item.status === '待审核');
     if (!targets.length) {
       message.info('已选成员均不是待审核状态');
@@ -142,20 +144,18 @@ export function InterestGroupMemberListPage({ groupId }: { groupId: number }) {
       groupId,
       targets.map((item) => item.employeeId),
       status,
+      reason,
     );
     message.success(`已${label} ${result.done} 人`);
     setSelectedRowKeys(selected.filter((item) => item.status !== '待审核').map((item) => item.employeeId));
   };
 
   const rejectOne = (record: InterestGroupMember) => {
-    modal.confirm({
+    promptReject({
       title: `确认驳回「${record.name}」的入组申请？`,
-      content: '驳回后该人员将无法加入本小组。',
-      okText: '确认',
-      cancelText: '取消',
-      footer: modalFooter,
-      onOk: () => {
-        const result = setInterestGroupMemberStatus(groupId, [record.employeeId], '已驳回');
+      description: '驳回后该人员将无法加入本小组。',
+      onConfirm: (reason) => {
+        const result = setInterestGroupMemberStatus(groupId, [record.employeeId], '已驳回', reason);
         if (!result.done) {
           message.info('仅待审核成员可驳回');
           return;
@@ -393,13 +393,10 @@ export function InterestGroupMemberListPage({ groupId }: { groupId: number }) {
               </Button>
               <Button
                 onClick={() =>
-                  modal.confirm({
+                  promptReject({
                     title: `确认驳回已选 ${selectedRowKeys.length} 人？`,
-                    content: '仅待审核记录会被驳回。',
-                    okText: '确认',
-                    cancelText: '取消',
-                    footer: modalFooter,
-                    onOk: () => setStatus(selected, '已驳回', '驳回'),
+                    description: '仅待审核记录会被驳回。',
+                    onConfirm: (reason) => setStatus(selected, '已驳回', '驳回', reason),
                   })
                 }
               >
@@ -498,6 +495,7 @@ export function InterestGroupMemberListPage({ groupId }: { groupId: number }) {
           </Form.Item>
         </Form>
       </Modal>
+      {rejectReasonModal}
     </div>
   );
 }
