@@ -62,6 +62,7 @@ export const applications: ApplicationMeta[] = [
   { key: 'live', label: '直播', category: '员工与组织', icon: 'video', defaultPage: 'live-list' },
   { key: 'lottery', label: '抽奖', category: '员工与组织', icon: 'gift', defaultPage: 'lottery-list' },
   { key: 'checkin', label: '打卡', category: '员工与组织', icon: 'clock', defaultPage: 'checkin-list' },
+  { key: 'learning-plan', label: '学习计划', category: '员工与组织', icon: 'read', defaultPage: 'learning-plan-list' },
   { key: 'care', label: '人文关怀', category: '员工与组织', icon: 'gift', defaultPage: 'care-plans', hiddenFromSwitcher: true },
   { key: 'operations', label: '业务运营', category: '平台能力', icon: 'appstore', defaultPage: 'application-list' },
 ];
@@ -201,6 +202,9 @@ export const applicationMenus: Record<string, MenuNode[]> = {
   ],
   checkin: [
     { key: 'checkin-list', icon: 'clock', label: '打卡管理' },
+  ],
+  'learning-plan': [
+    { key: 'learning-plan-list', icon: 'unorderedList', label: '计划管理' },
   ],
   care: [
     {
@@ -947,6 +951,9 @@ export function parseLocationHash(hash: string): {
     'checkin-create',
     'checkin-edit',
     'checkin-detail',
+    'learning-plan-create',
+    'learning-plan-edit',
+    'learning-plan-preview',
   ];
   if (pageKey && (isLeafMenuKey(menus, pageKey) || extraPages.includes(pageKey))) {
     return {
@@ -1046,6 +1053,9 @@ export function siderSelectedKey(page: string): string {
   }
   if (page === 'checkin-create' || page === 'checkin-edit' || page === 'checkin-detail') {
     return 'checkin-list';
+  }
+  if (page === 'learning-plan-create' || page === 'learning-plan-edit' || page === 'learning-plan-preview') {
+    return 'learning-plan-list';
   }
   return page;
 }

@@ -1490,7 +1490,7 @@ describe('checkin application', () => {
     });
     const keys = applications.map((item) => item.key);
     expect(keys.indexOf('checkin')).toBe(keys.indexOf('lottery') + 1);
-    expect(keys.indexOf('checkin')).toBe(keys.indexOf('care') - 1);
+    expect(keys.indexOf('checkin')).toBe(keys.indexOf('learning-plan') - 1);
   });
 
   it('uses a single first-level menu for 打卡管理', () => {
@@ -1541,6 +1541,46 @@ describe('checkin application', () => {
   it('shows 打卡 in 全部应用 switcher but not in top-bar direct apps', () => {
     expect(visibleApplications().map((item) => item.label)).toContain('打卡');
     expect(getDirectApplications(4).map((item) => item.key)).not.toContain('checkin');
+  });
+});
+
+describe('learning-plan application', () => {
+  it('registers 学习计划 under 员工与组织 with learning-plan-list as default', () => {
+    expect(applications.find((item) => item.key === 'learning-plan')).toEqual({
+      key: 'learning-plan',
+      label: '学习计划',
+      category: '员工与组织',
+      icon: 'read',
+      defaultPage: 'learning-plan-list',
+    });
+    expect(applicationMenus['learning-plan']).toEqual([
+      { key: 'learning-plan-list', icon: 'unorderedList', label: '计划管理' },
+    ]);
+    expect(parseLocationHash('#/learning-plan/learning-plan-list')).toEqual({
+      application: 'learning-plan',
+      page: 'learning-plan-list',
+    });
+    expect(parseLocationHash('#/learning-plan')).toEqual({
+      application: 'learning-plan',
+      page: 'learning-plan-list',
+    });
+    expect(parseLocationHash('#/learning-plan/learning-plan-create')).toEqual({
+      application: 'learning-plan',
+      page: 'learning-plan-create',
+    });
+    expect(parseLocationHash('#/learning-plan/learning-plan-edit/1')).toEqual({
+      application: 'learning-plan',
+      page: 'learning-plan-edit',
+      recordId: '1',
+    });
+    expect(parseLocationHash('#/learning-plan/learning-plan-preview/1')).toEqual({
+      application: 'learning-plan',
+      page: 'learning-plan-preview',
+      recordId: '1',
+    });
+    expect(siderSelectedKey('learning-plan-create')).toBe('learning-plan-list');
+    expect(siderSelectedKey('learning-plan-edit')).toBe('learning-plan-list');
+    expect(siderSelectedKey('learning-plan-preview')).toBe('learning-plan-list');
   });
 });
 

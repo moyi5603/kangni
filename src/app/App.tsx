@@ -40,6 +40,9 @@ import { LotteryDetailPage } from '../features/lottery/pages/LotteryDetailPage';
 import { CheckinListPage } from '../features/checkin/pages/CheckinListPage';
 import { CheckinFormPage } from '../features/checkin/pages/CheckinFormPage';
 import { CheckinDetailPage } from '../features/checkin/pages/CheckinDetailPage';
+import { LearningPlanListPage } from '../features/learning-plan/pages/LearningPlanListPage';
+import { LearningPlanFormPage } from '../features/learning-plan/pages/LearningPlanFormPage';
+import { LearningPlanMapPreview } from '../features/learning-plan/pages/LearningPlanMapPreview';
 import { HtmlStudioPage } from '../features/workbench/pages/HtmlStudioPage';
 import { CourseDetailPage } from '../features/training/pages/CourseDetailPage';
 import { CourseOverviewPage } from '../features/training/pages/CourseOverviewPage';
@@ -761,6 +764,12 @@ function AdminApp() {
               onBack={() => goToPage('checkin-list')}
               onEdit={(id) => goToPage('checkin-edit', String(id))}
             />
+          ) : page === 'learning-plan-list' ? (
+            <LearningPlanListPage onNavigate={goToPage} />
+          ) : page === 'learning-plan-create' || page === 'learning-plan-edit' ? (
+            <LearningPlanFormPage recordId={recordId} />
+          ) : page === 'learning-plan-preview' ? (
+            <LearningPlanMapPreview recordId={recordId} />
           ) : (
             <PlaceholderPage
               breadcrumbItems={breadcrumbItems}
