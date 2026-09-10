@@ -114,7 +114,8 @@ export function getLearningPlanStore() {
 }
 
 export function useLearningPlans() {
-  return useSyncExternalStore(store.subscribe, () => store.getSnapshot().plans);
+  const getPlans = () => store.getSnapshot().plans;
+  return useSyncExternalStore(store.subscribe, getPlans, getPlans);
 }
 
 export type { MapSkinId };
