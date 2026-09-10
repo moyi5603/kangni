@@ -775,7 +775,7 @@ function AdminApp() {
               onSaved={(id) => goToPage('learning-plan-edit', String(id))}
             />
           ) : page === 'learning-plan-preview' ? (
-            <LearningPlanMapPreview recordId={recordId} />
+            <LearningPlanMapPreview recordId={recordId} onBack={() => goToPage('learning-plan-list')} />
           ) : (
             <PlaceholderPage
               breadcrumbItems={breadcrumbItems}
