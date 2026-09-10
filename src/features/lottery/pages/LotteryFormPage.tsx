@@ -11,6 +11,7 @@ import {
   Input,
   InputNumber,
   Radio,
+  Select,
   Space,
   Switch,
   TreeSelect,
@@ -29,6 +30,7 @@ import {
   lotteryStatusOf,
   migrateLotteryChanceSources,
   prizeProbabilitySum,
+  validateLotteryChanceSources,
   validateLotteryPrizes,
   type LotteryFormKind,
   type LotteryPrize,
@@ -36,6 +38,7 @@ import {
   type LotteryVisibilityScope,
 } from '../model/lottery';
 import { getLottery, nextLotteryId, saveLottery } from '../model/lotteryStore';
+import { useCheckinThemes } from '../../checkin/model/checkinStore';
 
 const { RangePicker } = DatePicker;
 const TIME_FORMAT = 'YYYY-MM-DD HH:mm';
@@ -49,6 +52,12 @@ type LotteryFormValues = {
   dailyChance: number;
   totalChanceEnabled: boolean;
   totalChance?: number;
+  gainInitialEnabled: boolean;
+  gainInitialCount: number;
+  gainDailyLoginEnabled: boolean;
+  gainDailyLoginCount: number;
+  gainCheckinEnabled: boolean;
+  gainCheckinThemeIds: number[];
   maxWins: number;
   consumeChanceOnWin: boolean;
   showRemaining: boolean;
@@ -82,17 +91,31 @@ export function LotteryFormPage({ mode, recordId, onBack, onSaved }: LotteryForm
   const [visibilityFileName, setVisibilityFileName] = useState(editing?.visibilityFileName ?? '');
   const [submitting, setSubmitting] = useState(false);
 
+  const checkinThemes = useCheckinThemes();
   const visibilityEnabled = Form.useWatch('visibilityEnabled', form) ?? editing?.visibilityEnabled ?? false;
   const visibilityScope = Form.useWatch('visibilityScope', form) ?? editing?.visibilityScope ?? '全员';
   const totalChanceEnabled = Form.useWatch('totalChanceEnabled', form) ?? editing?.totalChanceEnabled ?? false;
+  const gainInitialEnabled = Form.useWatch('gainInitialEnabled', form) ?? editing?.gainInitialEnabled ?? false;
+  const gainDailyLoginEnabled = Form.useWatch('gainDailyLoginEnabled', form) ?? editing?.gainDailyLoginEnabled ?? true;
+  const gainCheckinEnabled = Form.useWatch('gainCheckinEnabled', form) ?? editing?.gainCheckinEnabled ?? false;
   const prizesWatch = Form.useWatch('prizes', form) ?? editing?.prizes ?? [];
 
   const prizeLocked = editing ? !canEditLotteryPrizes(editing) : false;
   const status = editing ? lotteryStatusOf(editing) : '未开始';
   const formLocked = status === '已结束' || status === '已停用';
 
-  const initialValues = useMemo<Partial<LotteryFormValues>>(
-    () => ({
+  const initialValues = useMemo<Partial<LotteryFormValues>>(() => {
+    const chanceSources = editing
+      ? migrateLotteryChanceSources(editing)
+      : {
+          gainInitialEnabled: false,
+          gainInitialCount: 1,
+          gainDailyLoginEnabled: true,
+          gainDailyLoginCount: 1,
+          gainCheckinEnabled: false,
+          gainCheckinThemeIds: [] as number[],
+        };
+    return {
       title: editing?.title,
       coverUrl: editing?.coverUrl ?? '',
       description: editing?.description ?? '',
@@ -101,6 +124,12 @@ export function LotteryFormPage({ mode, recordId, onBack, onSaved }: LotteryForm
       dailyChance: editing?.dailyChance ?? 1,
       totalChanceEnabled: editing?.totalChanceEnabled ?? false,
       totalChance: editing?.totalChance ?? 1,
+      gainInitialEnabled: chanceSources.gainInitialEnabled,
+      gainInitialCount: chanceSources.gainInitialCount,
+      gainDailyLoginEnabled: chanceSources.gainDailyLoginEnabled,
+      gainDailyLoginCount: chanceSources.gainDailyLoginCount,
+      gainCheckinEnabled: chanceSources.gainCheckinEnabled,
+      gainCheckinThemeIds: chanceSources.gainCheckinThemeIds,
       maxWins: editing?.maxWins ?? 1,
       consumeChanceOnWin: editing?.consumeChanceOnWin ?? true,
       showRemaining: editing?.showRemaining ?? false,
@@ -111,9 +140,8 @@ export function LotteryFormPage({ mode, recordId, onBack, onSaved }: LotteryForm
       visibilityDepartments: editing?.visibilityDepartments ?? [],
       visibilityFileName: editing?.visibilityFileName ?? '',
       prizes: editing?.prizes?.length ? editing.prizes : [emptyPrize(1)],
-    }),
-    [editing],
-  );
+    };
+  }, [editing]);
 
   const pageTitle = mode === 'create' ? '新建抽奖' : '编辑抽奖';
   const assigned = prizeProbabilitySum(prizesWatch);
@@ -130,6 +158,19 @@ export function LotteryFormPage({ mode, recordId, onBack, onSaved }: LotteryForm
       message.error('活动期间总次数不能小于每人每天次数');
       return;
     }
+    const chanceSources = {
+      gainInitialEnabled: values.gainInitialEnabled,
+      gainInitialCount: values.gainInitialCount ?? 1,
+      gainDailyLoginEnabled: values.gainDailyLoginEnabled,
+      gainDailyLoginCount: values.gainDailyLoginCount ?? 1,
+      gainCheckinEnabled: values.gainCheckinEnabled,
+      gainCheckinThemeIds: values.gainCheckinThemeIds ?? [],
+    };
+    const chanceError = validateLotteryChanceSources(chanceSources);
+    if (chanceError) {
+      message.error(chanceError);
+      return;
+    }
     setSubmitting(true);
     try {
       const id = editing?.id ?? nextLotteryId();
@@ -142,7 +183,7 @@ export function LotteryFormPage({ mode, recordId, onBack, onSaved }: LotteryForm
         startAt: values.timeRange[0].format(TIME_FORMAT),
         endAt: values.timeRange[1].format(TIME_FORMAT),
         dailyChance: values.dailyChance,
-        ...migrateLotteryChanceSources(editing ?? { dailyChance: values.dailyChance }),
+        ...chanceSources,
         totalChanceEnabled: values.totalChanceEnabled,
         totalChance: values.totalChanceEnabled ? values.totalChance ?? values.dailyChance : 0,
         maxWins: values.maxWins,
@@ -252,7 +293,45 @@ export function LotteryFormPage({ mode, recordId, onBack, onSaved }: LotteryForm
             <Radio.Group options={LOTTERY_FORM_OPTIONS.map((item) => ({ value: item, label: item }))} />
           </Form.Item>
         </Card>
-        <Card title="抽奖机会" style={{ marginTop: 16 }}>
+        <Card title="次数获取途径" style={{ marginTop: 16 }}>
+          <Form.Item name="gainInitialEnabled" label="每人初始" valuePropName="checked">
+            <Switch />
+          </Form.Item>
+          {gainInitialEnabled ? (
+            <Form.Item name="gainInitialCount" label="初始次数" rules={[{ required: true, message: '请填写每人初始次数' }]}>
+              <InputNumber min={1} max={99} precision={0} style={{ width: 160 }} />
+            </Form.Item>
+          ) : null}
+          <Form.Item name="gainDailyLoginEnabled" label="每日登录" valuePropName="checked">
+            <Switch />
+          </Form.Item>
+          {gainDailyLoginEnabled ? (
+            <Form.Item name="gainDailyLoginCount" label="每天+n" rules={[{ required: true, message: '请填写每日登录次数' }]}>
+              <InputNumber min={1} max={99} precision={0} style={{ width: 160 }} />
+            </Form.Item>
+          ) : null}
+          <Form.Item name="gainCheckinEnabled" label="打卡" valuePropName="checked">
+            <Switch />
+          </Form.Item>
+          {gainCheckinEnabled ? (
+            <Form.Item
+              name="gainCheckinThemeIds"
+              label="关联主题"
+              extra="关联主题按规则发出次数时入账；未关联时打卡次数不会进入本抽奖"
+              rules={[{ required: true, type: 'array', min: 1, message: '请选择关联打卡主题' }]}
+            >
+              <Select
+                mode="multiple"
+                allowClear
+                placeholder="请选择打卡主题"
+                optionFilterProp="label"
+                options={checkinThemes.map((theme) => ({ value: theme.id, label: theme.title }))}
+                style={{ maxWidth: 480, width: '100%' }}
+              />
+            </Form.Item>
+          ) : null}
+        </Card>
+        <Card title="消耗上限" style={{ marginTop: 16 }}>
           <Form.Item name="dailyChance" label="每人每天次数" rules={[{ required: true, message: '请输入每天次数' }]}>
             <InputNumber min={1} max={99} precision={0} style={{ width: 160 }} />
           </Form.Item>

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { countLotteryLinksToTheme } from '../../lottery/model/lottery';
+import { getLotteries } from '../../lottery/model/lotteryStore';
 import {
   canDeleteCheckinTheme,
   initialGrants,
@@ -13,7 +15,7 @@ let logs = [...initialLogs];
 let grants = [...initialGrants];
 const listeners = new Set<() => void>();
 
-let countLotteryLinks: (themeId: number) => number = () => 0;
+let lotteryLinkCounterOverride: ((themeId: number) => number) | undefined;
 
 function emit() {
   listeners.forEach((listener) => listener());
@@ -32,14 +34,14 @@ function useStoreTick() {
 }
 
 export function setLotteryLinkCounter(fn: (themeId: number) => number) {
-  countLotteryLinks = fn;
+  lotteryLinkCounterOverride = fn;
 }
 
 export function __resetCheckinStoreForTests() {
   themes = [...initialThemes];
   logs = [...initialLogs];
   grants = [...initialGrants];
-  countLotteryLinks = () => 0;
+  lotteryLinkCounterOverride = undefined;
   emit();
 }
 
@@ -79,7 +81,9 @@ export function removeTheme(id: number): { ok: true } | { ok: false; reason: str
 
   const logCount = logs.filter((item) => item.themeId === id).length;
   const grantCount = grants.filter((item) => item.themeId === id).length;
-  const lotteryLinkCount = countLotteryLinks(id);
+  const lotteryLinkCount = lotteryLinkCounterOverride
+    ? lotteryLinkCounterOverride(id)
+    : countLotteryLinksToTheme(getLotteries(), id);
 
   if (lotteryLinkCount > 0) {
     return { ok: false, reason: '已被抽奖关联，无法删除' };
