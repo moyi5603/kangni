@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { LotteryChanceLedger } from './lotteryChance';
 import {
   initialLotteryDraws,
   initialLotteryWins,
@@ -11,6 +12,7 @@ import {
 let lotteries = [...initialLotteries];
 let wins = [...initialLotteryWins];
 let draws = [...initialLotteryDraws];
+let chanceLedger: LotteryChanceLedger[] = [];
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -33,6 +35,16 @@ export function __resetLotteryStoreForTests() {
   lotteries = [...initialLotteries];
   wins = [...initialLotteryWins];
   draws = [...initialLotteryDraws];
+  chanceLedger = [];
+  emit();
+}
+
+export function getLotteryChanceLedger() {
+  return chanceLedger;
+}
+
+export function setLotteryChanceLedger(next: LotteryChanceLedger[]) {
+  chanceLedger = next;
   emit();
 }
 

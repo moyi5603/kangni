@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
+import { creditCheckinChance } from '../../lottery/model/lotteryChance';
 import { countLotteryLinksToTheme } from '../../lottery/model/lottery';
-import { getLotteries } from '../../lottery/model/lotteryStore';
+import { getLotteries, getLotteryChanceLedger, setLotteryChanceLedger } from '../../lottery/model/lotteryStore';
 import {
   canDeleteCheckinTheme,
   initialGrants,
   initialLogs,
   initialThemes,
+  parseCheckinTime,
   submitCheckinResult,
   type CheckinTheme,
+  type RewardGrant,
 } from './checkin';
 
 let themes = [...initialThemes];
@@ -127,8 +130,32 @@ export function submitUserCheckin(input: {
 
   if (!result.ok) return result;
 
+  const lotteries = getLotteries();
+  const now = parseCheckinTime(input.at);
+  let ledger = getLotteryChanceLedger();
+  const nextGrants: RewardGrant[] = result.grants.map((grant) => {
+    if (grant.rewardKind !== '抽奖次数') return grant;
+    const parsed = Number.parseInt(grant.content.replace(/[^\d-]/g, ''), 10);
+    const amount = Number.isFinite(parsed) ? parsed : 0;
+    const credited = creditCheckinChance({
+      themeId: input.themeId,
+      userId: input.userId,
+      amount,
+      at: input.at,
+      lotteries,
+      ledger,
+      now,
+    });
+    ledger = credited.ledger;
+    if (credited.creditedLotteryIds.length > 0) return grant;
+    const hasTheme = lotteries.some((item) => item.gainCheckinThemeIds.includes(input.themeId));
+    const note = hasTheme ? '（关联抽奖已不可用）' : '（尚未被抽奖关联）';
+    const content = grant.content.includes(note) ? grant.content : `${grant.content}${note}`;
+    return { ...grant, status: '未入账' as const, content };
+  });
+
   logs = [...logs, result.log];
-  grants = [...grants, ...result.grants];
-  emit();
-  return result;
+  grants = [...grants, ...nextGrants];
+  setLotteryChanceLedger(ledger);
+  return { ...result, grants: nextGrants };
 }
