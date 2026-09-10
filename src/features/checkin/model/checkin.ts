@@ -76,13 +76,18 @@ export function calendarDayKey(value: string): string {
   return value.slice(0, 10);
 }
 
+function shanghaiYmd(ms: number): string {
+  const shifted = new Date(ms + 8 * 60 * 60 * 1000);
+  return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, '0')}-${String(shifted.getUTCDate()).padStart(2, '0')}`;
+}
+
 export function nextStreak(previousDays: string[], today: string): number {
   const set = new Set(previousDays);
   let count = 1;
-  const cursor = new Date(`${today}T00:00:00+08:00`);
+  let cursor = Date.parse(`${today}T00:00:00+08:00`);
   for (;;) {
-    cursor.setDate(cursor.getDate() - 1);
-    const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
+    cursor -= 24 * 60 * 60 * 1000;
+    const key = shanghaiYmd(cursor);
     if (!set.has(key)) break;
     count += 1;
   }

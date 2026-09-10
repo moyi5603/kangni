@@ -62,6 +62,10 @@ describe('nextStreak', () => {
   it('resets after a missed day', () => {
     expect(nextStreak(['2026-09-08'], '2026-09-10')).toBe(1);
   });
+
+  it('walks consecutive Shanghai calendar days', () => {
+    expect(nextStreak(['2026-09-07', '2026-09-08', '2026-09-09'], '2026-09-10')).toBe(4);
+  });
 });
 
 describe('shouldGrantReward', () => {
@@ -154,6 +158,7 @@ describe('canDeleteCheckinTheme', () => {
   it('blocks delete when logs, grants or lottery links exist', () => {
     expect(canDeleteCheckinTheme({ logCount: 0, grantCount: 0, lotteryLinkCount: 0 })).toBe(true);
     expect(canDeleteCheckinTheme({ logCount: 1, grantCount: 0, lotteryLinkCount: 0 })).toBe(false);
+    expect(canDeleteCheckinTheme({ logCount: 0, grantCount: 1, lotteryLinkCount: 0 })).toBe(false);
     expect(canDeleteCheckinTheme({ logCount: 0, grantCount: 0, lotteryLinkCount: 1 })).toBe(false);
   });
 });
