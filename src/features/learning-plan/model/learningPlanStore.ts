@@ -22,6 +22,46 @@ function progressKey(planId: number, userId: string) {
 
 const LOCKED_FIELDS: LockedPlanField[] = ['assignMode', 'progressMode', 'dailyContent', 'quizScope', 'taskSync'];
 
+const DEMO_SEED_PLAN: LearningPlan = {
+  id: 1,
+  name: '安全日练',
+  assignMode: 'once',
+  progressMode: 'daily',
+  dailyContent: 'redraw',
+  quizScope: 'cohort',
+  quizPassRate: 60,
+  mapSkinId: 'island',
+  overtimeAllowed: true,
+  taskSync: true,
+  progressSync: true,
+  status: 'published',
+  startAt: '2026-09-01 00:00',
+  endAt: '2026-09-30 23:59',
+  stages: [
+    {
+      id: 's1',
+      name: '基础',
+      tasks: [
+        { id: 'c1', type: 'course', required: true, title: '安全课', refId: 'course-1' },
+        {
+          id: 'q1',
+          type: 'quiz',
+          required: true,
+          title: '每日一练',
+          quizMode: 'random',
+          randomCount: 2,
+          bankId: 'practice',
+        },
+      ],
+    },
+    {
+      id: 's2',
+      name: '进阶',
+      tasks: [{ id: 'e1', type: 'exam', required: true, title: '安全考', refId: 'exam-1' }],
+    },
+  ],
+};
+
 function createStore(seed: LearningPlan[] = []) {
   let snap: Snapshot = { plans: seed, progress: {} };
   const listeners = new Set<() => void>();
@@ -107,7 +147,7 @@ function createStore(seed: LearningPlan[] = []) {
   return store;
 }
 
-const store = createStore();
+const store = createStore([DEMO_SEED_PLAN]);
 
 export function getLearningPlanStore() {
   return store;
