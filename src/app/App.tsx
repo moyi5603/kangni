@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import {
   ApartmentOutlined,
@@ -14,6 +14,7 @@ import {
   FileTextOutlined,
   GiftOutlined,
   HeartOutlined,
+  LayoutOutlined,
   MenuOutlined,
   ReadOutlined,
   RocketOutlined,
@@ -25,10 +26,21 @@ import {
   TrophyOutlined,
   UnorderedListOutlined,
   UserOutlined,
+  VideoCameraOutlined,
 } from '@ant-design/icons';
 import { Avatar, Badge, Breadcrumb, Button, Drawer, Flex, Layout, Menu, Popover, Space, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import { PlaceholderPage } from '../features/shell/pages/PlaceholderPage';
+import { LiveListPage } from '../features/live/pages/LiveListPage';
+import { LiveFormPage } from '../features/live/pages/LiveFormPage';
+import { LiveDetailPage } from '../features/live/pages/LiveDetailPage';
+import { LotteryListPage } from '../features/lottery/pages/LotteryListPage';
+import { LotteryFormPage } from '../features/lottery/pages/LotteryFormPage';
+import { LotteryDetailPage } from '../features/lottery/pages/LotteryDetailPage';
+import { CheckinListPage } from '../features/checkin/pages/CheckinListPage';
+import { CheckinFormPage } from '../features/checkin/pages/CheckinFormPage';
+import { CheckinDetailPage } from '../features/checkin/pages/CheckinDetailPage';
+import { HtmlStudioPage } from '../features/workbench/pages/HtmlStudioPage';
 import { CourseDetailPage } from '../features/training/pages/CourseDetailPage';
 import { CourseOverviewPage } from '../features/training/pages/CourseOverviewPage';
 import { CourseFormPage } from '../features/training/pages/CourseFormPage';
@@ -52,6 +64,8 @@ import { ActivityFormPage } from '../features/activities/pages/ActivityFormPage'
 import { ActivityDetailPage } from '../features/activities/pages/ActivityDetailPage';
 import { ActivityCategoryListPage } from '../features/activities/pages/ActivityCategoryListPage';
 import { ActivityRulesPage } from '../features/activities/pages/ActivityRulesPage';
+import { ActivityDecorationPage } from '../features/activities/pages/ActivityDecorationPage';
+import { IgDecorationPage } from '../features/interest-groups/pages/IgDecorationPage';
 import { InterestGroupActivityDetailPage } from '../features/interest-groups/pages/InterestGroupActivityDetailPage';
 import { InterestGroupActivityFormPage } from '../features/interest-groups/pages/InterestGroupActivityFormPage';
 import { InterestGroupActivityListPage } from '../features/interest-groups/pages/InterestGroupActivityListPage';
@@ -65,7 +79,13 @@ import { AwardListPage } from '../features/awards/pages/AwardListPage';
 import { VoteDetailPage } from '../features/voting/pages/VoteDetailPage';
 import { VoteFormPage } from '../features/voting/pages/VoteFormPage';
 import { VoteListPage } from '../features/voting/pages/VoteListPage';
+import { VoteV2OverviewPage } from '../features/voting-v2/pages/VoteV2OverviewPage';
+import { VoteV2FormPage } from '../features/voting-v2/pages/VoteV2FormPage';
+import { VoteV2ListPage } from '../features/voting-v2/pages/VoteV2ListPage';
+import { VoteV2PlayersPage } from '../features/voting-v2/pages/VoteV2PlayersPage';
+import { VoteV2DecorationPage } from '../features/voting-v2/pages/VoteV2DecorationPage';
 import { InterestGroupListPage } from '../features/interest-groups/pages/InterestGroupListPage';
+import { InterestGroupOverviewPage } from '../features/interest-groups/pages/InterestGroupOverviewPage';
 import { b2bStandards } from '../shared/design-system/generated/b2b-standards.generated';
 import { CEndApp } from './CEndApp';
 import { CEndPortal } from '../features/c-end/portal/CEndPortal';
@@ -78,6 +98,7 @@ import {
   getApplication,
   getDirectApplications,
   getOpenKeys,
+  visibleApplications,
   isLeafMenuKey,
   parseCEndHash,
   parseLocationHash,
@@ -104,6 +125,7 @@ const navIcons: Record<NavIcon, ReactNode> = {
   fileText: <FileTextOutlined />,
   gift: <GiftOutlined />,
   heart: <HeartOutlined />,
+  layout: <LayoutOutlined />,
   read: <ReadOutlined />,
   rocket: <RocketOutlined />,
   shopping: <ShoppingOutlined />,
@@ -114,6 +136,7 @@ const navIcons: Record<NavIcon, ReactNode> = {
   trophy: <TrophyOutlined />,
   unorderedList: <UnorderedListOutlined />,
   user: <UserOutlined />,
+  video: <VideoCameraOutlined />,
 };
 
 function toMenuItems(nodes: MenuNode[]): MenuProps['items'] {
@@ -155,6 +178,8 @@ export function App() {
         courseId={cEnd.courseId}
         examId={cEnd.examId}
         voteId={cEnd.voteId}
+        voteV2Id={cEnd.voteV2Id}
+        voteV2OptionId={cEnd.voteV2OptionId}
         voteResponseId={cEnd.voteResponseId}
         h5Page={cEnd.h5Page}
       />
@@ -169,6 +194,9 @@ function AdminApp() {
   const [page, setPage] = useState(initial.page);
   const [recordId, setRecordId] = useState(initial.recordId);
   const [tab, setTab] = useState(initial.tab);
+  const [ownerApp, setOwnerApp] = useState(initial.ownerApp);
+  const ownerAppRef = useRef(ownerApp);
+  ownerAppRef.current = ownerApp;
   const [applicationCardOpen, setApplicationCardOpen] = useState(false);
   const [menuDrawerOpen, setMenuDrawerOpen] = useState(false);
   const narrow = useNarrow();
@@ -184,6 +212,7 @@ function AdminApp() {
     '--page-gutter': `${b2bStandards.product.pageGutter}px`,
     '--page-gutter-compact': `${b2bStandards.product.pageGutterCompact}px`,
     '--logo-width': `${b2bStandards.layout.logoWidth}px`,
+    '--sidebar-width': `${b2bStandards.layout.sidebarWidth}px`,
     '--border-color': b2bStandards.border.color,
     '--spacing-md': `${b2bStandards.spacing.md}px`,
     /* Pin layout gray: beat antd css-in-js + keep --ant-layout-body-bg in sync. */
@@ -193,7 +222,7 @@ function AdminApp() {
   } as CSSProperties;
 
   const syncLocation = (nextApplication: string, nextPage: string, nextRecordId?: string, nextTab?: string) => {
-    const nextHash = toLocationHash(nextApplication, nextPage, nextRecordId, nextTab);
+    const nextHash = toLocationHash(nextApplication, nextPage, nextRecordId, nextTab, ownerAppRef.current);
     if (window.location.hash !== nextHash) {
       beginSuppressHash();
       window.location.hash = nextHash;
@@ -224,6 +253,8 @@ function AdminApp() {
     if (!nextApplication) return;
     if (nextApplication.key === application && page === nextApplication.defaultPage) return;
     requestNavigation(() => {
+      ownerAppRef.current = undefined;
+      setOwnerApp(undefined);
       setApplication(nextApplication.key);
       setPage(nextApplication.defaultPage);
       setRecordId(undefined);
@@ -234,8 +265,25 @@ function AdminApp() {
     });
   };
 
+  const openContestCheckin = () => {
+    requestNavigation(() => {
+      ownerAppRef.current = 'skills-contest';
+      setOwnerApp('skills-contest');
+      setApplication('checkin');
+      setPage('checkin-list');
+      setRecordId(undefined);
+      setTab(undefined);
+      setMenuDrawerOpen(false);
+      syncLocation('checkin', 'checkin-list');
+    });
+  };
+
   const changePage = (key: string) => {
     if (!isLeafMenuKey(sideNodes, key)) return;
+    if (key === 'contest-checkin') {
+      openContestCheckin();
+      return;
+    }
     goToPage(key);
   };
 
@@ -248,11 +296,18 @@ function AdminApp() {
         setPage(next.page);
         setRecordId(next.recordId);
         setTab(next.tab);
+        setOwnerApp(next.ownerApp);
+        ownerAppRef.current = next.ownerApp;
       });
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
+
+  useEffect(() => {
+    if (page !== 'contest-checkin') return;
+    openContestCheckin();
+  }, [page]);
 
   const renderSideMenu = () => (
     <Menu
@@ -274,7 +329,7 @@ function AdminApp() {
             {category}
           </Typography.Text>
           <div className="application-grid">
-            {applications
+            {visibleApplications()
               .filter((item) => item.category === category)
               .map((item) => (
                 <button
@@ -382,8 +437,15 @@ function AdminApp() {
             {renderSideMenu()}
           </Sider>
         )}
-        <Content className="app-content" style={{ background: layoutBg }}>
-          {page === 'activity-overview' ? (
+        <Content
+          className={`app-content${page === 'h5-decoration' || page === 'pc-decoration' ? ' is-html-studio' : ''}`}
+          style={{ background: layoutBg }}
+        >
+          {page === 'h5-decoration' ? (
+            <HtmlStudioPage src="/decoration/h5.html" title="H5装修" />
+          ) : page === 'pc-decoration' ? (
+            <HtmlStudioPage src="/decoration/pc.html" title="PC装修" />
+          ) : page === 'activity-overview' ? (
             <ActivityOverviewPage onNavigate={goToPage} />
           ) : page === 'activity-list' ? (
             <ActivityListPage onNavigate={goToPage} />
@@ -391,6 +453,8 @@ function AdminApp() {
             <ActivityCategoryListPage />
           ) : page === 'activity-rules' ? (
             <ActivityRulesPage />
+          ) : page === 'activity-layout' || page === 'activity-layout-mobile' || page === 'activity-layout-pc' ? (
+            <ActivityDecorationPage surface={page.endsWith('-pc') ? 'pc' : 'mobile'} />
           ) : page === 'activity-create' || page === 'activity-edit' ? (
             <ActivityFormPage
               key={`${page}-${recordId ?? 'new'}`}
@@ -522,6 +586,8 @@ function AdminApp() {
               onBack={() => goToPage('practice-questions')}
               onEdit={(id) => goToPage('practice-question-edit', String(id))}
             />
+          ) : page === 'interest-group-overview' ? (
+            <InterestGroupOverviewPage onNavigate={goToPage} />
           ) : page === 'interest-group-list' ? (
             <InterestGroupListPage onNavigate={goToPage} />
           ) : page === 'interest-group-detail' ? (
@@ -550,6 +616,8 @@ function AdminApp() {
             <InterestGroupCategoryListPage />
           ) : page === 'interest-group-rules' ? (
             <InterestGroupActivityRulesPage />
+          ) : page === 'interest-group-layout' || page === 'interest-group-layout-mobile' || page === 'interest-group-layout-pc' ? (
+            <IgDecorationPage surface={page.endsWith('-pc') ? 'pc' : 'mobile'} />
           ) : page === 'interest-group-activity-detail' ? (
             <InterestGroupActivityDetailPage
               key={recordId ?? 'detail'}
@@ -608,6 +676,90 @@ function AdminApp() {
                 setTab(nextTab);
                 syncLocation(application, 'vote-detail', recordId, nextTab);
               }}
+            />
+          ) : page === 'vote-v2-overview' ? (
+            <VoteV2OverviewPage onNavigate={goToPage} />
+          ) : page === 'vote-v2-list' ? (
+            <VoteV2ListPage onNavigate={goToPage} />
+          ) : page === 'vote-v2-layout' || page === 'vote-v2-layout-mobile' || page === 'vote-v2-layout-pc' ? (
+            <VoteV2DecorationPage surface={page.endsWith('-pc') ? 'pc' : 'mobile'} />
+          ) : page === 'vote-v2-players' ? (
+            <VoteV2PlayersPage
+              recordId={recordId}
+              tab={tab}
+              onBack={() => goToPage('vote-v2-list')}
+              onNavigate={goToPage}
+            />
+          ) : page === 'vote-v2-create' || page === 'vote-v2-edit' || page === 'vote-v2-detail' ? (
+            <VoteV2FormPage
+              key={`${page}-${recordId ?? 'new'}`}
+              mode={page === 'vote-v2-detail' ? 'view' : page === 'vote-v2-edit' ? 'edit' : 'create'}
+              recordId={recordId}
+              tab={tab}
+              onBack={() => goToPage('vote-v2-list')}
+              onNavigate={goToPage}
+              onTabChange={(nextTab) => {
+                setTab(nextTab);
+                syncLocation(application, 'vote-v2-detail', recordId, nextTab);
+              }}
+            />
+          ) : page === 'live-list' ? (
+            <LiveListPage onNavigate={goToPage} />
+          ) : page === 'live-create' || page === 'live-edit' ? (
+            <LiveFormPage
+              key={`${page}-${recordId ?? 'new'}`}
+              mode={page === 'live-edit' ? 'edit' : 'create'}
+              recordId={recordId}
+              onBack={() => goToPage('live-list')}
+              onSaved={(id) => goToPage('live-detail', String(id))}
+            />
+          ) : page === 'live-detail' ? (
+            <LiveDetailPage
+              key={recordId ?? 'detail'}
+              recordId={recordId}
+              onBack={() => goToPage('live-list')}
+              onEdit={(id) => goToPage('live-edit', String(id))}
+            />
+          ) : page === 'lottery-list' ? (
+            <LotteryListPage onNavigate={goToPage} />
+          ) : page === 'lottery-create' || page === 'lottery-edit' ? (
+            <LotteryFormPage
+              key={`${page}-${recordId ?? 'new'}`}
+              mode={page === 'lottery-edit' ? 'edit' : 'create'}
+              recordId={recordId}
+              onBack={() => goToPage('lottery-list')}
+              onSaved={(id) => goToPage('lottery-detail', String(id))}
+            />
+          ) : page === 'lottery-detail' ? (
+            <LotteryDetailPage
+              key={recordId ?? 'detail'}
+              recordId={recordId}
+              onBack={() => goToPage('lottery-list')}
+              onEdit={(id) => goToPage('lottery-edit', String(id))}
+            />
+          ) : page === 'contest-checkin' ? (
+            <PlaceholderPage
+              breadcrumbItems={breadcrumbItems}
+              title="跳转中"
+              applicationLabel={currentApplication.label}
+            />
+          ) : page === 'checkin-list' ? (
+            <CheckinListPage ownerApp={ownerApp} onNavigate={goToPage} />
+          ) : page === 'checkin-create' || page === 'checkin-edit' ? (
+            <CheckinFormPage
+              key={`${page}-${recordId ?? 'new'}`}
+              mode={page === 'checkin-edit' ? 'edit' : 'create'}
+              recordId={recordId}
+              defaultOwnerApp={ownerApp}
+              onBack={() => goToPage('checkin-list')}
+              onSaved={(id) => goToPage('checkin-detail', String(id))}
+            />
+          ) : page === 'checkin-detail' ? (
+            <CheckinDetailPage
+              key={recordId ?? 'detail'}
+              recordId={recordId}
+              onBack={() => goToPage('checkin-list')}
+              onEdit={(id) => goToPage('checkin-edit', String(id))}
             />
           ) : (
             <PlaceholderPage

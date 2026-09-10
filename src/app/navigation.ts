@@ -972,9 +972,23 @@ export function parseLocationHash(hash: string): {
   return { application: application.key, page: application.defaultPage, ...(ownerApp ? { ownerApp } : {}) };
 }
 
-export function toLocationHash(application: string, page: string, recordId?: string, tab?: string): string {
-  if (recordId && tab) return `#/${application}/${page}/${recordId}/${tab}`;
-  return recordId ? `#/${application}/${page}/${recordId}` : `#/${application}/${page}`;
+export function toLocationHash(
+  application: string,
+  page: string,
+  recordId?: string,
+  tab?: string,
+  ownerApp?: string,
+): string {
+  const hash =
+    recordId && tab
+      ? `#/${application}/${page}/${recordId}/${tab}`
+      : recordId
+        ? `#/${application}/${page}/${recordId}`
+        : `#/${application}/${page}`;
+  if (application === 'checkin' && page === 'checkin-list' && (ownerApp === 'culture' || ownerApp === 'skills-contest')) {
+    return `${hash}?app=${ownerApp}`;
+  }
+  return hash;
 }
 
 export function siderSelectedKey(page: string): string {

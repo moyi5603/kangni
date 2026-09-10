@@ -766,6 +766,10 @@ describe('skills-contest application', () => {
       application: 'skills-contest',
       page: 'signup-list',
     });
+    expect(parseLocationHash('#/skills-contest/contest-checkin')).toEqual({
+      application: 'skills-contest',
+      page: 'contest-checkin',
+    });
   });
 
   it('falls back to contest-list when page is missing or unknown', () => {
@@ -1519,6 +1523,19 @@ describe('checkin application', () => {
       page: 'checkin-list',
       ownerApp: 'culture',
     });
+  });
+
+  it('writes owner app query on checkin-list hash', () => {
+    expect(toLocationHash('checkin', 'checkin-list', undefined, undefined, 'skills-contest')).toBe(
+      '#/checkin/checkin-list?app=skills-contest',
+    );
+    expect(toLocationHash('checkin', 'checkin-list', undefined, undefined, 'culture')).toBe(
+      '#/checkin/checkin-list?app=culture',
+    );
+    expect(toLocationHash('checkin', 'checkin-list')).toBe('#/checkin/checkin-list');
+    expect(toLocationHash('checkin', 'checkin-detail', '2', undefined, 'skills-contest')).toBe(
+      '#/checkin/checkin-detail/2',
+    );
   });
 
   it('shows 打卡 in 全部应用 switcher but not in top-bar direct apps', () => {
