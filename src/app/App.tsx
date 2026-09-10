@@ -767,7 +767,13 @@ function AdminApp() {
           ) : page === 'learning-plan-list' ? (
             <LearningPlanListPage onNavigate={goToPage} />
           ) : page === 'learning-plan-create' || page === 'learning-plan-edit' ? (
-            <LearningPlanFormPage recordId={recordId} />
+            <LearningPlanFormPage
+              key={`${page}-${recordId ?? 'new'}`}
+              mode={page === 'learning-plan-edit' ? 'edit' : 'create'}
+              recordId={recordId}
+              onBack={() => goToPage('learning-plan-list')}
+              onSaved={(id) => goToPage('learning-plan-edit', String(id))}
+            />
           ) : page === 'learning-plan-preview' ? (
             <LearningPlanMapPreview recordId={recordId} />
           ) : (
