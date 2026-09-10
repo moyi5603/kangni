@@ -98,3 +98,48 @@ export function pickRandomIds(pool: number[], count: number, seed: string): numb
   }
   return copy.slice(0, count).sort((a, b) => a - b);
 }
+
+export type LearnerProgress = {
+  courseDone: Record<string, boolean>;
+  lectureDone: Record<string, boolean>;
+  examPassed: Record<string, boolean>;
+  quizPassedDays: Record<string, string[]>;
+};
+
+export function isTaskPassed(
+  task: PlanTask,
+  progress: LearnerProgress,
+  progressMode: ProgressMode,
+  day: string,
+): boolean {
+  if (task.type === 'course') return Boolean(progress.courseDone[task.id]);
+  if (task.type === 'lecture') return Boolean(progress.lectureDone[task.id]);
+  if (task.type === 'exam') return Boolean(progress.examPassed[task.id]);
+  const days = progress.quizPassedDays[task.id] ?? [];
+  if (progressMode === 'accumulate') return days.length > 0;
+  return days.includes(day);
+}
+
+export function stageRequiredPassed(
+  stage: PlanStage,
+  progress: LearnerProgress,
+  progressMode: ProgressMode,
+  day: string,
+): boolean {
+  return stage.tasks.filter((t) => t.required).every((t) => isTaskPassed(t, progress, progressMode, day));
+}
+
+/** 当前可进入的关卡下标；全部通关则返回 stages.length */
+export function currentStageIndex(
+  stages: PlanStage[],
+  progress: LearnerProgress,
+  progressMode: ProgressMode,
+  day: string,
+): number {
+  const idx = stages.findIndex((stage) => !stageRequiredPassed(stage, progress, progressMode, day));
+  return idx === -1 ? stages.length : idx;
+}
+
+export function canEnterStage(stageIndex: number, current: number): boolean {
+  return stageIndex <= current;
+}

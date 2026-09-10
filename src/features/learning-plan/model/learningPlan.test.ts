@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { pickRandomIds, quizSeedKey, shanghaiDayKey } from './learningPlan';
+import {
+  currentStageIndex,
+  isTaskPassed,
+  pickRandomIds,
+  quizSeedKey,
+  shanghaiDayKey,
+  type LearnerProgress,
+} from './learningPlan';
 
 describe('shanghaiDayKey', () => {
   it('uses Asia/Shanghai calendar day', () => {
@@ -61,5 +68,92 @@ describe('pickRandomIds', () => {
 
   it('throws when pool smaller than count', () => {
     expect(() => pickRandomIds([1, 2], 3, 's')).toThrow(/题目不足/);
+  });
+});
+
+const emptyProgress = (): LearnerProgress => ({
+  courseDone: {},
+  lectureDone: {},
+  examPassed: {},
+  quizPassedDays: {},
+});
+
+describe('isTaskPassed', () => {
+  const day = '2026-09-10';
+
+  it('keeps course/exam passed across daily reset', () => {
+    const progress: LearnerProgress = {
+      ...emptyProgress(),
+      courseDone: { c1: true },
+      examPassed: { e1: true },
+    };
+    expect(isTaskPassed({ id: 'c1', type: 'course', required: true, title: '课' }, progress, 'daily', day)).toBe(true);
+    expect(isTaskPassed({ id: 'e1', type: 'exam', required: true, title: '考' }, progress, 'daily', day)).toBe(true);
+  });
+
+  it('treats quiz as unpassed on a new day in daily mode', () => {
+    const progress: LearnerProgress = {
+      ...emptyProgress(),
+      quizPassedDays: { q1: ['2026-09-09'] },
+    };
+    expect(isTaskPassed({ id: 'q1', type: 'quiz', required: true, title: '习' }, progress, 'daily', day)).toBe(false);
+    expect(isTaskPassed({ id: 'q1', type: 'quiz', required: true, title: '习' }, progress, 'daily', '2026-09-09')).toBe(true);
+  });
+
+  it('keeps quiz passed in accumulate regardless of day', () => {
+    const progress: LearnerProgress = {
+      ...emptyProgress(),
+      quizPassedDays: { q1: ['2026-09-01'] },
+    };
+    expect(isTaskPassed({ id: 'q1', type: 'quiz', required: true, title: '习' }, progress, 'accumulate', day)).toBe(true);
+  });
+});
+
+describe('currentStageIndex', () => {
+  const stages = [
+    {
+      id: 's1',
+      name: '关1',
+      tasks: [
+        { id: 'c1', type: 'course' as const, required: true, title: '课' },
+        { id: 'q1', type: 'quiz' as const, required: true, title: '习' },
+      ],
+    },
+    {
+      id: 's2',
+      name: '关2',
+      tasks: [{ id: 'e1', type: 'exam' as const, required: true, title: '考' }],
+    },
+  ];
+
+  it('stays on stage 0 when today quiz missing even if course done', () => {
+    const progress: LearnerProgress = {
+      ...emptyProgress(),
+      courseDone: { c1: true },
+      examPassed: { e1: true },
+      quizPassedDays: { q1: ['2026-09-09'] },
+    };
+    expect(currentStageIndex(stages, progress, 'daily', '2026-09-10')).toBe(0);
+  });
+
+  it('unlocks later stages when today quiz also passed', () => {
+    const progress: LearnerProgress = {
+      ...emptyProgress(),
+      courseDone: { c1: true },
+      examPassed: { e1: true },
+      quizPassedDays: { q1: ['2026-09-10'] },
+    };
+    expect(currentStageIndex(stages, progress, 'daily', '2026-09-10')).toBe(2);
+  });
+
+  it('ignores optional tasks for lock', () => {
+    const optional = [
+      {
+        id: 's1',
+        name: '关1',
+        tasks: [{ id: 'q1', type: 'quiz' as const, required: false, title: '选修习' }],
+      },
+    ];
+    expect(currentStageIndex(optional, emptyProgress(), 'daily', '2026-09-10')).toBe(1);
   });
 });
