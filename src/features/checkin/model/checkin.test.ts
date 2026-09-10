@@ -152,6 +152,67 @@ describe('submitCheckinResult', () => {
     if (!day2.ok) return;
     expect(day2.grants.map((g) => g.rewardKind).sort()).toEqual(['勋章', '积分']);
   });
+
+  it('does not block when another theme was checked in same day', () => {
+    const otherThemeLog: CheckinLog = {
+      id: 99,
+      themeId: 2,
+      userId: 'u1',
+      user: '张三',
+      department: '品牌',
+      account: 'zhangsan',
+      checkedAt: '2026-09-10 08:00',
+    };
+    const result = submitCheckinResult({
+      theme: theme(),
+      logs: [otherThemeLog],
+      grants: [],
+      userId: 'u1',
+      user: '张三',
+      department: '品牌',
+      account: 'zhangsan',
+      at: '2026-09-10 09:00',
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it('does not treat grants from other themes as already granted', () => {
+    const medalRule = rule({
+      id: 'medal',
+      trigger: 'streak',
+      streakDays: 1,
+      enablePoints: false,
+      enableMedal: true,
+      medalId: 'attend',
+      repeat: 'once',
+    });
+    const otherGrant: RewardGrant = {
+      id: 99,
+      themeId: 2,
+      ruleId: 'medal',
+      userId: 'u1',
+      user: '张三',
+      department: '品牌',
+      rewardKind: '勋章',
+      content: 'attend',
+      ruleSummary: '连续 1 天',
+      grantedAt: '2026-09-09 09:00',
+      status: '成功',
+    };
+    const result = submitCheckinResult({
+      theme: theme({ rules: [medalRule] }),
+      logs: [],
+      grants: [otherGrant],
+      userId: 'u1',
+      user: '张三',
+      department: '品牌',
+      account: 'zhangsan',
+      at: '2026-09-10 09:00',
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.grants.some((g) => g.rewardKind === '勋章')).toBe(true);
+  });
 });
 
 describe('canDeleteCheckinTheme', () => {

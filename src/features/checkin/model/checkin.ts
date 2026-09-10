@@ -94,8 +94,14 @@ export function nextStreak(previousDays: string[], today: string): number {
   return count;
 }
 
-export function uniqueUserDays(logs: CheckinLog[], userId: string): string[] {
-  return [...new Set(logs.filter((item) => item.userId === userId).map((item) => calendarDayKey(item.checkedAt)))].sort();
+export function uniqueUserDays(logs: CheckinLog[], themeId: number, userId: string): string[] {
+  return [
+    ...new Set(
+      logs
+        .filter((item) => item.themeId === themeId && item.userId === userId)
+        .map((item) => calendarDayKey(item.checkedAt)),
+    ),
+  ].sort();
 }
 
 export function shouldGrantReward(
@@ -145,11 +151,14 @@ export function submitCheckinResult(input: {
 }): SubmitOk | SubmitFail {
   const status = checkinStatusOf(input.theme, parseCheckinTime(input.at));
   if (status !== '进行中') return { ok: false, reason: status === '未开始' ? '打卡未开始' : '打卡已结束' };
+  const themeId = input.theme.id;
+  const themeLogs = input.logs.filter((item) => item.themeId === themeId);
+  const themeGrants = input.grants.filter((item) => item.themeId === themeId);
   const day = calendarDayKey(input.at);
-  if (input.logs.some((item) => item.userId === input.userId && calendarDayKey(item.checkedAt) === day)) {
+  if (themeLogs.some((item) => item.userId === input.userId && calendarDayKey(item.checkedAt) === day)) {
     return { ok: false, reason: '今日已打卡' };
   }
-  const days = uniqueUserDays(input.logs, input.userId);
+  const days = uniqueUserDays(themeLogs, themeId, input.userId);
   const streak = nextStreak(days, day);
   const total = days.length + 1;
   const log: CheckinLog = {
@@ -171,7 +180,7 @@ export function submitCheckinResult(input: {
     ];
     for (const reward of kinds) {
       if (!reward.enabled) continue;
-      const alreadyGranted = input.grants.some(
+      const alreadyGranted = themeGrants.some(
         (grant) =>
           grant.userId === input.userId &&
           grant.ruleId === item.id &&
