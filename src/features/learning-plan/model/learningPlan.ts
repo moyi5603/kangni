@@ -143,3 +143,60 @@ export function currentStageIndex(
 export function canEnterStage(stageIndex: number, current: number): boolean {
   return stageIndex <= current;
 }
+
+export function quizPassedByRate(correctRate: number, passRatePercent: number): boolean {
+  return correctRate * 100 >= passRatePercent;
+}
+
+export function nextAttemptNo(
+  attempts: { day: string }[],
+  progressMode: ProgressMode,
+  day: string,
+): number {
+  const n =
+    progressMode === 'daily' ? attempts.filter((a) => a.day === day).length : attempts.length;
+  return n + 1;
+}
+
+export function resolveQuizQuestionIds(task: PlanTask, pool: number[], seed: string): number[] {
+  if (task.quizMode === 'manual') return [...(task.questionIds ?? [])];
+  return pickRandomIds(pool, task.randomCount ?? 0, seed);
+}
+
+export function canGrantQuizPoints(
+  input: { progressMode: ProgressMode; alreadyDays: string[] },
+  day: string,
+): boolean {
+  if (input.progressMode === 'accumulate') return input.alreadyDays.length === 0;
+  return !input.alreadyDays.includes(day);
+}
+
+export function canGrantPersistentPoints(already: boolean): boolean {
+  return !already;
+}
+
+export type LockedPlanField = 'assignMode' | 'progressMode' | 'dailyContent' | 'quizScope' | 'taskSync';
+
+export function isPlanFieldLocked(status: PlanStatus, field: LockedPlanField): boolean {
+  return status === 'published';
+}
+
+export function validateQuizTask(task: PlanTask, poolSize: number): string | null {
+  if (task.type !== 'quiz') return null;
+  if (task.quizMode === 'manual' && !(task.questionIds && task.questionIds.length > 0)) {
+    return '请选择题目';
+  }
+  if (task.quizMode === 'random') {
+    const x = task.randomCount ?? 0;
+    if (x < 1) return '随机题量至少 1';
+    if (poolSize < x) return '题目不足，联系管理员';
+  }
+  return null;
+}
+
+export function validatePlanBasics(plan: Pick<LearningPlan, 'name' | 'quizPassRate' | 'progressMode' | 'dailyContent'>): string | null {
+  if (!plan.name.trim()) return '请填写名称';
+  if (plan.quizPassRate < 1 || plan.quizPassRate > 100) return '及格线须在 1–100';
+  if (plan.progressMode === 'daily' && !plan.dailyContent) return '请选择每日内容';
+  return null;
+}

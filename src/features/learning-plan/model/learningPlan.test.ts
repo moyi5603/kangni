@@ -5,7 +5,12 @@ import {
   pickRandomIds,
   quizSeedKey,
   shanghaiDayKey,
+  quizPassedByRate,
+  nextAttemptNo,
+  resolveQuizQuestionIds,
+  canGrantQuizPoints,
   type LearnerProgress,
+  type PlanTask,
 } from './learningPlan';
 
 describe('shanghaiDayKey', () => {
@@ -155,5 +160,63 @@ describe('currentStageIndex', () => {
       },
     ];
     expect(currentStageIndex(optional, emptyProgress(), 'daily', '2026-09-10')).toBe(1);
+  });
+});
+
+describe('quizPassedByRate', () => {
+  it('requires submit and rate >= plan line', () => {
+    expect(quizPassedByRate(0.59, 60)).toBe(false);
+    expect(quizPassedByRate(0.6, 60)).toBe(true);
+  });
+});
+
+describe('nextAttemptNo', () => {
+  it('counts attempts in the same day for daily plans', () => {
+    expect(nextAttemptNo([{ day: '2026-09-10' }, { day: '2026-09-10' }], 'daily', '2026-09-10')).toBe(3);
+    expect(nextAttemptNo([{ day: '2026-09-09' }], 'daily', '2026-09-10')).toBe(1);
+  });
+
+  it('counts lifetime attempts in accumulate', () => {
+    expect(nextAttemptNo([{ day: '2026-09-01' }, { day: '2026-09-09' }], 'accumulate', '2026-09-10')).toBe(3);
+  });
+});
+
+describe('resolveQuizQuestionIds', () => {
+  it('returns manual ids as-is', () => {
+    const task: PlanTask = {
+      id: 'q',
+      type: 'quiz',
+      required: true,
+      title: '习',
+      quizMode: 'manual',
+      questionIds: [9, 8],
+    };
+    expect(resolveQuizQuestionIds(task, [1, 2, 3], 'seed')).toEqual([9, 8]);
+  });
+
+  it('draws random from pool', () => {
+    const task: PlanTask = {
+      id: 'q',
+      type: 'quiz',
+      required: true,
+      title: '习',
+      quizMode: 'random',
+      randomCount: 2,
+    };
+    const ids = resolveQuizQuestionIds(task, [1, 2, 3, 4], 'seed-x');
+    expect(ids).toHaveLength(2);
+    expect(resolveQuizQuestionIds(task, [1, 2, 3, 4], 'seed-x')).toEqual(ids);
+  });
+});
+
+describe('canGrantQuizPoints', () => {
+  it('grants once per day in daily mode', () => {
+    expect(canGrantQuizPoints({ progressMode: 'daily', alreadyDays: ['2026-09-09'] }, '2026-09-10')).toBe(true);
+    expect(canGrantQuizPoints({ progressMode: 'daily', alreadyDays: ['2026-09-10'] }, '2026-09-10')).toBe(false);
+  });
+
+  it('grants once lifetime in accumulate', () => {
+    expect(canGrantQuizPoints({ progressMode: 'accumulate', alreadyDays: ['2026-09-01'] }, '2026-09-10')).toBe(false);
+    expect(canGrantQuizPoints({ progressMode: 'accumulate', alreadyDays: [] }, '2026-09-10')).toBe(true);
   });
 });
