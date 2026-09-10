@@ -36,4 +36,14 @@ describe('CheckinFormPage', () => {
     expect(html).toContain('已结束');
     expect(html).toContain('disabled');
   });
+
+  it('offers medal library and upload', () => {
+    const html = renderToStaticMarkup(
+      <App>
+        <CheckinFormPage mode="edit" recordId="1" onBack={noop} onSaved={noop} />
+      </App>,
+    );
+    expect(html).toContain('勋章库');
+    expect(html).toContain('上传');
+  });
 });

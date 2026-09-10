@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { PlusOutlined } from '@ant-design/icons';
 import {
   App,
   Alert,
@@ -14,10 +15,12 @@ import {
   Select,
   Space,
   Typography,
+  Upload,
 } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
-import { useMedals } from '../../activities/model/medalLibrary';
+import { COVER_IMAGE_UPLOAD_HINT, IMAGE_UPLOAD_ACCEPT } from '../../../shared/ui/imageUploadHint';
+import { addMedal, useMedals } from '../../activities/model/medalLibrary';
 import {
   CHECKIN_OWNER_APP_LABEL,
   checkinStatusOf,
@@ -59,6 +62,7 @@ const REPEAT_OPTIONS: { value: RewardRepeat; label: string }[] = [
 ];
 
 type RewardKey = 'medal' | 'points' | 'lottery';
+type MedalSource = '勋章库' | '上传图片';
 
 type RuleForm = {
   id: string;
@@ -66,7 +70,10 @@ type RuleForm = {
   streakDays?: number;
   totalTimes?: number;
   rewards: RewardKey[];
+  medalSource: MedalSource;
   medalId?: string;
+  medalName?: string;
+  medalImageUrl?: string;
   points?: number;
   lotteryChance?: number;
   repeat: RewardRepeat;
@@ -93,6 +100,7 @@ function emptyRule(): RuleForm {
     id: `r-${Date.now()}`,
     trigger: 'each',
     rewards: [],
+    medalSource: '勋章库',
     streakDays: 1,
     totalTimes: 1,
     points: 1,
@@ -116,11 +124,23 @@ function toRuleForm(rule: RewardRule): RuleForm {
     streakDays: rule.streakDays ?? 1,
     totalTimes: rule.totalTimes ?? 1,
     rewards: rewardsOf(rule),
+    medalSource: '勋章库',
     medalId: rule.medalId,
     points: rule.points || 1,
     lotteryChance: rule.lotteryChance || 1,
     repeat: rule.repeat,
   };
+}
+
+function resolveMedalId(item: RuleForm): string | undefined {
+  if (!(item.rewards ?? []).includes('medal')) return undefined;
+  if (item.medalSource === '上传图片') {
+    const name = item.medalName?.trim() ?? '';
+    const imageUrl = item.medalImageUrl ?? '';
+    if (!name || !imageUrl) return undefined;
+    return addMedal(name, imageUrl).id;
+  }
+  return item.medalId;
 }
 
 function toRewardRule(item: RuleForm): RewardRule {
@@ -131,7 +151,7 @@ function toRewardRule(item: RuleForm): RewardRule {
     streakDays: item.trigger === 'streak' ? item.streakDays : undefined,
     totalTimes: item.trigger === 'total' ? item.totalTimes : undefined,
     enableMedal: rewards.includes('medal'),
-    medalId: rewards.includes('medal') ? item.medalId : undefined,
+    medalId: resolveMedalId(item),
     enablePoints: rewards.includes('points'),
     points: rewards.includes('points') ? item.points ?? 0 : 0,
     enableLotteryChance: rewards.includes('lottery'),
@@ -277,9 +297,12 @@ export function CheckinFormPage({
             {(fields, { add, remove }) => (
               <div style={{ marginTop: 12 }}>
                 {fields.map((field, index) => {
-                  const row = rulesWatch[field.name] as RuleForm | undefined;
+                  const row =
+                    (rulesWatch[field.name] as RuleForm | undefined) ??
+                    (initialValues.rules?.[field.name] as RuleForm | undefined);
                   const trigger = row?.trigger ?? 'each';
                   const rewards = row?.rewards ?? [];
+                  const medalSource = row?.medalSource ?? '勋章库';
                   return (
                     <Card key={field.key} size="small" style={{ marginBottom: 12 }}>
                       <Form.Item {...field} name={[field.name, 'id']} hidden>
@@ -317,18 +340,95 @@ export function CheckinFormPage({
                         <Checkbox.Group options={REWARD_OPTIONS} />
                       </Form.Item>
                       {rewards.includes('medal') ? (
-                        <Form.Item
-                          {...field}
-                          name={[field.name, 'medalId']}
-                          label="勋章"
-                          rules={[{ required: true, message: '请选择勋章' }]}
-                        >
-                          <Select
-                            placeholder="请选择勋章"
-                            options={medals.map((item) => ({ value: item.id, label: item.name }))}
-                            style={{ maxWidth: 320 }}
-                          />
-                        </Form.Item>
+                        <>
+                          <Form.Item
+                            {...field}
+                            name={[field.name, 'medalSource']}
+                            label="勋章来源"
+                            rules={[{ required: true, message: '请选择勋章来源' }]}
+                          >
+                            <Radio.Group
+                              options={[
+                                { value: '勋章库', label: '勋章库' },
+                                { value: '上传图片', label: '上传图片' },
+                              ]}
+                            />
+                          </Form.Item>
+                          {(medalSource) !== '上传图片' ? (
+                            <Form.Item
+                              {...field}
+                              name={[field.name, 'medalId']}
+                              label="选择勋章"
+                              extra="勋章较多时可输入名称搜索。"
+                              rules={[{ required: true, message: '请选择勋章' }]}
+                            >
+                              <Select
+                                showSearch
+                                optionFilterProp="label"
+                                placeholder="请选择勋章"
+                                options={medals.map((item) => ({ value: item.id, label: item.name }))}
+                                style={{ maxWidth: 320 }}
+                              />
+                            </Form.Item>
+                          ) : (
+                            <>
+                              <Form.Item
+                                {...field}
+                                name={[field.name, 'medalName']}
+                                label="勋章名称"
+                                rules={[
+                                  { required: true, message: '请输入勋章名称' },
+                                  { max: 20, message: '勋章名称不超过 20 个字' },
+                                ]}
+                              >
+                                <Input maxLength={20} showCount placeholder="请输入勋章名称" style={{ maxWidth: 320 }} />
+                              </Form.Item>
+                              <Form.Item
+                                label="勋章图片"
+                                extra={`${COVER_IMAGE_UPLOAD_HINT}。上传后会加入勋章库，下次可直接选用。`}
+                                required
+                              >
+                                <Upload
+                                  accept={IMAGE_UPLOAD_ACCEPT}
+                                  listType="picture-card"
+                                  maxCount={1}
+                                  fileList={
+                                    row?.medalImageUrl
+                                      ? [{ uid: String(field.key), name: '勋章', url: row.medalImageUrl, status: 'done' }]
+                                      : []
+                                  }
+                                  beforeUpload={() => false}
+                                  onChange={({ fileList }) => {
+                                    const file = fileList[0];
+                                    if (file?.originFileObj) {
+                                      const reader = new FileReader();
+                                      reader.onload = () =>
+                                        form.setFieldValue(['rules', field.name, 'medalImageUrl'], String(reader.result));
+                                      reader.readAsDataURL(file.originFileObj);
+                                    } else {
+                                      form.setFieldValue(['rules', field.name, 'medalImageUrl'], file?.url ?? '');
+                                    }
+                                  }}
+                                >
+                                  {row?.medalImageUrl ? null : (
+                                    <button type="button" className="cover-upload-trigger">
+                                      <PlusOutlined />
+                                      <span>上传</span>
+                                    </button>
+                                  )}
+                                </Upload>
+                              </Form.Item>
+                              <Form.Item
+                                {...field}
+                                name={[field.name, 'medalImageUrl']}
+                                hidden
+                                rules={[{ required: true, message: '请上传勋章图片' }]}
+                              >
+                                <Input />
+                              </Form.Item>
+                            </>
+                          )}
+                        </>
                       ) : null}
                       {rewards.includes('points') ? (
                         <Form.Item
