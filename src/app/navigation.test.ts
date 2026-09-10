@@ -4,6 +4,7 @@ import {
   applications,
   getApplication,
   getDirectApplications,
+  visibleApplications,
   parseCEndHash,
   parseLocationHash,
   siderSelectedKey,
@@ -12,6 +13,14 @@ import {
   toH5CourseListHash,
   toH5ExamListHash,
   toH5VoteListHash,
+  toH5VoteV2ListHash,
+  toH5VoteV2RecordsHash,
+  toH5VoteV2HomeHash,
+  toH5VoteV2OptionHash,
+  toPcVoteV2ListHash,
+  toPcVoteV2RecordsHash,
+  toPcVoteV2HomeHash,
+  toPcVoteV2OptionHash,
   toH5VoteRecordsHash,
   toH5VoteRecordHash,
   toH5VoteDetailHash,
@@ -41,23 +50,66 @@ import {
   toH5FavoritesHash,
   toH5MySignupsHash,
   toH5ActivityListHash,
+  toH5ActivitySearchHash,
   toH5PastMomentsHash,
   toPcActivityListHash,
+  toPcActivitySearchHash,
   toPcPastMomentsHash,
   toH5HonorHash,
   toH5HonorAdminHash,
   toH5InterestGroupsHash,
   toPcInterestGroupsHash,
+  toH5IgPastMomentsHash,
+  toPcIgPastMomentsHash,
   toPcFavoritesHash,
   toPcMySignupsHash,
   toCEndSignupHash,
 } from './navigation';
+
+describe('workbench application menus', () => {
+  it('exposes H5装修 and PC装修 as first-level items', () => {
+    expect(applicationMenus.workbench).toEqual([
+      {
+        key: 'workbench-overview',
+        icon: 'dashboard',
+        label: '概览',
+        children: [
+          { key: 'dashboard', icon: 'dashboard', label: '数据看板' },
+          { key: 'my-tasks', icon: 'checkSquare', label: '我的待办' },
+        ],
+      },
+      { key: 'h5-decoration', icon: 'layout', label: 'H5装修' },
+      { key: 'pc-decoration', icon: 'appstore', label: 'PC装修' },
+    ]);
+    expect(parseLocationHash('#/workbench/h5-decoration')).toEqual({
+      application: 'workbench',
+      page: 'h5-decoration',
+    });
+    expect(parseLocationHash('#/workbench/pc-decoration')).toEqual({
+      application: 'workbench',
+      page: 'pc-decoration',
+    });
+  });
+});
 
 describe('applications', () => {
   it('shows 课程 instead of 培训课程', () => {
     const training = applications.find((item) => item.key === 'training');
     expect(training?.label).toBe('课程');
     expect(applications.some((item) => item.label === '培训课程')).toBe(false);
+  });
+
+  it('hides 评优, 人文关怀, 员工体验 and 员工体检 from 全部应用, and shows 投票 as v2', () => {
+    const labels = visibleApplications().map((item) => item.label);
+    expect(labels).not.toContain('评优');
+    expect(labels).not.toContain('投票-废弃');
+    expect(labels).not.toContain('投票版本2');
+    expect(labels).not.toContain('人文关怀');
+    expect(labels).not.toContain('员工体验');
+    expect(labels).not.toContain('员工体检');
+    expect(labels).toContain('投票');
+    expect(labels).toContain('活动');
+    expect(labels).toContain('课程');
   });
 });
 
@@ -161,6 +213,21 @@ describe('C-end navigation', () => {
     expect(toPcMySignupsHash()).toBe('#/c/pc/my');
   });
 
+  it('parses the activity search secondary page before numeric ids', () => {
+    expect(parseCEndHash('#/c/h5/search')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'activity-search',
+    });
+    expect(parseCEndHash('#/c/pc/search')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'activity-search',
+    });
+    expect(toH5ActivitySearchHash()).toBe('#/c/h5/search');
+    expect(toPcActivitySearchHash()).toBe('#/c/pc/search');
+  });
+
   it('parses the activity list secondary page before numeric ids', () => {
     expect(parseCEndHash('#/c/h5/list')).toEqual({
       kind: 'c-end',
@@ -222,6 +289,60 @@ describe('C-end navigation', () => {
       h5Page: 'votes',
     });
     expect(toH5VoteListHash()).toBe('#/c/h5/votes');
+    expect(parseCEndHash('#/c/h5/votes-v2')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'votes-v2',
+    });
+    expect(toH5VoteV2ListHash()).toBe('#/c/h5/votes-v2');
+    expect(parseCEndHash('#/c/h5/votes-v2/mine')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'vote-v2-records',
+    });
+    expect(toH5VoteV2RecordsHash()).toBe('#/c/h5/votes-v2/mine');
+    expect(parseCEndHash('#/c/h5/vote-v2-2')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'vote-v2-home',
+      voteV2Id: 2,
+    });
+    expect(toH5VoteV2HomeHash(2)).toBe('#/c/h5/vote-v2-2');
+    expect(parseCEndHash('#/c/h5/vote-v2-2/option-1')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'vote-v2-option',
+      voteV2Id: 2,
+      voteV2OptionId: 1,
+    });
+    expect(toH5VoteV2OptionHash(2, 1)).toBe('#/c/h5/vote-v2-2/option-1');
+    expect(parseCEndHash('#/c/pc/votes-v2')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'votes-v2',
+    });
+    expect(toPcVoteV2ListHash()).toBe('#/c/pc/votes-v2');
+    expect(parseCEndHash('#/c/pc/votes-v2/mine')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'vote-v2-records',
+    });
+    expect(toPcVoteV2RecordsHash()).toBe('#/c/pc/votes-v2/mine');
+    expect(parseCEndHash('#/c/pc/vote-v2-2')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'vote-v2-home',
+      voteV2Id: 2,
+    });
+    expect(toPcVoteV2HomeHash(2)).toBe('#/c/pc/vote-v2-2');
+    expect(parseCEndHash('#/c/pc/vote-v2-2/option-1')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'vote-v2-option',
+      voteV2Id: 2,
+      voteV2OptionId: 1,
+    });
+    expect(toPcVoteV2OptionHash(2, 1)).toBe('#/c/pc/vote-v2-2/option-1');
     expect(parseCEndHash('#/c/h5/votes/mine')).toEqual({
       kind: 'c-end',
       surface: 'h5',
@@ -321,6 +442,26 @@ describe('C-end navigation', () => {
 
   it('builds the PC interest groups hash', () => {
     expect(toPcInterestGroupsHash()).toBe('#/c/pc/interest-groups');
+  });
+
+  it('parses interest-groups past-moments without colliding with 员工活动 moments', () => {
+    expect(parseCEndHash('#/c/pc/interest-groups/moments')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'ig-past-moments',
+    });
+    expect(parseCEndHash('#/c/h5/interest-groups/moments')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'ig-past-moments',
+    });
+    expect(parseCEndHash('#/c/pc/moments')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'past-moments',
+    });
+    expect(toPcIgPastMomentsHash()).toBe('#/c/pc/interest-groups/moments');
+    expect(toH5IgPastMomentsHash()).toBe('#/c/h5/interest-groups/moments');
   });
 
   it('parses the H5 honor page', () => {
@@ -581,6 +722,15 @@ describe('C-end navigation', () => {
     });
   });
 
+  it('parses interest-group activity check-in page', () => {
+    expect(parseCEndHash('#/c/h5/ig-act-101/checkin?s=101-s1&t=tok')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      activityId: 101,
+      h5Page: 'ig-checkin',
+    });
+  });
+
   it('ignores unknown extra segments and keeps the activity detail', () => {
     expect(parseCEndHash('#/c/h5/21/nope')).toEqual({
       kind: 'c-end',
@@ -602,11 +752,12 @@ describe('skills-contest application', () => {
     });
   });
 
-  it('uses three first-level menus with no children', () => {
+  it('uses four first-level menus with no children, including 打卡', () => {
     expect(applicationMenus['skills-contest']).toEqual([
       { key: 'contest-list', icon: 'trophy', label: '赛事管理' },
       { key: 'signup-list', icon: 'unorderedList', label: '报名' },
       { key: 'score-list', icon: 'checkCircle', label: '成绩' },
+      { key: 'contest-checkin', icon: 'clock', label: '打卡' },
     ]);
   });
 
@@ -636,17 +787,31 @@ describe('skills-contest application', () => {
 });
 
 describe('activities application menus', () => {
-  it('includes 规则设置', () => {
+  it('includes 规则设置（仅演示）', () => {
     expect(applicationMenus.activities).toEqual([
       { key: 'activity-overview', icon: 'dashboard', label: '概览' },
       { key: 'activity-list', icon: 'unorderedList', label: '活动管理' },
       { key: 'activity-categories', icon: 'appstore', label: '分类管理' },
-      { key: 'activity-rules', icon: 'fileText', label: '规则设置' },
+      { key: 'activity-rules', icon: 'fileText', label: '规则设置（仅演示）' },
+      { key: 'activity-layout', icon: 'layout', label: '活动装修（仅演示）' },
     ]);
     expect(parseLocationHash('#/activities/activity-rules')).toEqual({
       application: 'activities',
       page: 'activity-rules',
     });
+    expect(parseLocationHash('#/activities/activity-layout')).toEqual({
+      application: 'activities',
+      page: 'activity-layout',
+    });
+    expect(parseLocationHash('#/activities/activity-layout-mobile')).toEqual({
+      application: 'activities',
+      page: 'activity-layout-mobile',
+    });
+    expect(parseLocationHash('#/activities/activity-layout-pc')).toEqual({
+      application: 'activities',
+      page: 'activity-layout-pc',
+    });
+    expect(siderSelectedKey('activity-layout-pc')).toBe('activity-layout');
   });
 });
 
@@ -708,9 +873,9 @@ describe('exam application', () => {
     });
   });
 
-  it('sits immediately before 人文关怀', () => {
+  it('sits immediately before 直播', () => {
     const keys = applications.map((item) => item.key);
-    expect(keys.indexOf('exam')).toBe(keys.indexOf('care') - 1);
+    expect(keys.indexOf('exam')).toBe(keys.indexOf('live') - 1);
     expect(keys.indexOf('exam')).toBe(keys.indexOf('skills-contest') + 1);
     expect(keys.indexOf('exam')).toBeGreaterThan(keys.indexOf('training'));
   });
@@ -884,7 +1049,7 @@ describe('interest-groups application', () => {
   it('registers the app under 员工与组织 after 员工体验', () => {
     expect(getApplication('interest-groups')).toEqual({
       key: 'interest-groups',
-      label: '兴趣小组',
+      label: '兴趣圈',
       category: '员工与组织',
       icon: 'team',
       defaultPage: 'interest-group-overview',
@@ -894,18 +1059,32 @@ describe('interest-groups application', () => {
     expect(keys.indexOf('interest-groups')).toBe(keys.indexOf('awards') - 1);
   });
 
-  it('uses five first-level menus in order', () => {
+  it('uses first-level menus plus 装修', () => {
     expect(applicationMenus['interest-groups']).toEqual([
       { key: 'interest-group-overview', icon: 'dashboard', label: '概览' },
-      { key: 'interest-group-list', icon: 'team', label: '小组管理' },
+      { key: 'interest-group-list', icon: 'team', label: '兴趣圈管理' },
       { key: 'interest-group-activities', icon: 'calendar', label: '活动管理' },
       { key: 'interest-group-categories', icon: 'appstore', label: '分类管理' },
       { key: 'interest-group-rules', icon: 'fileText', label: '规则设置' },
+      { key: 'interest-group-layout', icon: 'layout', label: '兴趣圈装修（仅演示）' },
     ]);
     expect(parseLocationHash('#/interest-groups/interest-group-rules')).toEqual({
       application: 'interest-groups',
       page: 'interest-group-rules',
     });
+    expect(parseLocationHash('#/interest-groups/interest-group-layout')).toEqual({
+      application: 'interest-groups',
+      page: 'interest-group-layout',
+    });
+    expect(parseLocationHash('#/interest-groups/interest-group-layout-mobile')).toEqual({
+      application: 'interest-groups',
+      page: 'interest-group-layout-mobile',
+    });
+    expect(parseLocationHash('#/interest-groups/interest-group-layout-pc')).toEqual({
+      application: 'interest-groups',
+      page: 'interest-group-layout-pc',
+    });
+    expect(siderSelectedKey('interest-group-layout-mobile')).toBe('interest-group-layout');
   });
 
   it('parses leaf hashes and falls back to 概览', () => {
@@ -960,13 +1139,14 @@ describe('interest-groups application', () => {
 });
 
 describe('awards application', () => {
-  it('registers the app under 员工与组织 after 兴趣小组', () => {
+  it('registers the app under 员工与组织 after 兴趣圈', () => {
     expect(getApplication('awards')).toEqual({
       key: 'awards',
       label: '评优',
       category: '员工与组织',
       icon: 'trophy',
       defaultPage: 'award-overview',
+      hiddenFromSwitcher: true,
     });
     const keys = applications.map((item) => item.key);
     expect(keys.indexOf('awards')).toBe(keys.indexOf('interest-groups') + 1);
@@ -1036,27 +1216,27 @@ describe('voting application', () => {
   it('registers the app under 员工与组织 after 评优', () => {
     expect(getApplication('voting')).toEqual({
       key: 'voting',
-      label: '投票',
+      label: '投票-废弃',
       category: '员工与组织',
       icon: 'checkSquare',
-      defaultPage: 'vote-overview',
+      defaultPage: 'vote-list',
+      hiddenFromSwitcher: true,
     });
     const keys = applications.map((item) => item.key);
     expect(keys.indexOf('voting')).toBe(keys.indexOf('awards') + 1);
-    expect(keys.indexOf('voting')).toBe(keys.indexOf('training') - 1);
+    expect(keys.indexOf('voting')).toBe(keys.indexOf('voting-v2') - 1);
   });
 
-  it('uses two first-level menus without 规则设置', () => {
+  it('uses a single first-level menu for 投票管理', () => {
     expect(applicationMenus.voting).toEqual([
-      { key: 'vote-overview', icon: 'dashboard', label: '概览' },
       { key: 'vote-list', icon: 'checkSquare', label: '投票管理' },
     ]);
   });
 
-  it('parses leaf hashes, hidden form pages, and falls back to 概览', () => {
+  it('parses leaf hashes, hidden form pages, and falls back to 投票管理', () => {
     expect(parseLocationHash('#/voting/vote-overview')).toEqual({
       application: 'voting',
-      page: 'vote-overview',
+      page: 'vote-list',
     });
     expect(parseLocationHash('#/voting/vote-list')).toEqual({
       application: 'voting',
@@ -1064,7 +1244,7 @@ describe('voting application', () => {
     });
     expect(parseLocationHash('#/voting/vote-rules')).toEqual({
       application: 'voting',
-      page: 'vote-overview',
+      page: 'vote-list',
     });
     expect(parseLocationHash('#/voting/vote-create')).toEqual({
       application: 'voting',
@@ -1103,11 +1283,11 @@ describe('voting application', () => {
     expect(siderSelectedKey('vote-detail')).toBe('vote-list');
     expect(parseLocationHash('#/voting')).toEqual({
       application: 'voting',
-      page: 'vote-overview',
+      page: 'vote-list',
     });
     expect(parseLocationHash('#/voting/not-a-page')).toEqual({
       application: 'voting',
-      page: 'vote-overview',
+      page: 'vote-list',
     });
   });
 
@@ -1118,8 +1298,237 @@ describe('voting application', () => {
   });
 });
 
+describe('voting-v2 application', () => {
+  it('registers the app under 员工与组织 after 投票', () => {
+    expect(getApplication('voting-v2')).toEqual({
+      key: 'voting-v2',
+      label: '投票',
+      category: '员工与组织',
+      icon: 'checkSquare',
+      defaultPage: 'vote-v2-overview',
+    });
+    const keys = applications.map((item) => item.key);
+    expect(keys.indexOf('voting-v2')).toBe(keys.indexOf('voting') + 1);
+    expect(keys.indexOf('voting-v2')).toBe(keys.indexOf('training') - 1);
+  });
+
+  it('uses 概览, 投票管理 plus 投票装修', () => {
+    expect(applicationMenus['voting-v2']).toEqual([
+      { key: 'vote-v2-overview', icon: 'dashboard', label: '概览' },
+      { key: 'vote-v2-list', icon: 'checkSquare', label: '投票管理' },
+      { key: 'vote-v2-layout', icon: 'layout', label: '投票装修（仅演示）' },
+    ]);
+    expect(parseLocationHash('#/voting-v2/vote-v2-layout')).toEqual({
+      application: 'voting-v2',
+      page: 'vote-v2-layout',
+    });
+    expect(parseLocationHash('#/voting-v2/vote-v2-layout-mobile')).toEqual({
+      application: 'voting-v2',
+      page: 'vote-v2-layout-mobile',
+    });
+    expect(parseLocationHash('#/voting-v2/vote-v2-layout-pc')).toEqual({
+      application: 'voting-v2',
+      page: 'vote-v2-layout-pc',
+    });
+    expect(siderSelectedKey('vote-v2-layout-pc')).toBe('vote-v2-layout');
+  });
+
+  it('parses the list hash and falls back without colliding with 投票', () => {
+    expect(parseLocationHash('#/voting-v2/vote-v2-list')).toEqual({
+      application: 'voting-v2',
+      page: 'vote-v2-list',
+    });
+    expect(parseLocationHash('#/voting-v2')).toEqual({
+      application: 'voting-v2',
+      page: 'vote-v2-overview',
+    });
+    expect(parseLocationHash('#/voting-v2/not-a-page')).toEqual({
+      application: 'voting-v2',
+      page: 'vote-v2-overview',
+    });
+    expect(parseLocationHash('#/voting-v2/vote-list')).toEqual({
+      application: 'voting-v2',
+      page: 'vote-v2-overview',
+    });
+    expect(parseLocationHash('#/voting/vote-list')).toEqual({
+      application: 'voting',
+      page: 'vote-list',
+    });
+    expect(parseLocationHash('#/voting-v2/vote-v2-create')).toEqual({
+      application: 'voting-v2',
+      page: 'vote-v2-create',
+    });
+    expect(parseLocationHash('#/voting-v2/vote-v2-edit/2')).toEqual({
+      application: 'voting-v2',
+      page: 'vote-v2-edit',
+      recordId: '2',
+    });
+    expect(parseLocationHash('#/voting-v2/vote-v2-detail/2')).toEqual({
+      application: 'voting-v2',
+      page: 'vote-v2-detail',
+      recordId: '2',
+    });
+    expect(parseLocationHash('#/voting-v2/vote-v2-detail/2/results')).toEqual({
+      application: 'voting-v2',
+      page: 'vote-v2-detail',
+      recordId: '2',
+      tab: 'results',
+    });
+    expect(parseLocationHash('#/voting-v2/vote-v2-detail/2/records')).toEqual({
+      application: 'voting-v2',
+      page: 'vote-v2-detail',
+      recordId: '2',
+      tab: 'records',
+    });
+    expect(parseLocationHash('#/voting-v2/vote-v2-players/2')).toEqual({
+      application: 'voting-v2',
+      page: 'vote-v2-players',
+      recordId: '2',
+    });
+    expect(siderSelectedKey('vote-v2-create')).toBe('vote-v2-list');
+    expect(siderSelectedKey('vote-v2-edit')).toBe('vote-v2-list');
+    expect(siderSelectedKey('vote-v2-detail')).toBe('vote-v2-list');
+    expect(siderSelectedKey('vote-v2-players')).toBe('vote-v2-list');
+  });
+
+  it('stays out of the top-bar direct applications', () => {
+    const keys = getDirectApplications(4).map((item) => item.key);
+    expect(keys).not.toContain('voting-v2');
+  });
+});
+
+describe('live application', () => {
+  it('registers 直播 under 员工与组织 with live-list as default', () => {
+    expect(getApplication('live')).toEqual({
+      key: 'live',
+      label: '直播',
+      category: '员工与组织',
+      icon: 'video',
+      defaultPage: 'live-list',
+    });
+    const keys = applications.map((item) => item.key);
+    expect(keys.indexOf('live')).toBe(keys.indexOf('exam') + 1);
+    expect(keys.indexOf('live')).toBe(keys.indexOf('lottery') - 1);
+  });
+
+  it('uses a single first-level menu for 直播管理', () => {
+    expect(applicationMenus.live).toEqual([{ key: 'live-list', icon: 'video', label: '直播管理' }]);
+  });
+
+  it('parses leaf hash and falls back to 直播管理', () => {
+    expect(parseLocationHash('#/live/live-list')).toEqual({ application: 'live', page: 'live-list' });
+    expect(parseLocationHash('#/live')).toEqual({ application: 'live', page: 'live-list' });
+    expect(parseLocationHash('#/live/not-a-page')).toEqual({ application: 'live', page: 'live-list' });
+  });
+
+  it('parses create, edit and detail hashes and keeps 直播管理 selected', () => {
+    expect(parseLocationHash('#/live/live-create')).toEqual({ application: 'live', page: 'live-create' });
+    expect(parseLocationHash('#/live/live-edit/2')).toEqual({ application: 'live', page: 'live-edit', recordId: '2' });
+    expect(parseLocationHash('#/live/live-detail/2')).toEqual({ application: 'live', page: 'live-detail', recordId: '2' });
+    expect(siderSelectedKey('live-create')).toBe('live-list');
+    expect(siderSelectedKey('live-edit')).toBe('live-list');
+    expect(siderSelectedKey('live-detail')).toBe('live-list');
+  });
+
+  it('shows 直播 in 全部应用 switcher but not in top-bar direct apps', () => {
+    expect(visibleApplications().map((item) => item.label)).toContain('直播');
+    expect(getDirectApplications(4).map((item) => item.key)).not.toContain('live');
+  });
+});
+
+describe('lottery application', () => {
+  it('registers 抽奖 under 员工与组织 with lottery-list as default', () => {
+    expect(getApplication('lottery')).toEqual({
+      key: 'lottery',
+      label: '抽奖',
+      category: '员工与组织',
+      icon: 'gift',
+      defaultPage: 'lottery-list',
+    });
+    const keys = applications.map((item) => item.key);
+    expect(keys.indexOf('lottery')).toBe(keys.indexOf('live') + 1);
+    expect(keys.indexOf('lottery')).toBe(keys.indexOf('checkin') - 1);
+  });
+
+  it('uses a single first-level menu for 抽奖管理', () => {
+    expect(applicationMenus.lottery).toEqual([{ key: 'lottery-list', icon: 'gift', label: '抽奖管理' }]);
+  });
+
+  it('parses leaf hash and falls back to 抽奖管理', () => {
+    expect(parseLocationHash('#/lottery/lottery-list')).toEqual({ application: 'lottery', page: 'lottery-list' });
+    expect(parseLocationHash('#/lottery')).toEqual({ application: 'lottery', page: 'lottery-list' });
+    expect(parseLocationHash('#/lottery/not-a-page')).toEqual({ application: 'lottery', page: 'lottery-list' });
+  });
+
+  it('parses create, edit and detail hashes and keeps 抽奖管理 selected', () => {
+    expect(parseLocationHash('#/lottery/lottery-create')).toEqual({ application: 'lottery', page: 'lottery-create' });
+    expect(parseLocationHash('#/lottery/lottery-edit/2')).toEqual({ application: 'lottery', page: 'lottery-edit', recordId: '2' });
+    expect(parseLocationHash('#/lottery/lottery-detail/2')).toEqual({ application: 'lottery', page: 'lottery-detail', recordId: '2' });
+    expect(siderSelectedKey('lottery-create')).toBe('lottery-list');
+    expect(siderSelectedKey('lottery-edit')).toBe('lottery-list');
+    expect(siderSelectedKey('lottery-detail')).toBe('lottery-list');
+  });
+
+  it('shows 抽奖 in 全部应用 switcher but not in top-bar direct apps', () => {
+    expect(visibleApplications().map((item) => item.label)).toContain('抽奖');
+    expect(getDirectApplications(4).map((item) => item.key)).not.toContain('lottery');
+  });
+});
+
+describe('checkin application', () => {
+  it('registers 打卡 under 员工与组织 with checkin-list as default', () => {
+    expect(getApplication('checkin')).toEqual({
+      key: 'checkin',
+      label: '打卡',
+      category: '员工与组织',
+      icon: 'clock',
+      defaultPage: 'checkin-list',
+    });
+    const keys = applications.map((item) => item.key);
+    expect(keys.indexOf('checkin')).toBe(keys.indexOf('lottery') + 1);
+    expect(keys.indexOf('checkin')).toBe(keys.indexOf('care') - 1);
+  });
+
+  it('uses a single first-level menu for 打卡管理', () => {
+    expect(applicationMenus.checkin).toEqual([{ key: 'checkin-list', icon: 'clock', label: '打卡管理' }]);
+  });
+
+  it('parses leaf hash and falls back to 打卡管理', () => {
+    expect(parseLocationHash('#/checkin/checkin-list')).toEqual({ application: 'checkin', page: 'checkin-list' });
+    expect(parseLocationHash('#/checkin')).toEqual({ application: 'checkin', page: 'checkin-list' });
+    expect(parseLocationHash('#/checkin/not-a-page')).toEqual({ application: 'checkin', page: 'checkin-list' });
+  });
+
+  it('parses create, edit and detail hashes and keeps 打卡管理 selected', () => {
+    expect(parseLocationHash('#/checkin/checkin-create')).toEqual({ application: 'checkin', page: 'checkin-create' });
+    expect(parseLocationHash('#/checkin/checkin-edit/2')).toEqual({ application: 'checkin', page: 'checkin-edit', recordId: '2' });
+    expect(parseLocationHash('#/checkin/checkin-detail/2')).toEqual({ application: 'checkin', page: 'checkin-detail', recordId: '2' });
+    expect(siderSelectedKey('checkin-create')).toBe('checkin-list');
+    expect(siderSelectedKey('checkin-edit')).toBe('checkin-list');
+    expect(siderSelectedKey('checkin-detail')).toBe('checkin-list');
+  });
+
+  it('reads owner app query from checkin list hash', () => {
+    expect(parseLocationHash('#/checkin/checkin-list?app=skills-contest')).toEqual({
+      application: 'checkin',
+      page: 'checkin-list',
+      ownerApp: 'skills-contest',
+    });
+    expect(parseLocationHash('#/checkin/checkin-list?app=culture')).toEqual({
+      application: 'checkin',
+      page: 'checkin-list',
+      ownerApp: 'culture',
+    });
+  });
+
+  it('shows 打卡 in 全部应用 switcher but not in top-bar direct apps', () => {
+    expect(visibleApplications().map((item) => item.label)).toContain('打卡');
+    expect(getDirectApplications(4).map((item) => item.key)).not.toContain('checkin');
+  });
+});
+
 describe('experience application after interest-groups split', () => {
-  it('drops 社群运营 / 兴趣小组 from experience menus', () => {
+  it('drops 社群运营 / 兴趣圈 from experience menus', () => {
     const keys = applicationMenus.experience.flatMap((node) => [
       node.key,
       ...(node.children ?? []).map((child) => child.key),

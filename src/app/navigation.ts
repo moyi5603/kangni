@@ -16,6 +16,7 @@ export type NavIcon =
   | 'fileText'
   | 'gift'
   | 'heart'
+  | 'layout'
   | 'read'
   | 'rocket'
   | 'shopping'
@@ -25,7 +26,8 @@ export type NavIcon =
   | 'team'
   | 'trophy'
   | 'unorderedList'
-  | 'user';
+  | 'user'
+  | 'video';
 
 export type ApplicationMeta = {
   key: string;
@@ -33,6 +35,7 @@ export type ApplicationMeta = {
   category: ApplicationCategory;
   icon: NavIcon;
   defaultPage: string;
+  hiddenFromSwitcher?: boolean;
 };
 
 export type MenuNode = {
@@ -48,14 +51,18 @@ export const applications: ApplicationMeta[] = [
   { key: 'products', label: '商品管理', category: '业务经营', icon: 'tags', defaultPage: 'products' },
   { key: 'orders', label: '订单管理', category: '业务经营', icon: 'shoppingCart', defaultPage: 'orders-all' },
   { key: 'activities', label: '活动', category: '员工与组织', icon: 'calendar', defaultPage: 'activity-overview' },
-  { key: 'experience', label: '员工体验', category: '员工与组织', icon: 'heart', defaultPage: 'experience-articles' },
-  { key: 'interest-groups', label: '兴趣小组', category: '员工与组织', icon: 'team', defaultPage: 'interest-group-overview' },
-  { key: 'awards', label: '评优', category: '员工与组织', icon: 'trophy', defaultPage: 'award-overview' },
-  { key: 'voting', label: '投票', category: '员工与组织', icon: 'checkSquare', defaultPage: 'vote-overview' },
+  { key: 'experience', label: '员工体验', category: '员工与组织', icon: 'heart', defaultPage: 'experience-articles', hiddenFromSwitcher: true },
+  { key: 'interest-groups', label: '兴趣圈', category: '员工与组织', icon: 'team', defaultPage: 'interest-group-overview' },
+  { key: 'awards', label: '评优', category: '员工与组织', icon: 'trophy', defaultPage: 'award-overview', hiddenFromSwitcher: true },
+  { key: 'voting', label: '投票-废弃', category: '员工与组织', icon: 'checkSquare', defaultPage: 'vote-list', hiddenFromSwitcher: true },
+  { key: 'voting-v2', label: '投票', category: '员工与组织', icon: 'checkSquare', defaultPage: 'vote-v2-overview' },
   { key: 'training', label: '课程', category: '员工与组织', icon: 'book', defaultPage: 'training-overview' },
   { key: 'skills-contest', label: '技能大赛', category: '员工与组织', icon: 'trophy', defaultPage: 'contest-list' },
   { key: 'exam', label: '考试练习', category: '员工与组织', icon: 'fileText', defaultPage: 'exam-list' },
-  { key: 'care', label: '人文关怀', category: '员工与组织', icon: 'gift', defaultPage: 'care-plans' },
+  { key: 'live', label: '直播', category: '员工与组织', icon: 'video', defaultPage: 'live-list' },
+  { key: 'lottery', label: '抽奖', category: '员工与组织', icon: 'gift', defaultPage: 'lottery-list' },
+  { key: 'checkin', label: '打卡', category: '员工与组织', icon: 'clock', defaultPage: 'checkin-list' },
+  { key: 'care', label: '人文关怀', category: '员工与组织', icon: 'gift', defaultPage: 'care-plans', hiddenFromSwitcher: true },
   { key: 'operations', label: '业务运营', category: '平台能力', icon: 'appstore', defaultPage: 'application-list' },
 ];
 
@@ -70,6 +77,8 @@ export const applicationMenus: Record<string, MenuNode[]> = {
         { key: 'my-tasks', icon: 'checkSquare', label: '我的待办' },
       ],
     },
+    { key: 'h5-decoration', icon: 'layout', label: 'H5装修' },
+    { key: 'pc-decoration', icon: 'appstore', label: 'PC装修' },
   ],
   organization: [
     {
@@ -114,7 +123,8 @@ export const applicationMenus: Record<string, MenuNode[]> = {
     { key: 'activity-overview', icon: 'dashboard', label: '概览' },
     { key: 'activity-list', icon: 'unorderedList', label: '活动管理' },
     { key: 'activity-categories', icon: 'appstore', label: '分类管理' },
-    { key: 'activity-rules', icon: 'fileText', label: '规则设置' },
+    { key: 'activity-rules', icon: 'fileText', label: '规则设置（仅演示）' },
+    { key: 'activity-layout', icon: 'layout', label: '活动装修（仅演示）' },
   ],
   experience: [
     {
@@ -132,10 +142,11 @@ export const applicationMenus: Record<string, MenuNode[]> = {
   ],
   'interest-groups': [
     { key: 'interest-group-overview', icon: 'dashboard', label: '概览' },
-    { key: 'interest-group-list', icon: 'team', label: '小组管理' },
+    { key: 'interest-group-list', icon: 'team', label: '兴趣圈管理' },
     { key: 'interest-group-activities', icon: 'calendar', label: '活动管理' },
     { key: 'interest-group-categories', icon: 'appstore', label: '分类管理' },
     { key: 'interest-group-rules', icon: 'fileText', label: '规则设置' },
+    { key: 'interest-group-layout', icon: 'layout', label: '兴趣圈装修（仅演示）' },
   ],
   awards: [
     { key: 'award-overview', icon: 'dashboard', label: '概览' },
@@ -143,8 +154,12 @@ export const applicationMenus: Record<string, MenuNode[]> = {
     { key: 'award-certificates', icon: 'gift', label: '评优证书' },
   ],
   voting: [
-    { key: 'vote-overview', icon: 'dashboard', label: '概览' },
     { key: 'vote-list', icon: 'checkSquare', label: '投票管理' },
+  ],
+  'voting-v2': [
+    { key: 'vote-v2-overview', icon: 'dashboard', label: '概览' },
+    { key: 'vote-v2-list', icon: 'checkSquare', label: '投票管理' },
+    { key: 'vote-v2-layout', icon: 'layout', label: '投票装修（仅演示）' },
   ],
   training: [
     { key: 'training-overview', icon: 'dashboard', label: '概览' },
@@ -156,6 +171,7 @@ export const applicationMenus: Record<string, MenuNode[]> = {
     { key: 'contest-list', icon: 'trophy', label: '赛事管理' },
     { key: 'signup-list', icon: 'unorderedList', label: '报名' },
     { key: 'score-list', icon: 'checkCircle', label: '成绩' },
+    { key: 'contest-checkin', icon: 'clock', label: '打卡' },
   ],
   exam: [
     { key: 'exam-overview', icon: 'dashboard', label: '概览' },
@@ -176,6 +192,15 @@ export const applicationMenus: Record<string, MenuNode[]> = {
       label: '练习',
       children: [{ key: 'practice-questions', icon: 'unorderedList', label: '习题库' }],
     },
+  ],
+  live: [
+    { key: 'live-list', icon: 'video', label: '直播管理' },
+  ],
+  lottery: [
+    { key: 'lottery-list', icon: 'gift', label: '抽奖管理' },
+  ],
+  checkin: [
+    { key: 'checkin-list', icon: 'clock', label: '打卡管理' },
   ],
   care: [
     {
@@ -214,8 +239,12 @@ export function getApplication(key: string): ApplicationMeta | undefined {
   return applications.find((item) => item.key === key);
 }
 
+export function visibleApplications(): ApplicationMeta[] {
+  return applications.filter((item) => !item.hiddenFromSwitcher);
+}
+
 export function getDirectApplications(max: number): ApplicationMeta[] {
-  return applications.slice(0, max);
+  return visibleApplications().slice(0, max);
 }
 
 export function isLeafMenuKey(nodes: MenuNode[], key: string): boolean {
@@ -259,6 +288,7 @@ export type H5Page =
   | 'favorites'
   | 'signup'
   | 'checkin'
+  | 'ig-checkin'
   | 'exams'
   | 'exam-prep'
   | 'exam-taking'
@@ -269,13 +299,19 @@ export type H5Page =
   | 'honor'
   | 'honor-admin'
   | 'interest-groups'
+  | 'ig-past-moments'
   | 'votes'
+  | 'votes-v2'
+  | 'vote-v2-home'
+  | 'vote-v2-option'
+  | 'vote-v2-records'
   | 'vote-records'
   | 'vote-record'
   | 'vote-detail'
   | 'vote-taking'
   | 'vote-results'
   | 'activity-list'
+  | 'activity-search'
   | 'past-moments';
 
 export type CEndLocation =
@@ -288,6 +324,8 @@ export type CEndLocation =
       courseId?: number;
       examId?: number;
       voteId?: number;
+      voteV2Id?: number;
+      voteV2OptionId?: number;
       voteResponseId?: number;
       h5Page?: H5Page;
     };
@@ -332,6 +370,7 @@ export function parseCEndHash(hash: string): CEndLocation {
   if (surface !== 'h5' && surface !== 'pc') return { kind: 'admin' };
   if (rawId == null || rawId === '') return { kind: 'c-end', surface };
   if (rawId === 'my') return { kind: 'c-end', surface, h5Page: 'my' };
+  if (rawId === 'search') return { kind: 'c-end', surface, h5Page: 'activity-search' };
   if (rawId === 'list') return { kind: 'c-end', surface, h5Page: 'activity-list' };
   if (rawId === 'moments') return { kind: 'c-end', surface, h5Page: 'past-moments' };
   if (rawId === 'courses' || rawId === 'courses-mall') {
@@ -346,7 +385,14 @@ export function parseCEndHash(hash: string): CEndLocation {
   if (rawId === 'favorites') return { kind: 'c-end', surface, h5Page: 'favorites' };
   if (rawId === 'honor-admin') return { kind: 'c-end', surface, h5Page: 'honor-admin' };
   if (rawId === 'honor') return { kind: 'c-end', surface, h5Page: 'honor' };
-  if (rawId === 'interest-groups') return { kind: 'c-end', surface, h5Page: 'interest-groups' };
+  if (rawId === 'interest-groups') {
+    if (extra === 'moments') return { kind: 'c-end', surface, h5Page: 'ig-past-moments' };
+    return { kind: 'c-end', surface, h5Page: 'interest-groups' };
+  }
+  const igActToken = /^ig-act-(\d+)$/.exec(rawId);
+  if (igActToken && extra === 'checkin') {
+    return { kind: 'c-end', surface, activityId: Number(igActToken[1]), h5Page: 'ig-checkin' };
+  }
   if (rawId === 'exams') {
     if (extra) {
       const examId = Number(extra);
@@ -355,6 +401,10 @@ export function parseCEndHash(hash: string): CEndLocation {
       }
     }
     return { kind: 'c-end', surface, h5Page: 'exams' };
+  }
+  if (rawId === 'votes-v2') {
+    if (extra === 'mine') return { kind: 'c-end', surface, h5Page: 'vote-v2-records' };
+    return { kind: 'c-end', surface, h5Page: 'votes-v2' };
   }
   if (rawId === 'votes') {
     if (extra === 'mine') {
@@ -367,6 +417,17 @@ export function parseCEndHash(hash: string): CEndLocation {
       return { kind: 'c-end', surface, h5Page: 'vote-records' };
     }
     return { kind: 'c-end', surface, h5Page: 'votes' };
+  }
+  const voteV2Token = /^vote-v2-(\d+)$/.exec(rawId);
+  if (voteV2Token) {
+    const optionToken = extra ? /^option-(\d+)$/.exec(extra) : null;
+    return {
+      kind: 'c-end',
+      surface,
+      h5Page: optionToken ? 'vote-v2-option' : 'vote-v2-home',
+      voteV2Id: Number(voteV2Token[1]),
+      voteV2OptionId: optionToken ? Number(optionToken[1]) : undefined,
+    };
   }
   const voteToken = /^vote-(\d+)$/.exec(rawId);
   if (voteToken) {
@@ -429,12 +490,24 @@ export function toH5ActivityListHash(): string {
   return '#/c/h5/list';
 }
 
+export function toH5ActivitySearchHash(): string {
+  return '#/c/h5/search';
+}
+
 export function toPcActivityListHash(): string {
   return '#/c/pc/list';
 }
 
+export function toPcActivitySearchHash(): string {
+  return '#/c/pc/search';
+}
+
 export function goCEndActivityList(surface: CEndSurface) {
   window.location.hash = surface === 'h5' ? toH5ActivityListHash() : toPcActivityListHash();
+}
+
+export function goCEndActivitySearch(surface: CEndSurface) {
+  window.location.hash = surface === 'h5' ? toH5ActivitySearchHash() : toPcActivitySearchHash();
 }
 
 export function toH5PastMomentsHash(): string {
@@ -467,6 +540,54 @@ export function toVoteListHash(surface: CEndSurface): string {
 
 export function toH5VoteListHash(): string {
   return toVoteListHash('h5');
+}
+
+export function toVoteV2ListHash(surface: CEndSurface): string {
+  return `#/c/${surface}/votes-v2`;
+}
+
+export function toH5VoteV2ListHash(): string {
+  return toVoteV2ListHash('h5');
+}
+
+export function toPcVoteV2ListHash(): string {
+  return toVoteV2ListHash('pc');
+}
+
+export function toVoteV2RecordsHash(surface: CEndSurface): string {
+  return `#/c/${surface}/votes-v2/mine`;
+}
+
+export function toH5VoteV2RecordsHash(): string {
+  return toVoteV2RecordsHash('h5');
+}
+
+export function toPcVoteV2RecordsHash(): string {
+  return toVoteV2RecordsHash('pc');
+}
+
+export function toVoteV2HomeHash(surface: CEndSurface, id: number): string {
+  return `#/c/${surface}/vote-v2-${id}`;
+}
+
+export function toH5VoteV2HomeHash(id: number): string {
+  return toVoteV2HomeHash('h5', id);
+}
+
+export function toPcVoteV2HomeHash(id: number): string {
+  return toVoteV2HomeHash('pc', id);
+}
+
+export function toVoteV2OptionHash(surface: CEndSurface, campaignId: number, optionId: number): string {
+  return `#/c/${surface}/vote-v2-${campaignId}/option-${optionId}`;
+}
+
+export function toH5VoteV2OptionHash(campaignId: number, optionId: number): string {
+  return toVoteV2OptionHash('h5', campaignId, optionId);
+}
+
+export function toPcVoteV2OptionHash(campaignId: number, optionId: number): string {
+  return toVoteV2OptionHash('pc', campaignId, optionId);
 }
 
 export function toPcVoteListHash(): string {
@@ -571,6 +692,18 @@ export function toPcInterestGroupsHash(): string {
 
 export function goPcInterestGroups() {
   window.location.hash = toPcInterestGroupsHash();
+}
+
+export function toH5IgPastMomentsHash(): string {
+  return '#/c/h5/interest-groups/moments';
+}
+
+export function toPcIgPastMomentsHash(): string {
+  return '#/c/pc/interest-groups/moments';
+}
+
+export function goCEndIgPastMoments(surface: CEndSurface) {
+  window.location.hash = surface === 'h5' ? toH5IgPastMomentsHash() : toPcIgPastMomentsHash();
 }
 
 export function toH5HonorHash(): string {
@@ -749,11 +882,20 @@ export function goAdminWorkbench() {
   window.location.hash = '#/workbench/dashboard';
 }
 
-export function parseLocationHash(hash: string): { application: string; page: string; recordId?: string; tab?: string } {
+export function parseLocationHash(hash: string): {
+  application: string;
+  page: string;
+  recordId?: string;
+  tab?: string;
+  ownerApp?: 'culture' | 'skills-contest';
+} {
   const fallback = { application: 'workbench', page: 'dashboard' };
   const path = hash.replace(/^#\/?/, '').trim();
   if (!path) return fallback;
-  const [applicationKey, pageKey, recordId, tab] = path.split('/');
+  const [pathname, queryString] = path.split('?');
+  const [applicationKey, pageKey, recordId, tab] = pathname.split('/');
+  const appQuery = new URLSearchParams(queryString ?? '').get('app');
+  const ownerApp = appQuery === 'culture' || appQuery === 'skills-contest' ? appQuery : undefined;
   const application = getApplication(applicationKey);
   if (!application) return fallback;
   const menus = applicationMenus[application.key] ?? [];
@@ -786,9 +928,34 @@ export function parseLocationHash(hash: string): { application: string; page: st
     'vote-create',
     'vote-edit',
     'vote-detail',
+    'vote-v2-create',
+    'vote-v2-edit',
+    'vote-v2-detail',
+    'vote-v2-players',
+    'activity-layout-mobile',
+    'activity-layout-pc',
+    'interest-group-layout-mobile',
+    'interest-group-layout-pc',
+    'vote-v2-layout-mobile',
+    'vote-v2-layout-pc',
+    'live-create',
+    'live-edit',
+    'live-detail',
+    'lottery-create',
+    'lottery-edit',
+    'lottery-detail',
+    'checkin-create',
+    'checkin-edit',
+    'checkin-detail',
   ];
   if (pageKey && (isLeafMenuKey(menus, pageKey) || extraPages.includes(pageKey))) {
-    return tab ? { application: application.key, page: pageKey, recordId, tab } : { application: application.key, page: pageKey, recordId };
+    return {
+      application: application.key,
+      page: pageKey,
+      recordId,
+      ...(tab ? { tab } : {}),
+      ...(ownerApp ? { ownerApp } : {}),
+    };
   }
   const legacyRelatedTabs: Record<string, string> = {
     'activity-signups': 'signups',
@@ -800,9 +967,9 @@ export function parseLocationHash(hash: string): { application: string; page: st
     return { application: 'activities', page: 'activity-detail', recordId, tab: legacyRelatedTabs[pageKey] };
   }
   if (application.key === 'training' && pageKey === 'course-comments' && recordId) {
-    return { application: 'training', page: 'course-detail', recordId, tab: 'comments' };
+    return { application: 'training', page: 'course-detail', recordId, tab: 'comments', ...(ownerApp ? { ownerApp } : {}) };
   }
-  return { application: application.key, page: application.defaultPage };
+  return { application: application.key, page: application.defaultPage, ...(ownerApp ? { ownerApp } : {}) };
 }
 
 export function toLocationHash(application: string, page: string, recordId?: string, tab?: string): string {
@@ -844,6 +1011,27 @@ export function siderSelectedKey(page: string): string {
   }
   if (page === 'vote-create' || page === 'vote-edit' || page === 'vote-detail') {
     return 'vote-list';
+  }
+  if (page === 'vote-v2-create' || page === 'vote-v2-edit' || page === 'vote-v2-detail' || page === 'vote-v2-players') {
+    return 'vote-v2-list';
+  }
+  if (page === 'activity-layout-mobile' || page === 'activity-layout-pc') {
+    return 'activity-layout';
+  }
+  if (page === 'interest-group-layout-mobile' || page === 'interest-group-layout-pc') {
+    return 'interest-group-layout';
+  }
+  if (page === 'vote-v2-layout-mobile' || page === 'vote-v2-layout-pc') {
+    return 'vote-v2-layout';
+  }
+  if (page === 'live-create' || page === 'live-edit' || page === 'live-detail') {
+    return 'live-list';
+  }
+  if (page === 'lottery-create' || page === 'lottery-edit' || page === 'lottery-detail') {
+    return 'lottery-list';
+  }
+  if (page === 'checkin-create' || page === 'checkin-edit' || page === 'checkin-detail') {
+    return 'checkin-list';
   }
   return page;
 }
