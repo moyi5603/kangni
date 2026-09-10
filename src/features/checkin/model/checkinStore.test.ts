@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { __resetCheckinStoreForTests, distinctCheckinUsers, removeTheme, submitUserCheckin } from './checkinStore';
+import {
+  __resetCheckinStoreForTests,
+  distinctCheckinUsers,
+  removeTheme,
+  setLotteryLinkCounter,
+  submitUserCheckin,
+} from './checkinStore';
 
 describe('checkinStore', () => {
   beforeEach(() => {
@@ -19,5 +25,10 @@ describe('checkinStore', () => {
 
   it('blocks removeTheme when logs exist', () => {
     expect(removeTheme(1).ok).toBe(false);
+  });
+
+  it('blocks removeTheme when lottery links exist', () => {
+    setLotteryLinkCounter(() => 1);
+    expect(removeTheme(3).ok).toBe(false);
   });
 });
