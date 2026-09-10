@@ -53,4 +53,18 @@ describe('LearningPlanFormPage', () => {
     expect(html).toContain('disabled');
     expect(html).toContain('每日内容');
   });
+
+  it('tasks tab shows stages and course type without course random draw', () => {
+    const renderTasks = () =>
+      renderToStaticMarkup(
+        <App>
+          <LearningPlanFormPage initialTab="tasks" mode="create" onBack={noop} onSaved={noop} />
+        </App>,
+      );
+    for (const html of [renderTasks(), renderTasks(), renderTasks()]) {
+      expect(html).toContain('添加阶段');
+      expect(html).toContain('课程');
+      expect(html).not.toContain('随机抽课');
+    }
+  });
 });
