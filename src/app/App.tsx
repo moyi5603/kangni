@@ -31,6 +31,7 @@ import {
 import { Avatar, Badge, Breadcrumb, Button, Drawer, Flex, Layout, Menu, Popover, Space, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import { PlaceholderPage } from '../features/shell/pages/PlaceholderPage';
+import { scanActivitySignupApprovals } from '../features/activities/model/related';
 import { LiveListPage } from '../features/live/pages/LiveListPage';
 import { LiveFormPage } from '../features/live/pages/LiveFormPage';
 import { LiveDetailPage } from '../features/live/pages/LiveDetailPage';
@@ -199,6 +200,12 @@ export function App() {
     const onChange = () => setHash(window.location.hash);
     window.addEventListener('hashchange', onChange);
     return () => window.removeEventListener('hashchange', onChange);
+  }, []);
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      scanActivitySignupApprovals();
+    }, 30_000);
+    return () => window.clearInterval(timer);
   }, []);
   const cEnd = parseCEndHash(hash);
   if (cEnd.kind === 'preview') {
