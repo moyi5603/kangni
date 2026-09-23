@@ -125,7 +125,7 @@ function enterFrom(
           anchorDepartmentIds: departmentIds,
           lastPassedBy: passedBy ?? base.lastPassedBy,
           rejectedNodeIndex: undefined,
-          rejectReason: undefined,
+          rejectReason: base.rejectReason,
           approvalNotices: base.approvalNotices,
           approvalSkipLog: skipLog,
         }, notices);
@@ -174,7 +174,7 @@ function enterFrom(
           anchorDepartmentIds: departmentIds,
         lastPassedBy: passedBy ?? base.lastPassedBy,
         rejectedNodeIndex: undefined,
-        rejectReason: undefined,
+        rejectReason: base.rejectReason,
         approvalNotices: base.approvalNotices,
         approvalSkipLog: skipLog,
       }, notices);
@@ -201,7 +201,7 @@ function enterFrom(
     anchorDepartmentIds: departmentIds,
     lastPassedBy: passedBy ?? base.lastPassedBy,
     rejectedNodeIndex: undefined,
-    rejectReason: undefined,
+    rejectReason: base.rejectReason,
     approvalNotices: base.approvalNotices,
     approvalSkipLog: skipLog,
   }, notices);
@@ -230,6 +230,7 @@ export function passSignupNode(state: SignupAuditState, approverName: string, or
     approvalNotices: state.approvalNotices,
     approvalSkipLog: state.approvalSkipLog,
     lastPassedBy: approverName,
+    rejectReason: state.rejectReason,
   });
 }
 
@@ -342,6 +343,7 @@ export function scanSignupAbsence(state: SignupAuditState, org: SignupOrg): Sign
     approvalNotices: notices,
     approvalSkipLog: state.approvalSkipLog,
     lastPassedBy: state.lastPassedBy,
+    rejectReason: state.rejectReason,
   });
   if (next.status === '已通过' && !next.approvalNotices.includes('审批流已完成，报名已通过')) {
     return { ...next, approvalNotices: [...next.approvalNotices, '审批流已完成，报名已通过'] };

@@ -234,6 +234,15 @@ describe('reject and resume', () => {
     expect(resumed.approvalSkipLog).toEqual([]);
     expect(resumed.rejectReason).toBe('资料不全');
   });
+
+  it('keeps the reject reason after the next pass', () => {
+    const started = startSignupAudit('报名人', [people('王五'), people('李四')], org);
+    const rejected = rejectSignupNode(started, '资料不全');
+    const resumed = resumeRejectedSignup(rejected, '报名人', [people('王五'), people('李四')], org);
+    const passed = passSignupNode(resumed, '王五', org);
+    expect(passed.rejectReason).toBe('资料不全');
+    expect(passed.currentReviewerIds).toEqual(['李四']);
+  });
 });
 
 describe('scanSignupAbsence', () => {
