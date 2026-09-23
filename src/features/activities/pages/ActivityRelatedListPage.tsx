@@ -1,4 +1,4 @@
-import { useMemo, useState, type Key, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type Key, type ReactNode } from 'react';
 import { PlusOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons';
 import {
   App,
@@ -55,6 +55,7 @@ import {
 import {
   approveSignupRecord,
   patchRelated,
+  refreshActivitySignupLeaders,
   signupStatuses,
   surveyStatuses,
   useRelated,
@@ -68,6 +69,8 @@ import { activityAdminSelf, adminReplyActivityComment } from '../model/activityC
 import { AdminReplyFormItems } from '../components/AdminReplyAccountSelect';
 import { employeeAvatarColor, employeeAvatarLetter } from '../model/employeeAvatar';
 import { filterBySessionId } from '../model/sessionSignupOverview';
+import { passSignupNode, readSignupAudit, rejectSignupNode, writeSignupAudit } from '../model/signupApprovalFlow';
+import { activitySignupOrg } from '../model/signupOrg';
 
 type DateRange = [Dayjs | null, Dayjs | null] | null;
 
@@ -330,6 +333,9 @@ export function SignupList({ activity }: { activity: Activity }) {
   const { message, modal } = App.useApp();
   const { promptReject, rejectReasonModal } = useRejectReasonPrompt();
   const data = useRelated('signups', activity.id);
+  useEffect(() => {
+    refreshActivitySignupLeaders();
+  }, [activity.id]);
   const signupFields = useMemo(() => activity.signupFields ?? [], [activity.signupFields]);
   const defaultSignupType = useMemo(
     () => activitySignupTypes(activity)[0] || '个人报名',
@@ -397,20 +403,34 @@ export function SignupList({ activity }: { activity: Activity }) {
       },
     });
   };
+  const applyPassed = (record: SignupRecord) => {
+    const state = readSignupAudit(record);
+    if (!state) return approveSignupRecord(record, activity.signupApprovalNodes.length);
+    const approver = record.currentReviewerIds?.[0];
+    if (!approver) return record;
+    return writeSignupAudit(record, passSignupNode(state, approver, activitySignupOrg()));
+  };
+  const applyRejected = (record: SignupRecord, reason?: string) => {
+    const state = readSignupAudit(record);
+    if (!state) return { ...record, status: '已驳回' as const, rejectReason: reason || undefined };
+    return writeSignupAudit(record, rejectSignupNode(state, reason || undefined));
+  };
   const approveOne = (record: SignupRecord) => {
     modal.confirm({
       title: `确认通过「${record.name}」的报名？`,
-      content: '通过后该人员可参加本活动。',
+      content: record.currentReviewerIds?.length ? `当前审批人：${record.currentReviewerIds.join('、')}。通过后进入下一节点。` : '通过后该人员可参加本活动。',
       okText: '确认',
       cancelText: '取消',
       footer: modalFooter,
       onOk: () => {
-        const totalNodes = activity.signupApprovalNodes.length;
-        const next = approveSignupRecord(record, totalNodes);
+        const before = record.approvalNotices?.length ?? 0;
+        const next = applyPassed(record);
         patchRelated('signups', (list) => list.map((item) => (item.id === record.id ? next : item)));
+        const fresh = next.approvalNotices?.slice(before) ?? [];
+        if (fresh.length) message.info(fresh.join('；'));
         message.success(
           next.status === '待审核'
-            ? `已通过第 ${(record.currentNodeIndex ?? 0) + 1} 节点，待下一节点审核`
+            ? `已通过第 ${(record.currentNodeIndex ?? 0) + 1} 节点，待${next.currentReviewerIds?.join('、') || '下一节点'}审核`
             : `已通过「${record.name}」的报名`,
         );
       },
@@ -419,15 +439,9 @@ export function SignupList({ activity }: { activity: Activity }) {
   const rejectOne = (record: SignupRecord) => {
     promptReject({
       title: `确认驳回「${record.name}」的报名？`,
-      description: '驳回后该人员将无法参加本活动。',
+      description: '驳回后整单结束。报名人可再次报名，已通过的节点会跳过，从本节点继续。',
       onConfirm: (reason) => {
-        patchRelated('signups', (list) =>
-          list.map((item) =>
-            item.id === record.id
-              ? { ...item, status: '已驳回' as const, rejectReason: reason || undefined }
-              : item,
-          ),
-        );
+        patchRelated('signups', (list) => list.map((item) => (item.id === record.id ? applyRejected(item, reason) : item)));
         message.success(`已驳回「${record.name}」的报名`);
       },
     });
@@ -517,17 +531,12 @@ export function SignupList({ activity }: { activity: Activity }) {
       return;
     }
     const ids = new Set(targets.map((item) => item.id));
-    const rejectReason = status === '已驳回' ? reason || undefined : undefined;
-    const totalNodes = activity.signupApprovalNodes.length;
     patchRelated('signups', (list) =>
       list.map((item) => {
         if (!ids.has(item.id)) return item;
-        if (status === '已通过') return approveSignupRecord(item, totalNodes);
-        return {
-          ...item,
-          status,
-          rejectReason: status === '已驳回' ? rejectReason : item.rejectReason,
-        };
+        if (status === '已通过') return applyPassed(item);
+        if (status === '已驳回') return applyRejected(item, reason);
+        return item;
       }),
     );
     message.success(`已${label} ${targets.length} 条报名`);
@@ -588,6 +597,15 @@ export function SignupList({ activity }: { activity: Activity }) {
         ]
       : []),
     { title: '状态', dataIndex: 'status', width: 110, render: (value: string) => <Tag color={statusColor[value]}>{value}</Tag> },
+    {
+      title: '当前审批人',
+      dataIndex: 'currentReviewerIds',
+      width: 160,
+      ellipsis: true,
+      render: (value: string[] | undefined, record) => (
+        <TableEllipsisText text={record.status === '待审核' && value?.length ? value.join('、') : '—'} />
+      ),
+    },
     { title: '报名时间', dataIndex: 'createdAt', width: 180 },
     ...(activity.checkInEnabled
       ? [
@@ -867,6 +885,12 @@ export function SignupList({ activity }: { activity: Activity }) {
                     label: field.label,
                     children: formatSignupAnswerValue(field, resolveSignupRecordAnswers(detailRecord)[field.key]),
                   })),
+                  ...(detailRecord.currentReviewerIds?.length && detailRecord.status === '待审核'
+                    ? [{ key: 'reviewers', label: '当前审批人', children: detailRecord.currentReviewerIds.join('、') }]
+                    : []),
+                  ...(detailRecord.approvalNotices?.length
+                    ? [{ key: 'notices', label: '审批通知', children: detailRecord.approvalNotices.join('；') }]
+                    : []),
                   ...(detailRecord.rejectReason
                     ? [{ key: 'rejectReason', label: '驳回原因', children: detailRecord.rejectReason }]
                     : []),

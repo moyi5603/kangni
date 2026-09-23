@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { initialActivities } from './activity';
+import type { ApprovalNode } from './rules';
+import { readSignupAudit, refreshSignupLeaders, scanSignupAbsence, startSignupAudit, writeSignupAudit } from './signupApprovalFlow';
+import { activitySignupOrg } from './signupOrg';
 import { parseSessionIds, stringifySessionIds } from './activitySchedule';
 import { initialMedals } from './medalLibrary';
 import { applyOrganizerSignups } from './organizerSignupApply';
@@ -60,6 +63,15 @@ export type SignupRecord = BaseRecord & {
   accountPhone?: string;
   /** 报名审核当前节点下标（0 起），仅待审核时有意义 */
   currentNodeIndex?: number;
+  /** 提交时抄下的审批节点表，在途单不跟活动上的新流程 */
+  flowSnapshot?: ApprovalNode[];
+  currentReviewerIds?: string[];
+  anchorDepartmentIds?: string[];
+  lastPassedBy?: string;
+  rejectedNodeIndex?: number;
+  applicantName?: string;
+  approvalNotices?: string[];
+  approvalSkipLog?: string[];
   answers?: Record<string, string>;
   rejectReason?: string;
   checkIns?: Record<string, string>;
@@ -201,7 +213,13 @@ const initialRelated: RelatedMaps = {
     { id: 1, activityId: 1, name: '张悦', phone: '13800001001', signupType: '个人报名', department: '前端组', status: '已通过', createdAt: '2026-03-25 11:20:00' },
     { id: 2, activityId: 1, name: '李明', phone: '13800001002', signupType: '个人报名', department: '前端组', status: '已通过', createdAt: '2026-03-25 14:08:00' },
     { id: 14, activityId: 1, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '华东大区', status: '已通过', createdAt: '2026-04-12 10:00:00', answers: { 性别: '男', 年龄: '32', 同行人: '[{"姓名":"李小明","手机号":"13900002222"}]' } },
-    { id: 900, activityId: 28, name: '陈产品', phone: '13800001111', accountPhone: '13800001111', signupType: '个人报名', department: '华东大区', status: '待审核', currentNodeIndex: 0, createdAt: '2026-08-30 10:00:00' },
+    writeSignupAudit(
+      { id: 900, activityId: 28, name: '陈产品', phone: '13800001111', accountPhone: '13800001111', signupType: '个人报名', department: '华东大区', status: '待审核', createdAt: '2026-08-30 10:00:00' },
+      startSignupAudit('陈产品', [
+        { id: 'vol-audit-1', assigneeMode: 'people', reviewerIds: ['张悦', '李明'] },
+        { id: 'vol-audit-2', assigneeMode: 'sameLevelLeader', reviewerIds: [] },
+      ], activitySignupOrg()),
+    ),
     { id: 3, activityId: 2, name: '王芳', phone: '13800001003', signupType: '个人报名', department: '后端组', status: '待审核', createdAt: '2026-08-05 09:12:00', answers: campAnswers() },
     { id: 4, activityId: 2, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '华东大区', status: '已通过', createdAt: '2026-08-18 16:00:00', answers: campAnswers({ 分组选择: '技术组', 岗位: '产品经理' }) },
     { id: 6, activityId: 2, name: '张悦', phone: '13800001001', signupType: '个人报名', department: '前端组', status: '已通过', createdAt: '2026-08-02 09:18:00', answers: campAnswers({ 分组选择: '技术组', 岗位: '前端工程师' }) },
@@ -379,6 +397,34 @@ export function useAllRelated<K extends RelatedKind>(kind: K): RelatedMaps[K] {
 export function patchRelated<K extends RelatedKind>(kind: K, updater: (list: RelatedMaps[K]) => RelatedMaps[K]) {
   related = { ...related, [kind]: updater(related[kind]) };
   emit();
+}
+
+export function scanActivitySignupApprovals() {
+  const org = activitySignupOrg();
+  let changed = false;
+  const next = related.signups.map((item) => {
+    const state = readSignupAudit(item);
+    if (!state || state.status !== '待审核') return item;
+    const scanned = scanSignupAbsence(state, org);
+    if (scanned === state) return item;
+    changed = true;
+    return writeSignupAudit(item, scanned);
+  });
+  if (changed) patchRelated('signups', () => next);
+}
+
+export function refreshActivitySignupLeaders() {
+  const org = activitySignupOrg();
+  let changed = false;
+  const next = related.signups.map((item) => {
+    const state = readSignupAudit(item);
+    if (!state || state.status !== '待审核') return item;
+    const refreshed = refreshSignupLeaders(state, org);
+    if (refreshed === state) return item;
+    changed = true;
+    return writeSignupAudit(item, refreshed);
+  });
+  if (changed) patchRelated('signups', () => next);
 }
 
 export function approveSignupRecord(record: SignupRecord, totalNodes: number): SignupRecord {

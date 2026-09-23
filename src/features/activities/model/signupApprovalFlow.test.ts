@@ -4,6 +4,7 @@ import {
   passSignupNode,
   rejectSignupNode,
   resumeRejectedSignup,
+  refreshSignupLeaders,
   scanSignupAbsence,
   startSignupAudit,
   validateApprovalNodes,
@@ -275,6 +276,113 @@ describe('scanSignupAbsence', () => {
     const scanned = scanSignupAbsence(started, transferred);
     expect(scanned.currentReviewerIds).toEqual(['王五']);
     expect(scanned.currentNodeIndex).toBe(0);
+  });
+});
+
+describe('refreshSignupLeaders', () => {
+  it('replaces an active department leader who transferred', () => {
+    const started = startSignupAudit('报名人', [same('a')], org);
+    const transferred = directory(
+      [
+        { name: '报名人', departmentId: '前端组', presence: '在职' },
+        { name: '王五', departmentId: '财务', presence: '在职' },
+        { name: '赵六', departmentId: '前端组', presence: '在职' },
+      ],
+      { 前端组: ['赵六'], 财务: ['王五'] },
+      { 前端组: '研发中心' },
+    );
+    const refreshed = refreshSignupLeaders(started, transferred);
+    expect(refreshed.currentReviewerIds).toEqual(['赵六']);
+    expect(refreshed.currentNodeIndex).toBe(0);
+    expect(refreshed.anchorDepartmentIds).toEqual(started.anchorDepartmentIds);
+    expect(refreshed.approvalNotices).toEqual(started.approvalNotices);
+  });
+
+  it('replaces the whole leader set with whoever holds the post now', () => {
+    const both = directory(
+      [
+        { name: '报名人', departmentId: '前端组', presence: '在职' },
+        { name: '王五', departmentId: '前端组', presence: '在职' },
+        { name: '赵六', departmentId: '前端组', presence: '在职' },
+      ],
+      { 前端组: ['王五', '赵六'] },
+      {},
+    );
+    const started = startSignupAudit('报名人', [same('a')], both);
+    const later = directory(
+      [
+        { name: '报名人', departmentId: '前端组', presence: '在职' },
+        { name: '王五', departmentId: '财务', presence: '在职' },
+        { name: '赵六', departmentId: '前端组', presence: '在职' },
+      ],
+      { 前端组: ['赵六'], 财务: ['王五'] },
+      {},
+    );
+    expect(refreshSignupLeaders(started, later).currentReviewerIds).toEqual(['赵六']);
+  });
+
+  it('replaces a parent-department leader who no longer holds that post', () => {
+    const started = startSignupAudit('报名人', [parent('b')], org);
+    expect(started.currentReviewerIds).toEqual(['钱七']);
+    const later = directory(
+      [
+        { name: '报名人', departmentId: '前端组', presence: '在职' },
+        { name: '钱七', departmentId: '财务', presence: '在职' },
+        { name: '孙八', departmentId: '研发中心', presence: '在职' },
+      ],
+      { 研发中心: ['孙八'], 财务: ['钱七'] },
+      { 前端组: '研发中心' },
+    );
+    const refreshed = refreshSignupLeaders(started, later);
+    expect(refreshed.currentReviewerIds).toEqual(['孙八']);
+    expect(refreshed.anchorDepartmentIds).toEqual(['前端组']);
+    expect(refreshed.approvalNotices).toEqual([]);
+  });
+
+  it('does not replace a named approver who transferred', () => {
+    const started = startSignupAudit('报名人', [people('王五')], org);
+    const transferred = directory(
+      [
+        { name: '报名人', departmentId: '前端组', presence: '在职' },
+        { name: '王五', departmentId: '财务', presence: '在职' },
+      ],
+      { 前端组: ['赵六'], 财务: ['王五'] },
+      {},
+    );
+    expect(refreshSignupLeaders(started, transferred)).toBe(started);
+  });
+
+  it('skips with a missing notice when the current post holder is absent', () => {
+    const started = startSignupAudit('报名人', [same('a'), people('李四')], org);
+    const later = directory(
+      [
+        { name: '报名人', departmentId: '前端组', presence: '在职' },
+        { name: '王五', departmentId: '财务', presence: '在职' },
+        { name: '赵六', departmentId: '前端组', presence: '离职' },
+        { name: '李四', departmentId: '产品中心', presence: '在职' },
+      ],
+      { 前端组: ['赵六'], 财务: ['王五'] },
+      {},
+    );
+    const refreshed = refreshSignupLeaders(started, later);
+    expect(refreshed.currentNodeIndex).toBe(1);
+    expect(refreshed.currentReviewerIds).toEqual(['李四']);
+    expect(refreshed.approvalNotices.join('\n')).toContain('第 1 节点「前端组」本部门负责人缺失');
+  });
+
+  it('leaves an already inactive reviewer for the absence scan', () => {
+    const started = startSignupAudit('报名人', [same('a')], org);
+    const later = directory(
+      [
+        { name: '报名人', departmentId: '前端组', presence: '在职' },
+        { name: '王五', departmentId: '前端组', presence: '停用' },
+        { name: '赵六', departmentId: '前端组', presence: '在职' },
+      ],
+      { 前端组: ['赵六'] },
+      {},
+    );
+    expect(refreshSignupLeaders(started, later)).toBe(started);
+    expect(scanSignupAbsence(started, later).currentReviewerIds).not.toEqual(['赵六']);
   });
 });
 

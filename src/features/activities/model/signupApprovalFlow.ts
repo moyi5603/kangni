@@ -348,3 +348,40 @@ export function scanSignupAbsence(state: SignupAuditState, org: SignupOrg): Sign
   }
   return next;
 }
+
+export function refreshSignupLeaders(state: SignupAuditState, org: SignupOrg): SignupAuditState {
+  if (state.status !== '待审核' || state.currentNodeIndex == null) return state;
+  const node = state.flowSnapshot[state.currentNodeIndex];
+  if (!node || node.assigneeMode === 'people') return state;
+  if (state.currentReviewerIds.some((name) => !isActive(org.person(name)))) return state;
+
+  const roleDepartments = node.assigneeMode === 'parentLevelLeader'
+    ? unique(state.anchorDepartmentIds.map((departmentId) => org.parentDepartment(departmentId)).filter((departmentId): departmentId is string => Boolean(departmentId)))
+    : [...state.anchorDepartmentIds];
+  const activeLeaders = unique(
+    roleDepartments.flatMap((departmentId) => org.leaders(departmentId)).filter((name) => isActive(org.person(name)) && name !== state.applicantName && name !== state.lastPassedBy),
+  );
+  const same = activeLeaders.length === state.currentReviewerIds.length
+    && activeLeaders.every((name) => state.currentReviewerIds.includes(name));
+  if (same) return state;
+  if (activeLeaders.length) return { ...state, currentReviewerIds: activeLeaders };
+
+  const index = state.currentNodeIndex;
+  const notices = [...state.approvalNotices];
+  const roleLabel = node.assigneeMode === 'parentLevelLeader' ? '上级部门负责人' : '本部门负责人';
+  if (!roleDepartments.length) notices.push(`${nodeNo(index)}部门不存在，负责人缺失，该节点已自动跳过`);
+  else {
+    roleDepartments.forEach((departmentId) => {
+      notices.push(org.hasDepartment(departmentId)
+        ? `${nodeNo(index)}「${departmentId}」${roleLabel}缺失，该节点已自动跳过`
+        : `${nodeNo(index)}部门不存在，负责人缺失，该节点已自动跳过`);
+    });
+  }
+  const next = enterFrom(state.flowSnapshot, index + 1, { departmentIds: state.anchorDepartmentIds, passedBy: state.lastPassedBy }, state.applicantName, org, {
+    approvalNotices: notices,
+    approvalSkipLog: state.approvalSkipLog,
+    lastPassedBy: state.lastPassedBy,
+    rejectReason: state.rejectReason,
+  });
+  return next.rejectReason === state.rejectReason ? next : { ...next, rejectReason: state.rejectReason };
+}
