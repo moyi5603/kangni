@@ -384,6 +384,25 @@ describe('refreshSignupLeaders', () => {
     expect(refreshSignupLeaders(started, later)).toBe(started);
     expect(scanSignupAbsence(started, later).currentReviewerIds).not.toEqual(['赵六']);
   });
+
+  it('completes the flow with a notice when the only node has no active leader', () => {
+    const started = startSignupAudit('报名人', [same('a')], org);
+    const later = directory(
+      [
+        { name: '报名人', departmentId: '前端组', presence: '在职' },
+        { name: '王五', departmentId: '财务', presence: '在职' },
+        { name: '赵六', departmentId: '前端组', presence: '离职' },
+      ],
+      { 前端组: ['赵六'], 财务: ['王五'] },
+      {},
+    );
+    const refreshed = refreshSignupLeaders(started, later);
+    expect(refreshed.status).toBe('已通过');
+    expect(refreshed.currentReviewerIds).toEqual([]);
+    const notices = refreshed.approvalNotices.join('\n');
+    expect(notices).toContain('本部门负责人缺失');
+    expect(notices).toContain('审批流已完成，报名已通过');
+  });
 });
 
 describe('in-flight snapshot', () => {

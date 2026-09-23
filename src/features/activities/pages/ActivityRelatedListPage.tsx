@@ -439,7 +439,7 @@ export function SignupList({ activity }: { activity: Activity }) {
   const rejectOne = (record: SignupRecord) => {
     promptReject({
       title: `确认驳回「${record.name}」的报名？`,
-      description: '驳回后整单结束。报名人可再次报名，已通过的节点会跳过，从本节点继续。',
+      description: '驳回后整单结束。报名人可再次报名，驳回后再次报名按活动当前审批流从第 1 个节点重新审批。',
       onConfirm: (reason) => {
         patchRelated('signups', (list) => list.map((item) => (item.id === record.id ? applyRejected(item, reason) : item)));
         message.success(`已驳回「${record.name}」的报名`);

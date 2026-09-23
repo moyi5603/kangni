@@ -383,5 +383,8 @@ export function refreshSignupLeaders(state: SignupAuditState, org: SignupOrg): S
     lastPassedBy: state.lastPassedBy,
     rejectReason: state.rejectReason,
   });
+  if (next.status === '已通过' && !next.approvalNotices.includes('审批流已完成，报名已通过')) {
+    return { ...next, approvalNotices: [...next.approvalNotices, '审批流已完成，报名已通过'], rejectReason: state.rejectReason ?? next.rejectReason };
+  }
   return next.rejectReason === state.rejectReason ? next : { ...next, rejectReason: state.rejectReason };
 }
