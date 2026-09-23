@@ -1,6 +1,8 @@
 import { useMemo, useSyncExternalStore } from 'react';
 import { isActivityClosed } from '../../../activities/model/activity';
 import { getActivity } from '../../../activities/model/activityStore';
+import { readSignupAudit, resumeRejectedSignup, startSignupAudit, writeSignupAudit } from '../../../activities/model/signupApprovalFlow';
+import { activitySignupOrg } from '../../../activities/model/signupOrg';
 import { evaluateCheckIn, type CheckInResult } from '../../../activities/model/activityCheckIn';
 import {
   listClientSignupSessions,
@@ -270,12 +272,31 @@ export function updateSignup(
   return 'ok';
 }
 
+function resumeRejectedSignups(activityId: number, phone = DEMO_SIGNUP_USER.phone): boolean {
+  const rows = getUserSignupRecords(activityId, phone).filter((item) => item.status === '已驳回' && item.flowSnapshot?.length);
+  if (!rows.length) return false;
+  const org = activitySignupOrg();
+  const activity = getActivity(activityId);
+  const nodes = activity?.signupApprovalNodes ?? [];
+  const ids = new Set(rows.map((item) => item.id));
+  patchRelated('signups', (list) =>
+    list.map((item) => {
+      if (!ids.has(item.id)) return item;
+      const state = readSignupAudit(item);
+      if (!state) return item;
+      return writeSignupAudit(item, resumeRejectedSignup(state, item.name, nodes, org));
+    }),
+  );
+  return true;
+}
+
 export function saveClientSignup(
   activityId: number,
   type: string,
   answers: Record<string, string> = {},
   now = Date.now(),
 ): 'ok' | 'duplicate' | 'no-type' | 'missing' | 'cancelled' {
+  if (resumeRejectedSignups(activityId)) return updateSignup(activityId, type, answers, now);
   if (hasSignedUp(activityId)) return updateSignup(activityId, type, answers, now);
   return submitSignup(activityId, type, answers);
 }
@@ -287,6 +308,7 @@ export function submitSignup(
 ): 'ok' | 'duplicate' | 'no-type' {
   const trimmed = type.trim();
   if (!trimmed) return 'no-type';
+  if (resumeRejectedSignups(activityId)) return 'ok';
   if (hasSignedUp(activityId)) return 'duplicate';
   const extras: Record<string, string> = {};
   for (const [key, value] of Object.entries(answers)) {
@@ -314,6 +336,11 @@ export function submitSignup(
         answers: rowAnswers,
       };
       nextId += 1;
+      const activity = getActivity(activityId);
+      const nodes = activity?.signupApprovalNodes ?? [];
+      if (row.status === '待审核' && nodes.length) {
+        return writeSignupAudit(row, startSignupAudit(row.name, nodes, activitySignupOrg()));
+      }
       return row;
     });
     return [...created, ...list];
