@@ -1,4 +1,4 @@
-import { goH5ExamList, toH5ExamTakingHash } from '../../../../app/navigation';
+import { goH5Back, toH5ExamTakingHash } from '../../../../app/navigation';
 import { H5ActivityShell } from '../../activities/h5/H5ActivityShell';
 import { getClientExamPrep, getExamStartCta, hasExamDescriptionHtml } from '../model/clientExam';
 import { getClientExamResult } from '../model/clientExamResult';
@@ -67,7 +67,7 @@ export function H5ExamPrep({ id }: { id: number }) {
 
   if (!prep) {
     return (
-      <H5ActivityShell className="is-exam is-prep" title="考试准备" onBack={goH5ExamList}>
+      <H5ActivityShell className="is-exam is-prep" title="考试准备" onBack={goH5Back}>
         <p className="c-h5-exam-empty">考试不存在或未发布</p>
       </H5ActivityShell>
     );
@@ -77,7 +77,7 @@ export function H5ExamPrep({ id }: { id: number }) {
     <H5ActivityShell
       className="is-exam is-prep"
       title="考试准备"
-      onBack={goH5ExamList}
+      onBack={goH5Back}
       footer={
         <div className="c-h5-exam-prep-bar">
           {startCta?.enabled ? (

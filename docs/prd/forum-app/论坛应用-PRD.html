@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>论坛应用 产品需求文档</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; line-height: 1.65; color: #1f2937; margin: 0; background: #f8fafc; }
+    .layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: 100vh; }
+    .layout.toc-collapsed { grid-template-columns: 0 minmax(0, 1fr); }
+    .toc { position: sticky; top: 0; height: 100vh; overflow: auto; border-right: 1px solid #d1d5db; background: #fff; padding: 16px; }
+    .layout.toc-collapsed .toc { transform: translateX(-100%); padding: 0; border: 0; }
+    .toc-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+    .toc-title { margin: 0; font-size: 15px; font-weight: 700; }
+    .icon-button { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; cursor: pointer; }
+    .icon-button svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .toc ol { list-style: none; padding: 0; margin: 0; }
+    .toc li { margin: 4px 0; }
+    .toc a { display: block; color: #374151; text-decoration: none; padding: 6px 8px; border-radius: 6px; font-size: 14px; }
+    .toc a:hover { background: #f3f4f6; color: #0f766e; }
+    .toc .sub a { padding-left: 18px; font-size: 13px; color: #6b7280; }
+    .content-wrap { min-width: 0; }
+    .floating-toc-toggle { position: fixed; left: 12px; top: 12px; z-index: 20; box-shadow: 0 4px 12px rgba(15,23,42,.12); }
+    main { max-width: 1180px; margin: 0 auto; padding: 32px 24px 64px; background: #fff; }
+    h1,h2,h3,h4 { color: #111827; line-height: 1.3; }
+    h2 { margin-top: 40px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 13px; }
+    th, td { border: 1px solid #d1d5db; padding: 8px 10px; vertical-align: top; }
+    th { background: #f3f4f6; text-align: left; }
+    figure { margin: 16px 0 24px; border: 1px solid #d1d5db; background: #f9fafb; padding: 12px; }
+    figure img { max-width: 100%; height: auto; display: block; border: 1px solid #e5e7eb; background: #fff; }
+    figcaption { margin-top: 8px; color: #4b5563; font-size: 13px; }
+    .component-path { font-weight: 600; color: #0f766e; }
+    .status { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #e0f2fe; color: #075985; font-size: 12px; margin-right: 4px; }
+    .status.impl { background: #dcfce7; color: #166534; }
+    .status.todo { background: #fee2e2; color: #991b1b; }
+    .status.guess { background: #fef3c7; color: #92400e; }
+    code { background: #f3f4f6; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+    @media (max-width: 860px) {
+      .layout { display: block; }
+      .toc { position: fixed; z-index: 15; width: 280px; box-shadow: 0 12px 30px rgba(15,23,42,.18); }
+      .layout.toc-collapsed .toc { transform: translateX(-100%); }
+      main { padding-top: 56px; }
+    }
+
+    .status.p0 { background:#fee2e2; color:#991b1b; }
+    .status.p1 { background:#fef3c7; color:#92400e; }
+    .status.p2 { background:#e0e7ff; color:#3730a3; }
+    .note { background:#f8fafc; border-left:3px solid #0f766e; padding:8px 12px; margin:12px 0; }
+</style>
+</head>
+<body>
+<div class="layout" id="prdLayout">
+<aside class="toc" aria-label="PRD目录">
+  <div class="toc-header">
+    <p class="toc-title">目录</p>
+    <button class="icon-button toc-toggle" type="button" data-toggle-toc aria-label="隐藏目录" title="隐藏目录">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+    </button>
+  </div>
+  <nav><ol><li><a href="#doc-note">1. 文档说明</a></li>
+<li><a href="#overview">2. 产品概述</a></li>
+<li><a href="#ia">3. 页面结构 / 信息架构</a></li>
+<li><a href="#implemented-features">4. 已实现功能清单</a></li>
+<li><a href="#flows">5. 用户流程</a></li>
+<li><a href="#page-requirements">6. 页面级需求说明</a></li>
+<li><a href="#page-admin">6.A 后台</a></li>
+<li><a href="#page-h5">6.B H5</a></li>
+<li><a href="#page-pc">6.C PC</a></li>
+<li><a href="#data-fields">7. 数据字段与枚举</a></li>
+<li><a href="#apis">8. API / 数据接口清单</a></li>
+<li><a href="#non-functional">9. 非功能需求</a></li>
+<li><a href="#analytics">10. 埋点与指标建议</a></li>
+<li><a href="#acceptance">11. 验收标准</a></li>
+<li><a href="#risks">12. 风险与待确认问题</a></li></ol></nav>
+</aside>
+<div class="content-wrap">
+<button class="icon-button floating-toc-toggle" type="button" data-toggle-toc aria-label="显示目录" title="显示目录">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+</button>
+<main>
+  <h1>论坛应用 产品需求文档</h1>
+  <section id="doc-note"><h2>1. 文档说明</h2><ul>
+<li>文档来源：基于康尼论坛应用 React/TypeScript 原型反向分析（html-to-prd）。截图为 2026-09-21 起本地 <code>http://127.0.0.1:5173/</code> 实机渲染；匿名相关图为 2026-09-22 补拍。</li>
+<li>分析范围：管理后台 <code>#/forum/*</code>；员工 H5 <code>#/c/h5/forum*</code>；员工 PC <code>#/c/pc/forum*</code>。信箱应用（mailbox）与论坛共用部分页面组件，本文只写论坛 kind=<code>forum</code> 路径。</li>
+<li>生成日期：2026-09-21；对照增量日期：2026-09-22</li>
+<li>本次对照增量：① C 端匿名展示改为 <code>【匿名用户】</code>+四位序号（同帖同作者稳定、尽量不撞号）；当前登录周敏看自己的匿名显示「我」，头像「我」/他人「匿」。② 允许匿名的板块：发帖勾「匿名发帖」，评论勾「匿名」（aria 匿名评论）。③ 种子「闲置27英寸显示器转让」及该帖评/回均为匿名。④ 后台发帖人仍 <code>匿名（真名）</code>。⑤ 论坛列表仍保留批量停用（信箱列表当日已去掉，不在本文）。</li>
+<li>可信度：按钮文案、校验、内存 store 行为以代码为准。无 HTTP。刷新页面会丢运行时改动。</li>
+<li>标记：<span class="status impl">代码已实现</span> <span class="status guess">根据页面推测需要</span> <span class="status todo">待确认</span></li>
+<li>组件一律使用 <code>页面-模块-组件名称</code>。</li></ul></section>
+<section id="overview"><h2>2. 产品概述</h2>
+<p><strong>产品定位：</strong>康尼「员工与组织」下的企业论坛：后台配置板块/标签/禁言并运营帖子；员工在 H5/PC 浏览、发帖、评论、点赞收藏。</p>
+<p><strong>目标用户：</strong>后台运营（演示顶栏账号语义为「陈产品」）；C 端员工（写操作用户写死为 <code>forumClientSelf = 周敏</code>）。</p>
+<p><strong>核心使用场景：</strong>① 运营新建「二手论坛」等板块并配图标/背景/可见范围/标签；② 员工进板块发帖、按标签筛、搜帖；③ 运营置顶/下架/指派回复人/禁言；④ 员工在帖内评论点赞，自己的帖可编辑删除。</p>
+<p><strong>页面/系统主要价值：</strong>把公司内部闲置转让、建议讨论从群聊收口到可运营的板块；C 端与后台共用 <code>forumStore</code>，停用板块、下架/驳回帖、禁言会立刻影响 H5 可见与发评。</p>
+<figure><img src="screenshots/C端预览-入口页.png" alt="C端预览-入口页-论坛入口截图"><figcaption><span class="component-path">C端预览-入口页-论坛入口</span>：门户卡片「论坛 H5 / 论坛 PC / 我的帖子 H5」跳到板块 id=1 与我的帖子。PC 无独立「我的帖子」门户卡片，但路由 <code>#/c/pc/forum-mine</code> 代码已实现。</figcaption></figure>
+</section>
+<section id="ia"><h2>3. 页面结构 / 信息架构</h2>
+<figure><img src="screenshots/论坛应用-左侧菜单.png" alt="后台-框架-左侧菜单截图"><figcaption><span class="component-path">后台-框架-左侧菜单</span>：菜单：概览、论坛列表、标签管理、禁言管理。默认页 forum-overview。新建/编辑/详情/帖子详情侧栏仍高亮论坛列表。</figcaption></figure>
+<table><thead><tr><th>端</th><th>页面</th><th>Hash</th><th>组件</th></tr></thead><tbody><tr><td>后台</td><td>概览</td><td>#/forum/forum-overview</td><td>ForumOverviewPage</td></tr><tr><td>后台</td><td>论坛列表</td><td>#/forum/forum-list</td><td>ForumBoardListPage kind=forum</td></tr><tr><td>后台</td><td>新建论坛</td><td>#/forum/forum-create</td><td>ForumBoardFormPage create</td></tr><tr><td>后台</td><td>编辑论坛</td><td>#/forum/forum-edit/{id}</td><td>ForumBoardFormPage edit</td></tr><tr><td>后台</td><td>论坛详情</td><td>#/forum/forum-detail/{id}</td><td>ForumBoardDetailPage + 内嵌帖子表</td></tr><tr><td>后台</td><td>帖子详情</td><td>#/forum/topic-detail/{id}</td><td>ForumTopicDetailPage kind=forum</td></tr><tr><td>后台</td><td>标签管理</td><td>#/forum/forum-tags</td><td>ForumTagListPage</td></tr><tr><td>后台</td><td>禁言管理</td><td>#/forum/forum-risk</td><td>ForumRiskPage</td></tr><tr><td>H5</td><td>板块</td><td>#/c/h5/forum 或 /forum/{id}</td><td>H5ForumBoard，缺 id 默认 1</td></tr><tr><td>H5</td><td>帖子</td><td>#/c/h5/forum-topic/{id}</td><td>H5ForumTopic</td></tr><tr><td>H5</td><td>我的帖子</td><td>#/c/h5/forum-mine</td><td>H5ForumMine</td></tr><tr><td>PC</td><td>板块</td><td>#/c/pc/forum/{id}</td><td>PcForumBoard</td></tr><tr><td>PC</td><td>帖子</td><td>#/c/pc/forum-topic/{id}</td><td>PcForumTopic</td></tr><tr><td>PC</td><td>我的帖子</td><td>#/c/pc/forum-mine</td><td>PcForumMine</td></tr></tbody></table>
+<p>跳转：列表名称/详情 → 详情；帖子标题 → topic-detail；C 端帖卡片 href 进帖子；H5 帖子顶栏返回板块 hash；停用/不存在板块 H5 文案「论坛不存在或已停用」；不可见帖「帖子不存在」。</p>
+<p>种子数据：论坛板 二手论坛(id=1,允许匿名)、建议论坛(id=2)。「闲置27英寸显示器转让」(id=4) 发帖人唐宇但 authorAnonymous=true。标签闲置转让/求购等。C 端默认打开 id=1。</p>
+</section>
+<section id="implemented-features"><h2>4. 已实现功能清单</h2>
+<table><thead><tr><th>模块</th><th>功能点</th><th>功能说明</th><th>页面/区域</th><th>状态</th></tr></thead><tbody><tr><td>板块配置</td><td>新建/编辑</td><td>图标必填(仅新建)、背景图必填(仅新建)、名称、简介、可见范围、管理员、帖子标签、允许匿名</td><td>后台-新建/编辑论坛</td><td><span class="status impl">代码已实现</span></td></tr><tr><td>板块配置</td><td>启停</td><td>确认后 setForumBoardStatus；停用后 H5/PC 板页当不存在</td><td>后台-论坛列表/详情</td><td><span class="status impl">代码已实现</span></td></tr><tr><td>板块配置</td><td>查看链接</td><td>弹窗展示 currentForumBoardClientUrl（本机 origin + #/c/h5/forum/{id}），复制 clipboard</td><td>后台-论坛列表/详情</td><td><span class="status impl">代码已实现</span></td></tr><tr><td>帖子运营</td><td>列表/详情</td><td>内嵌于论坛详情；置顶 pinScope=board；下架 shelfStatus=off；指派回复人</td><td>后台-论坛详情-帖子表</td><td><span class="status impl">代码已实现</span></td></tr><tr><td>帖子运营</td><td>回复</td><td>马甲账号：陈产品（个人）/论坛小助手/官方客服；主评分页 10 条</td><td>后台-帖子详情</td><td><span class="status impl">代码已实现</span></td></tr><tr><td>标签</td><td>CRUD/排序/启停</td><td>名称≤20、重名校验；禁用后发帖不可再选；删标签从帖子移除</td><td>后台-标签管理</td><td><span class="status impl">代码已实现</span></td></tr><tr><td>风控</td><td>禁言</td><td>添加立即生效；重复禁言报「该成员已处于禁言中」；周敏发主评时拦「你已被禁言」</td><td>后台-禁言管理 + C 端发评</td><td><span class="status impl">代码已实现</span></td></tr><tr><td>C 端发现</td><td>板块浏览</td><td>头图、简介展开、搜索、标签 Tab、最新回复/最新发布、帖卡片</td><td>H5/PC-板块页</td><td><span class="status impl">代码已实现</span></td></tr><tr><td>C 端生产</td><td>发帖/改删</td><td>标题必填；图最多 9；标签单选可选；匿名仅板块 anonymous 且新建</td><td>H5/PC 发布浮层</td><td><span class="status impl">代码已实现</span></td></tr><tr><td>C 端匿名</td><td>匿名展示与发评</td><td>他人【匿名用户】+4 位序号；自己显示「我」；评/回可勾匿名（板允许时）</td><td>H5/PC 列表+详情</td><td><span class="status impl">代码已实现</span></td></tr><tr><td>C 端互动</td><td>赞藏评</td><td>帖赞/藏、评论赞、回复；自己的评/帖可删</td><td>H5/PC-帖子详情</td><td><span class="status impl">代码已实现</span></td></tr><tr><td>可见性</td><td>下架/审核</td><td>C 端 isClientForumTopicVisible：shelf≠off 且 audit 非待审核/已驳回</td><td>forumStore + clientForum</td><td><span class="status impl">代码已实现</span></td></tr><tr><td>可见范围</td><td>C 端按人过滤</td><td>后台存 visibility，C 端板页只看 kind=forum 且 status=enabled，不读当前员工部门</td><td>H5/PC-板块页</td><td><span class="status todo">待确认</span> 代码未按人过滤</td></tr></tbody></table>
+</section>
+<section id="flows"><h2>5. 用户流程</h2>
+<h3>5.1 运营建板</h3><p>后台-论坛列表-新建论坛 → 填图标/背景/名称/简介/可见范围/管理员 → 创建。成功 toast「已创建论坛」回列表。脏数据点取消弹「离开当前页？」。重名 saveForumBoard 失败，错误打在名称。</p>
+<h3>5.2 员工发帖</h3><p>H5 底栏「立即发布」或 PC 侧栏同文案 → 浮层填标题内容图标签；板允许匿名且非编辑时勾「匿名发帖」→ 提交。publishClientTopic 标题空则 toast「请填写标题」，成功「发布成功」。内容可空。作者仍写 forumClientSelf，展示走 authorAnonymous。</p>
+<h3>5.2.1 匿名阅读</h3><p>C 端 forumActorName：非匿名=真名；匿名且作者=周敏→「我」；其他匿名→【匿名用户】+ forumAnonSerial(topicId, author) 四位（1000–9999，同帖撞号则 +1 环绕）。后台 topicAuthorAdminText 仍「匿名（真名）」。</p>
+<h3>5.3 下架联动</h3><p>后台帖子「下架」确认：下架后 C 端用户将无法看到。setTopicShelf off。H5 列表 visibleClientForumTopics 过滤；直链帖详情 hidden →「帖子不存在」。</p>
+<h3>5.4 禁言拦评</h3><p>禁言管理添加周敏 → 周敏在帖内发主评 addClientTopicComment 返回「你已被禁言」。楼层回复 addClientTopicReply、发帖 publishClientTopic 代码路径不查禁言表，{todo}</p>
+<h3>5.5 指派待回复</h3><p>后台指派周敏 → C 端该帖 clientNeedsReply 为真，列表加 is-need-reply，PC 侧栏「待你回复」。周敏留下评论或回复后横幅消失。</p>
+</section>
+<section id="page-requirements"><h2>6. 页面级需求说明</h2>
+<article id="page-admin"><h3>6.A 后台</h3>
+ <h4>6.A.1 概览</h4>
+<p>页面目标：看板块数、帖量、评量、生效禁言，以及帖子分布与最新帖。</p>
+<figure><img src="screenshots/后台-概览-页面整体.png" alt="后台-概览-页面整体截图"><figcaption><span class="component-path">后台-概览-页面整体</span>：面包屑 论坛>概览；副标题「论坛运营数据总览与最新帖子」；日期范围筛 scoped 数据。</figcaption></figure>
+<figure><img src="screenshots/后台-概览-KPI指标卡.png" alt="后台-概览-KPI指标卡截图"><figcaption><span class="component-path">后台-概览-KPI指标卡</span>：四卡：论坛数、帖子数、评论数、生效禁言。点论坛数/帖子数 goToPage(forum-list)；点生效禁言 go forum-risk。评论数无跳转。</figcaption></figure>
+<figure><img src="screenshots/后台-概览-日期筛选.png" alt="后台-概览-日期筛选截图"><figcaption><span class="component-path">后台-概览-日期筛选</span>：OverviewDateRange，默认 defaultForumOverviewDateRange。改范围重算 KPI/图/表。</figcaption></figure>
+<figure><img src="screenshots/后台-概览-帖子论坛分布.png" alt="后台-概览-帖子论坛分布截图"><figcaption><span class="component-path">后台-概览-帖子论坛分布</span>：饼图 forumBoardSegments(boardCounts)。空数据走 OverviewPie 空态。</figcaption></figure>
+<figure><img src="screenshots/后台-概览-互动热度分层.png" alt="后台-概览-互动热度分层截图"><figcaption><span class="component-path">后台-概览-互动热度分层</span>：饼图 forumHeatSegments(heatCounts)。</figcaption></figure>
+<figure><img src="screenshots/后台-概览-最新帖子表.png" alt="后台-概览-最新帖子表截图"><figcaption><span class="component-path">后台-概览-最新帖子表</span>：列：标题(置顶 Tag)、论坛、发帖人、发布时间、操作「查看」→ topic-detail。无分页。空 Empty「暂无帖子」。</figcaption></figure>
+<table><thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用逻辑</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead><tbody><tr><td>查看最新帖</td><td>后台-概览-最新帖子表-查看</td><td>链接按钮查看</td><td>行存在</td><td>始终可点</td><td>点击</td><td>onNavigate topic-detail</td><td>路由变</td><td>打开帖详情</td><td>无</td><td>内存 getForumTopic</td></tr><tr><td>点论坛数</td><td>后台-概览-KPI指标卡-论坛数</td><td>KPI 卡</td><td>无</td><td>可点</td><td>点击</td><td>进论坛列表</td><td>路由</td><td>列表页</td><td>无</td><td>无筛参</td></tr></tbody></table>
+ <h4>6.A.2 论坛列表</h4>
+<figure><img src="screenshots/后台-论坛列表-页面整体.png" alt="后台-论坛列表-页面整体截图"><figcaption><span class="component-path">后台-论坛列表-页面整体</span>：只列出 kind=forum（filterBoards）。种子 2 条。无名称/状态搜索面板。</figcaption></figure>
+<figure><img src="screenshots/后台-论坛列表-工具栏.png" alt="后台-论坛列表-工具栏截图"><figcaption><span class="component-path">后台-论坛列表-工具栏</span>：「共 N 条」；主按钮「新建论坛」。勾选启用行后出现「批量停用」。</figcaption></figure>
+<figure><img src="screenshots/后台-论坛列表-列表表格.png" alt="后台-论坛列表-列表表格截图"><figcaption><span class="component-path">后台-论坛列表-列表表格</span>：列：论坛名称(图标+链接)、可见范围、管理员、帖子标签、状态 Badge、创建时间、操作。分页 pageSize 来自 b2bStandards。</figcaption></figure>
+<figure><img src="screenshots/后台-论坛列表-行操作.png" alt="后台-论坛列表-行操作截图"><figcaption><span class="component-path">后台-论坛列表-行操作</span>：可见三项：详情、查看链接、编辑。溢出「更多」含停用/启用。actionsMaxVisible=3。</figcaption></figure>
+<figure><img src="screenshots/后台-论坛列表-查看链接弹窗.png" alt="后台-论坛列表-查看链接弹窗截图"><figcaption><span class="component-path">后台-论坛列表-查看链接弹窗</span>：标题「查看链接」；只读 Input C 端 URL；「复制链接」成功 message「链接已复制」，失败「复制失败，请手动复制链接」；底栏「关闭」。</figcaption></figure>
+<figure><img src="screenshots/后台-论坛列表-批量停用.png" alt="后台-论坛列表-批量停用截图"><figcaption><span class="component-path">后台-论坛列表-批量停用</span>：行选择 checkbox。未选出启用记录点批量停用会 warning「请选择已启用的记录」。确认文案：停用后前台不可访问，历史数据保留。</figcaption></figure>
+<table><thead><tr><th>列名</th><th>组件路径</th><th>数据含义</th><th>格式</th><th>是否可排序</th><th>是否可筛选</th><th>行操作</th></tr></thead><tbody><tr><td>论坛名称</td><td>后台-论坛列表-列表表格-论坛名称</td><td>board.name</td><td>图标+链接</td><td>否</td><td>否</td><td>进详情</td></tr><tr><td>可见范围</td><td>后台-论坛列表-列表表格-可见范围</td><td>organizationText</td><td>全员/部门串/自定义人群：共N人/导入人群：文件</td><td>否</td><td>否</td><td>—</td></tr><tr><td>管理员</td><td>后台-论坛列表-列表表格-管理员</td><td>manager 顿号拼接</td><td>文本省略</td><td>否</td><td>否</td><td>—</td></tr><tr><td>帖子标签</td><td>后台-论坛列表-列表表格-帖子标签</td><td>board.tags</td><td>Tag，空为 —</td><td>否</td><td>否</td><td>—</td></tr><tr><td>状态</td><td>后台-论坛列表-列表表格-状态</td><td>enabled/disabled</td><td>已启用/已停用 Badge</td><td>否</td><td>否</td><td>停用/启用</td></tr><tr><td>创建时间</td><td>后台-论坛列表-列表表格-创建时间</td><td>createdAt</td><td>YYYY-MM-DD HH:mm</td><td>否</td><td>否</td><td>—</td></tr></tbody></table>
+<table><thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用逻辑</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead><tbody><tr><td>新建论坛</td><td>后台-论坛列表-工具栏-新建论坛</td><td>主按钮</td><td>无</td><td>始终</td><td>点击</td><td>go forum-create</td><td>路由</td><td>打开表单</td><td>无</td><td>无接口</td></tr><tr><td>详情</td><td>后台-论坛列表-行操作-详情</td><td>链接/按钮</td><td>记录存在</td><td>始终</td><td>点击</td><td>forum-detail/{id}</td><td>路由</td><td>详情页</td><td>无</td><td>getForumBoard</td></tr><tr><td>查看链接</td><td>后台-论坛列表-行操作-查看链接</td><td>按钮</td><td>非信箱</td><td>始终</td><td>点击</td><td>打开 ForumLinkModal</td><td>弹窗</td><td>可复制</td><td>clipboard 失败 toast</td><td>forumBoardClientUrl</td></tr><tr><td>编辑</td><td>后台-论坛列表-行操作-编辑</td><td>按钮</td><td>存在</td><td>始终</td><td>点击</td><td>forum-edit/{id}</td><td>路由</td><td>表单回填</td><td>id 无效 Empty「论坛不存在或已删除」</td><td>无</td></tr><tr><td>停用/启用</td><td>后台-论坛列表-行操作-停用</td><td>更多菜单</td><td>有记录</td><td>始终</td><td>确认框确定</td><td>setForumBoardStatus</td><td>status 翻转</td><td>已停用/已启用</td><td>取消无变化</td><td>内存</td></tr><tr><td>批量停用</td><td>后台-论坛列表-工具栏-批量停用</td><td>危险按钮</td><td>已选且含启用</td><td>未选不出现</td><td>确认停用</td><td>setForumBoardStatuses disabled</td><td>清空勾选</td><td>已停用 N 个论坛</td><td>未选启用 warning</td><td>内存</td></tr></tbody></table>
+ <h4>6.A.3 新建/编辑论坛</h4>
+<figure><img src="screenshots/后台-新建论坛-表单页.png" alt="后台-新建论坛-表单页截图"><figcaption><span class="component-path">后台-新建论坛-表单页</span>：标题「新建论坛」。编辑页同等字段，图标/背景新建 required，编辑可不改。</figcaption></figure>
+<figure><img src="screenshots/后台-新建论坛-图标上传.png" alt="后台-新建论坛-图标上传截图"><figcaption><span class="component-path">后台-新建论坛-图标上传</span>：picture-card maxCount=1，accept 图片。新建 hidden icon required「请上传论坛图标」。hint SQUARE_IMAGE_UPLOAD_HINT。beforeUpload 返回 false，本地 FileReader DataURL。</figcaption></figure>
+<figure><img src="screenshots/后台-新建论坛-背景图上传.png" alt="后台-新建论坛-背景图上传截图"><figcaption><span class="component-path">后台-新建论坛-背景图上传</span>：仅论坛（信箱无此字段）。新建必填「请上传背景图」。COVER_IMAGE_UPLOAD_HINT。</figcaption></figure>
+<figure><img src="screenshots/后台-新建论坛-可见范围.png" alt="后台-新建论坛-可见范围截图"><figcaption><span class="component-path">后台-新建论坛-可见范围</span>：Radio：全员 / 按部门 / 自定义人群 / 导入人群。默认全员。</figcaption></figure>
+<figure><img src="screenshots/后台-新建论坛-按部门.png" alt="后台-新建论坛-按部门截图"><figcaption><span class="component-path">后台-新建论坛-按部门</span>：切到按部门出现 TreeSelect 选择部门，必填「请选择部门」，orgDepartmentTree，SHOW_PARENT。</figcaption></figure>
+<figure><img src="screenshots/后台-新建论坛-自定义人群.png" alt="后台-新建论坛-自定义人群截图"><figcaption><span class="component-path">后台-新建论坛-自定义人群</span>：TreeSelect 人员，必填「请选择人员」，orgPeoplePickerTree，SHOW_CHILD。</figcaption></figure>
+<figure><img src="screenshots/后台-新建论坛-导入人群.png" alt="后台-新建论坛-导入人群截图"><figcaption><span class="component-path">后台-新建论坛-导入人群</span>：csv/xlsx 一个文件；下载模板「可见人群导入模板.csv」列：工号,姓名,部门。未上传「请导入人群文件」。importedPeople 编辑时保留，新建路径代码未解析文件名单，{todo}。</figcaption></figure>
+<figure><img src="screenshots/后台-新建论坛-底栏操作.png" alt="后台-新建论坛-底栏操作截图"><figcaption><span class="component-path">后台-新建论坛-底栏操作</span>：sticky：创建/保存 + 取消。dirty 取消二次确认。</figcaption></figure>
+<figure><img src="screenshots/后台-编辑论坛-表单页.png" alt="后台-编辑论坛-表单页截图"><figcaption><span class="component-path">后台-编辑论坛-表单页</span>：回填二手论坛。保存 toast「已保存论坛」。改名 saveForumBoard 级联帖子 boardName（见 store）。</figcaption></figure>
+<table><thead><tr><th>字段名称</th><th>组件路径</th><th>控件类型</th><th>是否必填</th><th>默认值</th><th>校验规则</th><th>选项值</th><th>业务含义</th></tr></thead><tbody><tr><td>论坛图标</td><td>后台-新建论坛-图标上传</td><td>Upload picture-card</td><td>新建是/编辑否</td><td>空</td><td>请上传论坛图标</td><td>本地图</td><td>C 端头像位</td></tr><tr><td>背景图</td><td>后台-新建论坛-背景图上传</td><td>Upload</td><td>新建是</td><td>空</td><td>请上传背景图</td><td>本地图</td><td>C 端头图</td></tr><tr><td>论坛名称</td><td>后台-新建论坛-论坛名称</td><td>Input maxWidth 360</td><td>是</td><td>空</td><td>请输入论坛名称；重名错误</td><td>自由文本</td><td>板块名且帖子归属键</td></tr><tr><td>论坛简介</td><td>后台-新建论坛-论坛简介</td><td>TextArea 3 行</td><td>是</td><td>空</td><td>请输入论坛简介</td><td>自由文本</td><td>C 端可展开简介</td></tr><tr><td>可见范围</td><td>后台-新建论坛-可见范围</td><td>Radio.Group</td><td>是</td><td>全员</td><td>请选择可见范围</td><td>全员/按部门/自定义人群/导入人群</td><td>后台展示；C 端未按此过滤</td></tr><tr><td>管理员</td><td>后台-新建论坛-管理员</td><td>TreeSelect 多选人员</td><td>是</td><td>空</td><td>请选择管理员</td><td>forumPeoplePickerTree 仅人可选</td><td>C 端 PC 侧栏展示</td></tr><tr><td>帖子标签</td><td>后台-新建论坛-帖子标签</td><td>Select multiple</td><td>否</td><td>空</td><td>仅启用中标签</td><td>enabledForumTagNames scope=forum</td><td>C 端 Tab 与发帖单选</td></tr><tr><td>允许匿名</td><td>后台-新建论坛-允许匿名</td><td>Switch</td><td>否</td><td>false（论坛）</td><td>无</td><td>开/关</td><td>开则发帖显示匿名发帖</td></tr></tbody></table>
+<table><thead><tr><th>组件路径</th><th>组件类型</th><th>默认状态</th><th>显示/隐藏逻辑</th><th>启用/禁用逻辑</th><th>数据来源</th><th>状态变化</th><th>空/错/加载状态</th><th>权限/条件控制</th></tr></thead><tbody><tr><td>后台-新建论坛-选择部门</td><td>TreeSelect</td><td>隐藏</td><td>visibility===按部门</td><td>始终可编</td><td>orgDepartmentTree</td><td>切 Radio 显隐</td><td>未选提交红字</td><td>无角色</td></tr><tr><td>后台-新建论坛-选择人员</td><td>TreeSelect</td><td>隐藏</td><td>自定义人群</td><td>始终</td><td>orgPeoplePickerTree</td><td>切 Radio</td><td>请选择人员</td><td>部门节点不可勾</td></tr><tr><td>后台-新建论坛-导入人群</td><td>Upload</td><td>隐藏</td><td>导入人群</td><td>始终</td><td>本地文件名</td><td>切 Radio</td><td>请导入人群文件</td><td>无解析校验</td></tr><tr><td>后台-编辑论坛-记录不存在</td><td>Empty</td><td>不显示</td><td>edit 且 getForumBoard 空</td><td>返回按钮</td><td>无</td><td>—</td><td>论坛不存在或已删除</td><td>无</td></tr></tbody></table>
+ <h4>6.A.4 论坛详情</h4>
+<figure><img src="screenshots/后台-论坛详情-页面整体.png" alt="后台-论坛详情-页面整体截图"><figcaption><span class="component-path">后台-论坛详情-页面整体</span>：上头信息卡 + 下方帖子表。id 无效 Empty + 返回论坛列表。</figcaption></figure>
+<figure><img src="screenshots/后台-论坛详情-标题与操作.png" alt="后台-论坛详情-标题与操作截图"><figcaption><span class="component-path">后台-论坛详情-标题与操作</span>：图标、名称、状态 Badge；按钮查看链接、编辑、停用/启用。停用确认同列表。</figcaption></figure>
+<figure><img src="screenshots/后台-论坛详情-基本信息.png" alt="后台-论坛详情-基本信息截图"><figcaption><span class="component-path">后台-论坛详情-基本信息</span>：Descriptions：背景图缩略、可见范围、管理员、匿名、帖子标签、创建时间、简介 span3。</figcaption></figure>
+<figure><img src="screenshots/后台-论坛详情-帖子表.png" alt="后台-论坛详情-帖子表截图"><figcaption><span class="component-path">后台-论坛详情-帖子表</span>：embedded 列表无所属论坛列。列：帖子(置顶 Tag+标题链)、帖子内容、帖子标签、发帖人、评论数、发布时间、操作。空「暂无帖子」。pageSize 20。</figcaption></figure>
+<figure><img src="screenshots/后台-论坛详情-指派回复人弹窗.png" alt="后台-论坛详情-指派回复人弹窗截图"><figcaption><span class="component-path">后台-论坛详情-指派回复人弹窗</span>：显示当前指派；TreeSelect 回复人 extra「按组织架构展开后勾选人员，不能选部门」。确定 setTopicAssignees，有人 toast「已指派回复人」，清空「已取消指派」。</figcaption></figure>
+<table><thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用逻辑</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead><tbody><tr><td>置顶/取消置顶</td><td>后台-论坛详情-帖子表-置顶</td><td>更多菜单</td><td>论坛帖</td><td>始终</td><td>确认</td><td>setTopicPin board 或空</td><td>pinScope；列表置顶 Tag；排序置顶优先</td><td>已设为置顶/已取消置顶</td><td>取消无变化</td><td>内存</td></tr><tr><td>下架/重新上架</td><td>后台-论坛详情-帖子表-下架</td><td>更多菜单危险</td><td>论坛帖</td><td>始终</td><td>确认</td><td>setTopicShelf</td><td>off 则 C 端不可见</td><td>已下架，C 端不可见 / 已重新上架</td><td>取消无变化</td><td>内存</td></tr><tr><td>指派回复人</td><td>后台-论坛详情-指派回复人弹窗</td><td>行按钮</td><td>论坛帖</td><td>始终</td><td>勾人选确定</td><td>setTopicAssignees</td><td>replyAssignees</td><td>已指派/已取消指派</td><td>无校验失败</td><td>内存</td></tr></tbody></table>
+ <h4>6.A.5 帖子详情</h4>
+<figure><img src="screenshots/后台-帖子详情-页面整体.png" alt="后台-帖子详情-页面整体截图"><figcaption><span class="component-path">后台-帖子详情-页面整体</span>：面包屑 论坛 > 板块名 > 帖子详情。种子帖「九成新人体工学椅转让，可自提」。</figcaption></figure>
+<figure><img src="screenshots/后台-帖子详情-标题与操作.png" alt="后台-帖子详情-标题与操作截图"><figcaption><span class="component-path">后台-帖子详情-标题与操作</span>：H1 标题；查看链接；下架(danger)/重新上架。</figcaption></figure>
+<figure><img src="screenshots/后台-帖子详情-基本信息.png" alt="后台-帖子详情-基本信息截图"><figcaption><span class="component-path">后台-帖子详情-基本信息</span>：标题、发帖人（匿名帖为「匿名（真名）」如匿名（唐宇））、发帖人部门、时间、所属论坛、帖子标签、点赞/收藏/评论/浏览数。C 端不展示真名。</figcaption></figure>
+<figure><img src="screenshots/后台-帖子详情-内容与评论.png" alt="后台-帖子详情-内容与评论截图"><figcaption><span class="component-path">后台-帖子详情-内容与评论</span>：正文、图片 PreviewGroup 无图显示「暂无图片」；主评线程；置顶/回复；超过 10 条「加载更多」。</figcaption></figure>
+<figure><img src="screenshots/后台-帖子详情-回复帖子表单.png" alt="后台-帖子详情-回复帖子表单截图"><figcaption><span class="component-path">后台-帖子详情-回复帖子表单</span>：点「回复帖子」展开 MomentInlineReplyForm。账号 forumCommentReplyAccountOptions。成功「已回复帖子」。内容校验 validateForumComment：空且无图「请输入回复内容」；≤200 字。</figcaption></figure>
+<figure><img src="screenshots/后台-帖子详情-回复评论.png" alt="后台-帖子详情-回复评论截图"><figcaption><span class="component-path">后台-帖子详情-回复评论</span>：点回复评论/回复楼层，表单锚到该层。成功「已回复评论」。addTopicReply。</figcaption></figure>
+<figure><img src="screenshots/后台-帖子详情-查看链接弹窗.png" alt="后台-帖子详情-查看链接弹窗截图"><figcaption><span class="component-path">后台-帖子详情-查看链接弹窗</span>：URL 为 #/c/h5/forum-topic/{id}。</figcaption></figure>
+<p>置顶评论：确认框后 setTopicCommentPin。审核记录 Card 仅 auditHistory 有数据时出现（种子多数论坛帖无此卡）。</p>
+ <h4>6.A.6 标签管理</h4>
+<figure><img src="screenshots/后台-标签管理-页面整体.png" alt="后台-标签管理-页面整体截图"><figcaption><span class="component-path">后台-标签管理-页面整体</span>：副标题：维护帖子标签，禁用后发帖不可再选。C 端按标签筛选。</figcaption></figure>
+<figure><img src="screenshots/后台-标签管理-查询筛选.png" alt="后台-标签管理-查询筛选截图"><figcaption><span class="component-path">后台-标签管理-查询筛选</span>：标签名称 Input；状态 Select 启用/禁用。查询写 query，重置清空。</figcaption></figure>
+<figure><img src="screenshots/后台-标签管理-列表表格.png" alt="后台-标签管理-列表表格截图"><figcaption><span class="component-path">后台-标签管理-列表表格</span>：标签名称、帖子数、状态 Tag、操作：编辑/上移/下移/启用禁用/删除。首行上移 disabled，末行下移 disabled。勾选后批量启用/禁用。</figcaption></figure>
+<figure><img src="screenshots/后台-标签管理-新建弹窗.png" alt="后台-标签管理-新建弹窗截图"><figcaption><span class="component-path">后台-标签管理-新建弹窗</span>：标签名称必填空白校验、max20 showCount、重名 validateForumTagName。确认 upsertForumTag。</figcaption></figure>
+<figure><img src="screenshots/后台-标签管理-删除确认.png" alt="后台-标签管理-删除确认截图"><figcaption><span class="component-path">后台-标签管理-删除确认</span>：有引用则写将从 N 个帖子中移除；无引用「当前无关联帖子」。删除不可恢复。</figcaption></figure>
+ <h4>6.A.7 禁言管理</h4>
+<figure><img src="screenshots/后台-禁言管理-页面整体.png" alt="后台-禁言管理-页面整体截图"><figcaption><span class="component-path">后台-禁言管理-页面整体</span>：副标题：添加后立即生效并记录禁言时间，解除后写入解除时间。无分页。</figcaption></figure>
+<figure><img src="screenshots/后台-禁言管理-列表表格.png" alt="后台-禁言管理-列表表格截图"><figcaption><span class="component-path">后台-禁言管理-列表表格</span>：禁言成员、所属部门、禁言原因、禁言时间、解除时间(空 —)、状态 生效中/已解除、操作人、操作。仅生效中有「解除禁言」。空「暂无禁言成员」。</figcaption></figure>
+<figure><img src="screenshots/后台-禁言管理-添加弹窗.png" alt="后台-禁言管理-添加弹窗截图"><figcaption><span class="component-path">后台-禁言管理-添加弹窗</span>：禁言成员 Select 搜索 FORUM_USER_OPTIONS「姓名 · 部门」；原因 TextArea max 100 showCount。确定 addMute，operator 默认管宁。</figcaption></figure>
+<figure><img src="screenshots/后台-禁言管理-解除确认.png" alt="后台-禁言管理-解除确认截图"><figcaption><span class="component-path">后台-禁言管理-解除确认</span>：文案：解除后该成员可重新发帖。releaseMute 写 releasedAt，active=false。toast「已解除禁言」。</figcaption></figure>
+<table><thead><tr><th>字段名称</th><th>组件路径</th><th>控件类型</th><th>是否必填</th><th>默认值</th><th>校验规则</th><th>选项值</th><th>业务含义</th></tr></thead><tbody><tr><td>禁言成员</td><td>后台-禁言管理-添加弹窗-禁言成员</td><td>Select showSearch</td><td>是</td><td>空</td><td>请选择禁言成员</td><td>FORUM_USER_OPTIONS</td><td>对被禁人名拦截发评</td></tr><tr><td>禁言原因</td><td>后台-禁言管理-添加弹窗-禁言原因</td><td>TextArea</td><td>是</td><td>空</td><td>请输入禁言原因；≤100</td><td>自由文本</td><td>列表展示</td></tr></tbody></table>
+</article>
+<article id="page-h5"><h3>6.B H5</h3>
+ <h4>6.B.1 板块页</h4>
+<figure><img src="screenshots/H5-板块页-页面整体.png" alt="H5-板块页-页面整体截图"><figcaption><span class="component-path">H5-板块页-页面整体</span>：无传统顶栏标题，头图叠导航返回。种子二手论坛。</figcaption></figure>
+<figure><img src="screenshots/H5-板块页-头图区.png" alt="H5-板块页-头图区截图"><figcaption><span class="component-path">H5-板块页-头图区</span>：headerImage、图标、名称+「N帖子」（可见帖计数）、简介按钮展开/收起 aria-label。无简介不渲染按钮。</figcaption></figure>
+<figure><img src="screenshots/H5-板块页-搜索框.png" alt="H5-板块页-搜索框截图"><figcaption><span class="component-path">H5-板块页-搜索框</span>：placeholder「搜索帖子」。匹配标题/标签/正文/作者名（含匿名展示名）。前端过滤无独立结果页。</figcaption></figure>
+<figure><img src="screenshots/H5-板块页-标签Tab.png" alt="H5-板块页-标签Tab截图"><figcaption><span class="component-path">H5-板块页-标签Tab</span>：全部 + board.tags。点 Tab 按 topic.tags includes。</figcaption></figure>
+<figure><img src="screenshots/H5-板块页-排序.png" alt="H5-板块页-排序截图"><figcaption><span class="component-path">H5-板块页-排序</span>：默认「最新回复」is-on；可切「最新发布」。sortClientForumTopics。</figcaption></figure>
+<figure><img src="screenshots/H5-板块页-帖子列表.png" alt="H5-板块页-帖子列表截图"><figcaption><span class="component-path">H5-板块页-帖子列表</span>：作者、置顶/标签/标题、缩略图 ForumPhotoGrid、摘要、统计评论赞藏浏览。自己的帖 ForumOwnTopicActions 编辑/删除。待回复加 class 与横幅。</figcaption></figure>
+<figure><img src="screenshots/H5-板块页-匿名作者.png" alt="H5-板块页-匿名作者截图"><figcaption><span class="component-path">H5-板块页-匿名作者</span>：显示器帖展示【匿名用户】四位序号、头像「匿」、无部门。可同时出现「需要你回复」。不露唐宇真名。</figcaption></figure>
+<figure><img src="screenshots/H5-板块页-发布按钮.png" alt="H5-板块页-发布按钮截图"><figcaption><span class="component-path">H5-板块页-发布按钮</span>：FAB「立即发布」打开 compose 新建。</figcaption></figure>
+<figure><img src="screenshots/H5-发布帖子-表单.png" alt="H5-发布帖子-表单截图"><figcaption><span class="component-path">H5-发布帖子-表单</span>：标题、内容、图最多9、标签选填单选可取消、匿名发帖（仅板块允许匿名且非编辑）。提交；遮罩关闭 aria 关闭。</figcaption></figure>
+<figure><img src="screenshots/H5-板块页-空态.png" alt="H5-板块页-空态截图"><figcaption><span class="component-path">H5-板块页-空态</span>：?empty=1 走 usePreviewList 空。文案「暂无帖子」。头图仍在。</figcaption></figure>
+<figure><img src="screenshots/H5-板块页-不存在.png" alt="H5-板块页-不存在截图"><figcaption><span class="component-path">H5-板块页-不存在</span>：id 无效或停用：顶栏标题「论坛」，主文案「论坛不存在或已停用」。</figcaption></figure>
+<table><thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用逻辑</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead><tbody><tr><td>立即发布</td><td>H5-板块页-发布按钮</td><td>FAB</td><td>板 enabled</td><td>板不存在无 FAB</td><td>点开表单提交</td><td>publishClientTopic</td><td>列表前插新帖 audit 直接发布 shelf on</td><td>toast 发布成功</td><td>请填写标题 / 禁言未拦发帖</td><td>内存</td></tr><tr><td>编辑自己的帖</td><td>H5-板块页-帖子列表-编辑</td><td>操作</td><td>author===周敏</td><td>他人无按钮</td><td>提交</td><td>updateClientTopic</td><td>改标题内容图表</td><td>已保存</td><td>只能编辑自己的帖子 / 请填写标题</td><td>内存</td></tr><tr><td>删除自己的帖</td><td>H5-板块页-帖子列表-删除</td><td>操作</td><td>自己的帖</td><td>他人无</td><td>底表确认删除后无法恢复</td><td>deleteClientTopic</td><td>从 store 移除</td><td>无成功 toast</td><td>只能删除自己的帖子</td><td>H5DeleteSheet</td></tr><tr><td>进帖</td><td>H5-板块页-帖子列表-标题区</td><td>a.href</td><td>可见帖</td><td>始终</td><td>点击</td><td>hash forum-topic</td><td>路由</td><td>详情</td><td>不可见直链空态</td><td>无 API</td></tr></tbody></table>
+ <h4>6.B.2 帖子详情</h4>
+<figure><img src="screenshots/H5-帖子详情-页面整体.png" alt="H5-帖子详情-页面整体截图"><figcaption><span class="component-path">H5-帖子详情-页面整体</span>：顶栏返回到板块，标题为 boardName。</figcaption></figure>
+<figure><img src="screenshots/H5-帖子详情-正文.png" alt="H5-帖子详情-正文截图"><figcaption><span class="component-path">H5-帖子详情-正文</span>：作者、置顶/标签/标题、正文、大图网格、ForumPostStats。</figcaption></figure>
+<figure><img src="screenshots/H5-帖子详情-点赞收藏.png" alt="H5-帖子详情-点赞收藏截图"><figcaption><span class="component-path">H5-帖子详情-点赞收藏</span>：底栏：写评论输入、发送、赞数、星标收藏。toggleTopicLike / toggleTopicFavorite。</figcaption></figure>
+<figure><img src="screenshots/H5-帖子详情-评论输入.png" alt="H5-帖子详情-评论输入截图"><figcaption><span class="component-path">H5-帖子详情-评论输入</span>：点评论回复展开 composer；可附图 cap 9。发送 addClientTopicComment 或 Reply。</figcaption></figure>
+<figure><img src="screenshots/H5-帖子详情-匿名评论勾选.png" alt="H5-帖子详情-匿名评论勾选截图"><figcaption><span class="component-path">H5-帖子详情-匿名评论勾选</span>：二手论坛允许匿名时，展开评论区出现 checkbox 文案「匿名」，aria-label「匿名评论」。勾选后评论 authorAnonymous=true。</figcaption></figure>
+<figure><img src="screenshots/H5-帖子详情-匿名帖.png" alt="H5-帖子详情-匿名帖截图"><figcaption><span class="component-path">H5-帖子详情-匿名帖</span>：id=4 显示器帖：楼主【匿名用户】+序号；评论人同样匿名序号（同帖内作者映射稳定）。</figcaption></figure>
+<figure><img src="screenshots/H5-帖子详情-匿名评论人.png" alt="H5-帖子详情-匿名评论人截图"><figcaption><span class="component-path">H5-帖子详情-匿名评论人</span>：评论头像「匿」+【匿名用户】四位号，无部门。回复按钮 aria「回复 【匿名用户】xxxx」。</figcaption></figure>
+<figure><img src="screenshots/H5-帖子详情-不存在.png" alt="H5-帖子详情-不存在截图"><figcaption><span class="component-path">H5-帖子详情-不存在</span>：下架/驳回/待审/无板：「帖子不存在」。</figcaption></figure>
+<p>评论排序热度/时间代码状态 commentSort，默认 hot。删除自己的评/回复走确认 sheet。点赞评论 toggleClientTopicCommentLike。自己的匿名评显示「我」。</p>
+ <h4>6.B.3 我的帖子</h4>
+<figure><img src="screenshots/H5-我的帖子-页面整体.png" alt="H5-我的帖子-页面整体截图"><figcaption><span class="component-path">H5-我的帖子-页面整体</span>：myClientForumTopics：非信箱、可见、author 周敏。可编辑删除进详情。</figcaption></figure>
+<figure><img src="screenshots/H5-我的帖子-空态.png" alt="H5-我的帖子-空态截图"><figcaption><span class="component-path">H5-我的帖子-空态</span>：empty=1「暂无帖子」。</figcaption></figure>
+</article>
+<article id="page-pc"><h3>6.C PC</h3>
+<figure><img src="screenshots/PC-板块页-页面整体.png" alt="PC-板块页-页面整体截图"><figcaption><span class="component-path">PC-板块页-页面整体</span>：PcActivityShell 标题=板块名。左 feed 右 sidebar。</figcaption></figure>
+<figure><img src="screenshots/PC-板块页-头图区.png" alt="PC-板块页-头图区截图"><figcaption><span class="component-path">PC-板块页-头图区</span>：同 H5 头图+简介展开，h2 名称+帖数。</figcaption></figure>
+<figure><img src="screenshots/PC-板块页-帖子列表.png" alt="PC-板块页-帖子列表截图"><figcaption><span class="component-path">PC-板块页-帖子列表</span>：搜索/Tab/排序/帖列表逻辑与 H5 相同；缩略最多 5。匿名规则同 H5。</figcaption></figure>
+<figure><img src="screenshots/PC-板块页-匿名作者.png" alt="PC-板块页-匿名作者截图"><figcaption><span class="component-path">PC-板块页-匿名作者</span>：与 H5 同一套 topicAuthorName：【匿名用户】序号、头像匿。</figcaption></figure>
+<figure><img src="screenshots/PC-板块页-侧栏.png" alt="PC-板块页-侧栏截图"><figcaption><span class="component-path">PC-板块页-侧栏</span>：当前用户周敏+部门；立即发布；管理员列表；待你回复；热门帖子；其他论坛。</figcaption></figure>
+<figure><img src="screenshots/PC-板块页-立即发布.png" alt="PC-板块页-立即发布截图"><figcaption><span class="component-path">PC-板块页-立即发布</span>：侧栏主按钮，打开同一 H5ForumCompose。</figcaption></figure>
+<figure><img src="screenshots/PC-板块页-热门帖子.png" alt="PC-板块页-热门帖子截图"><figcaption><span class="component-path">PC-板块页-热门帖子</span>：按回复数再赞数取前 5，序号 1–5。</figcaption></figure>
+<figure><img src="screenshots/PC-板块页-其他论坛.png" alt="PC-板块页-其他论坛截图"><figcaption><span class="component-path">PC-板块页-其他论坛</span>：其他 enabled 论坛链到 #/c/pc/forum/{id}。</figcaption></figure>
+<figure><img src="screenshots/PC-发布帖子-表单.png" alt="PC-发布帖子-表单截图"><figcaption><span class="component-path">PC-发布帖子-表单</span>：与 H5 同一浮层组件。</figcaption></figure>
+<figure><img src="screenshots/PC-板块页-空态.png" alt="PC-板块页-空态截图"><figcaption><span class="component-path">PC-板块页-空态</span>：empty=1 列表「暂无帖子」，侧栏仍在。</figcaption></figure>
+<figure><img src="screenshots/PC-帖子详情-页面整体.png" alt="PC-帖子详情-页面整体截图"><figcaption><span class="component-path">PC-帖子详情-页面整体</span>：宽屏正文+评论+composer；板不存在/帖不可见走空文案。</figcaption></figure>
+<figure><img src="screenshots/PC-帖子详情-匿名帖.png" alt="PC-帖子详情-匿名帖截图"><figcaption><span class="component-path">PC-帖子详情-匿名帖</span>：显示器帖详情：楼主与评论均为【匿名用户】序号。</figcaption></figure>
+<figure><img src="screenshots/PC-帖子详情-匿名评论勾选.png" alt="PC-帖子详情-匿名评论勾选截图"><figcaption><span class="component-path">PC-帖子详情-匿名评论勾选</span>：聚焦「写评论」后输入框内出现「匿名」勾选（aria 匿名评论）与附图、发布。placeholder「参与讨论，说说你的看法…」。</figcaption></figure>
+<figure><img src="screenshots/PC-我的帖子-页面整体.png" alt="PC-我的帖子-页面整体截图"><figcaption><span class="component-path">PC-我的帖子-页面整体</span>：壳标题「我的帖子」。门户未放入口，hash 可开。</figcaption></figure>
+<p>PC 停用板：PcActivityShell 标题「论坛」+「论坛不存在或已停用」。</p>
+</article></section>
+<section id="data-fields"><h2>7. 数据字段与枚举</h2>
+<table><thead><tr><th>字段</th><th>取值</th><th>说明</th></tr></thead><tbody><tr><td>ForumKind</td><td>forum / mailbox</td><td>本文仅 forum</td></tr><tr><td>BoardStatus</td><td>enabled / disabled</td><td>文案 已启用 / 已停用</td></tr><tr><td>ForumVisibility</td><td>全员 / 按部门 / 自定义人群 / 导入人群</td><td>FORUM_VISIBILITY_OPTIONS</td></tr><tr><td>TopicAuditStatus</td><td>直接发布 / 待审核 / 已通过 / 已驳回</td><td>C 端隐藏 待审核、已驳回</td></tr><tr><td>PinScope</td><td>空 / global / board</td><td>isTopicPinned 后两者都算置顶；后台置顶写入 board</td></tr><tr><td>ShelfStatus</td><td>on / off</td><td>off=下架</td></tr><tr><td>ForumTagStatus</td><td>启用 / 禁用</td><td></td></tr><tr><td>FORUM_COMMENT_MAX</td><td>200</td><td>后台回复字数</td></tr><tr><td>FORUM_COMMENT_IMAGE_MAX / FORUM_COMPOSE_IMAGE_MAX</td><td>9</td><td></td></tr><tr><td>MUTE_REASON_MAX</td><td>100</td><td></td></tr><tr><td>FORUM_MAIN_COMMENT_PAGE_SIZE</td><td>10</td><td>后台主评分页</td></tr><tr><td>forumAdminSelf</td><td>陈产品</td><td>后台回复默认账号</td></tr><tr><td>forumClientSelf</td><td>周敏</td><td>C 端写操作身份</td></tr><tr><td>马甲</td><td>论坛小助手、官方客服</td><td>后台回复下拉</td></tr><tr><td>匿名展示</td><td>【匿名用户】+1000–9999 或「我」</td><td>forumActorName / forumAnonSerials；后台仍匿名（真名）</td></tr></tbody></table>
+</section>
+<section id="apis"><h2>8. API / 数据接口清单</h2>
+<p>代码无 fetch/axios/XHR/WebSocket。数据全在 <code>forumStore</code> 内存 + 初始 seed。刷新丢失运行时变更。</p>
+<table><thead><tr><th>接口用途</th><th>方法</th><th>路径</th><th>触发场景</th><th>请求参数</th><th>响应字段</th><th>是否真实接口</th><th>备注</th></tr></thead><tbody><tr><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>否</td><td>无真实 HTTP</td></tr></tbody></table>
+<p><strong>建议接口 / 待确认</strong>（页面需要但未实现）：</p>
+<table><thead><tr><th>接口用途</th><th>方法</th><th>路径</th><th>触发场景</th><th>请求参数</th><th>响应字段</th><th>是否真实接口</th><th>备注</th></tr></thead><tbody><tr><td>板块 CRUD/启停</td><td>REST</td><td>待确认</td><td>后台列表表单</td><td>BoardDraft</td><td>Board</td><td>建议</td><td>需鉴权与重名</td></tr><tr><td>帖子列表/详情/上下架/置顶/指派</td><td>REST</td><td>待确认</td><td>详情表</td><td>id, pin, shelf, assignees</td><td>Topic</td><td>建议</td><td></td></tr><tr><td>发帖/改删/评论</td><td>REST</td><td>待确认</td><td>C 端</td><td>title, content, images, tags, anonymous</td><td>id/error</td><td>建议</td><td>禁言、可见范围服务端强制</td></tr><tr><td>赞藏</td><td>POST</td><td>待确认</td><td>C 端</td><td>topicId</td><td>counts, liked</td><td>建议</td><td>现为内存数组</td></tr><tr><td>禁言</td><td>REST</td><td>待确认</td><td>风控</td><td>user, reason</td><td>MuteRecord</td><td>建议</td><td></td></tr><tr><td>标签</td><td>REST</td><td>待确认</td><td>标签管理</td><td>name, status, order</td><td>Tag</td><td>建议</td><td></td></tr><tr><td>C 端链接</td><td>—</td><td>前端拼 origin+#/c/h5/...</td><td>查看链接</td><td>boardId/topicId</td><td>url</td><td>代码已实现前端拼</td><td>非后端短链</td></tr></tbody></table>
+</section>
+<section id="non-functional"><h2>9. 非功能需求</h2>
+<ul>
+<li>布局：后台 1440 桌面 Ant Design；H5 390 壳 is-forum；PC 双栏 c-forum-pc-layout。</li>
+<li>上传：图片 beforeUpload false，DataURL 存内存，无对象存储。</li>
+<li>无障碍：部分按钮有 aria-label（返回、搜索帖子、上传图标、查看链接、禁言操作）。</li>
+<li>性能：帖列表全量内存过滤；后台主评手动加载更多。</li>
+<li>安全：无登录；clipboard 复制链接；可见范围未在 C 端强制，{todo}。</li>
+<li>错误：message/toast；无全局 HTTP 错误页。</li>
+</ul></section>
+<section id="analytics"><h2>10. 埋点与指标建议</h2>
+<p><span class="status guess">根据页面推测需要</span> 代码无埋点 SDK。</p>
+<table><thead><tr><th>事件名称</th><th>触发动作</th><th>关键属性</th><th>业务目的</th></tr></thead><tbody><tr><td>forum_board_view</td><td>打开 H5/PC 板块</td><td>board_id, surface</td><td>曝光</td></tr><tr><td>forum_topic_publish</td><td>提交发帖</td><td>board_id, anonymous, has_image, tag</td><td>生产</td></tr><tr><td>forum_topic_click</td><td>点帖卡片</td><td>topic_id, sort, tab</td><td>消费</td></tr><tr><td>forum_comment_submit</td><td>发评/回复</td><td>topic_id, is_reply</td><td>互动</td></tr><tr><td>forum_like_toggle</td><td>赞帖/评</td><td>target_type, id, on</td><td>互动</td></tr><tr><td>forum_topic_shelf</td><td>后台下架/上架</td><td>topic_id, shelf</td><td>治理</td></tr><tr><td>forum_mute_add</td><td>添加禁言</td><td>user</td><td>风控</td></tr></tbody></table>
+</section>
+<section id="acceptance"><h2>11. 验收标准</h2>
+<ul>
+<li>Given 启用中的二手论坛，When 打开 #/c/h5/forum/1，Then 见头图名称与可见帖列表，不含下架/待审/已驳回帖。</li>
+<li>Given 停用该板，When 再打开同 hash，Then 「论坛不存在或已停用」，无 FAB。</li>
+<li>Given 发帖标题为空，When 点提交，Then toast「请填写标题」，不写 store。</li>
+<li>Given 标题有值，When 提交，Then toast「发布成功」，列表可见，audit=直接发布。</li>
+<li>Given 二手论坛允许匿名且打开显示器帖，When 员工看 C 端，Then 楼主与评为人【匿名用户】四位号、头像「匿」、无部门；后台帖详情发帖人仍「匿名（唐宇）」。</li>
+<li>Given 周敏匿名发帖或发评，When 自己看 C 端，Then 名称显示「我」而非序号。</li>
+<li>Given 板允许匿名，When 展开 H5/PC 评论框，Then 出现「匿名」勾选。</li>
+<li>Given 后台下架该帖，When C 端刷新列表/直链，Then 列表无此帖，详情「帖子不存在」。</li>
+<li>Given 周敏被禁言，When 发主评，Then 「你已被禁言」。</li>
+<li>Given 指派周敏且其未回，When 打开板块，Then 帖带待回复样式；PC 侧栏「待你回复」有该标题。</li>
+<li>Given 新建论坛不传图标，When 创建，Then 字段「请上传论坛图标」。</li>
+<li>Given 重名「二手论坛」，When 创建，Then message.error 且名称红字。</li>
+<li>Given 标签禁用，When 打开发帖浮层，Then 选项不含该标签（板 tags 来自板块配置快照，改板 tags 才变；标签目录禁用影响新建板可选）。</li>
+</ul></section>
+<section id="risks"><h2>12. 风险与待确认问题</h2>
+<ul>
+<li>C 端不按可见范围/部门过滤员工，仅 status=enabled。生产是否要与活动应用 5.1 对齐？</li>
+<li>禁言拦 addClientTopicComment，不拦 addClientTopicReply 与 publishClientTopic。产品是否要求发帖+楼层一并拦截？</li>
+<li>导入人群只存文件名，新建不解析 CSV 人数。</li>
+<li>帖审核态有枚举，后台论坛无「审帖」操作；种子有已通过/已驳回。审核流是否要做？</li>
+<li>PinScope 含 global，后台确认置顶只写 board。</li>
+<li>PC 我的帖子无门户入口。</li>
+<li>后台论坛列表无搜索筛选，BoardQuery 能力未挂 UI。</li>
+<li>无持久化、无权限、无真实接口。</li>
+<li>H5/PC 发帖、评论匿名仅板 anonymous；作者字段仍写周敏，展示走 authorAnonymous。编辑帖无匿名勾选。</li>
+<li>匿名序号为前端 hash，非服务端发号；生产是否要持久化序号 {todo}。</li>
+</ul></section>
+</main>
+</div>
+</div>
+<script>
+  document.querySelectorAll('[data-toggle-toc]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var layout = document.getElementById('prdLayout');
+      var collapsed = layout.classList.toggle('toc-collapsed');
+      document.querySelectorAll('[data-toggle-toc]').forEach(function (btn) {
+        btn.setAttribute('aria-label', collapsed ? '显示目录' : '隐藏目录');
+        btn.setAttribute('title', collapsed ? '显示目录' : '隐藏目录');
+      });
+    });
+  });
+</script>
+</body>
+</html>

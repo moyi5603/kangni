@@ -1,13 +1,20 @@
 import { useMemo, useState, type Key, type ReactNode } from 'react';
 import { PlusOutlined } from '@ant-design/icons';
-import { App, Button, Card, Empty, Flex, Form, Input, Modal, Select, Space, Table, Tag, Typography } from 'antd';
+import { App, Button, Card, Empty, Flex, Form, Input, InputNumber, Modal, Select, Space, Table, Tag, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { ListPageHeading, SearchField, SearchPanel } from '../../../shared/ui/ListPage';
 import { TableEllipsisText } from '../../../shared/ui/TableEllipsisText';
-import { TableRowActions } from '../../../shared/ui/TableRowActions';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
-import { categoryStatuses, type ActivityCategoryRecord, type CategoryStatus } from '../model/category';
-import { isCategoryInUse, removeCategory, setCategoryStatus, upsertCategory, useCategories } from '../model/categoryStore';
+import {
+  categoryStatuses,
+  compareActivityCategories,
+  countActivityCategoryUsage,
+  validateActivityCategoryName,
+  type ActivityCategoryRecord,
+  type CategoryStatus,
+} from '../model/category';
+import { useActivities } from '../model/activityStore';
+import { deleteCategory, moveCategory, setCategoryStatus, upsertCategory, useCategories } from '../model/categoryStore';
 
 type CategoryQuery = {
   name: string;
@@ -28,8 +35,8 @@ function optionsOf(values: readonly string[]) {
 function modalFooter(_: ReactNode, extra: { OkBtn: React.FC; CancelBtn: React.FC }) {
   return (
     <Space>
-      <extra.CancelBtn />
       <extra.OkBtn />
+      <extra.CancelBtn />
     </Space>
   );
 }
@@ -37,15 +44,19 @@ function modalFooter(_: ReactNode, extra: { OkBtn: React.FC; CancelBtn: React.FC
 export function ActivityCategoryListPage() {
   const { message, modal } = App.useApp();
   const data = useCategories();
+  const activities = useActivities();
   const [draft, setDraft] = useState<CategoryQuery>(emptyQuery);
   const [query, setQuery] = useState<CategoryQuery>(emptyQuery);
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState<ActivityCategoryRecord>();
-  const [form] = Form.useForm<{ name: string }>();
+  const [form] = Form.useForm<{ name: string; order?: number }>();
+
+  const sorted = useMemo(() => [...data].sort(compareActivityCategories), [data]);
   const filtered = useMemo(
-    () => data.filter((item) => (!query.name || item.name.includes(query.name)) && (!query.status || item.status === query.status)),
-    [data, query],
+    () =>
+      sorted.filter((item) => (!query.name || item.name.includes(query.name)) && (!query.status || item.status === query.status)),
+    [query, sorted],
   );
   const hasActiveQuery = Boolean(query.name || query.status);
   const selectedRows = data.filter((item) => selectedRowKeys.includes(item.id));
@@ -57,12 +68,7 @@ export function ActivityCategoryListPage() {
 
   const save = async () => {
     const values = await form.validateFields();
-    const name = values.name.trim();
-    upsertCategory({
-      id: current?.id ?? Date.now(),
-      name,
-      status: current?.status ?? '启用',
-    });
+    upsertCategory({ name: values.name, order: values.order }, current?.id);
     message.success(current ? '分类已更新' : '分类已创建');
     setOpen(false);
   };
@@ -74,19 +80,19 @@ export function ActivityCategoryListPage() {
   };
 
   const deleteOne = (record: ActivityCategoryRecord) => {
-    if (isCategoryInUse(record.name)) {
-      message.warning(`分类「${record.name}」已被活动使用，无法删除`);
-      return;
-    }
+    const usage = countActivityCategoryUsage(record.name, activities);
+    const content =
+      usage > 0 ? `将有 ${usage} 个活动变为未分类，删除后不可恢复。` : '删除后不可恢复。当前无关联活动。';
     modal.confirm({
       title: `确认删除分类「${record.name}」？`,
-      content: '删除后不可恢复。已被活动使用的分类不能删除。',
+      content,
       okText: '确认',
       cancelText: '取消',
       footer: modalFooter,
       onOk: () => {
-        if (!removeCategory(record.id)) {
-          message.warning(`分类「${record.name}」已被活动使用，无法删除`);
+        const result = deleteCategory(record.id);
+        if (!result.ok) {
+          message.warning('分类不存在');
           return;
         }
         setSelectedRowKeys((keys) => keys.filter((key) => key !== record.id));
@@ -110,44 +116,47 @@ export function ActivityCategoryListPage() {
 
   const columns: TableColumnsType<ActivityCategoryRecord> = [
     { title: '分类名称', dataIndex: 'name', render: (value: string) => <TableEllipsisText text={value} /> },
+    { title: '排序', dataIndex: 'order', width: 88 },
+    {
+      title: '活动数',
+      key: 'activities',
+      width: 88,
+      align: 'right',
+      render: (_, record) => countActivityCategoryUsage(record.name, activities),
+    },
     {
       title: '状态',
       dataIndex: 'status',
-      width: 110,
+      width: 88,
       render: (value: CategoryStatus) => <Tag color={statusColor[value]}>{value}</Tag>,
     },
     {
       title: '操作',
       key: 'action',
       fixed: 'right',
-      align: 'right',
-      width: 180,
-      render: (_, record) => (
-        <TableRowActions
-          moreAriaLabel={`更多操作 ${record.name}`}
-          actions={[
-            {
-              key: 'edit',
-              label: '编辑',
-              ariaLabel: `编辑 ${record.name}`,
-              onClick: () => openEditor(record),
-            },
-            {
-              key: 'toggle',
-              label: record.status === '启用' ? '禁用' : '启用',
-              ariaLabel: record.status === '启用' ? `禁用 ${record.name}` : `启用 ${record.name}`,
-              onClick: () => toggleStatus(record),
-            },
-            {
-              key: 'delete',
-              label: '删除',
-              ariaLabel: `删除 ${record.name}`,
-              danger: true,
-              onClick: () => deleteOne(record),
-            },
-          ]}
-        />
-      ),
+      width: 280,
+      render: (_, record) => {
+        const index = sorted.findIndex((item) => item.id === record.id);
+        return (
+          <Space>
+            <Button type="link" onClick={() => openEditor(record)}>
+              编辑
+            </Button>
+            <Button type="link" disabled={index <= 0} onClick={() => moveCategory(record.id, -1)}>
+              上移
+            </Button>
+            <Button type="link" disabled={index >= sorted.length - 1} onClick={() => moveCategory(record.id, 1)}>
+              下移
+            </Button>
+            <Button type="link" onClick={() => deleteOne(record)}>
+              删除
+            </Button>
+            <Button type="link" onClick={() => toggleStatus(record)}>
+              {record.status === '启用' ? '禁用' : '启用'}
+            </Button>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -155,10 +164,7 @@ export function ActivityCategoryListPage() {
     <div className="page-stack">
       <ListPageHeading paths={['活动', '分类管理']} title="分类管理" subtitle="维护活动分类，禁用后新建活动不可再选。" />
       <SearchPanel
-        onSearch={() => {
-          setQuery(draft);
-          message.success('查询完成');
-        }}
+        onSearch={() => setQuery(draft)}
         onReset={() => {
           setDraft(emptyQuery);
           setQuery(emptyQuery);
@@ -182,14 +188,11 @@ export function ActivityCategoryListPage() {
           />
         </SearchField>
       </SearchPanel>
-      <Card className="list-table-card">
+      <Card>
         <div className="table-toolbar">
-          <Typography.Text>共 {filtered.length} 条</Typography.Text>
-          <Space>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>
-              新建分类
-            </Button>
-          </Space>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>
+            新建分类
+          </Button>
         </div>
         {selectedRowKeys.length ? (
           <Flex className="batch-toolbar" justify="space-between" align="center">
@@ -209,7 +212,7 @@ export function ActivityCategoryListPage() {
           rowSelection={{ selectedRowKeys, preserveSelectedRowKeys: true, onChange: setSelectedRowKeys }}
           columns={columns}
           dataSource={filtered}
-          scroll={{ x: 640 }}
+          scroll={{ x: 880 }}
           pagination={{
             pageSize: b2bStandards.table.pageSize,
             pageSizeOptions: [...b2bStandards.table.pageSizeOptions],
@@ -223,7 +226,7 @@ export function ActivityCategoryListPage() {
         title={current ? '编辑分类' : '新建分类'}
         open={open}
         footer={modalFooter}
-        onOk={save}
+        onOk={() => void save()}
         onCancel={() => setOpen(false)}
         okText="确认"
         cancelText="取消"
@@ -238,26 +241,32 @@ export function ActivityCategoryListPage() {
           requiredMark
           labelWrap={false}
           validateTrigger="onBlur"
-          initialValues={{ name: current?.name ?? '' }}
+          initialValues={{
+            name: current?.name ?? '',
+            order: current?.order,
+          }}
         >
           <Form.Item
             name="name"
             label="分类名称"
             rules={[
               { required: true, whitespace: true, message: '请输入分类名称' },
-              { max: 10, message: '分类名称不超过 10 个字' },
+              { max: 12, message: '分类名称不超过 12 个字' },
               {
                 validator: async (_, value: string) => {
-                  const name = value?.trim();
-                  if (!name) return;
-                  const duplicated = data.some((item) => item.name === name && item.id !== current?.id);
-                  if (duplicated) throw new Error('分类名称已存在');
+                  const error = validateActivityCategoryName(value ?? '', data, current?.id);
+                  if (error && error !== '请输入分类名称') throw new Error(error);
                 },
               },
             ]}
           >
-            <Input maxLength={10} showCount placeholder="请输入分类名称" />
+            <Input maxLength={12} showCount placeholder="请输入分类名称" />
           </Form.Item>
+          {current ? (
+            <Form.Item name="order" label="排序">
+              <InputNumber min={0} style={{ width: '100%' }} />
+            </Form.Item>
+          ) : null}
         </Form>
       </Modal>
     </div>

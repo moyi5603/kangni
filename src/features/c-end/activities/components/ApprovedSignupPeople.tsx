@@ -19,7 +19,7 @@ function PeopleList({ people }: { people: ApprovedSignupPerson[] }) {
     return <p className="c-empty">没有匹配的报名人员</p>;
   }
   return (
-    <ul className="c-signup-people-list is-cols-4">
+    <ul className="c-signup-people-list is-cols-2">
       {people.map((person) => (
         <li key={person.id} className="c-signup-person">
           <EmployeeAvatar name={person.name} />
@@ -53,8 +53,8 @@ export function ApprovedSignupPeople({
   useRelated('signups', activityId);
   const people = approvedSignupPeople(activityId);
   const sessionTabs =
-    activity && shouldShowRecentSessions(activity.scheduleType, activity.sessions ?? [], now)
-      ? listClientSignupSessions(activity.sessions ?? [], now)
+    activity && shouldShowRecentSessions(activity.scheduleType, activity.sessions ?? [], now, activity.terminatedAt)
+      ? listClientSignupSessions(activity.sessions ?? [], now, undefined, activity.terminatedAt)
       : [];
   const [open, setOpen] = useState(initialOpen);
   const [keyword, setKeyword] = useState(query);

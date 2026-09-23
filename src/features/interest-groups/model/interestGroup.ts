@@ -1,9 +1,10 @@
-export const INTEREST_GROUP_MOCK_VERSION = 6;
+export const INTEREST_GROUP_MOCK_VERSION = 12;
 
 export type InterestGroupJoinMode = 'free' | 'approve';
 export type InterestGroupSource = 'admin' | 'employee';
 export const interestGroupEntityAuditStatuses = ['待审核', '已通过', '已驳回', '无需审核'] as const;
 export type InterestGroupEntityAuditStatus = (typeof interestGroupEntityAuditStatuses)[number];
+export type InterestGroupPublishStatus = '未发布' | '已发布';
 
 export const interestGroupEntityAuditStatusColor: Record<InterestGroupEntityAuditStatus, string> = {
   待审核: 'warning',
@@ -17,7 +18,7 @@ export type InterestGroup = {
   name: string;
   categoryKey: string;
   leadName: string;
-  leadEmployeeId: string;
+  leadEmployeeIds: string[];
   memberCount: number;
   activityCount: number;
   joinMode: InterestGroupJoinMode;
@@ -28,11 +29,22 @@ export type InterestGroup = {
   createdAt: string;
   source: InterestGroupSource;
   auditStatus: InterestGroupEntityAuditStatus;
+  publishStatus: InterestGroupPublishStatus;
   rejectReason?: string;
+  pinned: boolean;
+  sortIndex: number;
 };
 
 export function canReviewInterestGroup(group: Pick<InterestGroup, 'auditStatus'>): boolean {
   return group.auditStatus === '待审核';
+}
+
+export function canPublishInterestGroup(group: Pick<InterestGroup, 'publishStatus'>): boolean {
+  return group.publishStatus !== '已发布';
+}
+
+export function canRevokeInterestGroup(group: Pick<InterestGroup, 'publishStatus'>): boolean {
+  return group.publishStatus === '已发布';
 }
 
 export const interestGroupJoinModeLabels: Record<InterestGroupJoinMode, string> = {
@@ -43,13 +55,33 @@ export const interestGroupJoinModeLabels: Record<InterestGroupJoinMode, string> 
 export type InterestGroupFormValues = {
   name: string;
   categoryKey: string;
-  leadEmployeeId: string;
+  leadEmployeeIds: string[];
   joinMode: InterestGroupJoinMode;
-  area: string;
-  tags: string[];
   intro: string;
   coverUrl: string;
 };
+
+export function normalizeInterestGroupLeadIds(ids: string[]): string[] {
+  const seen = new Set<string>();
+  return ids.filter((id) => {
+    const value = id.trim();
+    if (!value || seen.has(value)) return false;
+    seen.add(value);
+    return true;
+  });
+}
+
+export function formatInterestGroupLeadName(ids: string[]): string {
+  return normalizeInterestGroupLeadIds(ids).join('、');
+}
+
+export function isInterestGroupLead(
+  group: Pick<InterestGroup, 'leadEmployeeIds' | 'leadName'>,
+  viewer: string,
+): boolean {
+  if (group.leadEmployeeIds.includes(viewer)) return true;
+  return group.leadName.split('、').includes(viewer);
+}
 
 export function normalizeInterestGroupTags(tags: string[]): string[] {
   const seen = new Set<string>();
@@ -64,22 +96,21 @@ export function normalizeInterestGroupTags(tags: string[]): string[] {
 }
 
 export function validateInterestGroupForm(values: InterestGroupFormValues, isCreate: boolean): string | null {
-  if (!values.name.trim()) return '请输入小组名称';
-  if (values.name.trim().length > 40) return '小组名称不能超过 40 字';
-  if (!values.leadEmployeeId) return '请选择小组负责人';
+  if (!values.name.trim()) return '请输入兴趣圈名称';
+  if (values.name.trim().length > 40) return '兴趣圈名称不能超过 40 字';
+  if (!normalizeInterestGroupLeadIds(values.leadEmployeeIds).length) return '请选择兴趣圈负责人';
   if (isCreate && !values.coverUrl.trim()) return '请上传封面图';
-  if (values.area.length > 60) return '活动区域不能超过 60 字';
-  if (values.intro.length > 500) return '小组简介不能超过 500 字';
+  if (values.intro.length > 500) return '兴趣圈简介不能超过 500 字';
   return null;
 }
 
-export const initialInterestGroups: InterestGroup[] = [
+const seedInterestGroups: Omit<InterestGroup, 'pinned' | 'sortIndex'>[] = [
   {
     id: 1,
     name: '城市夜跑团',
     categoryKey: 'sport',
     leadName: '张悦',
-    leadEmployeeId: '张悦',
+    leadEmployeeIds: ['张悦'],
     memberCount: 128,
     activityCount: 2,
     joinMode: 'free',
@@ -90,13 +121,14 @@ export const initialInterestGroups: InterestGroup[] = [
     createdAt: '2026-06-01 10:00:00',
     source: 'admin',
     auditStatus: '无需审核',
+    publishStatus: '已发布',
   },
   {
     id: 2,
     name: '周末徒步野行',
     categoryKey: 'sport',
     leadName: '陈产品',
-    leadEmployeeId: '陈产品',
+    leadEmployeeIds: ['陈产品'],
     memberCount: 96,
     activityCount: 1,
     joinMode: 'free',
@@ -107,13 +139,14 @@ export const initialInterestGroups: InterestGroup[] = [
     createdAt: '2026-06-03 14:20:00',
     source: 'admin',
     auditStatus: '无需审核',
+    publishStatus: '已发布',
   },
   {
     id: 3,
     name: '深夜读书会',
     categoryKey: 'learning',
     leadName: '王芳',
-    leadEmployeeId: '王芳',
+    leadEmployeeIds: ['王芳'],
     memberCount: 65,
     activityCount: 1,
     joinMode: 'free',
@@ -124,30 +157,32 @@ export const initialInterestGroups: InterestGroup[] = [
     createdAt: '2026-06-05 09:30:00',
     source: 'admin',
     auditStatus: '无需审核',
+    publishStatus: '已发布',
   },
   {
     id: 4,
     name: '桌游电竞局',
     categoryKey: 'game',
-    leadName: '黄码',
-    leadEmployeeId: '黄码',
+    leadName: '黄码、吴检',
+    leadEmployeeIds: ['黄码', '吴检'],
     memberCount: 143,
     activityCount: 1,
     joinMode: 'free',
-    intro: '剧本杀、阿瓦隆、狼人杀、五黑上分，午休和下班后随时开局。',
+    intro: '桌游电竞局欢迎所有想玩的人来坐一坐。剧本杀、阿瓦隆、狼人杀、德式桌游、休闲卡牌和五黑排位都能开，午休半小时可以来一局快杀，下班后也能留下来打长本。新手有人带教学，老玩家也能找到同水平对手。场地在总部休闲区，零食饮料可自备或现场拼单。我们不卷段位、不嘲讽菜鸡，快乐第一、胜负其次。想开局就在群里喊一声，凑齐人立刻开始，错过这周还有下周固定局。欢迎带同事和朋友一起来，人多更好玩。随时都有空位，等你入座。',
     tags: ['每周开局', '新手教学'],
     area: '总部 · 休闲区',
     coverUrl: '/activities/open-day.jpg',
     createdAt: '2026-06-08 16:00:00',
     source: 'admin',
     auditStatus: '无需审核',
+    publishStatus: '已发布',
   },
   {
     id: 5,
     name: '午休飞盘局',
     categoryKey: 'sport',
     leadName: '林浅',
-    leadEmployeeId: '林浅',
+    leadEmployeeIds: ['林浅'],
     memberCount: 1,
     activityCount: 0,
     joinMode: 'free',
@@ -158,30 +193,32 @@ export const initialInterestGroups: InterestGroup[] = [
     createdAt: '2026-08-20 12:10:00',
     source: 'employee',
     auditStatus: '待审核',
+    publishStatus: '未发布',
   },
   {
     id: 6,
     name: '午间拉伸站',
     categoryKey: 'sport',
     leadName: '林浅',
-    leadEmployeeId: '林浅',
+    leadEmployeeIds: ['林浅'],
     memberCount: 8,
-    activityCount: 1,
+    activityCount: 2,
     joinMode: 'free',
-    intro: '午休 10 分钟跟练拉伸，工位旁就能做。林浅从 C 端建组后已通过审核。',
+    intro: '工位边拉伸，员工创建后已通过审核。',
     tags: ['午休', '拉伸'],
     area: '总部 · 工位区',
     coverUrl: '/activities/share.jpg',
     createdAt: '2026-08-12 12:20:00',
     source: 'employee',
     auditStatus: '已通过',
+    publishStatus: '已发布',
   },
   {
     id: 7,
     name: '周末胶片社',
     categoryKey: 'other',
     leadName: '林浅',
-    leadEmployeeId: '林浅',
+    leadEmployeeIds: ['林浅'],
     memberCount: 11,
     activityCount: 1,
     joinMode: 'free',
@@ -192,5 +229,12 @@ export const initialInterestGroups: InterestGroup[] = [
     createdAt: '2026-08-15 19:00:00',
     source: 'employee',
     auditStatus: '已通过',
+    publishStatus: '已发布',
   },
 ];
+
+export const initialInterestGroups: InterestGroup[] = seedInterestGroups.map((group, index) => ({
+  ...group,
+  pinned: group.id === 1,
+  sortIndex: group.id === 1 ? 0 : index - 1,
+}));

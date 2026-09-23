@@ -2,36 +2,23 @@ import { useMemo, useState } from 'react';
 import { useActivities } from '../../../activities/model/activityStore';
 import { goCEnd } from '../../../../app/navigation';
 import { ActivityMeta } from '../components/ActivityMeta';
-import { IconChevronRight, IconTicket } from '../components/Icons';
+import { HomeQuotaBlock } from '../components/HomeQuotaBlock';
+import { IconTicket } from '../components/Icons';
 import { SignupStatusRow } from '../components/SignupStatusRow';
+import { ActivityCoverOverlay, ActivitySideCopy } from '../components/StatusPill';
 import {
+  PC_MY_SIGNUPS_LIST_STYLE,
   SIGNUP_TABS,
   clientVisibleActivities,
   filterSignupsByTitle,
   groupClientSignups,
+  signupCta,
   signupsForTab,
   type ClientSignupView,
   type SignupTabId,
 } from '../model/clientActivity';
 import { useUserSignups } from '../model/signupStore';
 import { PcActivityShell } from './PcActivityShell';
-
-function SignupThumb({ coverUrl }: { coverUrl: string }) {
-  return (
-    <span className="c-signup-thumb" aria-hidden>
-      <span className="c-cover-fallback" />
-      {coverUrl ? (
-        <img
-          src={coverUrl}
-          alt=""
-          onError={(event) => {
-            event.currentTarget.hidden = true;
-          }}
-        />
-      ) : null}
-    </span>
-  );
-}
 
 function SignupDetails({ item }: { item: ClientSignupView }) {
   return <p className="c-pc-signup-type">报名类型：{item.signup.type}</p>;
@@ -52,23 +39,29 @@ function SignupCard({ item }: { item: ClientSignupView }) {
     );
   }
 
+  const cta = signupCta(activity, true);
   return (
     <button
-      className="c-pc-signup-card c-card-btn"
+      className={`c-pc-card c-card-btn is-${PC_MY_SIGNUPS_LIST_STYLE}`}
       type="button"
+      aria-label={`活动 ${activity.title}`}
       onClick={() => goCEnd('pc', activity.id)}
     >
-      <SignupThumb coverUrl={activity.coverUrl} />
-      <div className="c-pc-signup-card-body">
-        <h3 className="c-pc-signup-title">{activity.title}</h3>
-        <SignupStatusRow
-          activityStatus={activity.activityStatus}
-          auditStatus={item.signup.status}
-        />
-        <SignupDetails item={item} />
-        <ActivityMeta activity={activity} compact />
+      <div className="c-cover is-side is-contain">
+        {activity.coverUrl ? <img src={activity.coverUrl} alt="" /> : null}
+        <ActivityCoverOverlay activity={activity} variant="home" layout={PC_MY_SIGNUPS_LIST_STYLE} />
       </div>
-      <IconChevronRight />
+      <div className="c-pc-card-body">
+        <ActivitySideCopy activity={activity} />
+        <ActivityMeta activity={activity} compact hidePlace />
+        <HomeQuotaBlock
+          activity={activity}
+          ctaLabel={cta.label}
+          ctaEnabled={cta.enabled}
+          signedUp
+          compact
+        />
+      </div>
     </button>
   );
 }
@@ -83,7 +76,7 @@ export function PcSignupGroup({
   if (items.length === 0) return null;
 
   return (
-    <ul className="c-pc-signup-list" aria-label={`${title}报名`}>
+    <ul className={`c-pc-grid is-${PC_MY_SIGNUPS_LIST_STYLE}`} aria-label={`${title}报名`}>
       {items.map((item) => (
         <li key={`${item.signup.activityId}-${item.signup.createdAt}`}>
           <SignupCard item={item} />
@@ -114,7 +107,7 @@ export function PcMySignups({
   const emptyCopy = query.trim() ? '未找到相关活动' : activeTab.empty;
 
   return (
-    <PcActivityShell>
+    <PcActivityShell title="我的活动">
       <button className="c-back-link" type="button" onClick={goHome}>
         ← 返回列表
       </button>

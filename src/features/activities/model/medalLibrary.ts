@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
 
+export type MedalScope = '通用' | '文化打卡' | '技能大赛';
+
 export type Medal = {
   id: string;
   name: string;
   imageUrl: string;
+  scope: MedalScope;
+  description?: string;
 };
 
 function badgeUri(fill: string, ring: string, mark: string) {
@@ -11,22 +15,35 @@ function badgeUri(fill: string, ring: string, mark: string) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
+function medal(id: string, name: string, fill: string, ring: string, mark: string, scope: MedalScope = '通用'): Medal {
+  return { id, name, imageUrl: badgeUri(fill, ring, mark), scope };
+}
+
 export const initialMedals: Medal[] = [
-  { id: 'join', name: '活动参与勋章', imageUrl: badgeUri('#ffe58f', '#d48806', '参') },
-  { id: 'star', name: '优秀表现勋章', imageUrl: badgeUri('#ffd8bf', '#d4380d', '优') },
-  { id: 'done', name: '结业纪念勋章', imageUrl: badgeUri('#d6e4ff', '#1d39c4', '业') },
-  { id: 'volunteer', name: '志愿者勋章', imageUrl: badgeUri('#d9f7be', '#389e0d', '志') },
-  { id: 'safety', name: '安全之星', imageUrl: badgeUri('#fff1b8', '#ad6800', '安') },
-  { id: 'collab', name: '最佳协作', imageUrl: badgeUri('#efdbff', '#531dab', '协') },
-  { id: 'innovate', name: '创新提案', imageUrl: badgeUri('#bae0ff', '#0958d9', '创') },
-  { id: 'attend', name: '满勤打卡', imageUrl: badgeUri('#ffd6e7', '#c41d7f', '勤') },
-  { id: 'speak', name: '演讲达人', imageUrl: badgeUri('#ffe7ba', '#d46b08', '讲') },
-  { id: 'lead', name: '组织先锋', imageUrl: badgeUri('#b5f5ec', '#08979c', '组') },
-  { id: 'newbie', name: '新人成长', imageUrl: badgeUri('#d6e4ff', '#2f54eb', '新') },
-  { id: 'quality', name: '质量标兵', imageUrl: badgeUri('#eaff8f', '#7cb305', '质') },
-  { id: 'service', name: '服务之星', imageUrl: badgeUri('#ffccc7', '#cf1322', '服') },
-  { id: 'learn', name: '学习之星', imageUrl: badgeUri('#d3adf7', '#531dab', '学') },
-  { id: 'green', name: '环保先锋', imageUrl: badgeUri('#b7eb8f', '#237804', '环') },
+  medal('star-staff', '明星员工', '#ffe58f', '#d48806', '星'),
+  medal('service-flag', '服务标兵', '#ffd8bf', '#d4380d', '服'),
+  medal('value-model', '价值观典范', '#ffccc7', '#cf1322', '值'),
+  medal('craft', '匠心品质', '#ffe7ba', '#d46b08', '匠'),
+  medal('growth-star', '成长之星', '#d9f7be', '#389e0d', '长'),
+  medal('excel', '卓越贡献', '#bae0ff', '#0958d9', '卓'),
+  medal('launch', '成长启航', '#d6e4ff', '#2f54eb', '航'),
+  medal('win-together', '协作共赢', '#efdbff', '#531dab', '协', '文化打卡'),
+  medal('innovate-go', '创新进取', '#b5f5ec', '#08979c', '创', '文化打卡'),
+  medal('join', '活动参与勋章', '#ffe58f', '#d48806', '参'),
+  medal('star', '优秀表现勋章', '#ffd8bf', '#d4380d', '优'),
+  medal('done', '结业纪念勋章', '#d6e4ff', '#1d39c4', '业'),
+  medal('volunteer', '志愿者勋章', '#d9f7be', '#389e0d', '志'),
+  medal('safety', '安全之星', '#fff1b8', '#ad6800', '安'),
+  medal('collab', '最佳协作', '#efdbff', '#531dab', '协', '文化打卡'),
+  medal('innovate', '创新提案', '#bae0ff', '#0958d9', '创', '文化打卡'),
+  medal('attend', '满勤打卡', '#ffd6e7', '#c41d7f', '勤', '文化打卡'),
+  medal('speak', '演讲达人', '#ffe7ba', '#d46b08', '讲'),
+  medal('lead', '组织先锋', '#b5f5ec', '#08979c', '组'),
+  medal('newbie', '新人成长', '#d6e4ff', '#2f54eb', '新'),
+  medal('quality', '质量标兵', '#eaff8f', '#7cb305', '质'),
+  medal('service', '服务之星', '#ffccc7', '#cf1322', '服'),
+  medal('learn', '学习之星', '#d3adf7', '#531dab', '学'),
+  medal('green', '环保先锋', '#b7eb8f', '#237804', '环'),
 ];
 
 let medals = [...initialMedals];
@@ -40,11 +57,21 @@ export function getMedal(id: string): Medal | undefined {
   return medals.find((item) => item.id === id);
 }
 
-export function addMedal(name: string, imageUrl: string): Medal {
-  const medal: Medal = { id: `m-${Date.now()}`, name: name.trim(), imageUrl };
-  medals = [medal, ...medals];
+export function addMedal(
+  name: string,
+  imageUrl: string,
+  extra?: { scope?: MedalScope; description?: string },
+): Medal {
+  const medalItem: Medal = {
+    id: `m-${Date.now()}`,
+    name: name.trim(),
+    imageUrl,
+    scope: extra?.scope ?? '通用',
+    description: extra?.description?.trim() || undefined,
+  };
+  medals = [medalItem, ...medals];
   emit();
-  return medal;
+  return medalItem;
 }
 
 export function useMedals(): Medal[] {
@@ -57,4 +84,9 @@ export function useMedals(): Medal[] {
     };
   }, []);
   return list;
+}
+
+export function __resetMedalLibraryForTests() {
+  medals = [...initialMedals];
+  emit();
 }

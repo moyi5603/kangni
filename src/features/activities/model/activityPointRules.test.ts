@@ -22,17 +22,31 @@ describe('activityPointRules', () => {
     expect(validateActivityPointRules({ ...defaultActivityPointRules, signupPointsMax: 0.5 })).toBe(
       '报名积分上限须为不小于 0 的整数',
     );
-    expect(validateActivityPointRules({ ...defaultActivityPointRules, signupPointsMin: 10, signupPointsMax: 5 })).toBe(
-      '报名积分上限不能小于下限',
-    );
+    expect(
+      validateActivityPointRules({ ...defaultActivityPointRules, signupPointsMin: 10, signupPointsMax: 5 }),
+    ).toBe('报名积分上限不能小于下限');
     expect(validateActivityPointRules(defaultActivityPointRules)).toBeUndefined();
+  });
+
+  it('keeps signup min/max range independent from daily cap', () => {
+    expect(
+      normalizeActivityPointRules({
+        signupPointsMin: 2,
+        signupPointsMax: 8,
+        signupPointsDailyMax: 10,
+      }),
+    ).toMatchObject({
+      signupPointsMin: 2,
+      signupPointsMax: 8,
+      signupPointsDailyMax: 10,
+    });
   });
 
   it('fills missing caps from defaults so extra text is not undefined', () => {
     expect(
       normalizeActivityPointRules({
-        signupPointsMin: 2,
-        signupPointsMax: 8,
+        signupPointsMax: 2,
+        signupPointsDailyMax: 8,
         firstCommentPointsMax: 4,
         ratingPointsMax: 6,
       }).firstMomentPointsMax,
@@ -72,7 +86,7 @@ describe('activityPointRules', () => {
     ).toBe('活动评论每日上限不能小于单次积分');
   });
 
-  it('defaults activity values to signup min, cap maxima, and all enabled', () => {
+  it('defaults activity values to grant maxima and all enabled', () => {
     expect(defaultActivityPointValues(defaultActivityPointRules)).toEqual({
       signupPointsEnabled: true,
       firstCommentPointsEnabled: true,
@@ -85,9 +99,12 @@ describe('activityPointRules', () => {
     });
   });
 
-  it('rejects activity values outside the global range', () => {
+  it('rejects activity values outside the signup range', () => {
     const rules = defaultActivityPointRules;
     expect(validateActivityPointValues(points({ signupPoints: rules.signupPointsMin - 1 }), rules)).toBe(
+      `报名积分须在 ${rules.signupPointsMin}～${rules.signupPointsMax} 之间`,
+    );
+    expect(validateActivityPointValues(points({ signupPoints: rules.signupPointsMax + 1 }), rules)).toBe(
       `报名积分须在 ${rules.signupPointsMin}～${rules.signupPointsMax} 之间`,
     );
     expect(validateActivityPointValues(points({ firstCommentPoints: rules.firstCommentPointsMax + 1 }), rules)).toBe(
@@ -102,9 +119,9 @@ describe('activityPointRules', () => {
     expect(validateActivityPointValues(points(), rules)).toBeUndefined();
   });
 
-  it('formats disabled point grants as 未开启', () => {
-    expect(formatActivityPointGrant(false, 8)).toBe('未开启');
-    expect(formatActivityPointGrant(true, 8)).toBe('8 分');
+  it('formats disabled point grants as 未开启 and enabled as grant with daily cap', () => {
+    expect(formatActivityPointGrant(false, 8, 10)).toBe('未开启');
+    expect(formatActivityPointGrant(true, 8, 10)).toBe('8积分，每日上限10积分');
   });
 
   it('skips range checks when a point item is disabled', () => {
@@ -113,7 +130,7 @@ describe('activityPointRules', () => {
       validateActivityPointValues(
         points({
           signupPointsEnabled: false,
-          signupPoints: rules.signupPointsMin - 1,
+          signupPoints: rules.signupPointsMax + 1,
           firstCommentPointsEnabled: false,
           firstCommentPoints: rules.firstCommentPointsMax + 1,
           ratingPointsEnabled: false,
@@ -126,4 +143,3 @@ describe('activityPointRules', () => {
     ).toBeUndefined();
   });
 });
-

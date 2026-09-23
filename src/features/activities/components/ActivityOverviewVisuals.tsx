@@ -32,6 +32,62 @@ export function OverviewKpiCard({ title, value, suffix, icon, tone = 'default', 
 
 type Segment = { label: string; value: number; color: string };
 
+function SegmentLegend({ segments }: { segments: Segment[] }) {
+  return (
+    <Flex gap={12} wrap className="overview-segment-legend">
+      {segments.map((item) => (
+        <Typography.Text key={item.label} type="secondary" className="overview-segment-legend-item">
+          <span className="overview-segment-dot" style={{ background: item.color }} />
+          <span>{item.label}</span>
+          <span className="overview-segment-value">{item.value}</span>
+        </Typography.Text>
+      ))}
+    </Flex>
+  );
+}
+
+function pieSlicePath(start: number, end: number) {
+  const cx = 50;
+  const cy = 50;
+  const r = 50;
+  if (end - start >= 0.999) {
+    return `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx} ${cy + r} A ${r} ${r} 0 1 1 ${cx} ${cy - r} Z`;
+  }
+  const rad = (t: number) => t * 2 * Math.PI - Math.PI / 2;
+  const x0 = cx + r * Math.cos(rad(start));
+  const y0 = cy + r * Math.sin(rad(start));
+  const x1 = cx + r * Math.cos(rad(end));
+  const y1 = cy + r * Math.sin(rad(end));
+  const large = end - start > 0.5 ? 1 : 0;
+  return `M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`;
+}
+
+export function OverviewPie({ segments }: { segments: Segment[] }) {
+  const total = segments.reduce((sum, item) => sum + item.value, 0);
+  if (!total) return <Typography.Text type="secondary">暂无数据</Typography.Text>;
+  let cursor = 0;
+  const slices = segments
+    .filter((item) => item.value > 0)
+    .map((item) => {
+      const start = cursor / total;
+      cursor += item.value;
+      const end = cursor / total;
+      return { ...item, d: pieSlicePath(start, end) };
+    });
+  return (
+    <div className="overview-pie">
+      <svg className="overview-pie-chart" viewBox="0 0 100 100" role="img" aria-label={segments.map((item) => `${item.label} ${item.value}`).join('，')}>
+        {slices.map((item) => (
+          <path key={item.label} d={item.d} fill={item.color}>
+            <title>{`${item.label} ${item.value}`}</title>
+          </path>
+        ))}
+      </svg>
+      <SegmentLegend segments={segments} />
+    </div>
+  );
+}
+
 export function OverviewSegmentBar({ segments }: { segments: Segment[] }) {
   const total = segments.reduce((sum, item) => sum + item.value, 0);
   if (!total) return <Typography.Text type="secondary">暂无数据</Typography.Text>;
@@ -48,15 +104,7 @@ export function OverviewSegmentBar({ segments }: { segments: Segment[] }) {
             />
           ))}
       </div>
-      <Flex gap={12} wrap className="overview-segment-legend">
-        {segments.map((item) => (
-          <Typography.Text key={item.label} type="secondary" className="overview-segment-legend-item">
-            <span className="overview-segment-dot" style={{ background: item.color }} />
-            <span>{item.label}</span>
-            <span className="overview-segment-value">{item.value}</span>
-          </Typography.Text>
-        ))}
-      </Flex>
+      <SegmentLegend segments={segments} />
     </div>
   );
 }
@@ -65,13 +113,7 @@ const activityStatusColors: Record<ActivityStatus, string> = {
   未开始: '#8c8c8c',
   进行中: '#1677ff',
   已结束: '#52c41a',
-};
-
-const signupStatusColors = {
-  已通过: '#52c41a',
-  待审核: '#faad14',
-  已驳回: '#ff4d4f',
-  已取消: '#d9d9d9',
+  已终止: '#d9d9d9',
 };
 
 export function activityStatusSegments(counts: Record<ActivityStatus, number>): Segment[] {
@@ -82,18 +124,19 @@ export function activityStatusSegments(counts: Record<ActivityStatus, number>): 
   }));
 }
 
-export function signupStatusSegments(input: {
-  approved: number;
-  pending: number;
-  rejected: number;
-  cancelled: number;
-}): Segment[] {
-  return [
-    { label: '已通过', value: input.approved, color: signupStatusColors.已通过 },
-    { label: '待审核', value: input.pending, color: signupStatusColors.待审核 },
-    { label: '已驳回', value: input.rejected, color: signupStatusColors.已驳回 },
-    { label: '已取消', value: input.cancelled, color: signupStatusColors.已取消 },
-  ];
+export function categorySegments(counts: { label: string; value: number }[]): Segment[] {
+  const named: Record<string, string> = {
+    文化: '#1677ff',
+    体育: '#52c41a',
+    培训: '#722ed1',
+    公益: '#fa8c16',
+  };
+  const fallback = ['#13c2c2', '#eb2f96', '#8c8c8c', '#faad14'];
+  return counts.map((item, index) => ({
+    label: item.label,
+    value: item.value,
+    color: named[item.label] ?? fallback[index % fallback.length],
+  }));
 }
 
 export function OverviewGauge({

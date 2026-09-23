@@ -1,4 +1,4 @@
-import { goH5ExamRecords } from '../../../../app/navigation';
+import { goH5Back } from '../../../../app/navigation';
 import { H5ActivityShell } from '../../activities/h5/H5ActivityShell';
 import { ExamRankAvatarMark, ExamRankMedal } from '../components/ExamRankMarks';
 import { formatExamRankClock, getClientExamRankBoard, type ClientExamRankRow } from '../model/clientExamRank';
@@ -19,14 +19,14 @@ export function H5ExamRank({ id }: { id: number }) {
 
   if (!board) {
     return (
-      <H5ActivityShell className="is-exam is-rank" title="考试排名" onBack={() => goH5ExamRecords(id)}>
+      <H5ActivityShell className="is-exam is-rank" title="考试排名" onBack={goH5Back}>
         <p className="c-h5-exam-empty">暂无考试排名</p>
       </H5ActivityShell>
     );
   }
 
   return (
-    <H5ActivityShell className="is-exam is-rank" title="考试排名" onBack={() => goH5ExamRecords(id)}>
+    <H5ActivityShell className="is-exam is-rank" title="考试排名" onBack={goH5Back}>
       <ul className="c-h5-exam-rank-list">
         {board.rows.map((row) => (
           <li key={row.userId} className={`c-h5-exam-rank-row${row.isMe ? ' is-me' : ''}`}>

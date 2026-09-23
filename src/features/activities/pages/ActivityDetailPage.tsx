@@ -1,13 +1,21 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { App, Breadcrumb, Button, Card, Collapse, Descriptions, Empty, Flex, Image, Space, Table, Tabs, Tag, Typography } from 'antd';
+import { App, Breadcrumb, Button, Card, Collapse, Descriptions, Empty, Space, Table, Tabs, Tooltip } from 'antd';
 import dayjs from 'dayjs';
+import { ActivityDetailHeader } from '../../../shared/ui/ActivityDetailHeader';
 import { TableEllipsisText } from '../../../shared/ui/TableEllipsisText';
 import { ActivityReviewModal } from '../components/ActivityReviewModal';
 import { ActivityStatsRow } from '../components/ActivityStatsRow';
 import { patchActivities, submitActivitiesForApproval, useActivities } from '../model/activityStore';
 import {
+  applyTerminateActivity,
   canReviewActivity,
   canSubmitApproval,
+  applyCloseActivitySignup,
+  applyReopenActivitySignup,
+  canCloseActivitySignup,
+  canReopenActivitySignup,
+  canTerminateActivity,
+  editActivityBlockReason,
   formatActivityTime,
   formatActivitySignupTime,
   formatCustomCrowdVisibility,
@@ -19,8 +27,9 @@ import {
 import { formatSignupAuditSummary } from '../model/rules';
 import { formatActivityPointGrant } from '../model/activityPointRules';
 import { formatCheckInRuleSummary } from '../model/activityCheckIn';
-import { activityScheduleTypeLabels, signupQuotaLabel } from '../model/activitySchedule';
-import { signupFieldInputTypeLabels } from '../model/signupFields';
+import { ActivitySessionsDetailCard } from '../components/ActivitySessionsDetailCard';
+import { activityScheduleTypeLabels, needsSessionPick, signupQuotaLabel } from '../model/activitySchedule';
+import { signupFieldInputTypeLabels, findGroupSignupField, withoutGroupSignupField } from '../model/signupFields';
 import { ActivityMomentListPage } from './ActivityMomentListPage';
 import { ActivityPrizeListPage } from './ActivityPrizeListPage';
 import { ActivityQrCheckInPage } from './ActivityQrCheckInPage';
@@ -39,6 +48,12 @@ type DetailTab = (typeof detailTabs)[number]['key'];
 
 function dash(value: string | null | undefined): string {
   return value?.trim() ? value : '—';
+}
+
+function auditTagColor(status: string): string | undefined {
+  if (status === '已驳回') return 'error';
+  if (status === '待审核') return 'warning';
+  return 'default';
 }
 
 function hasHtmlContent(html: string): boolean {
@@ -125,10 +140,35 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
   const signupTotalLimit = activity.signupSettings.reduce((sum, item) => sum + (item.limit ?? 0), 0);
   const hasSeniorityLimit = signupSetting?.minSeniorityYears != null;
   const signupFields = activity.signupFields ?? [];
+  const groupSignupField = findGroupSignupField(signupFields);
+  const collectSignupFields = withoutGroupSignupField(signupFields);
   const showReview = canReviewActivity(activity);
   const showSubmit = canSubmitApproval(activity);
-  const signupOpen = !dayjs().isAfter(dayjs(activity.signupEndAt));
+  const canCloseSignup = canCloseActivitySignup(activity);
+  const canReopenSignup = canReopenActivitySignup(activity);
   const lifecycleStatus = getActivityLifecycleStatus(activity);
+  const editBlocked = editActivityBlockReason(activity);
+  const editButton = (primary: boolean) => {
+    const button = (
+      <Button
+        type={primary ? 'primary' : 'default'}
+        aria-label="编辑"
+        disabled={Boolean(editBlocked)}
+        onClick={() => {
+          if (!editBlocked) onEdit(activity.id);
+        }}
+      >
+        编辑
+      </Button>
+    );
+    return editBlocked ? (
+      <Tooltip title={editBlocked}>
+        <span title={editBlocked}>{button}</span>
+      </Tooltip>
+    ) : (
+      button
+    );
+  };
   const submit = () => {
     modal.confirm({
       title: `确认提交「${activity.title}」审批？`,
@@ -143,18 +183,51 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
     });
   };
 
+  const terminate = () => {
+    modal.confirm({
+      title: `确认终止「${activity.title}」？`,
+      content: '未举办场次不再进行，且不可恢复为进行中。',
+      okText: '确认',
+      cancelText: '取消',
+      footer: confirmFooter,
+      okButtonProps: { danger: true },
+      onOk: () => {
+        patchActivities((list) =>
+          list.map((item) => (item.id === activity.id ? applyTerminateActivity(item) : item)),
+        );
+        message.success(`已终止「${activity.title}」`);
+      },
+    });
+  };
+
   const closeSignup = () => {
     modal.confirm({
       title: `确认截止「${activity.title}」报名？`,
-      content: '截止时间将改为现在，C 端立即不可报名。如需恢复，请在编辑页修改报名时间。',
+      content: '截止后员工不能再报名，已报名不受影响。可在本页恢复报名。',
       okText: '确认',
       cancelText: '取消',
       footer: confirmFooter,
       onOk: () => {
         patchActivities((list) =>
-          list.map((item) => (item.id === activity.id ? { ...item, signupEndAt: dayjs().format('YYYY-MM-DD HH:mm') } : item)),
+          list.map((item) => (item.id === activity.id ? applyCloseActivitySignup(item) : item)),
         );
         message.success(`已截止「${activity.title}」报名`);
+      },
+    });
+  };
+
+  const reopenSignup = () => {
+    modal.confirm({
+      title: `确认恢复「${activity.title}」报名？`,
+      content: '将按原报名规则重新开放。单次恢复原报名结束时间；周期/系列恢复为最后一场的场次截止。',
+      okText: '确认',
+      cancelText: '取消',
+      footer: confirmFooter,
+      onOk: () => {
+        patchActivities((list) =>
+          list.map((item) => (item.id === activity.id ? applyReopenActivitySignup(item) : item)),
+        );
+        message.success(`已恢复「${activity.title}」报名`);
       },
     });
   };
@@ -183,91 +256,68 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
           { title: activity.title },
         ]}
       />
-      <Card className="activity-detail-header-card">
-        <Flex align="stretch" gap={16} className="activity-detail-header-main">
-          <div className="activity-detail-cover-wrap">
-            {activity.coverUrl ? (
-              <Image src={activity.coverUrl} alt="活动封面" className="activity-detail-cover" />
+      <ActivityDetailHeader
+        coverUrl={activity.coverUrl}
+        coverAlt="活动封面"
+        tags={[
+          { text: activity.category },
+          { text: lifecycleStatus, color: lifecycleStatusColor[lifecycleStatus] },
+          ...(activity.auditStatus !== '已通过' && activity.auditStatus !== '无需审核'
+            ? [{ text: activity.auditStatus, color: auditTagColor(activity.auditStatus) }]
+            : []),
+        ]}
+        title={activity.title}
+        actions={
+          <>
+            {showReview ? (
+              <Button type="primary" aria-label="审核" onClick={() => setReviewOpen(true)}>
+                审核
+              </Button>
+            ) : showSubmit ? (
+              <Button type="primary" aria-label="提交审批" onClick={submit}>
+                提交审批
+              </Button>
             ) : (
-              <div className="activity-detail-cover-placeholder">暂无封面</div>
+              editButton(true)
             )}
-          </div>
-          <div className="activity-detail-header-copy">
-            <Flex className="activity-detail-title-row" justify="space-between" align="flex-start" gap={16} wrap>
-              <div className="activity-detail-title-block">
-                <Space wrap size={[8, 8]}>
-                  <Tag>{activity.category}</Tag>
-                  <Tag color={lifecycleStatusColor[lifecycleStatus]}>{lifecycleStatus}</Tag>
-                  {activity.auditStatus !== '已通过' && activity.auditStatus !== '无需审核' ? (
-                    <Tag
-                      color={
-                        activity.auditStatus === '已驳回'
-                          ? 'error'
-                          : activity.auditStatus === '待审核'
-                            ? 'warning'
-                            : 'default'
-                      }
-                    >
-                      {activity.auditStatus}
-                    </Tag>
-                  ) : null}
-                </Space>
-                <Typography.Title level={3} style={{ marginTop: 8, marginBottom: 0 }}>
-                  {activity.title}
-                </Typography.Title>
-              </div>
-              <Space wrap className="activity-detail-header-actions">
-                {showReview ? (
-                  <Button type="primary" aria-label="审核" onClick={() => setReviewOpen(true)}>
-                    审核
-                  </Button>
-                ) : showSubmit ? (
-                  <Button type="primary" aria-label="提交审批" onClick={submit}>
-                    提交审批
-                  </Button>
-                ) : (
-                  <Button type="primary" aria-label="编辑" onClick={() => onEdit(activity.id)}>
-                    编辑
-                  </Button>
-                )}
-                {showReview || showSubmit ? (
-                  <Button aria-label="编辑" onClick={() => onEdit(activity.id)}>
-                    编辑
-                  </Button>
-                ) : null}
-                <Button aria-label="复制创建" onClick={() => onCopy(activity.id)}>
-                  复制创建
-                </Button>
-                {activity.checkInEnabled ? (
-                  <Button aria-label="签到码" onClick={() => changeTab('checkin')}>
-                    签到码
-                  </Button>
-                ) : null}
-                {signupOpen ? (
-                  <Button aria-label="截止报名" onClick={closeSignup}>
-                    截止报名
-                  </Button>
-                ) : null}
-                <Button danger aria-label="删除" onClick={remove}>
-                  删除
-                </Button>
-              </Space>
-            </Flex>
-            <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
-              活动时间：{formatActivityTime(activity)}
-            </Typography.Text>
-            <Typography.Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
-              报名时间：{formatActivitySignupTime(activity)}
-            </Typography.Text>
-            <Typography.Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
-              活动地点：{dash(activity.location)}
-            </Typography.Text>
-            <div className="activity-detail-header-metrics">
-              <ActivityStatsRow activity={activity} embedded />
-            </div>
-          </div>
-        </Flex>
-      </Card>
+            {showReview || showSubmit ? editButton(false) : null}
+            <Button aria-label="复制创建" onClick={() => onCopy(activity.id)}>
+              复制创建
+            </Button>
+            {activity.checkInEnabled ? (
+              <Button aria-label="签到码" onClick={() => changeTab('checkin')}>
+                签到码
+              </Button>
+            ) : null}
+            {canCloseSignup ? (
+              <Button aria-label="截止报名" onClick={closeSignup}>
+                截止报名
+              </Button>
+            ) : null}
+            {canReopenSignup ? (
+              <Button aria-label="恢复报名" onClick={reopenSignup}>
+                恢复报名
+              </Button>
+            ) : null}
+            {canTerminateActivity(activity) ? (
+              <Button danger aria-label="终止活动" onClick={terminate}>
+                终止活动
+              </Button>
+            ) : null}
+            <Button danger aria-label="删除" onClick={remove}>
+              删除
+            </Button>
+          </>
+        }
+        facts={[
+          { label: '活动时间', value: formatActivityTime(activity) },
+          { label: '报名时间', value: formatActivitySignupTime(activity) },
+          { label: '活动地点', value: dash(activity.location) },
+          { label: '报名截止时间', value: dash(activity.signupEndAt) },
+          { label: '活动终止时间', value: dash(activity.terminatedAt) },
+        ]}
+        metrics={<ActivityStatsRow activity={activity} embedded />}
+      />
       <Tabs
         destroyOnHidden
         activeKey={activeTab}
@@ -288,9 +338,12 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
                       { label: '举办方式', children: activityScheduleTypeLabels[activity.scheduleType ?? 'once'] },
                       { label: '报名时间', children: formatActivitySignupTime(activity) },
                       { label: '活动时间', children: formatActivityTime(activity) },
+                      { label: '报名截止时间', children: dash(activity.signupEndAt) },
+                      { label: '活动终止时间', children: dash(activity.terminatedAt) },
                       { label: '活动地点', children: dash(activity.location) },
                       { label: signupQuotaLabel(activity.scheduleType), children: signupTotalLimit > 0 ? signupTotalLimit : '—' },
                       { label: '发起人', children: dash(activity.organizer) },
+                      { label: '创建人', children: dash(activity.creator) },
                       { label: '创建时间', children: activity.createdAt },
                       { label: '发布时间', children: formatPublishedAt(activity.publishedAt) },
                     ]}
@@ -306,6 +359,37 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
                     <Empty description="暂无详情" />
                   )}
                 </Card>
+                <Card title="可见范围" className="activity-settings-card">
+                  <Descriptions
+                    column={{ xs: 1, sm: 2, lg: 3 }}
+                    items={[
+                      { label: '可见范围', children: visibilityText },
+                      {
+                        label: '发送消息通知',
+                        children: activity.notifyOnPublish ? '开启' : '关闭',
+                      },
+                    ]}
+                  />
+                </Card>
+                <Card title="报名分组设置" className="activity-settings-card">
+                  <Descriptions
+                    column={{ xs: 1, sm: 2, lg: 3 }}
+                    items={[
+                      {
+                        label: '是否设置',
+                        children: groupSignupField ? '已设置' : '未设置',
+                      },
+                      ...(groupSignupField
+                        ? [
+                            {
+                              label: '分组',
+                              children: formatSignupFieldConfig(groupSignupField),
+                            },
+                          ]
+                        : []),
+                    ]}
+                  />
+                </Card>
                 <Card styles={{ body: { paddingBlock: 0 } }} className="advanced-settings-card">
                   <Collapse
                     ghost
@@ -318,18 +402,6 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
                         forceRender: true,
                         children: (
                           <Space direction="vertical" size="middle" style={{ width: '100%', paddingBottom: 16 }}>
-                            <Card title="可见范围" size="small">
-                              <Descriptions
-                                column={{ xs: 1, sm: 2, lg: 3 }}
-                                items={[
-                                  { label: '可见范围', children: visibilityText },
-                                  {
-                                    label: '发送消息通知',
-                                    children: activity.notifyOnPublish ? '开启' : '关闭',
-                                  },
-                                ]}
-                              />
-                            </Card>
                             <Card title="活动设置" size="small">
                               <Descriptions
                                 column={{ xs: 1, sm: 2, lg: 3 }}
@@ -356,12 +428,12 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
                               />
                             </Card>
                             <Card title="报名信息收集" size="small">
-                              {signupFields.length ? (
+                              {collectSignupFields.length ? (
                                 <Table
                                   size="small"
                                   pagination={false}
                                   rowKey="key"
-                                  dataSource={signupFields}
+                                  dataSource={collectSignupFields}
                                   columns={[
                                     { title: '字段名称', dataIndex: 'label', width: 140, ellipsis: true, render: (value: string) => <TableEllipsisText text={value} /> },
                                     {
@@ -395,6 +467,13 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
                     ]}
                   />
                 </Card>
+                {needsSessionPick(activity.scheduleType) ? (
+                  <ActivitySessionsDetailCard
+                    sessions={activity.sessions}
+                    signupHoursBefore={activity.signupHoursBefore}
+                    quotaPerSession={signupTotalLimit}
+                  />
+                ) : null}
               </div>
             ),
           },

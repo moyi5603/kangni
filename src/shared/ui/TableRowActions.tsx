@@ -25,7 +25,7 @@ export function TableRowActions({ actions, moreAriaLabel }: { actions: TableRowA
     }
     overflowItems.push({
       key: action.key,
-      label: action.label,
+      label: <span aria-label={action.ariaLabel} title={action.tooltip}>{action.label}</span>,
       danger: action.danger,
       disabled: action.disabled,
       onClick: action.disabled ? undefined : action.onClick,
@@ -33,7 +33,7 @@ export function TableRowActions({ actions, moreAriaLabel }: { actions: TableRowA
   });
 
   return (
-    <Space wrap={false}>
+    <Space className="table-row-actions" wrap={false}>
       {visible.map((action) => {
         const button = (
           <Button
@@ -49,7 +49,7 @@ export function TableRowActions({ actions, moreAriaLabel }: { actions: TableRowA
         );
         return action.tooltip ? (
           <Tooltip key={action.key} title={action.tooltip}>
-            <span>{button}</span>
+            <span title={action.tooltip}>{button}</span>
           </Tooltip>
         ) : (
           button
@@ -57,7 +57,10 @@ export function TableRowActions({ actions, moreAriaLabel }: { actions: TableRowA
       })}
       {overflow.length ? (
         <Dropdown trigger={['click']} menu={{ items: overflowItems }}>
-          <Button type="link" aria-label={moreAriaLabel}>
+          <Button
+            type="link"
+            aria-label={`${moreAriaLabel}：${overflow.map((action) => action.ariaLabel).join('、')}`}
+          >
             更多 <DownOutlined />
           </Button>
         </Dropdown>

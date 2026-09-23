@@ -110,7 +110,7 @@ export function VoteDetailPage({ recordId, tab, onBack, onEdit, onTabChange }: P
       <Breadcrumb
         separator=">"
         items={[
-          { title: '投票' },
+          { title: '投票-废弃' },
           {
             title: (
               <Button type="link" className="breadcrumb-link" onClick={onBack}>

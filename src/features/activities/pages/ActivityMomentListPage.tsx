@@ -8,6 +8,7 @@ import {
   Drawer,
   Empty,
   Flex,
+  Form,
   Image,
   Input,
   Select,
@@ -23,10 +24,20 @@ import { SearchField, SearchPanel } from '../../../shared/ui/ListPage';
 import { TableRowActions, type TableRowAction } from '../../../shared/ui/TableRowActions';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import { personDepartment, type Activity } from '../model/activity';
+import {
+  activityAdminSelf,
+  adminCommentOnMoment,
+  adminReplyMomentComment,
+} from '../model/activityCommentReply';
 import { excerpt, momentTypes, type MomentRecord } from '../model/moment';
 import { deleteMoment, deleteMomentComment, deleteMomentReply, momentCommentTotal, useMoments } from '../model/momentStore';
+import { MomentInlineReplyForm } from '../components/MomentInlineReplyForm';
 
 type DateRange = [Dayjs | null, Dayjs | null] | null;
+
+type MomentReplyTarget =
+  | { kind: 'moment'; momentId: number }
+  | { kind: 'comment'; momentId: number; commentId: number; replyTo: string; anchor: string };
 
 function optionsOf(values: readonly string[]) {
   return values.map((value) => ({ value, label: value }));
@@ -56,6 +67,7 @@ function playableVideo(url?: string) {
 
 export function ActivityMomentListPage({ activity }: { activity: Activity }) {
   const { message, modal } = App.useApp();
+  const [form] = Form.useForm<{ content: string; author: string }>();
   const data = useMoments(activity.id);
   const [draft, setDraft] = useState<{ content: string; type?: MomentRecord['type']; author: string; createdAt: DateRange }>({
     content: '',
@@ -65,6 +77,7 @@ export function ActivityMomentListPage({ activity }: { activity: Activity }) {
   const [query, setQuery] = useState(draft);
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState<MomentRecord>();
+  const [replyTarget, setReplyTarget] = useState<MomentReplyTarget | null>(null);
   const filtered = useMemo(
     () =>
       data.filter(
@@ -77,6 +90,44 @@ export function ActivityMomentListPage({ activity }: { activity: Activity }) {
     [data, query],
   );
   const viewing = current ? data.find((item) => item.id === current.id) : undefined;
+
+  const closeReply = () => {
+    setReplyTarget(null);
+    form.resetFields();
+  };
+
+  const openReply = (target: MomentReplyTarget) => {
+    setReplyTarget(target);
+    form.setFieldsValue({ content: '', author: activityAdminSelf });
+  };
+
+  const saveReply = async () => {
+    const values = await form.validateFields();
+    if (!replyTarget) return;
+    const result =
+      replyTarget.kind === 'moment'
+        ? adminCommentOnMoment(replyTarget.momentId, values.content, values.author)
+        : adminReplyMomentComment(replyTarget.momentId, replyTarget.commentId, values.content, values.author, replyTarget.replyTo);
+    if (result === 'empty') {
+      message.error('请输入回复内容');
+      return;
+    }
+    if (result === 'missing') {
+      message.error(replyTarget.kind === 'moment' ? '瞬间不存在或不可回复' : '原评论不存在');
+      return;
+    }
+    if (result === 'bad-account') {
+      message.error('请选择回复账号');
+      return;
+    }
+    setReplyTarget(null);
+    form.resetFields();
+    message.success('回复成功');
+  };
+
+  const replyForm = (
+    <MomentInlineReplyForm form={form} onCancel={closeReply} onOk={() => void saveReply()} />
+  );
 
   const openDetail = (record: MomentRecord) => {
     setCurrent(record);
@@ -220,12 +271,16 @@ export function ActivityMomentListPage({ activity }: { activity: Activity }) {
       <Drawer
         title="瞬间详情"
         open={open && Boolean(viewing)}
-        onClose={() => setOpen(false)}
+        onClose={() => {
+          setOpen(false);
+          closeReply();
+        }}
         width={b2bStandards.form.drawerWidth}
         destroyOnHidden
         footer={
           viewing ? (
             <Space>
+              <Button onClick={() => openReply({ kind: 'moment', momentId: viewing.id })}>回复</Button>
               <Button danger onClick={() => confirmDelete(viewing)}>
                 删除
               </Button>
@@ -266,12 +321,14 @@ export function ActivityMomentListPage({ activity }: { activity: Activity }) {
             )}
             <div>
               <Typography.Title level={5}>评论</Typography.Title>
+              {replyTarget?.kind === 'moment' ? replyForm : null}
               {viewing.comments.length === 0 ? (
-                <Empty description="暂无评论" />
+                replyTarget?.kind === 'moment' ? null : <Empty description="暂无评论" />
               ) : (
                 <Space orientation="vertical" size={12} style={{ width: '100%' }}>
                   {viewing.comments.map((comment) => {
                     const commentDept = personDepartment(comment.author);
+                    const commentAnchor = `c-${comment.id}`;
                     return (
                     <div key={comment.id}>
                       <Flex justify="space-between" gap={8} align="flex-start">
@@ -281,24 +338,39 @@ export function ActivityMomentListPage({ activity }: { activity: Activity }) {
                           <Typography.Paragraph style={{ marginBottom: 0 }}>{comment.content}</Typography.Paragraph>
                           <Typography.Text type="secondary">{comment.createdAt}</Typography.Text>
                         </div>
-                        <Button type="link" aria-label={`删除 ${comment.author} 的评论`} onClick={() => confirmDeleteComment(viewing, comment.id, comment.author)}>
-                          删除
-                        </Button>
-                      </Flex>
-                      {comment.replies.map((reply) => {
-                        const replyDept = personDepartment(reply.author);
-                        return (
-                        <Flex key={reply.id} justify="space-between" gap={8} align="flex-start" style={{ marginLeft: 16, marginTop: 8 }}>
-                          <div>
-                            <Typography.Text strong>{reply.author}</Typography.Text>
-                            {replyDept ? <Typography.Text type="secondary"> · {replyDept}</Typography.Text> : null}
-                            <Typography.Paragraph style={{ marginBottom: 0 }}>{reply.content}</Typography.Paragraph>
-                            <Typography.Text type="secondary">{reply.createdAt}</Typography.Text>
-                          </div>
-                          <Button type="link" aria-label={`删除 ${reply.author} 的回复`} onClick={() => confirmDeleteReply(viewing, comment.id, reply.id, reply.author)}>
+                        <Space>
+                          <Button type="link" aria-label={`回复 ${comment.author} 的评论`} onClick={() => openReply({ kind: 'comment', momentId: viewing.id, commentId: comment.id, replyTo: comment.author, anchor: commentAnchor })}>
+                            回复
+                          </Button>
+                          <Button type="link" danger aria-label={`删除 ${comment.author} 的评论`} onClick={() => confirmDeleteComment(viewing, comment.id, comment.author)}>
                             删除
                           </Button>
-                        </Flex>
+                        </Space>
+                      </Flex>
+                      {replyTarget?.kind === 'comment' && replyTarget.anchor === commentAnchor ? replyForm : null}
+                      {comment.replies.map((reply) => {
+                        const replyDept = personDepartment(reply.author);
+                        const replyAnchor = `r-${reply.id}`;
+                        return (
+                        <div key={reply.id} style={{ marginLeft: 16, marginTop: 8 }}>
+                          <Flex justify="space-between" gap={8} align="flex-start">
+                            <div>
+                              <Typography.Text strong>{reply.author}</Typography.Text>
+                              {replyDept ? <Typography.Text type="secondary"> · {replyDept}</Typography.Text> : null}
+                              <Typography.Paragraph style={{ marginBottom: 0 }}>{reply.content}</Typography.Paragraph>
+                              <Typography.Text type="secondary">{reply.createdAt}</Typography.Text>
+                            </div>
+                            <Space>
+                              <Button type="link" aria-label={`回复 ${reply.author} 的回复`} onClick={() => openReply({ kind: 'comment', momentId: viewing.id, commentId: comment.id, replyTo: reply.author, anchor: replyAnchor })}>
+                                回复
+                              </Button>
+                              <Button type="link" danger aria-label={`删除 ${reply.author} 的回复`} onClick={() => confirmDeleteReply(viewing, comment.id, reply.id, reply.author)}>
+                                删除
+                              </Button>
+                            </Space>
+                          </Flex>
+                          {replyTarget?.kind === 'comment' && replyTarget.anchor === replyAnchor ? replyForm : null}
+                        </div>
                         );
                       })}
                     </div>

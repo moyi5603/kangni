@@ -140,6 +140,23 @@ export function setSignupFieldGroups(fields: SignupField[], key: string, groups:
   return fields.map((field) => (field.key === key && field.inputType === 'group' ? { ...field, groups, totalLimit: undefined } : field));
 }
 
+export function findGroupSignupField(fields: SignupField[]): SignupField | undefined {
+  return fields.find((field) => field.inputType === 'group');
+}
+
+export function withoutGroupSignupField(fields: SignupField[]): SignupField[] {
+  return fields.filter((field) => field.inputType !== 'group');
+}
+
+export function setGroupSignupEnabled(fields: SignupField[], enabled: boolean): SignupField[] {
+  const current = findGroupSignupField(fields);
+  if (enabled) {
+    if (current) return fields;
+    return addSignupField(fields, '分组选择');
+  }
+  return withoutGroupSignupField(fields);
+}
+
 export function setSignupFieldCompanion(
   fields: SignupField[],
   key: string,
@@ -279,6 +296,7 @@ export function validateSignupAnswers(fields: SignupField[], answers: SignupAnsw
       continue;
     }
     if (field.required && !value) return `${label}不能为空`;
+    if (field.inputType === 'group' && !value) return '请选择报名分组';
     if (field.inputType === 'text') {
       if (field.digitOnly && value && digitsOnly(value) !== value) return `${label}仅允许输入数字`;
       if (field.maxLength != null && value.length > field.maxLength) return `${label}不能超过 ${field.maxLength} 字`;

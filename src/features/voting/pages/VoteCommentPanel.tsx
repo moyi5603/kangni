@@ -7,11 +7,9 @@ import { ListTableCard, SearchField, SearchPanel } from '../../../shared/ui/List
 import { TableEllipsisText } from '../../../shared/ui/TableEllipsisText';
 import { TableRowActions } from '../../../shared/ui/TableRowActions';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
-import { commentReplyLabel } from '../../activities/model/commentTree';
 import { personDepartment } from '../../activities/model/activity';
 import { employeeAvatarColor, employeeAvatarLetter } from '../../activities/model/employeeAvatar';
 import { getVoteComments, removeVoteComments, useVotes } from '../model/voteStore';
-import { voteCommentAsRecord } from '../model/voteComments';
 import type { VoteComment } from '../model/voting';
 
 type DateRange = [Dayjs | null, Dayjs | null] | null;
@@ -39,7 +37,6 @@ export function VoteCommentPanel({ campaignId }: { campaignId: number }) {
   useVotes();
   const { message, modal } = App.useApp();
   const data = getVoteComments(campaignId);
-  const records = data.map(voteCommentAsRecord);
   const [draft, setDraft] = useState<CommentQuery>(emptyQuery);
   const [query, setQuery] = useState<CommentQuery>(emptyQuery);
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
@@ -82,16 +79,6 @@ export function VoteCommentPanel({ campaignId }: { campaignId: number }) {
       dataIndex: 'text',
       ellipsis: true,
       render: (value: string) => <TableEllipsisText text={value} />,
-    },
-    {
-      title: '回复',
-      key: 'reply',
-      width: 160,
-      render: (_, record) => {
-        const mapped = voteCommentAsRecord(record);
-        const label = commentReplyLabel(mapped, records);
-        return label === record.authorName ? '—' : label;
-      },
     },
     {
       title: '评论人',

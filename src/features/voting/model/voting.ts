@@ -17,6 +17,7 @@ export const voteQuestionTypes = ['单选', '多选', '图片单选', '图片多
 export type VoteQuestionType = (typeof voteQuestionTypes)[number];
 
 export const voteImageLayouts = ['上图下文', '左图右文'] as const;
+export const voteNameMax = 20;
 export const voteVisualTitleMax = 20;
 export const voteVisualSubtitleMax = 50;
 export type VoteImageLayout = (typeof voteImageLayouts)[number];

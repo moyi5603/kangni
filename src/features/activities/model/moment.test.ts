@@ -14,16 +14,20 @@ import {
 } from './moment';
 
 describe('moment submit rules', () => {
-  it('allows submit only when signup is approved and activity has ended', () => {
+  it('allows submit when signup is approved and activity is ongoing or ended', () => {
     expect(canSubmitMoment('已结束', true)).toBe(true);
+    expect(canSubmitMoment('进行中', true)).toBe(true);
     expect(canSubmitMoment('已结束', false)).toBe(false);
-    expect(canSubmitMoment('进行中', true)).toBe(false);
+    expect(canSubmitMoment('进行中', false)).toBe(false);
     expect(canSubmitMoment('未开始', true)).toBe(false);
+    expect(canSubmitMoment('已终止', true)).toBe(false);
   });
 
   it('explains why submit is blocked', () => {
     expect(submitBlockReason('未开始', true)).toBe('活动未开始，暂不能发布瞬间');
-    expect(submitBlockReason('进行中', true)).toBe('活动结束后才能发布瞬间');
+    expect(submitBlockReason('已终止', true)).toBe('活动已终止，不能发布瞬间');
+    expect(submitBlockReason('进行中', false)).toBe('报名通过后才能发布瞬间');
+    expect(submitBlockReason('进行中', true)).toBeUndefined();
     expect(submitBlockReason('已结束', false)).toBe('报名通过后才能发布瞬间');
     expect(submitBlockReason('已结束', true)).toBeUndefined();
   });

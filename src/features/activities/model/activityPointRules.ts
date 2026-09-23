@@ -1,8 +1,9 @@
-export const ACTIVITY_POINT_RULES_MOCK_VERSION = 5;
+export const ACTIVITY_POINT_RULES_MOCK_VERSION = 7;
 
 export type ActivityPointRules = {
   signupPointsMin: number;
   signupPointsMax: number;
+  signupPointsDailyMax: number;
   firstCommentPointsMax: number;
   firstCommentPointsDailyMax: number;
   ratingPointsMax: number;
@@ -25,6 +26,7 @@ export type ActivityPointValues = {
 export const defaultActivityPointRules: ActivityPointRules = {
   signupPointsMin: 1,
   signupPointsMax: 20,
+  signupPointsDailyMax: 10,
   firstCommentPointsMax: 1,
   firstCommentPointsDailyMax: 10,
   ratingPointsMax: 1,
@@ -35,6 +37,13 @@ export const defaultActivityPointRules: ActivityPointRules = {
 
 export const initialActivityPointRules: ActivityPointRules = { ...defaultActivityPointRules };
 
+export const initialInterestGroupPointRules: ActivityPointRules = {
+  ...defaultActivityPointRules,
+  signupPointsMin: 1,
+  signupPointsMax: 1,
+  signupPointsDailyMax: 10,
+};
+
 function asNonNegativeInt(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : fallback;
 }
@@ -43,6 +52,7 @@ export function normalizeActivityPointRules(rules: Partial<ActivityPointRules> |
   return {
     signupPointsMin: asNonNegativeInt(rules?.signupPointsMin, defaultActivityPointRules.signupPointsMin),
     signupPointsMax: asNonNegativeInt(rules?.signupPointsMax, defaultActivityPointRules.signupPointsMax),
+    signupPointsDailyMax: asNonNegativeInt(rules?.signupPointsDailyMax, defaultActivityPointRules.signupPointsDailyMax),
     firstCommentPointsMax: asNonNegativeInt(rules?.firstCommentPointsMax, defaultActivityPointRules.firstCommentPointsMax),
     firstCommentPointsDailyMax: asNonNegativeInt(
       rules?.firstCommentPointsDailyMax,
@@ -72,6 +82,7 @@ export function validateActivityPointRules(rules: ActivityPointRules): string | 
     requireNonNegativeInt(rules.signupPointsMin, '报名积分下限须为不小于 0 的整数') ??
     requireNonNegativeInt(rules.signupPointsMax, '报名积分上限须为不小于 0 的整数') ??
     (rules.signupPointsMax < rules.signupPointsMin ? '报名积分上限不能小于下限' : undefined) ??
+    requireNonNegativeInt(rules.signupPointsDailyMax, '活动积分每日上限须为不小于 0 的整数') ??
     requireNonNegativeInt(rules.firstCommentPointsMax, '活动评论积分须为不小于 0 的整数') ??
     requireNonNegativeInt(rules.firstCommentPointsDailyMax, '活动评论每日上限须为不小于 0 的整数') ??
     (rules.firstCommentPointsDailyMax < rules.firstCommentPointsMax ? '活动评论每日上限不能小于单次积分' : undefined) ??
@@ -81,6 +92,13 @@ export function validateActivityPointRules(rules: ActivityPointRules): string | 
     requireNonNegativeInt(rules.firstMomentPointsMax, '精彩瞬间积分须为不小于 0 的整数') ??
     requireNonNegativeInt(rules.firstMomentPointsDailyMax, '精彩瞬间每日上限须为不小于 0 的整数') ??
     (rules.firstMomentPointsDailyMax < rules.firstMomentPointsMax ? '精彩瞬间每日上限不能小于单次积分' : undefined)
+  );
+}
+
+export function validateInterestGroupPointRules(rules: ActivityPointRules): string | undefined {
+  return (
+    validateActivityPointRules(rules) ??
+    (rules.signupPointsDailyMax < rules.signupPointsMax ? '活动积分每日上限不能小于单次积分' : undefined)
   );
 }
 
@@ -133,7 +151,13 @@ export function validateActivityPointValues(values: ActivityPointValues, rules: 
   return undefined;
 }
 
-export function formatActivityPointGrant(enabled: boolean | undefined, value: number | undefined): string {
+export function formatActivityPointGrant(
+  enabled: boolean | undefined,
+  value: number | undefined,
+  dailyMax?: number,
+): string {
   if (!enabled) return '未开启';
-  return `${value ?? 0} 分`;
+  const grant = value ?? 0;
+  if (dailyMax == null) return `${grant}积分`;
+  return `${grant}积分，每日上限${dailyMax}积分`;
 }

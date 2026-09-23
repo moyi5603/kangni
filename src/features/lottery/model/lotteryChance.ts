@@ -1,4 +1,4 @@
-import { lotteryStatusOf, type LotteryRecord } from './lottery';
+import { lotteryStatusOf, type LotteryDraw, type LotteryRecord } from './lottery';
 
 export type LotteryChanceSource = 'initial' | 'daily-login' | 'checkin';
 
@@ -26,7 +26,6 @@ function loginAt(day: string): string {
 export function creditCheckinChance(input: {
   themeId: number;
   userId: string;
-  amount: number;
   at: string;
   lotteries: LotteryRecord[];
   ledger: LotteryChanceLedger[];
@@ -37,6 +36,7 @@ export function creditCheckinChance(input: {
   for (const item of input.lotteries) {
     if (!item.gainCheckinEnabled) continue;
     if (!item.gainCheckinThemeIds.includes(input.themeId)) continue;
+    if (item.gainCheckinCount < 1) continue;
     if (lotteryStatusOf(item, input.now) !== '进行中') continue;
     ledger = [
       ...ledger,
@@ -45,7 +45,7 @@ export function creditCheckinChance(input: {
         lotteryId: item.id,
         userId: input.userId,
         source: 'checkin',
-        amount: input.amount,
+        amount: item.gainCheckinCount,
         at: input.at,
       },
     ];
@@ -84,4 +84,53 @@ export function grantDailyLoginChance(input: {
       },
     ],
   };
+}
+
+export function grantInitialChance(input: {
+  lottery: LotteryRecord;
+  userId: string;
+  ledger: LotteryChanceLedger[];
+  at: string;
+}): { ledger: LotteryChanceLedger[] } {
+  if (!input.lottery.gainInitialEnabled) return { ledger: input.ledger };
+  const already = input.ledger.some(
+    (item) => item.source === 'initial' && item.lotteryId === input.lottery.id && item.userId === input.userId,
+  );
+  if (already) return { ledger: input.ledger };
+  return {
+    ledger: [
+      ...input.ledger,
+      {
+        id: nextLedgerId(input.ledger),
+        lotteryId: input.lottery.id,
+        userId: input.userId,
+        source: 'initial',
+        amount: input.lottery.gainInitialCount,
+        at: input.at,
+      },
+    ],
+  };
+}
+
+export function remainingLotteryChance(input: {
+  lottery: LotteryRecord;
+  userId: string;
+  userName: string;
+  ledger: LotteryChanceLedger[];
+  draws: LotteryDraw[];
+  day: string;
+}): number {
+  const day = calendarDay(input.day);
+  const gained = input.ledger
+    .filter((item) => item.lotteryId === input.lottery.id && item.userId === input.userId)
+    .reduce((sum, item) => sum + item.amount, 0);
+  const mine = input.draws.filter((item) => item.lotteryId === input.lottery.id && item.user === input.userName);
+  const used = mine.length;
+  const usedToday = mine.filter((item) => calendarDay(item.at) === day).length;
+  let left = gained - used;
+  if (input.lottery.totalChanceEnabled) {
+    left = Math.min(left, Math.max(0, input.lottery.totalChance - used));
+  }
+  left = Math.min(left, Math.max(0, input.lottery.dailyChance - usedToday));
+  return Math.max(0, left);
 }

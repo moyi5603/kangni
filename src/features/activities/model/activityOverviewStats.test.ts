@@ -2,8 +2,9 @@ import dayjs from 'dayjs';
 import { describe, expect, it } from 'vitest';
 import type { Activity } from './activity';
 import {
+  activityInDateRange,
   buildAttentionRows,
-  buildSignupOpenRows,
+  buildInProgressActivityRows,
   computeActivityOverviewStats,
   isSignupOpen,
 } from './activityOverviewStats';
@@ -34,6 +35,7 @@ function activity(partial: Partial<Activity> & Pick<Activity, 'id' | 'title'>): 
     publishStatus: '已发布',
     activityStatus: '未开始',
     createdAt: '2026-07-01 10:00:00',
+    creator: '陈产品',
     publishedAt: '2026-07-02 10:00:00',
     itinerary: '',
     extraFeeRule: '',
@@ -52,6 +54,7 @@ function activity(partial: Partial<Activity> & Pick<Activity, 'id' | 'title'>): 
     importFileName: '',
     importedPeople: [],
     pinned: false,
+    sortIndex: 0,
     ...partial,
   };
 }
@@ -88,6 +91,7 @@ describe('activityOverviewStats', () => {
         activity({
           id: 2,
           title: 'B',
+          category: '培训',
           publishStatus: '未发布',
           auditStatus: '待审核',
           activityStatus: '进行中',
@@ -134,7 +138,11 @@ describe('activityOverviewStats', () => {
     expect(stats.commentCount).toBe(1);
     expect(stats.momentCount).toBe(1);
     expect(stats.surveyResponseCount).toBe(12);
-    expect(stats.activityStatusCounts).toEqual({ 未开始: 1, 进行中: 1, 已结束: 1 });
+    expect(stats.activityStatusCounts).toEqual({ 未开始: 1, 进行中: 1, 已结束: 1, 已终止: 0 });
+    expect(stats.categoryCounts).toEqual([
+      { label: '文化', value: 2 },
+      { label: '培训', value: 1 },
+    ]);
   });
 
   it('builds attention rows for audit and pending signups', () => {
@@ -150,31 +158,39 @@ describe('activityOverviewStats', () => {
     expect(rows[1]).toMatchObject({ activityId: 2, kind: '报名待审核', count: 2 });
   });
 
-  it('lists published signup-open activities with per-activity stats', () => {
-    const now = dayjs('2026-08-15 12:00');
-    const rows = buildSignupOpenRows(
+  it('lists in-progress activities with per-activity stats', () => {
+    const rows = buildInProgressActivityRows(
       [
-        activity({ id: 1, title: '开放报名', publishStatus: '已发布', signupEndAt: '2026-08-20 18:00' }),
-        activity({
-          id: 2,
-          title: '未开放',
-          publishStatus: '已发布',
-          signupStartAt: '2026-09-01 09:00',
-          signupEndAt: '2026-09-30 18:00',
-        }),
+        activity({ id: 1, title: '进行中', activityStatus: '进行中', startAt: '2026-08-20 09:00', endAt: '2026-08-25 18:00' }),
+        activity({ id: 2, title: '未开始', activityStatus: '未开始' }),
       ],
       [signup(1, 1, '已通过'), signup(2, 1, '待审核')],
       [],
       [],
       [],
-      now,
     );
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       activityId: 1,
+      title: '进行中',
       signupCount: 2,
       pendingSignupCount: 1,
       quotaUsage: 2,
     });
+  });
+
+  it('checks activity date overlap by day or createdAt', () => {
+    const act = activity({ id: 9, title: 'R', startAt: '2026-08-25 09:00', endAt: '2026-08-25 18:00' });
+    expect(activityInDateRange(act, dayjs('2026-08-01'), dayjs('2026-09-01'))).toBe(true);
+    expect(activityInDateRange(act, dayjs('2026-09-01'), dayjs('2026-09-30'))).toBe(false);
+    const pending = activity({
+      id: 3,
+      title: '待审',
+      startAt: '2026-09-06 19:00',
+      endAt: '2026-09-06 21:00',
+      createdAt: '2026-08-10 16:40:00',
+      auditStatus: '待审核',
+    });
+    expect(activityInDateRange(pending, dayjs('2026-08-04'), dayjs('2026-09-02'))).toBe(true);
   });
 });

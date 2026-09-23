@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CEndApp } from '../../../../app/CEndApp';
+import { getActivity } from '../../../activities/model/activityStore';
 import { restoreRelatedComments } from '../../../activities/model/related';
 import { resetEngagement } from '../model/engagementStore';
 import { PcActivityDetail } from './PcActivityDetail';
@@ -9,6 +10,20 @@ describe('PC activity detail', () => {
   afterEach(() => {
     resetEngagement();
     restoreRelatedComments();
+  });
+
+  it('shows audit hint in aside for a pending signup and hides it otherwise', () => {
+    const pending = renderToStaticMarkup(<PcActivityDetail id={28} />);
+    const aside = pending.slice(pending.indexOf('<aside class="c-pc-side">'));
+    expect(aside).not.toContain('is-audit-pending');
+    const barIdx = aside.indexOf('c-signup-audit-bar');
+    expect(barIdx).toBeGreaterThan(-1);
+    expect(aside.indexOf('c-signup-audit-bar')).toBeLessThan(aside.indexOf('class="c-cta"'));
+    expect(aside).toContain('报名审核中（第 1/2 节点） · 当前审核：张悦、李明');
+
+    const approved = renderToStaticMarkup(<PcActivityDetail id={2} />);
+    expect(approved).not.toContain('c-signup-audit-bar');
+    expect(approved).not.toContain('当前审核');
   });
 
   it('keeps a two-column layout with CTA in the aside', () => {
@@ -34,7 +49,7 @@ describe('PC activity detail', () => {
     expect(cover).toContain('c-pill is-category');
     expect(cover).toContain('c-pill is-format');
     expect(html).not.toContain('c-detail-heading');
-    expect(html).toContain('活动时间：首场 08-18 09:30 ~ 08-18 17:30 · 共 3 场');
+    expect(html).toContain('活动时间：08-31 09:30 ~ 09-02 17:30 · 共 3 场');
     expect(html).toContain('报名时间：08-01 09:00 起，每场开场时截止');
     expect(html).not.toContain('活动时间：2026-');
     expect(html).not.toContain('报名时间：2026-');
@@ -44,8 +59,8 @@ describe('PC activity detail', () => {
     expect(article).toBeGreaterThan(-1);
     expect(aside).toBeGreaterThan(article);
     expect(cta).toBeGreaterThan(aside);
-    expect(html).toContain('aria-label="分享"');
-    expect(html).not.toContain('活动评分');
+    expect(html).not.toContain('aria-label="分享"');
+    expect(html).toContain('活动评分');
   });
 
   it('shows the rating block above comments after the activity ends', () => {
@@ -80,10 +95,21 @@ describe('PC activity detail', () => {
     const aside = html.slice(html.indexOf('<aside class="c-pc-side">'));
     const card = html.slice(html.indexOf('c-detail-info-card'), html.indexOf('c-detail-content-section'));
     expect(aside).toContain('最近场次');
-    expect(aside).toContain('已报1场');
+    expect(aside).toContain('已报0场');
     expect(aside.indexOf('每场名额')).toBeLessThan(aside.indexOf('最近场次'));
     expect(aside.indexOf('最近场次')).toBeLessThan(aside.indexOf('c-signup-people'));
     expect(card).not.toContain('最近场次');
+  });
+
+  it('shows the check-in QR in the aside when the viewer is the organizer', () => {
+    const mine = renderToStaticMarkup(<PcActivityDetail id={2} />);
+    const aside = mine.slice(mine.indexOf('<aside class="c-pc-side">'));
+    expect(aside).toContain('签到二维码');
+    expect(aside).toContain('c-org-qr');
+    expect(aside).toContain('checkin');
+
+    const other = renderToStaticMarkup(<PcActivityDetail id={26} />);
+    expect(other.slice(other.indexOf('<aside class="c-pc-side">'))).not.toContain('签到二维码');
   });
 
   it('keeps quota out of the left info card', () => {
@@ -115,14 +141,20 @@ describe('PC activity detail', () => {
   });
 
   it('lets a signed-up user cancel a one-off activity before the deadline', () => {
+    expect(getActivity(9)?.organizer).toBe('陈产品');
     const html = renderToStaticMarkup(<PcActivityDetail id={9} />);
     expect(html).toContain('取消报名');
   });
 
   it('lets a signed-up user adjust remaining sessions instead of cancel', () => {
     const html = renderToStaticMarkup(<PcActivityDetail id={26} />);
-    expect(html).toContain('调整报名');
+    expect(html).toContain('立即报名');
     expect(html).not.toContain('取消报名');
+  });
+
+  it('lets a multi-session organizer adjust sessions too', () => {
+    const html = renderToStaticMarkup(<PcActivityDetail id={27} />);
+    expect(html).toMatch(/class="c-cta"[^>]*>立即报名</);
   });
 
   it('puts social actions above the signup CTA and lists comments in the article', () => {
@@ -160,26 +192,29 @@ describe('PC activity detail', () => {
 
   it('opens the existing session list when adjusting', () => {
     const html = renderToStaticMarkup(<PcActivityDetail id={26} signupOpen />);
-    expect(html).toContain('调整报名');
+    expect(html).toContain('立即报名');
+    expect(html).not.toContain('调整报名');
     expect(html).toContain('参加场次');
-    expect(html).toContain('保存场次');
+    expect(html).toContain('展开全部场次');
+    expect(html).toContain('确认报名');
     expect(html).toContain('余49位');
-    expect(html).toContain('余50位');
   });
 
   it('collects signup info in a dialog on the detail page', () => {
     const html = renderToStaticMarkup(<PcActivityDetail id={21} signupOpen />);
     expect(html).toContain('c-pc-detail');
     expect(html).toContain('role="dialog"');
-    expect(html).toContain('填写报名信息');
+    expect(html).toContain('立即报名');
     expect(html).toContain('c-signup-form');
     expect(html).toContain('黄山两日游');
+    expect(html).not.toContain('填写报名信息');
     expect(html).not.toContain('← 返回活动详情');
   });
 
   it('does not show the signup dialog until opened', () => {
     const html = renderToStaticMarkup(<PcActivityDetail id={21} />);
-    expect(html).toContain('立即报名');
+    expect(html).toContain('取消报名');
+    expect(html).not.toContain('立即报名');
     expect(html).not.toContain('填写报名信息');
     expect(html).not.toContain('c-signup-form');
   });
@@ -188,7 +223,8 @@ describe('PC activity detail', () => {
     const html = renderToStaticMarkup(<CEndApp surface="pc" activityId={21} h5Page="signup" />);
     expect(html).toContain('c-pc-detail');
     expect(html).toContain('role="dialog"');
-    expect(html).toContain('填写报名信息');
+    expect(html).toContain('立即报名');
     expect(html).toContain('黄山两日游');
+    expect(html).not.toContain('填写报名信息');
   });
 });

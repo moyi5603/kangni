@@ -52,7 +52,6 @@ const REWARD_KIND_OPTIONS: { value: RewardKind | 'all'; label: string }[] = [
   { value: 'all', label: '全部' },
   { value: '勋章', label: '勋章' },
   { value: '积分', label: '积分' },
-  { value: '抽奖次数', label: '抽奖次数' },
 ];
 
 function csvCell(value: string): string {

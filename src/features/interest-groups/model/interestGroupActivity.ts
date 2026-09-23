@@ -1,28 +1,50 @@
+import dayjs from 'dayjs';
 import type { ApprovalNode } from '../../activities/model/rules';
 import {
+  coerceRepeatRules,
   formatActivityScheduleTime,
   formatScheduleSignupTime,
+  generateRecurringSessions,
+  syncSignupEndAt,
   validateActivitySchedule,
   type ActivityScheduleType,
+  type RepeatRule,
 } from '../../activities/model/activitySchedule';
 import {
   activityStatuses,
+  applyCloseActivitySignup,
+  applyReopenActivitySignup,
+  canCloseActivitySignup,
+  canReopenActivitySignup,
   lifecycleStatusColor,
   lifecycleStatuses,
   type LifecycleStatus,
   type Visibility,
 } from '../../activities/model/activity';
-import { defaultSignupFields, type SignupField } from '../../activities/model/signupFields';
+import type { SignupField } from '../../activities/model/signupFields';
+import type { ActivityPointRules } from '../../activities/model/activityPointRules';
+import { defaultCheckInSettings, type CheckInSettings } from '../../activities/model/activityCheckIn';
 
-export const INTEREST_GROUP_ACTIVITY_MOCK_VERSION = 7;
+export const INTEREST_GROUP_ACTIVITY_MOCK_VERSION = 17;
+
+export const interestGroupNotifyAudiences = ['all', 'members'] as const;
+export type InterestGroupNotifyAudience = (typeof interestGroupNotifyAudiences)[number];
+export const interestGroupNotifyAudienceLabels: Record<InterestGroupNotifyAudience, string> = {
+  all: '全员',
+  members: '兴趣圈成员',
+};
 
 export type InterestGroupActivityStatus = 'upcoming' | 'ongoing' | 'ended' | 'cancelled';
 export type InterestGroupActivityType = ActivityScheduleType;
 export const interestGroupAuditStatuses = ['待提交', '待审核', '已通过', '已驳回', '无需审核'] as const;
 export const interestGroupPublishStatuses = ['未发布', '已发布'] as const;
+export type InterestGroupPublishStatus = (typeof interestGroupPublishStatuses)[number];
+export const interestGroupPublishStatusColor: Record<InterestGroupPublishStatus, string> = {
+  未发布: 'default',
+  已发布: 'success',
+};
 export const interestGroupLifecycleStatuses = lifecycleStatuses;
 export type InterestGroupAuditStatus = (typeof interestGroupAuditStatuses)[number];
-export type InterestGroupPublishStatus = (typeof interestGroupPublishStatuses)[number];
 export type InterestGroupActivityStatusLabel = (typeof activityStatuses)[number];
 
 export const WEEKDAYS = [
@@ -42,6 +64,7 @@ export type InterestGroupActivitySession = {
   capacity: number;
   signedCount: number;
   status: InterestGroupActivityStatus;
+  checkInToken?: string;
 };
 
 export type InterestGroupActivity = {
@@ -64,29 +87,41 @@ export type InterestGroupActivity = {
   likeCount: number;
   startAt?: string;
   endAt?: string;
+  repeatRules?: RepeatRule[];
   repeatWeekday?: number;
   timeStart?: string;
   timeEnd?: string;
-  cycleStart?: string;
-  cycleEnd?: string;
   sessions: InterestGroupActivitySession[];
   signupStartAt: string;
   signupEndAt: string;
   signupHoursBefore?: number;
+  signupClosedAt?: string;
+  signupEndAtBeforeClose?: string;
+  terminatedAt?: string;
   visibility: Visibility;
   departments: string[];
   customPeople: string[];
   importFileName: string;
   importedPeople: string[];
   notifyOnPublish: boolean;
+  notifyAudience: InterestGroupNotifyAudience;
   needAudit: boolean;
   minSeniorityYears?: number;
   signupApprovalNodes: ApprovalNode[];
   signupFields: SignupField[];
   signupPoints: number;
   signupPointsEnabled: boolean;
+  checkInEnabled: boolean;
+  checkInOpenMode: CheckInSettings['checkInOpenMode'];
+  checkInOpenMinutesBefore: number;
+  checkInValidAfterStart: number;
+  checkInValidAfterStartUnit: CheckInSettings['checkInValidAfterStartUnit'];
+  checkInDynamicQr: boolean;
+  checkInToken?: string;
   pinned: boolean;
+  sortIndex: number;
   createdAt: string;
+  creator: string;
 };
 
 export type InterestGroupActivityFormValues = {
@@ -97,11 +132,10 @@ export type InterestGroupActivityFormValues = {
   type: InterestGroupActivityType;
   startAt?: string;
   endAt?: string;
+  repeatRules?: RepeatRule[];
   repeatWeekday?: number;
   timeStart?: string;
   timeEnd?: string;
-  cycleStart?: string;
-  cycleEnd?: string;
   sessions?: Array<{ startAt: string; endAt: string }>;
   signupStartAt: string;
   signupEndAt: string;
@@ -115,12 +149,19 @@ export type InterestGroupActivityFormValues = {
   importFileName: string;
   importedPeople: string[];
   notifyOnPublish: boolean;
+  notifyAudience: InterestGroupNotifyAudience;
   needAudit: boolean;
   minSeniorityYears?: number;
   signupApprovalNodes: ApprovalNode[];
   signupFields: SignupField[];
   signupPoints: number;
   signupPointsEnabled: boolean;
+  checkInEnabled: boolean;
+  checkInOpenMode: CheckInSettings['checkInOpenMode'];
+  checkInOpenMinutesBefore: number;
+  checkInValidAfterStart: number;
+  checkInValidAfterStartUnit: CheckInSettings['checkInValidAfterStartUnit'];
+  checkInDynamicQr: boolean;
 };
 
 export { activityScheduleTypeLabels as interestGroupActivityTypeLabels } from '../../activities/model/activitySchedule';
@@ -130,7 +171,7 @@ export const interestGroupActivityStatusLabels: Record<InterestGroupActivityStat
   upcoming: '未开始',
   ongoing: '进行中',
   ended: '已结束',
-  cancelled: '已结束',
+  cancelled: '已终止',
 };
 
 export function igActivityAlignDefaults(): Pick<
@@ -145,12 +186,21 @@ export function igActivityAlignDefaults(): Pick<
   | 'importFileName'
   | 'importedPeople'
   | 'notifyOnPublish'
+  | 'notifyAudience'
   | 'needAudit'
   | 'signupApprovalNodes'
   | 'signupFields'
   | 'signupPoints'
   | 'signupPointsEnabled'
+  | 'checkInEnabled'
+  | 'checkInOpenMode'
+  | 'checkInOpenMinutesBefore'
+  | 'checkInValidAfterStart'
+  | 'checkInValidAfterStartUnit'
+  | 'checkInDynamicQr'
   | 'pinned'
+  | 'sortIndex'
+  | 'creator'
 > {
   return {
     sessions: [],
@@ -163,12 +213,42 @@ export function igActivityAlignDefaults(): Pick<
     importFileName: '',
     importedPeople: [],
     notifyOnPublish: false,
+    notifyAudience: 'members',
     needAudit: false,
     signupApprovalNodes: [],
-    signupFields: defaultSignupFields(),
+    signupFields: [],
     signupPoints: 1,
-    signupPointsEnabled: false,
+    signupPointsEnabled: true,
+    ...defaultCheckInSettings(),
     pinned: false,
+    sortIndex: 0,
+    creator: '陈产品',
+  };
+}
+
+export function formatInterestGroupActivityNotify(
+  notifyOnPublish: boolean,
+  audience: InterestGroupNotifyAudience | undefined,
+): string {
+  if (!notifyOnPublish) return '不发送';
+  return audience === 'all' ? interestGroupNotifyAudienceLabels.all : interestGroupNotifyAudienceLabels.members;
+}
+
+export function lockInterestGroupActivityPolicy(
+  values: InterestGroupActivityFormValues,
+  pointRules: ActivityPointRules,
+): InterestGroupActivityFormValues {
+  return {
+    ...values,
+    visibility: '全员',
+    departments: [],
+    customPeople: [],
+    importFileName: '',
+    importedPeople: [],
+    signupFields: [],
+    signupPointsEnabled: true,
+    signupPoints: pointRules.signupPointsMax,
+    notifyAudience: 'members',
   };
 }
 
@@ -196,33 +276,89 @@ export function canDeleteInterestGroupActivity(activity: InterestGroupActivity):
   return totalSignedCount(activity) === 0;
 }
 
+function igLifecycleAsActivityStatus(
+  status: InterestGroupActivityStatus,
+): '未开始' | '进行中' | '已结束' | '已终止' {
+  if (status === 'cancelled') return '已终止';
+  if (status === 'ended') return '已结束';
+  if (status === 'ongoing') return '进行中';
+  return '未开始';
+}
+
+function toSignupCloseFields(activity: InterestGroupActivity) {
+  return {
+    publishStatus: activity.publishStatus,
+    activityStatus: igLifecycleAsActivityStatus(activity.status),
+    scheduleType: activity.type,
+    signupEndAt: activity.signupEndAt,
+    signupHoursBefore: activity.signupHoursBefore,
+    signupClosedAt: activity.signupClosedAt,
+    signupEndAtBeforeClose: activity.signupEndAtBeforeClose,
+    sessions: activity.sessions ?? [],
+  };
+}
+
+export function canCloseInterestGroupSignup(activity: InterestGroupActivity, now?: dayjs.Dayjs | string): boolean {
+  const clock = typeof now === 'string' ? dayjs(now) : now;
+  return canCloseActivitySignup(toSignupCloseFields(activity), clock);
+}
+
+export function canReopenInterestGroupSignup(activity: InterestGroupActivity): boolean {
+  return canReopenActivitySignup(toSignupCloseFields(activity));
+}
+
+export function applyCloseInterestGroupSignup(activity: InterestGroupActivity, now?: dayjs.Dayjs | string): InterestGroupActivity {
+  const clock = typeof now === 'string' ? dayjs(now) : now;
+  const next = applyCloseActivitySignup(toSignupCloseFields(activity), clock);
+  return {
+    ...activity,
+    signupEndAt: next.signupEndAt,
+    signupClosedAt: next.signupClosedAt,
+    signupEndAtBeforeClose: next.signupEndAtBeforeClose,
+  };
+}
+
+export function applyReopenInterestGroupSignup(activity: InterestGroupActivity, now?: dayjs.Dayjs | string): InterestGroupActivity {
+  const clock = typeof now === 'string' ? dayjs(now) : now;
+  const next = applyReopenActivitySignup(toSignupCloseFields(activity), clock);
+  return {
+    ...activity,
+    signupEndAt: next.signupEndAt,
+    signupClosedAt: next.signupClosedAt,
+    signupEndAtBeforeClose: next.signupEndAtBeforeClose,
+  };
+}
+
+export function canRevokeInterestGroupActivity(activity: Pick<InterestGroupActivity, 'publishStatus' | 'status'>): boolean {
+  return activity.publishStatus === '已发布' && activity.status === 'upcoming';
+}
+
+export function revokeInterestGroupActivityBlockReason(
+  activity: Pick<InterestGroupActivity, 'publishStatus' | 'status'>,
+): string | undefined {
+  if (canRevokeInterestGroupActivity(activity)) return undefined;
+  if (activity.publishStatus !== '已发布') return '未发布活动无需撤销';
+  if (activity.status === 'ongoing') return '进行中请使用终止活动，不能撤销发布';
+  return '已结束或已终止的活动不能撤销发布';
+}
+
 export function canTerminateInterestGroupActivity(activity: InterestGroupActivity): boolean {
-  if (activity.status === 'cancelled' || activity.status === 'ended' || activity.status === 'ongoing') return false;
-  if (activity.status === 'upcoming') return true;
-  return (activity.sessions ?? []).some((session) => session.status === 'upcoming');
+  if (activity.publishStatus !== '已发布') return false;
+  if (activity.status === 'cancelled' || activity.status === 'ended') return false;
+  if (activity.status === 'ongoing') return true;
+  return (activity.sessions ?? []).some((session) => session.status === 'ongoing');
 }
 
 export function canEditInterestGroupActivity(activity: InterestGroupActivity): boolean {
   return activity.status === 'upcoming' || activity.status === 'ongoing';
 }
 
-export function canPublishInterestGroupActivity(activity: Pick<InterestGroupActivity, 'auditStatus'>): boolean {
-  return activity.auditStatus === '已通过' || activity.auditStatus === '无需审核';
-}
-
-export function canSubmitInterestGroupActivity(activity: Pick<InterestGroupActivity, 'auditStatus'>): boolean {
-  return activity.auditStatus === '待提交' || activity.auditStatus === '已驳回';
-}
-
-export function canReviewInterestGroupActivity(activity: Pick<InterestGroupActivity, 'auditStatus'>): boolean {
-  return activity.auditStatus === '待审核';
-}
-
 export function getInterestGroupLifecycleStatus(
   activity: Pick<InterestGroupActivity, 'publishStatus' | 'status'>,
 ): LifecycleStatus {
   if (activity.publishStatus !== '已发布') return '未发布';
-  if (activity.status === 'cancelled' || activity.status === 'ended') return '已结束';
+  if (activity.status === 'cancelled') return '已终止';
+  if (activity.status === 'ended') return '已结束';
   if (activity.status === 'ongoing') return '进行中';
   return '未开始';
 }
@@ -236,11 +372,7 @@ export function formatInterestGroupActivityTime(activity: InterestGroupActivity)
     scheduleType: activity.type,
     startAt: activity.startAt ?? '',
     endAt: activity.endAt ?? '',
-    repeatWeekday: activity.repeatWeekday,
-    timeStart: activity.timeStart,
-    timeEnd: activity.timeEnd,
-    cycleStart: activity.cycleStart,
-    cycleEnd: activity.cycleEnd,
+    repeatRules: coerceRepeatRules(activity),
     sessions: (activity.sessions ?? []).map(({ id, startAt, endAt }) => ({ id, startAt, endAt })),
   });
 }
@@ -280,11 +412,10 @@ export function validateInterestGroupActivityForm(values: InterestGroupActivityF
   if (!values.coverUrl.trim()) return '请上传封面图片';
   if (!values.title.trim()) return '请输入活动标题';
   if (values.title.trim().length > 20) return '活动标题不超过 20 个字';
-  if (!values.groupId) return '请选择所属小组';
+  if (!values.groupId) return '请选择所属兴趣圈';
   if (!values.categoryKey) return '请选择分类';
   if (!values.detailHtml.trim()) return '请填写活动详情';
   if (!values.capacity || values.capacity < 1) return '请输入人数上限';
-  if (!values.visibility) return '请选择可见范围';
   if (!values.signupStartAt) return '请选择报名开始时间';
   if (values.type === 'once') {
     if (!values.startAt || !values.endAt) return '请填写开始和结束时间';
@@ -292,11 +423,9 @@ export function validateInterestGroupActivityForm(values: InterestGroupActivityF
   }
   const scheduleError = validateActivitySchedule({
     scheduleType: values.type,
-    repeatWeekday: values.repeatWeekday,
-    timeStart: values.timeStart,
-    timeEnd: values.timeEnd,
-    cycleStart: values.cycleStart,
-    cycleEnd: values.cycleEnd,
+    windowStart: values.startAt,
+    windowEnd: values.endAt,
+    repeatRules: coerceRepeatRules(values),
     sessions: (values.sessions ?? []).map((session, index) => ({
       id: `draft-${index}`,
       startAt: session.startAt,
@@ -310,43 +439,53 @@ export function validateInterestGroupActivityForm(values: InterestGroupActivityF
   return null;
 }
 
-export const initialInterestGroupActivities: InterestGroupActivity[] = [
-  {
-    ...igActivityAlignDefaults(),
-    id: 101,
-    groupId: 1,
-    title: '滨江 8K 夜跑 · 江风配速团',
-    type: 'recurring',
-    categoryKey: 'sport',
-    coverUrl: '/activities/basketball.jpg',
-    location: '滨江园区南门集合',
-    hostName: '张悦',
-    capacity: 40,
-    signedCount: 27,
-    status: 'upcoming',
-    detailHtml: '<p>沿滨江绿道往返 8 公里，按配速分组。</p>',
-    likeCount: 86,
-    repeatWeekday: 4,
-    timeStart: '19:30',
-    timeEnd: '21:00',
-    cycleStart: '2026-06-01',
-    cycleEnd: '2026-06-30',
-    sessions: [
-      {
-        id: '101-s1',
-        startAt: '2026-06-12 19:30',
-        endAt: '2026-06-12 21:00',
+const seedInterestGroupActivities: InterestGroupActivity[] = [
+  (() => {
+    const windowStart = '2026-06-04 19:30';
+    const windowEnd = '2026-09-24 21:00';
+    const repeatRules = [{ weekday: 4, timeStart: '19:30', timeEnd: '21:00' }];
+    const generated = generateRecurringSessions({ rules: repeatRules, windowStart, windowEnd });
+    const now = dayjs('2026-08-31 12:00');
+    const sessions = generated.map((session, index) => {
+      const ended = now.isAfter(session.endAt);
+      return {
+        id: index === 0 ? '101-s1' : session.id,
+        startAt: session.startAt,
+        endAt: session.endAt,
         capacity: 40,
-        signedCount: 27,
-        status: 'upcoming',
-      },
-    ],
-    signupHoursBefore: 2,
-    createdAt: '2026-05-20 10:00:00',
-    auditStatus: '已通过',
-    publishStatus: '已发布',
-    publishedAt: '2026-05-20 10:30:00',
-  },
+        signedCount: index === 0 ? 1 : session.startAt.startsWith('2026-09-03') ? 1 : 0,
+        status: (ended ? 'ended' : 'upcoming') as InterestGroupActivityStatus,
+        checkInToken: `ck-101-${index === 0 ? 's1' : session.id}`,
+      };
+    });
+    return {
+      ...igActivityAlignDefaults(),
+      checkInEnabled: true,
+      id: 101,
+      groupId: 1,
+      title: '滨江 8K 夜跑 · 江风配速团',
+      type: 'recurring' as const,
+      categoryKey: 'sport',
+      coverUrl: '/activities/basketball.jpg',
+      location: '滨江园区南门集合',
+      hostName: '张悦',
+      capacity: 40,
+      signedCount: 2,
+      status: 'upcoming' as const,
+      detailHtml: '<p>沿滨江绿道往返 8 公里，按配速分组。</p>',
+      likeCount: 86,
+      startAt: windowStart,
+      endAt: windowEnd,
+      repeatRules,
+      sessions,
+      signupHoursBefore: 2,
+      signupEndAt: syncSignupEndAt(generated, 2),
+      createdAt: '2026-05-20 10:00:00',
+      auditStatus: '无需审核' as const,
+      publishStatus: '已发布' as const,
+      publishedAt: '2026-05-20 10:30:00',
+    };
+  })(),
   {
     ...igActivityAlignDefaults(),
     id: 102,
@@ -358,7 +497,7 @@ export const initialInterestGroupActivities: InterestGroupActivity[] = [
     location: '滨江步道南门',
     hostName: '张悦',
     capacity: 30,
-    signedCount: 29,
+    signedCount: 1,
     status: 'ended',
     detailHtml: '<p>初夏傍晚滨江漫步。</p>',
     likeCount: 12,
@@ -383,35 +522,41 @@ export const initialInterestGroupActivities: InterestGroupActivity[] = [
     location: '近郊 · 云栖谷营地',
     hostName: '陈产品',
     capacity: 24,
-    signedCount: 19,
+    signedCount: 2,
     status: 'ongoing',
     detailHtml: '<p>连续徒步连营。</p>',
     likeCount: 21,
-    repeatWeekday: 2,
-    timeStart: '18:00',
-    timeEnd: '16:00',
-    cycleStart: '2026-06-02',
-    cycleEnd: '2026-06-11',
+    startAt: '2026-08-31 09:00',
+    endAt: '2026-09-10 16:00',
+    repeatRules: [{ weekday: 2, timeStart: '18:00', timeEnd: '21:00' }],
     sessions: [
       {
         id: '201-s0',
-        startAt: '2026-06-02 18:00',
-        endAt: '2026-06-04 16:00',
+        startAt: '2026-08-31 09:00',
+        endAt: '2026-09-02 16:00',
         capacity: 24,
-        signedCount: 19,
+        signedCount: 1,
         status: 'ongoing',
       },
       {
         id: '201-s1',
-        startAt: '2026-06-09 18:00',
-        endAt: '2026-06-11 16:00',
+        startAt: '2026-09-08 18:00',
+        endAt: '2026-09-10 16:00',
         capacity: 24,
-        signedCount: 10,
+        signedCount: 1,
         status: 'upcoming',
       },
     ],
+    signupStartAt: '2026-08-10 09:00',
+    signupEndAt: syncSignupEndAt(
+      [
+        { id: '201-s0', startAt: '2026-08-31 09:00', endAt: '2026-09-02 16:00' },
+        { id: '201-s1', startAt: '2026-09-08 18:00', endAt: '2026-09-10 16:00' },
+      ],
+      0,
+    ),
     createdAt: '2026-05-01 11:00:00',
-    auditStatus: '已通过',
+    auditStatus: '无需审核',
     publishStatus: '已发布',
     publishedAt: '2026-05-01 11:20:00',
   },
@@ -426,17 +571,17 @@ export const initialInterestGroupActivities: InterestGroupActivity[] = [
     location: '三楼书吧',
     hostName: '王芳',
     capacity: 18,
-    signedCount: 12,
+    signedCount: 1,
     status: 'upcoming',
     detailHtml: '<p>每周一晚围读。</p>',
     likeCount: 29,
-    startAt: '2026-06-16 19:00',
-    endAt: '2026-06-16 20:00',
+    startAt: '2026-09-14 19:00',
+    endAt: '2026-09-14 20:00',
     sessions: [],
-    signupStartAt: '2026-06-01 08:00',
-    signupEndAt: '2026-06-16 18:00',
+    signupStartAt: '2026-08-20 08:00',
+    signupEndAt: '2026-09-14 18:00',
     createdAt: '2026-06-01 08:00:00',
-    auditStatus: '待审核',
+    auditStatus: '无需审核',
     publishStatus: '未发布',
     publishedAt: '',
   },
@@ -459,9 +604,10 @@ export const initialInterestGroupActivities: InterestGroupActivity[] = [
     endAt: '2026-06-06 22:00',
     sessions: [],
     createdAt: '2026-06-01 12:00:00',
-    auditStatus: '已驳回',
+    auditStatus: '无需审核',
     publishStatus: '未发布',
     publishedAt: '',
+    terminatedAt: '2026-06-06 18:00',
     rejectReason: '场次与园区占用冲突，请改期后再提交。',
   },
   {
@@ -475,21 +621,29 @@ export const initialInterestGroupActivities: InterestGroupActivity[] = [
     location: '三楼书吧',
     hostName: '王芳',
     capacity: 18,
-    signedCount: 8,
-    status: 'upcoming',
+    signedCount: 3,
+    status: 'ended',
     detailHtml: '<p>三期共读系列。</p>',
     likeCount: 6,
     sessions: [
-      { id: '501-s1', startAt: '2026-06-20 19:00', endAt: '2026-06-20 21:00', capacity: 18, signedCount: 8, status: 'upcoming' },
-      { id: '501-s2', startAt: '2026-06-27 19:00', endAt: '2026-06-27 21:00', capacity: 18, signedCount: 4, status: 'upcoming' },
-      { id: '501-s3', startAt: '2026-07-04 19:00', endAt: '2026-07-04 21:00', capacity: 18, signedCount: 2, status: 'upcoming' },
+      { id: '501-s1', startAt: '2026-06-20 19:00', endAt: '2026-06-20 21:00', capacity: 18, signedCount: 1, status: 'ended' },
+      { id: '501-s2', startAt: '2026-06-27 19:00', endAt: '2026-06-27 21:00', capacity: 18, signedCount: 1, status: 'ended' },
+      { id: '501-s3', startAt: '2026-07-04 19:00', endAt: '2026-07-04 21:00', capacity: 18, signedCount: 1, status: 'ended' },
     ],
     signupStartAt: '2026-06-05 10:00',
     signupHoursBefore: 24,
+    signupEndAt: syncSignupEndAt(
+      [
+        { id: '501-s1', startAt: '2026-06-20 19:00', endAt: '2026-06-20 21:00' },
+        { id: '501-s2', startAt: '2026-06-27 19:00', endAt: '2026-06-27 21:00' },
+        { id: '501-s3', startAt: '2026-07-04 19:00', endAt: '2026-07-04 21:00' },
+      ],
+      24,
+    ),
     createdAt: '2026-06-05 10:00:00',
-    auditStatus: '已通过',
-    publishStatus: '未发布',
-    publishedAt: '',
+    auditStatus: '无需审核',
+    publishStatus: '已发布',
+    publishedAt: '2026-06-05 10:20:00',
   },
   {
     ...igActivityAlignDefaults(),
@@ -501,18 +655,20 @@ export const initialInterestGroupActivities: InterestGroupActivity[] = [
     coverUrl: '/activities/share.jpg',
     location: '总部 · 工位区',
     hostName: '林浅',
+    checkInEnabled: true,
+    checkInToken: 'ck-once-601',
     capacity: 16,
-    signedCount: 6,
+    signedCount: 1,
     status: 'upcoming',
     detailHtml: '<p>跟练颈肩和髋部，10 分钟回工位。</p>',
     likeCount: 3,
-    startAt: '2026-07-15 12:10',
-    endAt: '2026-07-15 12:20',
+    startAt: '2026-09-15 12:10',
+    endAt: '2026-09-15 12:20',
     sessions: [],
-    signupStartAt: '2026-07-01 09:00',
-    signupEndAt: '2026-07-15 12:00',
+    signupStartAt: '2026-08-20 09:00',
+    signupEndAt: '2026-09-15 12:00',
     createdAt: '2026-07-01 09:00:00',
-    auditStatus: '已通过',
+    auditStatus: '无需审核',
     publishStatus: '已发布',
     publishedAt: '2026-07-01 09:20:00',
   },
@@ -526,19 +682,116 @@ export const initialInterestGroupActivities: InterestGroupActivity[] = [
     coverUrl: '/activities/open-day.jpg',
     location: '总部 · 暗房角落',
     hostName: '林浅',
+    checkInEnabled: true,
+    checkInToken: 'ck-once-602',
     capacity: 8,
-    signedCount: 4,
+    signedCount: 1,
     status: 'upcoming',
     detailHtml: '<p>带一卷拍完的胶卷来，现场冲洗扫片。</p>',
     likeCount: 2,
-    startAt: '2026-07-18 14:00',
-    endAt: '2026-07-18 17:00',
+    startAt: '2026-09-19 14:00',
+    endAt: '2026-09-19 17:00',
     sessions: [],
-    signupStartAt: '2026-07-04 10:00',
-    signupEndAt: '2026-07-18 12:00',
+    signupStartAt: '2026-08-20 10:00',
+    signupEndAt: '2026-09-19 12:00',
     createdAt: '2026-07-04 10:00:00',
-    auditStatus: '已通过',
+    auditStatus: '无需审核',
     publishStatus: '已发布',
     publishedAt: '2026-07-04 10:15:00',
   },
+  {
+    ...igActivityAlignDefaults(),
+    id: 603,
+    groupId: 4,
+    title: '周五开黑体验局',
+    type: 'once',
+    categoryKey: 'game',
+    coverUrl: '/activities/open-day.jpg',
+    location: '总部休闲区',
+    hostName: '黄码',
+    capacity: 12,
+    signedCount: 1,
+    status: 'upcoming',
+    detailHtml: '<p>新手友好，带麦即可。</p>',
+    likeCount: 4,
+    startAt: '2026-09-04 19:30',
+    endAt: '2026-09-04 22:00',
+    sessions: [],
+    signupStartAt: '2026-08-20 09:00',
+    signupEndAt: '2026-09-04 18:00',
+    createdAt: '2026-07-10 09:00:00',
+    auditStatus: '无需审核',
+    publishStatus: '已发布',
+    publishedAt: '2026-07-10 09:20:00',
+  },
+  {
+    ...igActivityAlignDefaults(),
+    id: 604,
+    groupId: 6,
+    title: '午间拉伸跟练三期',
+    type: 'series',
+    categoryKey: 'sport',
+    coverUrl: '/activities/share.jpg',
+    location: '总部 · 工位区',
+    hostName: '林浅',
+    checkInEnabled: true,
+    capacity: 16,
+    signedCount: 1,
+    status: 'upcoming',
+    detailHtml: '<p>三期跟练，每场 10 分钟颈肩髋拉伸。林浅发起，可按场次签到。</p>',
+    likeCount: 1,
+    startAt: '2026-09-08 12:10',
+    endAt: '2026-09-22 12:20',
+    sessions: [
+      {
+        id: '604-s1',
+        startAt: '2026-09-08 12:10',
+        endAt: '2026-09-08 12:20',
+        capacity: 16,
+        signedCount: 1,
+        status: 'upcoming',
+        checkInToken: 'ck-604-s1',
+      },
+      {
+        id: '604-s2',
+        startAt: '2026-09-15 12:10',
+        endAt: '2026-09-15 12:20',
+        capacity: 16,
+        signedCount: 0,
+        status: 'upcoming',
+        checkInToken: 'ck-604-s2',
+      },
+      {
+        id: '604-s3',
+        startAt: '2026-09-22 12:10',
+        endAt: '2026-09-22 12:20',
+        capacity: 16,
+        signedCount: 0,
+        status: 'upcoming',
+        checkInToken: 'ck-604-s3',
+      },
+    ],
+    signupStartAt: '2026-08-20 09:00',
+    signupHoursBefore: 2,
+    signupEndAt: syncSignupEndAt(
+      [
+        { id: '604-s1', startAt: '2026-09-08 12:10', endAt: '2026-09-08 12:20' },
+        { id: '604-s2', startAt: '2026-09-15 12:10', endAt: '2026-09-15 12:20' },
+        { id: '604-s3', startAt: '2026-09-22 12:10', endAt: '2026-09-22 12:20' },
+      ],
+      2,
+    ),
+    createdAt: '2026-08-25 09:00:00',
+    auditStatus: '无需审核',
+    publishStatus: '已发布',
+    publishedAt: '2026-08-25 09:20:00',
+  },
 ];
+
+const PINNED_ACTIVITY_ID = 201;
+const unpinnedActivityIds = seedInterestGroupActivities.filter((item) => item.id !== PINNED_ACTIVITY_ID).map((item) => item.id);
+export const initialInterestGroupActivities: InterestGroupActivity[] = seedInterestGroupActivities.map((item) => ({
+  ...item,
+  pinned: item.id === PINNED_ACTIVITY_ID,
+  sortIndex: item.id === PINNED_ACTIVITY_ID ? 0 : unpinnedActivityIds.indexOf(item.id),
+}));

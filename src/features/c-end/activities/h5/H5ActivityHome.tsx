@@ -1,18 +1,20 @@
 import { useMemo, useState } from 'react';
 import { useActivities } from '../../../activities/model/activityStore';
-import { useAllMoments } from '../../../activities/model/momentStore';
-import { goCEnd, goCEndActivityList, goCEndPastMoments, goCEndPortal } from '../../../../app/navigation';
+import { goH5Back } from '../../../../app/navigation';
+import { useActivityDecoration } from '../../../activities/model/activityDecorationStore';
+import { decoActivityCardFields } from '../../../../shared/decoration/decoCardFields';
+import { ActivitySearchBar, ActivitySearchResults } from '../components/ActivitySearchBar';
+import { ActivityHomePreviewBlocks, ActivityStyleList } from '../components/ActivityHomeLayout';
 import {
   CLIENT_TABS,
   filterActivitiesByTitle,
   filterByTab,
   HOME_ACTIVITY_PREVIEW_LIMIT,
-  pastHighlightMoments,
   useLiveSocial,
   type ClientTabId,
 } from '../model/clientActivity';
 import { useUserSignups } from '../model/signupStore';
-import { H5ActivityListCard, MomentPastCard } from './H5ActivityCards';
+import { usePreviewList } from '../../portal/emptyPreview';
 import { H5ActivityShell } from './H5ActivityShell';
 
 const CATALOG_ID = 'h5-activity-catalog';
@@ -22,11 +24,11 @@ export function H5ActivityHome({
   variant = 'preview',
 }: {
   initialQuery?: string;
-  variant?: 'preview' | 'all';
+  variant?: 'preview' | 'all' | 'search';
 } = {}) {
   useLiveSocial();
-  const activities = useActivities();
-  const moments = useAllMoments();
+  const activities = usePreviewList(useActivities());
+  const layout = useActivityDecoration('mobile');
   const signups = useUserSignups();
   const [tab, setTab] = useState<ClientTabId>('all');
   const [query, setQuery] = useState(initialQuery);
@@ -34,99 +36,88 @@ export function H5ActivityHome({
     () => new Set(signups.map((signup) => signup.activityId)),
     [signups],
   );
+  const searching = variant === 'search';
   const filtered = useMemo(
-    () => filterActivitiesByTitle(filterByTab(activities, tab), query),
-    [activities, tab, query],
+    () => filterActivitiesByTitle(filterByTab(activities, searching ? 'all' : tab), searching || variant === 'all' ? query : ''),
+    [activities, tab, query, searching, variant],
   );
   const preview = variant === 'preview';
   const list = preview ? filtered.slice(0, HOME_ACTIVITY_PREVIEW_LIMIT) : filtered;
-  const past = preview ? pastHighlightMoments(moments, activities) : [];
-  const emptyCopy = query.trim() ? '未找到相关活动' : '暂无相关活动';
+  const emptyCopy = variant === 'all' && query.trim() ? '未找到相关活动' : '暂无相关活动';
+  const title = preview ? layout.pageTitle : searching ? '搜索' : '全部活动';
+  const activityBlock = layout.blocks.find((item) => item.type === 'activity');
+  const activityStyle = activityBlock?.listStyle ?? 'large-image';
+  const activityFields = decoActivityCardFields(activityBlock);
+
+  if (searching) {
+    return (
+      <H5ActivityShell
+        title="搜索"
+        onBack={goH5Back}
+        headerExtra={<ActivitySearchBar value={query} onChange={setQuery} />}
+      >
+        <ActivitySearchResults query={query} activities={filterByTab(activities, 'all')} surface="h5" />
+      </H5ActivityShell>
+    );
+  }
 
   return (
     <H5ActivityShell
-      title={preview ? '员工活动' : '全部活动'}
-      onBack={preview ? goCEndPortal : () => goCEnd('h5')}
-      overlay={
-        <nav className="c-h5-detail-fab is-home" aria-label="页面导航">
-          <button type="button" onClick={goCEndPortal}>
-            回主页
-          </button>
-        </nav>
-      }
+      title={title}
+      onBack={goH5Back}
     >
-      <section id={CATALOG_ID} className="c-h5-section c-h5-catalog">
-        <input
-          className="c-h5-catalog-search"
-          type="search"
-          value={query}
-          placeholder="搜索活动名称"
-          aria-label="搜索活动名称"
-          onChange={(event) => setQuery(event.target.value)}
+      {preview ? (
+        <ActivityHomePreviewBlocks
+          layout={layout}
+          surface="h5"
+          activities={activities}
+          signedIds={signedIds}
+          tab={tab}
+          onTab={setTab}
+          searchClassName="c-h5-catalog-search"
         />
-        <h2 className="c-catalog-title">活动</h2>
-        <div className="c-catalog-toolbar">
-          <div className="c-tabs" role="group" aria-label="活动分类">
-            {CLIENT_TABS.map((item) => {
-              const active = item.id === tab;
-              return (
-                <button
-                  key={item.id}
-                  className={`c-tab${active ? ' is-active' : ''}`}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => setTab(item.id)}
-                >
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
-          {preview ? (
-            <div className="c-catalog-more">
-              <button type="button" onClick={() => goCEndActivityList('h5')}>
-                查看全部
-              </button>
-            </div>
-          ) : null}
-        </div>
-        {list.length === 0 ? (
-          <p className="c-empty">{emptyCopy}</p>
-        ) : (
-          <ul className="c-h5-list" aria-label="活动列表">
-            {list.map((activity) => (
-              <li key={activity.id}>
-                <H5ActivityListCard
-                  activity={activity}
-                  signedUp={signedIds.has(activity.id)}
-                  onOpen={() => goCEnd('h5', activity.id)}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      {past.length > 0 ? (
-        <section className="c-past-sec" aria-labelledby="h5-past-title">
-          <div className="c-past-head">
-            <h2 id="h5-past-title" className="c-past-title">
-              往期精彩回顾
-            </h2>
-            <div className="c-catalog-more">
-              <button type="button" onClick={() => goCEndPastMoments('h5')}>
-                查看全部
-              </button>
+      ) : (
+        <section id={CATALOG_ID} className="c-h5-section c-h5-catalog">
+          <input
+            className="c-h5-catalog-search"
+            type="search"
+            value={query}
+            placeholder="搜索活动名称"
+            aria-label="搜索活动名称"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <h2 className="c-catalog-title">活动</h2>
+          <div className="c-catalog-toolbar">
+            <div className="c-tabs" role="group" aria-label="活动分类">
+              {CLIENT_TABS.map((item) => {
+                const active = item.id === tab;
+                return (
+                  <button
+                    key={item.id}
+                    className={`c-tab${active ? ' is-active' : ''}`}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setTab(item.id)}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
-          <ul className="c-past-rail" aria-label="往期精彩回顾">
-            {past.map((moment) => (
-              <li key={moment.id}>
-                <MomentPastCard moment={moment} />
-              </li>
-            ))}
-          </ul>
+          {list.length === 0 ? (
+            <p className="c-empty">{emptyCopy}</p>
+          ) : (
+            <ActivityStyleList
+              activities={list}
+              style={activityStyle}
+              surface="h5"
+              signedIds={signedIds}
+              fields={activityFields}
+            />
+          )}
         </section>
-      ) : null}
+      )}
     </H5ActivityShell>
   );
 }

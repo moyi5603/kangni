@@ -1,14 +1,15 @@
 import { useMemo, useState, type Key, type ReactNode } from 'react';
-import { App, Avatar, Button, Card, DatePicker, Empty, Flex, Input, Space, Table, Typography } from 'antd';
+import { App, Avatar, Button, Card, DatePicker, Empty, Flex, Form, Input, Modal, Space, Table, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { SearchField, SearchPanel } from '../../../shared/ui/ListPage';
+import { TableRowActions } from '../../../shared/ui/TableRowActions';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import { personDepartment } from '../../activities/model/activity';
-import { commentReplyLabel } from '../../activities/model/commentTree';
+import { activityAdminSelf, adminReplyInterestGroupComment } from '../../activities/model/activityCommentReply';
+import { AdminReplyFormItems } from '../../activities/components/AdminReplyAccountSelect';
 import { employeeAvatarColor, employeeAvatarLetter } from '../../activities/model/employeeAvatar';
-import type { CommentRecord } from '../../activities/model/related';
 import type { InterestGroupComment } from '../model/interestGroupComment';
 import {
   removeInterestGroupComments,
@@ -29,8 +30,8 @@ function inDayRange(value: string, range: DateRange) {
 function modalFooter(_: ReactNode, extra: { OkBtn: React.FC; CancelBtn: React.FC }) {
   return (
     <Space>
-      <extra.OkBtn />
       <extra.CancelBtn />
+      <extra.OkBtn />
     </Space>
   );
 }
@@ -42,6 +43,7 @@ type InterestGroupCommentListPageProps = {
 
 export function InterestGroupCommentListPage({ activityId, groupId }: InterestGroupCommentListPageProps) {
   const { message, modal } = App.useApp();
+  const [form] = Form.useForm<{ content: string; author: string }>();
   const all = useInterestGroupComments();
   const activities = useInterestGroupActivities();
   const data = useMemo(() => {
@@ -60,6 +62,31 @@ export function InterestGroupCommentListPage({ activityId, groupId }: InterestGr
   });
   const [query, setQuery] = useState(draft);
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
+  const [replyTarget, setReplyTarget] = useState<InterestGroupComment | null>(null);
+  const openReply = (record: InterestGroupComment) => {
+    setReplyTarget(record);
+    form.setFieldsValue({ content: '', author: activityAdminSelf });
+  };
+  const saveReply = async () => {
+    const values = await form.validateFields();
+    if (!replyTarget) return;
+    const result = adminReplyInterestGroupComment(replyTarget.id, values.content, values.author);
+    if (result === 'empty') {
+      message.error('请输入回复内容');
+      return;
+    }
+    if (result === 'missing') {
+      message.error('原评论不存在');
+      return;
+    }
+    if (result === 'bad-account') {
+      message.error('请选择回复账号');
+      return;
+    }
+    setReplyTarget(null);
+    form.resetFields();
+    message.success('回复成功');
+  };
   const filtered = useMemo(
     () =>
       data.filter(
@@ -95,15 +122,6 @@ export function InterestGroupCommentListPage({ activityId, groupId }: InterestGr
 
   const columns: TableColumnsType<InterestGroupComment> = [
     { title: '评论内容', dataIndex: 'content' },
-    {
-      title: '回复',
-      key: 'reply',
-      width: 160,
-      render: (_, record) => {
-        const label = commentReplyLabel(record as CommentRecord, data as CommentRecord[]);
-        return label === record.author ? '—' : label;
-      },
-    },
     ...(showActivity
       ? [
           {
@@ -132,14 +150,37 @@ export function InterestGroupCommentListPage({ activityId, groupId }: InterestGr
     { title: '部门', key: 'department', width: 120, render: (_, record) => personDepartment(record.author) ?? '—' },
     { title: '评论时间', dataIndex: 'createdAt', width: 180 },
     {
+      title: '点赞',
+      dataIndex: 'likedBy',
+      width: 80,
+      align: 'right' as const,
+      render: (value: string[]) => value.length,
+    },
+    {
       title: '操作',
       key: 'action',
       fixed: 'right',
-      width: 88,
+      align: 'right' as const,
+      width: 136,
       render: (_, record) => (
-        <Button type="link" aria-label={`删除 ${record.author} 的评论`} onClick={() => deleteOne(record)}>
-          删除
-        </Button>
+        <TableRowActions
+          actions={[
+            {
+              key: 'reply',
+              label: '回复',
+              ariaLabel: `回复 ${record.author} 的评论`,
+              onClick: () => openReply(record),
+            },
+            {
+              key: 'delete',
+              label: '删除',
+              ariaLabel: `删除 ${record.author} 的评论`,
+              danger: true,
+              onClick: () => deleteOne(record),
+            },
+          ]}
+          moreAriaLabel={`更多操作 ${record.author}`}
+        />
       ),
     },
   ];
@@ -214,7 +255,7 @@ export function InterestGroupCommentListPage({ activityId, groupId }: InterestGr
           rowSelection={{ selectedRowKeys, preserveSelectedRowKeys: true, onChange: setSelectedRowKeys }}
           columns={columns}
           dataSource={filtered}
-          scroll={{ x: 840 }}
+          scroll={{ x: 980 }}
           pagination={{
             pageSize: b2bStandards.table.pageSize,
             pageSizeOptions: [...b2bStandards.table.pageSizeOptions],
@@ -228,6 +269,32 @@ export function InterestGroupCommentListPage({ activityId, groupId }: InterestGr
           }}
         />
       </Card>
+      <Modal
+        title="回复评论"
+        open={Boolean(replyTarget)}
+        footer={modalFooter}
+        onOk={() => void saveReply()}
+        onCancel={() => {
+          setReplyTarget(null);
+          form.resetFields();
+        }}
+        okText="确认"
+        cancelText="取消"
+        width={b2bStandards.form.modalWidth}
+        destroyOnHidden
+      >
+        <Form
+          form={form}
+          layout="horizontal"
+          className="edit-form"
+          requiredMark
+          labelWrap={false}
+          validateTrigger="onBlur"
+          initialValues={{ author: activityAdminSelf, content: '' }}
+        >
+          <AdminReplyFormItems />
+        </Form>
+      </Modal>
     </div>
   );
 }

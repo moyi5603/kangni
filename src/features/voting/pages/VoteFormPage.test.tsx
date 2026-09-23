@@ -11,7 +11,12 @@ describe('VoteFormPage', () => {
       </App>,
     );
     expect(html).toContain('新建投票');
+    expect(html).toContain('vote-edit-form');
     expect(html).toContain('投票名称');
+    const nameField = html.slice(html.indexOf('投票名称'), html.indexOf('投票时间'));
+    expect(nameField).toContain('0 / 20');
+    expect(nameField).not.toContain('0 / 50');
+    expect(nameField).not.toContain('maxlength="50"');
     expect(html).toContain('投票时间');
     expect(html).toContain('开始时间');
     expect(html).toContain('结束时间');

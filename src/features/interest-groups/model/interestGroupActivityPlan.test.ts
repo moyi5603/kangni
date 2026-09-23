@@ -8,9 +8,8 @@ describe('planInterestGroupActivity', () => {
     expect(plan.type).toBe('recurring');
     expect(plan.groupId).toBe(1);
     expect(plan.categoryKey).toBe('sport');
-    expect(plan.repeatWeekday).toBe(3);
-    expect(plan.timeStart).toBe('19:30');
-    expect(plan.timeEnd).toBe('21:00');
+    expect(plan.repeatRules).toEqual([{ weekday: 3, timeStart: '19:30', timeEnd: '21:00' }]);
+    expect(plan.startAt).toBe('2026-09-02 19:30');
     expect(plan.location).toContain('滨江');
     expect(plan.coverUrl).toBe('');
   });

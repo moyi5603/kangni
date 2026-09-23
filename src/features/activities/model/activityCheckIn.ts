@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import { needsSessionPick, parseSessionIds, type ActivityScheduleType, type ActivitySession } from './activitySchedule';
+import { needsSessionPick, parseSessionIds, sessionsHeldAfterTerminate, type ActivityScheduleType, type ActivitySession } from './activitySchedule';
 
 export const CHECK_IN_ONCE_SESSION_ID = 'once';
 export const CHECK_IN_DYNAMIC_MS = 5 * 60 * 1000;
@@ -25,6 +25,7 @@ export type CheckInActivity = CheckInSettings & {
   endAt: string;
   sessions: ActivitySession[];
   checkInToken?: string;
+  terminatedAt?: string;
 };
 
 export type CheckInSignup = {
@@ -72,17 +73,18 @@ export function ensureSessionCheckInTokens(
 }
 
 export function listCheckInSessions(activity: CheckInActivity): ActivitySession[] {
-  if (needsSessionPick(activity.scheduleType) && activity.sessions.length > 0) {
-    return ensureSessionCheckInTokens(activity.sessions);
-  }
-  return [
-    {
-      id: CHECK_IN_ONCE_SESSION_ID,
-      startAt: activity.startAt,
-      endAt: activity.endAt,
-      checkInToken: activity.checkInToken?.trim() || checkInTokenForSession({ id: CHECK_IN_ONCE_SESSION_ID }),
-    },
-  ];
+  const sessions =
+    needsSessionPick(activity.scheduleType) && activity.sessions.length > 0
+      ? ensureSessionCheckInTokens(activity.sessions)
+      : [
+          {
+            id: CHECK_IN_ONCE_SESSION_ID,
+            startAt: activity.startAt,
+            endAt: activity.endAt,
+            checkInToken: activity.checkInToken?.trim() || checkInTokenForSession({ id: CHECK_IN_ONCE_SESSION_ID }),
+          },
+        ];
+  return activity.terminatedAt ? sessionsHeldAfterTerminate(sessions, activity.terminatedAt) : sessions;
 }
 
 export function dynamicBucket(now = Date.now()): number {
@@ -106,13 +108,8 @@ function tokenMatches(session: ActivitySession, activity: CheckInActivity, token
 
 export function checkInWindow(session: ActivitySession, activity: CheckInActivity): { openAt: dayjs.Dayjs; closeAt: dayjs.Dayjs } {
   const start = dayjs(session.startAt);
-  const openAt =
-    activity.checkInOpenMode === 'after_start'
-      ? start
-      : start.subtract(Math.max(0, activity.checkInOpenMinutesBefore), 'minute');
-  const amount = Math.max(0, activity.checkInValidAfterStart);
-  const closeAt = start.add(amount, activity.checkInValidAfterStartUnit);
-  return { openAt, closeAt };
+  const openAt = start.subtract(Math.max(0, activity.checkInOpenMinutesBefore), 'minute');
+  return { openAt, closeAt: dayjs(session.endAt) };
 }
 
 export function evaluateCheckIn(input: {
@@ -157,11 +154,32 @@ export function toH5CheckInHash(activityId: number, sessionId: string, token: st
   return `#/c/h5/${activityId}/checkin?${query.toString()}`;
 }
 
-export function currentCheckInUrl(activityId: number, sessionId: string, token: string): string {
-  const hash = toH5CheckInHash(activityId, sessionId, token);
-  if (typeof window === 'undefined') return hash;
-  const pathname = window.location.pathname.endsWith('/') ? window.location.pathname : `${window.location.pathname}/`;
-  return new URL(hash, `${window.location.origin}${pathname}`).href;
+export type PageLocation = Pick<Location, 'href' | 'origin' | 'pathname'>;
+
+/** file:// Chrome reports origin `"null"`; `origin + pathname` is not a valid URL base. */
+export function pageHashHref(hash: string, loc?: PageLocation | null): string {
+  if (!loc) return hash;
+  try {
+    if (loc.href) return new URL(hash, loc.href).href;
+  } catch {
+    /* fall through */
+  }
+  const origin = loc.origin && loc.origin !== 'null' ? loc.origin : 'http://local.invalid';
+  const path = loc.pathname.endsWith('/') ? loc.pathname : `${loc.pathname}/`;
+  try {
+    return new URL(hash, `${origin}${path}`).href;
+  } catch {
+    return hash;
+  }
+}
+
+export function currentCheckInUrl(
+  activityId: number,
+  sessionId: string,
+  token: string,
+  loc: PageLocation | null | undefined = typeof window === 'undefined' ? undefined : window.location,
+): string {
+  return pageHashHref(toH5CheckInHash(activityId, sessionId, token), loc);
 }
 
 export function parseCheckInQuery(hash: string): { sessionId: string; token: string } {
@@ -172,13 +190,8 @@ export function parseCheckInQuery(hash: string): { sessionId: string; token: str
 
 export function formatCheckInRuleSummary(settings: CheckInSettings): string {
   if (!settings.checkInEnabled) return '未开启';
-  const open =
-    settings.checkInOpenMode === 'after_start'
-      ? '活动开始后可扫'
-      : `活动开始前 ${settings.checkInOpenMinutesBefore} 分钟可扫`;
-  const unit = settings.checkInValidAfterStartUnit === 'hour' ? '小时' : '天';
   const qr = settings.checkInDynamicQr ? '；动态二维码每 5 分钟刷新' : '；静态二维码';
-  return `${open}；开始后 ${settings.checkInValidAfterStart} ${unit}内有效${qr}`;
+  return `活动开始前 ${settings.checkInOpenMinutesBefore} 分钟可扫${qr}`;
 }
 
 export function formatSignupCheckIns(checkIns: Record<string, string> | undefined, sessions: ActivitySession[]): string {

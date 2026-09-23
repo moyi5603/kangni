@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { goCEnd } from '../../../../app/navigation';
+import { goH5Back, goCEnd } from '../../../../app/navigation';
 import { useActivities } from '../../../activities/model/activityStore';
 import { checkInFailCopy, parseCheckInQuery } from '../../../activities/model/activityCheckIn';
 import { applyActivityCheckIn } from '../model/signupStore';
@@ -24,7 +24,7 @@ export function H5CheckInPage({ id }: { id: number }) {
   }, [id, hash]);
 
   return (
-    <H5ActivityShell title="扫码签到" onBack={() => goCEnd('h5', Number.isFinite(id) ? id : undefined)}>
+    <H5ActivityShell title="扫码签到" onBack={goH5Back}>
       <div className="c-signup-page">
         <p className="c-signup-page-title">{activity?.title ?? '活动签到'}</p>
         <p className={done && message === '签到成功' ? 'c-checkin-ok' : 'c-checkin-msg'}>{message}</p>

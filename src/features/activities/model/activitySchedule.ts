@@ -26,33 +26,37 @@ export type ActivitySession = {
   checkInToken?: string;
 };
 
-export type RecurringSessionInput = {
-  repeatWeekday: number;
+export type RepeatRule = {
+  weekday: number;
   timeStart: string;
   timeEnd: string;
-  cycleStart: string;
-  cycleEnd: string;
+};
+
+export type RecurringSessionInput = {
+  rules: RepeatRule[];
+  windowStart: string;
+  windowEnd: string;
 };
 
 export type ActivityScheduleView = {
   scheduleType: ActivityScheduleType;
   startAt: string;
   endAt: string;
+  repeatRules?: RepeatRule[];
   repeatWeekday?: number;
   timeStart?: string;
   timeEnd?: string;
-  cycleStart?: string;
-  cycleEnd?: string;
   sessions: ActivitySession[];
 };
 
 export type ActivityScheduleDraft = {
   scheduleType: ActivityScheduleType;
+  windowStart?: string;
+  windowEnd?: string;
+  repeatRules?: RepeatRule[];
   repeatWeekday?: number;
   timeStart?: string;
   timeEnd?: string;
-  cycleStart?: string;
-  cycleEnd?: string;
   sessions: ActivitySession[];
 };
 
@@ -65,27 +69,73 @@ export function weekdayLabel(value: number): string {
   return WEEKDAYS.find((item) => item.value === value)?.label ?? `周${value}`;
 }
 
+export function coerceRepeatRules(input: {
+  repeatRules?: RepeatRule[];
+  repeatWeekday?: number;
+  timeStart?: string;
+  timeEnd?: string;
+}): RepeatRule[] {
+  if (input.repeatRules?.length) {
+    return [...input.repeatRules].sort((left, right) => left.weekday - right.weekday);
+  }
+  if (input.repeatWeekday != null && input.timeStart && input.timeEnd) {
+    return [{ weekday: input.repeatWeekday, timeStart: input.timeStart, timeEnd: input.timeEnd }];
+  }
+  return [];
+}
+
+export function repeatWeekdayValues(rules: Array<{ weekday: number | string }>): number[] {
+  return rules.map((item) => Number(item.weekday)).filter((value) => value >= 1 && value <= 7);
+}
+
+export function applyRepeatWeekdaySelection<T extends { weekday: number | string }>(
+  current: T[],
+  checked: Array<number | string>,
+): Array<T | { weekday: number }> {
+  const selected = [...new Set(checked.map(Number).filter((value) => value >= 1 && value <= 7))].sort((left, right) => left - right);
+  return selected.map((weekday) => current.find((item) => Number(item.weekday) === weekday) ?? { weekday });
+}
+
+export function formatRecurringWeekdays(rules: RepeatRule[]): string {
+  const labels = coerceRepeatRules({ repeatRules: rules }).map((rule) => weekdayLabel(rule.weekday));
+  if (!labels.length) return '';
+  return `每${labels.join('、')}`;
+}
+
+export function sessionFullyWithinWindow(
+  session: Pick<ActivitySession, 'startAt' | 'endAt'>,
+  windowStart: string,
+  windowEnd: string,
+): boolean {
+  return Boolean(windowStart && windowEnd) && session.startAt >= windowStart && session.endAt <= windowEnd;
+}
+
 export function createSessionId(startAt: string, index: number): string {
   return `s-${index}-${startAt.replace(/[^\d]/g, '')}`;
 }
 
 export function generateRecurringSessions(input: RecurringSessionInput): ActivitySession[] {
-  const start = dayjs(input.cycleStart).startOf('day');
-  const end = dayjs(input.cycleEnd).startOf('day');
-  if (!start.isValid() || !end.isValid() || end.isBefore(start)) return [];
+  const rules = coerceRepeatRules({ repeatRules: input.rules }).filter(
+    (rule) => rule.timeStart && rule.timeEnd && rule.timeEnd > rule.timeStart,
+  );
+  const start = dayjs(input.windowStart);
+  const end = dayjs(input.windowEnd);
+  if (!start.isValid() || !end.isValid() || end.isBefore(start) || !rules.length) return [];
+  const byWeekday = new Map(rules.map((rule) => [rule.weekday, rule]));
   const sessions: ActivitySession[] = [];
-  let cursor = start;
+  let cursor = start.startOf('day');
+  const lastDay = end.startOf('day');
   let index = 0;
-  while (!cursor.isAfter(end)) {
-    if (isoWeekday(cursor.format('YYYY-MM-DD')) === input.repeatWeekday) {
-      const date = cursor.format('YYYY-MM-DD');
-      const startAt = `${date} ${input.timeStart}`;
-      sessions.push({
-        id: createSessionId(startAt, index),
-        startAt,
-        endAt: `${date} ${input.timeEnd}`,
-      });
-      index += 1;
+  while (!cursor.isAfter(lastDay)) {
+    const date = cursor.format('YYYY-MM-DD');
+    const rule = byWeekday.get(isoWeekday(date));
+    if (rule) {
+      const startAt = `${date} ${rule.timeStart}`;
+      const candidate = { id: createSessionId(startAt, index), startAt, endAt: `${date} ${rule.timeEnd}` };
+      if (sessionFullyWithinWindow(candidate, input.windowStart, input.windowEnd)) {
+        sessions.push(candidate);
+        index += 1;
+      }
     }
     cursor = cursor.add(1, 'day');
   }
@@ -100,6 +150,14 @@ export function syncSessionBounds(sessions: ActivitySession[]): { startAt: strin
 
 export const CLIENT_SIGNUP_SESSION_LIMIT = 5;
 
+export function sessionsHeldAfterTerminate<T extends { startAt: string }>(
+  sessions: T[],
+  terminatedAt: string,
+): T[] {
+  const cutoff = dayjs(terminatedAt);
+  return sessions.filter((session) => !dayjs(session.startAt).isAfter(cutoff));
+}
+
 export function isSessionEnded(session: ActivitySession, now = Date.now()): boolean {
   return !dayjs(session.endAt).isAfter(dayjs(now));
 }
@@ -108,11 +166,18 @@ export function listClientSignupSessions(
   sessions: ActivitySession[],
   now = Date.now(),
   limit = CLIENT_SIGNUP_SESSION_LIMIT,
+  terminatedAt?: string,
 ): ActivitySession[] {
-  return [...sessions]
+  const visible = terminatedAt ? sessionsHeldAfterTerminate(sessions, terminatedAt) : sessions;
+  return [...visible]
     .filter((session) => !isSessionEnded(session, now))
     .sort((left, right) => left.startAt.localeCompare(right.startAt))
     .slice(0, limit);
+}
+
+export function visibleSignupSessions<T>(sessions: readonly T[], expanded: boolean): T[] {
+  if (expanded || sessions.length <= CLIENT_SIGNUP_SESSION_LIMIT) return [...sessions];
+  return sessions.slice(0, CLIENT_SIGNUP_SESSION_LIMIT);
 }
 
 export function needsSessionPick(scheduleType: ActivityScheduleType | undefined): boolean {
@@ -123,8 +188,9 @@ export function shouldShowRecentSessions(
   scheduleType: ActivityScheduleType | undefined,
   sessions: ActivitySession[],
   now = Date.now(),
+  terminatedAt?: string,
 ): boolean {
-  return needsSessionPick(scheduleType) && listClientSignupSessions(sessions, now).length > 1;
+  return needsSessionPick(scheduleType) && listClientSignupSessions(sessions, now, undefined, terminatedAt).length > 1;
 }
 
 export function signupQuotaLabel(scheduleType: ActivityScheduleType | undefined): string {
@@ -142,20 +208,11 @@ export function clientQuotaLabel(scheduleType: ActivityScheduleType | undefined)
 }
 
 export function formatActivityScheduleTime(activity: ActivityScheduleView): string {
-  if (activity.scheduleType === 'recurring') {
-    const count = activity.sessions.length;
-    const day = weekdayLabel(activity.repeatWeekday ?? 0);
-    const clock = `${activity.timeStart ?? ''}-${activity.timeEnd ?? ''}`;
-    const span = `${activity.cycleStart ?? ''}～${activity.cycleEnd ?? ''}`;
-    return `每${day} ${clock}（${span}，共 ${count} 场）`;
+  const window = `${activity.startAt} ~ ${activity.endAt}`;
+  if (activity.scheduleType === 'recurring' || activity.scheduleType === 'series') {
+    return `${window} · 共 ${activity.sessions.length} 场`;
   }
-  if (activity.scheduleType === 'series') {
-    const first = activity.sessions[0];
-    const count = activity.sessions.length;
-    if (!first) return `共 ${count} 场`;
-    return `首场 ${first.startAt} ~ ${first.endAt} · 共 ${count} 场`;
-  }
-  return `${activity.startAt} ~ ${activity.endAt}`;
+  return window;
 }
 
 export function formatSessionChipDate(startAt: string): string {
@@ -175,6 +232,14 @@ export function formatSessionLabel(session: ActivitySession, index: number): str
   return `第 ${index + 1} 场 ${session.startAt} ~ ${session.endAt}`;
 }
 
+export function formatSessionIndexLabel(index: number): string {
+  return `第 ${index + 1} 场`;
+}
+
+export function formatSessionTimeRange(session: Pick<ActivitySession, 'startAt' | 'endAt'>): string {
+  return `${session.startAt} ~ ${session.endAt}`;
+}
+
 export function parseSessionIds(raw: string | undefined): string[] {
   return (raw ?? '').split('、').map((item) => item.trim()).filter(Boolean);
 }
@@ -183,15 +248,31 @@ export function stringifySessionIds(ids: string[]): string {
   return ids.join('、');
 }
 
-export function formatPickedSessionsLabel(sessions: ActivitySession[], raw?: string): string {
+function mapPickedSessions(
+  sessions: ActivitySession[],
+  raw: string | undefined,
+  format: (session: ActivitySession, index: number) => string,
+): string {
   const ids = parseSessionIds(raw);
   if (!ids.length) return '';
   return ids
     .map((id) => {
       const index = sessions.findIndex((session) => session.id === id);
-      return index < 0 ? id : formatSessionLabel(sessions[index], index);
+      return index < 0 ? id : format(sessions[index], index);
     })
     .join('；');
+}
+
+export function formatPickedSessionsLabel(sessions: ActivitySession[], raw?: string): string {
+  return mapPickedSessions(sessions, raw, formatSessionLabel);
+}
+
+export function formatPickedSessionIndexLabel(sessions: ActivitySession[], raw?: string): string {
+  return mapPickedSessions(sessions, raw, (_session, index) => formatSessionIndexLabel(index));
+}
+
+export function formatPickedSessionTimeLabel(sessions: ActivitySession[], raw?: string): string {
+  return mapPickedSessions(sessions, raw, (session) => formatSessionTimeRange(session));
 }
 
 export function validateSessionPick(
@@ -257,6 +338,19 @@ export function isSessionSignupOpen(
   return !current.isBefore(start) && !current.isAfter(activityEnd) && !current.isAfter(sessionEnd);
 }
 
+export function filterOpenSessionPicks(
+  picked: string[],
+  sessions: ActivitySession[],
+  window?: SessionSignupWindow,
+): string[] {
+  return picked.filter((id) => {
+    const session = sessions.find((item) => item.id === id);
+    if (!session) return false;
+    if (!window) return true;
+    return isSessionSignupOpen(session, window, window.now ?? Date.now());
+  });
+}
+
 export function hasOpenSessionSignup(
   sessions: ActivitySession[],
   window: Pick<SessionSignupWindow, 'signupStartAt' | 'signupEndAt' | 'signupHoursBefore'>,
@@ -266,28 +360,33 @@ export function hasOpenSessionSignup(
 }
 
 export function validateActivitySchedule(draft: ActivityScheduleDraft): string | undefined {
+  if (draft.scheduleType === 'once') return undefined;
+  if (!draft.windowStart || !draft.windowEnd) return '请选择活动时间';
+  if (draft.windowEnd < draft.windowStart) return '结束时间不得早于开始时间';
   if (draft.scheduleType === 'recurring') {
-    if (draft.repeatWeekday == null) return '请选择重复的周几';
-    if (!draft.timeStart || !draft.timeEnd) return '请填写每日时段';
-    if (!draft.cycleStart || !draft.cycleEnd) return '请选择周期起止日期';
-    const sessions =
-      draft.sessions.length > 0
-        ? draft.sessions
-        : generateRecurringSessions({
-            repeatWeekday: draft.repeatWeekday,
-            timeStart: draft.timeStart,
-            timeEnd: draft.timeEnd,
-            cycleStart: draft.cycleStart,
-            cycleEnd: draft.cycleEnd,
-          });
-    if (!sessions.length) return '该周期内没有可生成的场次';
+    const rules = coerceRepeatRules(draft);
+    if (!rules.length) return '请选择重复的周几';
+    for (const rule of rules) {
+      const label = weekdayLabel(rule.weekday);
+      if (!rule.timeStart || !rule.timeEnd) return `请填写${label}时段`;
+      if (rule.timeEnd <= rule.timeStart) return `${label}结束时间不得早于开始时间`;
+    }
+    const sessions = generateRecurringSessions({
+      rules,
+      windowStart: draft.windowStart,
+      windowEnd: draft.windowEnd,
+    });
+    if (!sessions.length) return '该活动时间内没有可生成的场次';
     return undefined;
   }
   if (draft.scheduleType === 'series') {
     if (draft.sessions.length < 2) return '系列活动至少需要 2 场';
-    for (const session of draft.sessions) {
+    for (const [index, session] of draft.sessions.entries()) {
       if (!session.startAt || !session.endAt) return '请完善每一场的时间';
       if (session.endAt < session.startAt) return '场次结束时间不得早于开始时间';
+      if (!sessionFullyWithinWindow(session, draft.windowStart, draft.windowEnd)) {
+        return `第 ${index + 1} 场必须完全落在活动时间内`;
+      }
     }
     return undefined;
   }
@@ -295,14 +394,15 @@ export function validateActivitySchedule(draft: ActivityScheduleDraft): string |
 }
 
 export function resolveScheduleSessions(draft: ActivityScheduleDraft): ActivitySession[] {
-  if (draft.scheduleType === 'recurring' && draft.repeatWeekday != null && draft.timeStart && draft.timeEnd && draft.cycleStart && draft.cycleEnd) {
-    return generateRecurringSessions({
-      repeatWeekday: draft.repeatWeekday,
-      timeStart: draft.timeStart,
-      timeEnd: draft.timeEnd,
-      cycleStart: draft.cycleStart,
-      cycleEnd: draft.cycleEnd,
-    });
+  if (draft.scheduleType === 'recurring') {
+    const rules = coerceRepeatRules(draft);
+    if (rules.length && draft.windowStart && draft.windowEnd) {
+      return generateRecurringSessions({
+        rules,
+        windowStart: draft.windowStart,
+        windowEnd: draft.windowEnd,
+      });
+    }
   }
   return draft.sessions;
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { PlusOutlined } from '@ant-design/icons';
 import {
   App,
@@ -15,12 +15,11 @@ import {
   Select,
   Space,
   Typography,
-  Upload,
 } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
-import { COVER_IMAGE_UPLOAD_HINT, IMAGE_UPLOAD_ACCEPT } from '../../../shared/ui/imageUploadHint';
-import { addMedal, useMedals } from '../../activities/model/medalLibrary';
+import { addMedal, useMedals, type Medal } from '../../activities/model/medalLibrary';
+import { MedalRewardFields, medalScopeOf, type MedalPickSource } from '../components/MedalRewardFields';
 import {
   CHECKIN_OWNER_APP_LABEL,
   checkinStatusOf,
@@ -36,46 +35,35 @@ import { getTheme, nextThemeId, saveTheme, useCheckinThemes } from '../model/che
 const { RangePicker } = DatePicker;
 const TIME_FORMAT = 'YYYY-MM-DD HH:mm';
 
-const LOTTERY_CHANCE_HINT =
-  '由抽奖活动反向关联后才会入账；未关联时打卡仍记获奖，但次数不会进入任何抽奖。';
-
 const OWNER_OPTIONS = (Object.keys(CHECKIN_OWNER_APP_LABEL) as CheckinOwnerApp[]).map((value) => ({
   value,
   label: CHECKIN_OWNER_APP_LABEL[value],
 }));
-
-const TRIGGER_OPTIONS: { value: RewardTrigger; label: string }[] = [
-  { value: 'each', label: '每次打卡' },
-  { value: 'streak', label: '连续满x天' },
-  { value: 'total', label: '累计满y次' },
-];
-
-const REWARD_OPTIONS = [
-  { value: 'medal', label: '勋章' },
-  { value: 'points', label: '积分' },
-  { value: 'lottery', label: '抽奖次数' },
-];
 
 const REPEAT_OPTIONS: { value: RewardRepeat; label: string }[] = [
   { value: 'once', label: '仅一次' },
   { value: 'repeat', label: '可重复' },
 ];
 
-type RewardKey = 'medal' | 'points' | 'lottery';
-type MedalSource = '勋章库' | '上传图片';
+const TRIGGER_OPTIONS: { value: RewardTrigger; label: string }[] = [
+  { value: 'each', label: '每次打卡' },
+  { value: 'streak', label: '连续满' },
+  { value: 'total', label: '累计满' },
+];
 
 type RuleForm = {
   id: string;
   trigger: RewardTrigger;
   streakDays?: number;
   totalTimes?: number;
-  rewards: RewardKey[];
-  medalSource: MedalSource;
+  enableMedal: boolean;
+  medalSource: MedalPickSource;
   medalId?: string;
   medalName?: string;
   medalImageUrl?: string;
+  medalDescription?: string;
+  enablePoints: boolean;
   points?: number;
-  lotteryChance?: number;
   repeat: RewardRepeat;
 };
 
@@ -84,7 +72,6 @@ type FormValues = {
   title: string;
   tags: string[];
   timeRange: [Dayjs, Dayjs];
-  rules: RuleForm[];
 };
 
 type CheckinFormPageProps = {
@@ -99,22 +86,14 @@ function emptyRule(): RuleForm {
   return {
     id: `r-${Date.now()}`,
     trigger: 'each',
-    rewards: [],
-    medalSource: '勋章库',
+    enableMedal: false,
+    medalSource: '从已有选择',
+    enablePoints: false,
     streakDays: 1,
     totalTimes: 1,
     points: 1,
-    lotteryChance: 1,
     repeat: 'once',
   };
-}
-
-function rewardsOf(rule: RewardRule): RewardKey[] {
-  const rewards: RewardKey[] = [];
-  if (rule.enableMedal) rewards.push('medal');
-  if (rule.enablePoints) rewards.push('points');
-  if (rule.enableLotteryChance) rewards.push('lottery');
-  return rewards;
 }
 
 function toRuleForm(rule: RewardRule): RuleForm {
@@ -123,41 +102,173 @@ function toRuleForm(rule: RewardRule): RuleForm {
     trigger: rule.trigger,
     streakDays: rule.streakDays ?? 1,
     totalTimes: rule.totalTimes ?? 1,
-    rewards: rewardsOf(rule),
-    medalSource: '勋章库',
+    enableMedal: rule.enableMedal,
+    medalSource: '从已有选择',
     medalId: rule.medalId,
+    enablePoints: rule.enablePoints,
     points: rule.points || 1,
-    lotteryChance: rule.lotteryChance || 1,
     repeat: rule.repeat,
   };
 }
 
-function resolveMedalId(item: RuleForm): string | undefined {
-  if (!(item.rewards ?? []).includes('medal')) return undefined;
-  if (item.medalSource === '上传图片') {
+function resolveMedalId(item: RuleForm, ownerApp: CheckinOwnerApp): string | undefined {
+  if (!item.enableMedal) return undefined;
+  if (item.medalSource === '新建勋章') {
     const name = item.medalName?.trim() ?? '';
     const imageUrl = item.medalImageUrl ?? '';
     if (!name || !imageUrl) return undefined;
-    return addMedal(name, imageUrl).id;
+    return addMedal(name, imageUrl, {
+      scope: medalScopeOf(ownerApp),
+      description: item.medalDescription,
+    }).id;
   }
   return item.medalId;
 }
 
-function toRewardRule(item: RuleForm): RewardRule {
-  const rewards = item.rewards ?? [];
+function toRewardRule(item: RuleForm, ownerApp: CheckinOwnerApp): RewardRule {
   return {
     id: item.id,
     trigger: item.trigger,
     streakDays: item.trigger === 'streak' ? item.streakDays : undefined,
     totalTimes: item.trigger === 'total' ? item.totalTimes : undefined,
-    enableMedal: rewards.includes('medal'),
-    medalId: resolveMedalId(item),
-    enablePoints: rewards.includes('points'),
-    points: rewards.includes('points') ? item.points ?? 0 : 0,
-    enableLotteryChance: rewards.includes('lottery'),
-    lotteryChance: rewards.includes('lottery') ? item.lotteryChance ?? 0 : 0,
+    enableMedal: item.enableMedal,
+    medalId: resolveMedalId(item, ownerApp),
+    enablePoints: item.enablePoints,
+    points: item.enablePoints ? item.points ?? 0 : 0,
+    enableLotteryChance: false,
+    lotteryChance: 0,
     repeat: item.repeat,
   };
+}
+
+const CLUSTER: CSSProperties = {
+  display: 'inline-flex',
+  flexWrap: 'nowrap',
+  alignItems: 'center',
+  gap: 8,
+};
+
+function RuleEditor({
+  rule,
+  index,
+  locked,
+  medals,
+  onChange,
+  onRemove,
+}: {
+  rule: RuleForm;
+  index: number;
+  locked: boolean;
+  medals: Medal[];
+  onChange: (patch: Partial<RuleForm>) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <Card
+      size="small"
+      title={`规则 ${index + 1}`}
+      extra={
+        <Button type="link" danger disabled={locked} onClick={onRemove}>
+          删除
+        </Button>
+      }
+      style={{ marginBottom: 12 }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={CLUSTER}>
+          <span style={{ width: 112, flex: '0 0 112px' }}>触发条件</span>
+          <Select
+            value={rule.trigger}
+            disabled={locked}
+            options={TRIGGER_OPTIONS}
+            onChange={(trigger) => onChange({ trigger })}
+            style={{ width: 140 }}
+          />
+          {rule.trigger === 'streak' ? (
+            <>
+              <InputNumber
+                min={1}
+                precision={0}
+                disabled={locked}
+                value={rule.streakDays}
+                onChange={(value) => onChange({ streakDays: Number(value) || 1 })}
+                style={{ width: 88 }}
+              />
+              天
+            </>
+          ) : null}
+          {rule.trigger === 'total' ? (
+            <>
+              <InputNumber
+                min={1}
+                precision={0}
+                disabled={locked}
+                value={rule.totalTimes}
+                onChange={(value) => onChange({ totalTimes: Number(value) || 1 })}
+                style={{ width: 88 }}
+              />
+              次
+            </>
+          ) : null}
+        </div>
+        <div style={CLUSTER}>
+          <span style={{ width: 112, flex: '0 0 112px' }}>发放</span>
+          <Radio.Group
+            options={REPEAT_OPTIONS}
+            value={rule.repeat}
+            disabled={locked}
+            onChange={(event) => onChange({ repeat: event.target.value })}
+          />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <span style={{ width: 112, flex: '0 0 112px', paddingTop: 5 }}>奖励</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div>
+              <Checkbox
+                checked={rule.enableMedal}
+                disabled={locked}
+                onChange={(event) => onChange({ enableMedal: event.target.checked })}
+              >
+                勋章
+              </Checkbox>
+              <div style={{ marginTop: 8 }}>
+                <MedalRewardFields
+                  medals={medals}
+                  locked={locked || !rule.enableMedal}
+                  source={rule.medalSource}
+                  medalId={rule.medalId}
+                  medalName={rule.medalName}
+                  medalImageUrl={rule.medalImageUrl}
+                  medalDescription={rule.medalDescription}
+                  onChange={onChange}
+                />
+              </div>
+            </div>
+            <div style={CLUSTER}>
+              <Checkbox
+                checked={rule.enablePoints}
+                disabled={locked}
+                onChange={(event) => onChange({ enablePoints: event.target.checked })}
+              >
+                积分
+              </Checkbox>
+              {rule.enablePoints ? (
+                <InputNumber
+                  min={1}
+                  precision={0}
+                  disabled={locked}
+                  value={rule.points}
+                  onChange={(value) => onChange({ points: Number(value) || 1 })}
+                  addonAfter="分"
+                  style={{ width: 128 }}
+                />
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
 }
 
 export function CheckinFormPage({
@@ -173,10 +284,16 @@ export function CheckinFormPage({
   const editing = mode === 'edit' ? getTheme(Number(recordId)) : undefined;
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState(false);
-  const rulesWatch = Form.useWatch('rules', form) ?? [];
+  const [ruleRows, setRuleRows] = useState<RuleForm[]>(() =>
+    mode === 'edit' ? (getTheme(Number(recordId))?.rules.map(toRuleForm) ?? []) : [emptyRule()],
+  );
 
   const status = editing ? checkinStatusOf(editing) : undefined;
   const formLocked = status === '已结束';
+
+  useEffect(() => {
+    if (mode === 'edit') setRuleRows(editing?.rules.map(toRuleForm) ?? []);
+  }, [editing, recordId, mode]);
 
   const initialValues = useMemo<Partial<FormValues>>(
     () => ({
@@ -186,16 +303,19 @@ export function CheckinFormPage({
       timeRange: editing
         ? [dayjs(editing.startAt, TIME_FORMAT), dayjs(editing.endAt, TIME_FORMAT)]
         : undefined,
-      rules: editing?.rules.map(toRuleForm) ?? [],
     }),
     [editing, defaultOwnerApp],
   );
 
   const pageTitle = mode === 'create' ? '新建打卡' : '编辑打卡';
 
+  const patchRule = (index: number, patch: Partial<RuleForm>) => {
+    setRuleRows((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  };
+
   const submit = async () => {
     const values = await form.validateFields();
-    const rules = (values.rules ?? []).map(toRewardRule);
+    const rules = ruleRows.map((item) => toRewardRule(item, values.ownerApp));
     for (const rule of rules) {
       const error = validateRewardRule(rule);
       if (error) {
@@ -292,185 +412,23 @@ export function CheckinFormPage({
           </Form.Item>
         </Card>
         <Card title="奖励规则" style={{ marginTop: 16 }}>
-          <Typography.Text type="secondary">{LOTTERY_CHANCE_HINT}</Typography.Text>
-          <Form.List name="rules">
-            {(fields, { add, remove }) => (
-              <div style={{ marginTop: 12 }}>
-                {fields.map((field, index) => {
-                  const row =
-                    (rulesWatch[field.name] as RuleForm | undefined) ??
-                    (initialValues.rules?.[field.name] as RuleForm | undefined);
-                  const trigger = row?.trigger ?? 'each';
-                  const rewards = row?.rewards ?? [];
-                  const medalSource = row?.medalSource ?? '勋章库';
-                  return (
-                    <Card key={field.key} size="small" style={{ marginBottom: 12 }}>
-                      <Form.Item {...field} name={[field.name, 'id']} hidden>
-                        <Input />
-                      </Form.Item>
-                      <Form.Item
-                        {...field}
-                        name={[field.name, 'trigger']}
-                        label="触发条件"
-                        rules={[{ required: true, message: '请选择触发条件' }]}
-                      >
-                        <Radio.Group options={TRIGGER_OPTIONS} />
-                      </Form.Item>
-                      {trigger === 'streak' ? (
-                        <Form.Item
-                          {...field}
-                          name={[field.name, 'streakDays']}
-                          label="连续天数"
-                          rules={[{ required: true, message: '请填写连续天数' }]}
-                        >
-                          <InputNumber min={1} precision={0} style={{ width: 160 }} />
-                        </Form.Item>
-                      ) : null}
-                      {trigger === 'total' ? (
-                        <Form.Item
-                          {...field}
-                          name={[field.name, 'totalTimes']}
-                          label="累计次数"
-                          rules={[{ required: true, message: '请填写累计次数' }]}
-                        >
-                          <InputNumber min={1} precision={0} style={{ width: 160 }} />
-                        </Form.Item>
-                      ) : null}
-                      <Form.Item {...field} name={[field.name, 'rewards']} label="奖励">
-                        <Checkbox.Group options={REWARD_OPTIONS} />
-                      </Form.Item>
-                      {rewards.includes('medal') ? (
-                        <>
-                          <Form.Item
-                            {...field}
-                            name={[field.name, 'medalSource']}
-                            label="勋章来源"
-                            rules={[{ required: true, message: '请选择勋章来源' }]}
-                          >
-                            <Radio.Group
-                              options={[
-                                { value: '勋章库', label: '勋章库' },
-                                { value: '上传图片', label: '上传图片' },
-                              ]}
-                            />
-                          </Form.Item>
-                          {(medalSource) !== '上传图片' ? (
-                            <Form.Item
-                              {...field}
-                              name={[field.name, 'medalId']}
-                              label="选择勋章"
-                              extra="勋章较多时可输入名称搜索。"
-                              rules={[{ required: true, message: '请选择勋章' }]}
-                            >
-                              <Select
-                                showSearch
-                                optionFilterProp="label"
-                                placeholder="请选择勋章"
-                                options={medals.map((item) => ({ value: item.id, label: item.name }))}
-                                style={{ maxWidth: 320 }}
-                              />
-                            </Form.Item>
-                          ) : (
-                            <>
-                              <Form.Item
-                                {...field}
-                                name={[field.name, 'medalName']}
-                                label="勋章名称"
-                                rules={[
-                                  { required: true, message: '请输入勋章名称' },
-                                  { max: 20, message: '勋章名称不超过 20 个字' },
-                                ]}
-                              >
-                                <Input maxLength={20} showCount placeholder="请输入勋章名称" style={{ maxWidth: 320 }} />
-                              </Form.Item>
-                              <Form.Item
-                                label="勋章图片"
-                                extra={`${COVER_IMAGE_UPLOAD_HINT}。上传后会加入勋章库，下次可直接选用。`}
-                                required
-                              >
-                                <Upload
-                                  accept={IMAGE_UPLOAD_ACCEPT}
-                                  listType="picture-card"
-                                  maxCount={1}
-                                  fileList={
-                                    row?.medalImageUrl
-                                      ? [{ uid: String(field.key), name: '勋章', url: row.medalImageUrl, status: 'done' }]
-                                      : []
-                                  }
-                                  beforeUpload={() => false}
-                                  onChange={({ fileList }) => {
-                                    const file = fileList[0];
-                                    if (file?.originFileObj) {
-                                      const reader = new FileReader();
-                                      reader.onload = () =>
-                                        form.setFieldValue(['rules', field.name, 'medalImageUrl'], String(reader.result));
-                                      reader.readAsDataURL(file.originFileObj);
-                                    } else {
-                                      form.setFieldValue(['rules', field.name, 'medalImageUrl'], file?.url ?? '');
-                                    }
-                                  }}
-                                >
-                                  {row?.medalImageUrl ? null : (
-                                    <button type="button" className="cover-upload-trigger">
-                                      <PlusOutlined />
-                                      <span>上传</span>
-                                    </button>
-                                  )}
-                                </Upload>
-                              </Form.Item>
-                              <Form.Item
-                                {...field}
-                                name={[field.name, 'medalImageUrl']}
-                                hidden
-                                rules={[{ required: true, message: '请上传勋章图片' }]}
-                              >
-                                <Input />
-                              </Form.Item>
-                            </>
-                          )}
-                        </>
-                      ) : null}
-                      {rewards.includes('points') ? (
-                        <Form.Item
-                          {...field}
-                          name={[field.name, 'points']}
-                          label="积分"
-                          rules={[{ required: true, message: '请输入积分' }]}
-                        >
-                          <InputNumber min={1} precision={0} style={{ width: 160 }} />
-                        </Form.Item>
-                      ) : null}
-                      {rewards.includes('lottery') ? (
-                        <Form.Item
-                          {...field}
-                          name={[field.name, 'lotteryChance']}
-                          label="抽奖次数"
-                          extra={LOTTERY_CHANCE_HINT}
-                          rules={[{ required: true, message: '请输入抽奖次数' }]}
-                        >
-                          <InputNumber min={1} precision={0} style={{ width: 160 }} />
-                        </Form.Item>
-                      ) : null}
-                      <Form.Item
-                        {...field}
-                        name={[field.name, 'repeat']}
-                        label="发放"
-                        rules={[{ required: true, message: '请选择发放方式' }]}
-                      >
-                        <Radio.Group options={REPEAT_OPTIONS} />
-                      </Form.Item>
-                      <Button type="link" danger disabled={formLocked} onClick={() => remove(field.name)}>
-                        删除规则 {index + 1}
-                      </Button>
-                    </Card>
-                  );
-                })}
-                <Button type="dashed" disabled={formLocked} onClick={() => add(emptyRule())}>
-                  添加规则
-                </Button>
-              </div>
-            )}
-          </Form.List>
+          <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>
+            勾选勋章后可选「从已有选择」（弹窗选库）或「新建勋章」。一条规则只出现一组奖励。
+          </Typography.Paragraph>
+          {ruleRows.map((rule, index) => (
+            <RuleEditor
+              key={rule.id}
+              rule={rule}
+              index={index}
+              locked={formLocked}
+              medals={medals}
+              onChange={(patch) => patchRule(index, patch)}
+              onRemove={() => setRuleRows((rows) => rows.filter((_, i) => i !== index))}
+            />
+          ))}
+          <Button type="dashed" disabled={formLocked} onClick={() => setRuleRows((rows) => [...rows, emptyRule()])} icon={<PlusOutlined />}>
+            添加规则
+          </Button>
         </Card>
         <div className="sticky-form-actions">
           <Space>

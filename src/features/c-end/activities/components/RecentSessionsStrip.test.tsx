@@ -16,12 +16,16 @@ describe('RecentSessionsStrip', () => {
     expect(html).toContain('8/27');
     expect(html).toContain('14:00-23:00');
     expect(html).toContain('已报名');
-    expect(html).toContain('余50位');
+    expect(html).toContain('余49位');
     expect(html).toContain('9/3');
   });
 
-  it('hides once activities and series with no remaining sessions', () => {
+  it('hides once activities and shows remaining camp sessions', () => {
     expect(renderToStaticMarkup(<RecentSessionsStrip activity={openDay} now={now} />)).toBe('');
-    expect(renderToStaticMarkup(<RecentSessionsStrip activity={camp} now={now} />)).toBe('');
+    const campHtml = renderToStaticMarkup(<RecentSessionsStrip activity={camp} now={now} />);
+    expect(campHtml).toContain('最近场次');
+    expect(campHtml).toContain('8/31');
+    expect(campHtml).toContain('9/1');
+    expect(campHtml).toContain('9/2');
   });
 });

@@ -1,0 +1,303 @@
+.incentive-badge-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.incentive-badge-card {
+  min-width: 0;
+}
+
+.incentive-badge-card .ant-card-body {
+  padding: 0 24px 24px;
+}
+
+.incentive-badge-tabs {
+  margin-top: 4px;
+}
+
+.incentive-badge-catalog-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.incentive-badge-catalog-toolbar span {
+  color: var(--ant-color-text-secondary, #747677);
+  font-size: 14px;
+}
+
+.incentive-badge-category-group {
+  margin-top: 20px;
+}
+
+.incentive-badge-category-group > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.incentive-badge-category-group > header > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.incentive-badge-category-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.incentive-badge-category-group h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #171a1d;
+}
+
+.incentive-badge-category-group header small {
+  color: #747677;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.incentive-badge-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.incentive-badge-admin-grid article {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e8e9eb;
+  border-radius: 6px;
+  background: #fff;
+  transition: border-color 0.2s;
+}
+
+.incentive-badge-admin-grid article:hover,
+.incentive-badge-admin-grid article:focus-within {
+  border-color: #2a56de;
+}
+
+.incentive-badge-admin-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.incentive-badge-configured-icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border: 1px solid #e8e9eb;
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 32px;
+  background: #fafafa;
+}
+
+.incentive-badge-icon-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.incentive-badge-admin-head b {
+  font-size: 14px;
+  font-weight: 600;
+  color: #171a1d;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.incentive-badge-admin-grid article > p {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 40px;
+  margin: 8px 0;
+  color: #747677;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.incentive-badge-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  min-width: 0;
+}
+
+.incentive-badge-card-points {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.incentive-badge-card-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.incentive-badge-card-actions .ant-btn {
+  height: auto;
+  padding: 0;
+}
+
+.incentive-badge-taxonomy-manager > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding: 16px 18px;
+  background: #fff;
+  border: 1px solid #e8e9eb;
+  border-radius: 8px;
+}
+
+.incentive-badge-taxonomy-manager > header span {
+  font-size: 14px;
+  font-weight: 600;
+  color: #171a1d;
+}
+
+.incentive-badge-taxonomy-manager > header p {
+  margin: 4px 0 0;
+  color: #747677;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.incentive-badge-taxonomy-scope-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.incentive-badge-taxonomy-scope {
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e8e9eb;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.incentive-badge-taxonomy-scope > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  background: #fafafa;
+  border-bottom: 1px solid #e8e9eb;
+}
+
+.incentive-badge-taxonomy-scope > header > div:first-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.incentive-badge-taxonomy-scope > header b {
+  font-size: 15px;
+}
+
+.incentive-badge-taxonomy-scope > header span {
+  margin-top: 3px;
+  color: #747677;
+  font-size: 12px;
+}
+
+.incentive-badge-taxonomy-category-list {
+  padding: 8px 12px 12px 28px;
+}
+
+.incentive-badge-taxonomy-category-list > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  min-height: 54px;
+  border-bottom: 1px solid #f0f1f3;
+}
+
+.incentive-badge-taxonomy-category-list > div:last-of-type {
+  border-bottom: none;
+}
+
+.incentive-badge-taxonomy-category-list > div > span {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.incentive-badge-taxonomy-category-list i {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2a56de;
+  box-shadow: 0 0 0 4px #edf2ff;
+}
+
+.incentive-badge-taxonomy-category-list b {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.incentive-badge-taxonomy-category-list small {
+  color: #747677;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.incentive-badge-taxonomy-add-category {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.incentive-badge-taxonomy-drawer .ant-drawer-body {
+  background: #f5f6f8;
+}
+
+@media (max-width: 1199px) {
+  .incentive-badge-admin-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .incentive-badge-admin-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

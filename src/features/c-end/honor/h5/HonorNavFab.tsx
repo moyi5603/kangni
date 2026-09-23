@@ -4,25 +4,7 @@ type HonorNavFabProps = {
   onHome: () => void;
 };
 
-export function HonorNavFab({ atRoot, onBack, onHome }: HonorNavFabProps) {
-  if (atRoot) {
-    return (
-      <nav className="c-h5-detail-fab is-home" aria-label="页面导航">
-        <button type="button" onClick={onHome}>
-          回主页
-        </button>
-      </nav>
-    );
-  }
-
-  return (
-    <nav className="c-h5-detail-fab" aria-label="页面导航">
-      <button type="button" onClick={onBack}>
-        返回上一页
-      </button>
-      <button type="button" onClick={onHome}>
-        回主页
-      </button>
-    </nav>
-  );
+/** H5 floating nav removed globally. Component kept so honor runtime wiring stays a no-op. */
+export function HonorNavFab(_props: HonorNavFabProps) {
+  return null;
 }

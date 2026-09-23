@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>信箱应用 产品需求文档</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; line-height: 1.65; color: #1f2937; margin: 0; background: #f8fafc; }
+    .layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: 100vh; }
+    .layout.toc-collapsed { grid-template-columns: 0 minmax(0, 1fr); }
+    .toc { position: sticky; top: 0; height: 100vh; overflow: auto; border-right: 1px solid #d1d5db; background: #fff; padding: 16px; }
+    .layout.toc-collapsed .toc { transform: translateX(-100%); padding: 0; border: 0; }
+    .toc-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+    .toc-title { margin: 0; font-size: 15px; font-weight: 700; }
+    .icon-button { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; cursor: pointer; }
+    .icon-button svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .toc ol { list-style: none; padding: 0; margin: 0; }
+    .toc li { margin: 4px 0; }
+    .toc a { display: block; color: #374151; text-decoration: none; padding: 6px 8px; border-radius: 6px; font-size: 14px; }
+    .toc a:hover { background: #f3f4f6; color: #0f766e; }
+    .toc .sub a { padding-left: 18px; font-size: 13px; color: #6b7280; }
+    .content-wrap { min-width: 0; }
+    .floating-toc-toggle { position: fixed; left: 12px; top: 12px; z-index: 20; box-shadow: 0 4px 12px rgba(15,23,42,.12); }
+    main { max-width: 1180px; margin: 0 auto; padding: 32px 24px 64px; background: #fff; }
+    h1,h2,h3,h4 { color: #111827; line-height: 1.3; }
+    h2 { margin-top: 40px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 13px; }
+    th, td { border: 1px solid #d1d5db; padding: 8px 10px; vertical-align: top; }
+    th { background: #f3f4f6; text-align: left; }
+    figure { margin: 16px 0 24px; border: 1px solid #d1d5db; background: #f9fafb; padding: 12px; }
+    figure img { max-width: 100%; height: auto; display: block; border: 1px solid #e5e7eb; background: #fff; }
+    figcaption { margin-top: 8px; color: #4b5563; font-size: 13px; }
+    .component-path { font-weight: 600; color: #0f766e; }
+    .status { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #e0f2fe; color: #075985; font-size: 12px; margin-right: 4px; }
+    .status.impl { background: #dcfce7; color: #166534; }
+    .status.todo { background: #fee2e2; color: #991b1b; }
+    .status.guess { background: #fef3c7; color: #92400e; }
+    code { background: #f3f4f6; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+    @media (max-width: 860px) {
+      .layout { display: block; }
+      .toc { position: fixed; z-index: 15; width: 280px; box-shadow: 0 12px 30px rgba(15,23,42,.18); }
+      .layout.toc-collapsed .toc { transform: translateX(-100%); }
+      main { padding-top: 56px; }
+    }
+
+    .status.p0 { background:#fee2e2; color:#991b1b; }
+    .note { background:#f8fafc; border-left:3px solid #0f766e; padding:8px 12px; margin:12px 0; }
+</style>
+</head>
+<body>
+<div class="layout" id="prdLayout">
+<aside class="toc" aria-label="PRD目录">
+  <div class="toc-header">
+    <p class="toc-title">目录</p>
+    <button class="icon-button toc-toggle" type="button" data-toggle-toc aria-label="隐藏目录" title="隐藏目录">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+    </button>
+  </div>
+  <nav><ol><li><a href="#doc-note">1. 文档说明</a></li>
+<li><a href="#overview">2. 产品概述</a></li>
+<li><a href="#ia">3. 页面结构 / 信息架构</a></li>
+<li><a href="#implemented-features">4. 已实现功能清单</a></li>
+<li><a href="#flows">5. 用户流程</a></li>
+<li><a href="#page-requirements">6. 页面级需求说明</a></li>
+<li><a href="#data-fields">7. 数据字段与枚举</a></li>
+<li><a href="#apis">8. API / 数据接口清单</a></li>
+<li><a href="#non-functional">9. 非功能需求</a></li>
+<li><a href="#analytics">10. 埋点与指标建议</a></li>
+<li><a href="#acceptance">11. 验收标准</a></li>
+<li><a href="#risks">12. 风险与待确认问题</a></li></ol></nav>
+</aside>
+<div class="content-wrap">
+<button class="icon-button floating-toc-toggle" type="button" data-toggle-toc aria-label="显示目录" title="显示目录">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+</button>
+<main>
+  <h1>信箱应用 产品需求文档</h1>
+  
+<section id="doc-note">
+  <h2>1. 文档说明</h2>
+  <ul>
+    <li>文档来源：基于现有 HTML/CSS/JavaScript（React + Ant Design 原型）反向分析</li>
+    <li>分析范围：信箱后台（独立应用 <code>mailbox</code>）、C 端 H5、C 端 PC</li>
+    <li>生成日期：2026-09-22（相对 09-21 稿：信箱列表改为上移/下移且去掉批量停用；C 端负责人改为「姓名 · 部门」；我的建言空态改为「已有 N 条建言」）</li>
+    <li>主要代码：<code>src/standalone/mailbox/</code>、<code>src/features/forum/pages/</code>、<code>src/features/c-end/forum/h5/H5Mailbox*.tsx</code>、<code>src/features/c-end/forum/pc/PcMailbox*.tsx</code>、<code>src/features/forum/model/forumStore.ts</code></li>
+    <li>可信度说明：交互以页面代码为准。C 端信箱卡片文案来自常量 <code>MAILBOX_H5_DIRECTIONS</code>，与后台信箱列表不是同一份数据。</li>
+    <li>待确认事项摘要：C 端为何只展示 2 个入口、后台「响应时效到期前 1 小时提醒」无发送实现、建言「已驳回」在 C 端列表被隐藏。</li>
+    <li>输出格式：HTML 图文需求文档</li>
+  </ul>
+</section>
+
+<section id="overview">
+  <h2>2. 产品概述</h2>
+  <p><strong>产品定位：</strong>企业内建言信箱。员工按方向提交建言，后台配置信箱、查看并回复。</p>
+  <p><strong>目标用户：</strong>后台运营/信箱负责人/回复人；C 端员工（当前原型固定登录身份 <code>周敏</code>）。</p>
+  <p><strong>核心使用场景：</strong>配置信箱 → 员工提交（可匿名）→ 后台回复 → 员工在「我的建言」看状态与回复。</p>
+  <p><strong>页面/系统主要价值：</strong>把建言与论坛帖子拆成独立应用；后台强调处理闭环（待回复/已回复），C 端强调按入口提交与查看自己的建言。</p>
+  <figure><img src="screenshots/C端预览-入口页.png" alt="C端预览-入口页-应用入口截图"><figcaption><span class="component-path">C端预览-入口页-应用入口</span>：门户提供「信箱 H5」「信箱 PC」及空数据预览链接。</figcaption></figure>
+</section>
+
+<section id="ia">
+  <h2>3. 页面结构 / 信息架构</h2>
+  <figure><img src="screenshots/信箱应用-左侧菜单.png" alt="后台-框架-左侧菜单截图"><figcaption><span class="component-path">后台-框架-左侧菜单</span>：菜单仅「概览」「信箱列表」。建言详情、新建/编辑不进菜单，由列表/KPI/行操作进入。</figcaption></figure>
+  <ul>
+    <li>后台 Hash：<code>#/mailbox/mailbox-overview</code>、<code>#/mailbox/mailbox-list</code>、<code>#/mailbox/mailbox-create</code>、<code>#/mailbox/mailbox-edit/:id</code>、<code>#/mailbox/mailbox-detail/:id</code>、<code>#/mailbox/advice-detail/:id</code>。另有 <code>mailbox-messages</code> 路由可渲染建言表，菜单未挂。</li>
+    <li>H5：<code>#/c/h5/mailbox</code> 列表；<code>#/c/h5/mailbox/:id</code> 建言详情；<code>?empty=1</code> 把「我的建言」置空。</li>
+    <li>PC：<code>#/c/pc/mailbox</code>、<code>#/c/pc/mailbox/:id</code>，结构与 H5 同模块。</li>
+    <li>组件命名：<code>页面-模块-组件名称</code></li>
+  </ul>
+  <p class="note">C 端入口卡片写死「战略发展建言 / 员工体验建言」两张，后台种子信箱有 4 个（员工体验、经营发展、人才发展、建言献策）。列表与后台配置未打通。</p>
+</section>
+
+<section id="implemented-features">
+  <h2>4. 已实现功能清单</h2>
+  <table><thead><tr><th>模块</th><th>功能点</th><th>功能说明</th><th>页面/区域</th><th>状态</th></tr></thead><tbody><tr><td>后台概览</td><td>日期筛选+KPI+饼图+待回复表</td><td>按创建/提交日过滤；信箱数、建言数可点进列表；待回复行点「回复」进建言详情</td><td>后台-概览</td><td><span class="status impl">代码已实现</span></td></tr><tr><td>后台信箱列表</td><td>表格 CRUD 排序启停</td><td>新建、详情、上移/下移（同 kind 内交换）、编辑、启用/停用；无勾选、无批量停用、无查询区</td><td>后台-信箱列表</td><td><span class="status impl">代码已实现</span></td></tr><tr><td>后台信箱表单</td><td>配置信箱</td><td>图片、名称、简介、可见范围、负责人（单选且互斥）、回复人、标签（tags 模式）、匿名、响应时效</td><td>后台-新建/编辑信箱</td><td><span class="status impl">代码已实现</span></td></tr><tr><td>后台信箱详情</td><td>只读信息+嵌套建言表</td><td>启用/停用、编辑；无「查看链接」</td><td>后台-信箱详情</td><td><span class="status impl">代码已实现</span></td></tr><tr><td>后台建言详情</td><td>查看并回复</td><td>处理人回复可累加；无帖子式评论/置顶/下架/链接</td><td>后台-建言详情</td><td><span class="status impl">代码已实现</span></td></tr><tr><td>C 端列表</td><td>入口+我的建言</td><td>负责人展示「姓名 · 部门」；点照片/标题打开提交层；点建言进详情；简介≥70 字可展开；无我的建言时显示「已有 N 条建言」（N=可见信箱建言总数，含他人）</td><td>H5/PC-信箱列表</td><td><span class="status impl">代码已实现</span></td></tr><tr><td>C 端提交</td><td>提交建言 overlay</td><td>标题必填；图最多 9 张；信箱允许匿名时显示「匿名发帖」</td><td>H5/PC-提交建言</td><td><span class="status impl">代码已实现</span></td></tr><tr><td>C 端详情</td><td>看内容与回复</td><td>仅当前用户可见建言；不存在显示空文案</td><td>H5/PC-建言详情</td><td><span class="status impl">代码已实现</span></td></tr></tbody></table>
+</section>
+
+<section id="flows">
+  <h2>5. 用户流程</h2>
+  <h3>5.1 员工提交建言</h3>
+  <p>入口：H5/PC 信箱列表 → 点入口照片或标题 → 填写标题/内容/图片/可选匿名 → 点「提交」→ <code>publishClientTopic</code> 成功 toast「已提交」并关层；标题为空 toast「请填写标题」，弹层保持打开。</p>
+  <h3>5.2 后台回复</h3>
+  <p>入口：概览待回复「回复」或信箱详情建言标题/「详情」→ 建言详情「回复建言」选账号填内容点「确认」→ <code>setChairmanReply</code> 追加回复，message「已回复建言」。内容空校验「请输入回复内容」。账号必须是陈产品/论坛小助手/官方客服。</p>
+  <h3>5.3 停用信箱</h3>
+  <p>列表行「更多」里的停用，或详情页停用 → 确认弹窗 → <code>setForumBoardStatus(..., 'disabled')</code> → message「已停用」。文案写前台不可访问；C 端入口常量不读 status，<span class="status todo">待确认</span> 停用后 C 端入口是否消失。信箱列表不再提供批量停用。</p>
+  <h3>5.4 调整信箱顺序</h3>
+  <p>列表行「上移」「下移」调用 <code>moveForumBoard(id, -1|1)</code>，只在相同 <code>kind===mailbox</code> 的记录之间互换位置。第一行上移、最后一行下移 disabled。无成功 toast。</p>
+</section>
+
+<section id="page-requirements">
+  <h2>6. 页面级需求说明</h2>
+
+  <article>
+    <h3>6.1 后台-概览</h3>
+    <h4>页面目标</h4>
+    <p>看时间范围内信箱规模与回复进度，从待回复直接处理。</p>
+    <figure><img src="screenshots/后台-概览-页面整体.png" alt="后台-概览-页面整体截图"><figcaption><span class="component-path">后台-概览-页面整体</span>：默认日期从 2026-08-01 到当天；含 KPI、两张饼图、待回复表。</figcaption></figure>
+    <figure><img src="screenshots/后台-概览-日期范围.png" alt="后台-概览-日期范围截图"><figcaption><span class="component-path">后台-概览-日期范围</span>：日/月切换与近 7/30 天。改范围会重算 KPI、饼图、待回复行。</figcaption></figure>
+    <figure><img src="screenshots/后台-概览-KPI指标卡.png" alt="后台-概览-KPI指标卡截图"><figcaption><span class="component-path">后台-概览-KPI指标卡</span>：信箱数、建言数点击 <code>onNavigate('mailbox-list')</code>。待回复、已回复无点击。口径：已回复看 <code>chairmanReply</code> 是否有值，与 C 端「有回复数组即已回复」不完全同一。</figcaption></figure>
+    <figure><img src="screenshots/后台-概览-建言信箱分布.png" alt="后台-概览-建言信箱分布截图"><figcaption><span class="component-path">后台-概览-建言信箱分布</span>：各信箱建言条数饼图。</figcaption></figure>
+    <figure><img src="screenshots/后台-概览-回复情况.png" alt="后台-概览-回复情况截图"><figcaption><span class="component-path">后台-概览-回复情况</span>：已回复绿、待回复橙。</figcaption></figure>
+    <figure><img src="screenshots/后台-概览-待回复建言.png" alt="后台-概览-待回复建言截图"><figcaption><span class="component-path">后台-概览-待回复建言</span>：最多 8 条无 <code>chairmanReply</code> 的建言，按提交时间倒序。空态文案「暂无待回复建言」。</figcaption></figure>
+    <h4>组件显示逻辑</h4>
+    <table><thead><tr><th>组件路径</th><th>组件类型</th><th>默认状态</th><th>显示/隐藏逻辑</th><th>启用/禁用逻辑</th><th>数据来源</th><th>状态变化</th><th>空/错/加载状态</th><th>权限/条件控制</th></tr></thead><tbody><tr><td>后台-概览-KPI指标卡</td><td>指标卡</td><td>显示四卡</td><td>始终显示</td><td>均可点，后两卡无跳转</td><td>内存 boards/topics + 日期</td><td>改日期重算</td><td>无独立 loading</td><td>无角色分流</td></tr><tr><td>后台-概览-待回复建言</td><td>表格</td><td>有数据出表</td><td>无行则 Empty</td><td>回复始终可点</td><td>buildMailboxPendingRows</td><td>回复后需刷新才离开待回复</td><td>Empty</td><td>无</td></tr></tbody></table>
+    <h4>操作说明</h4>
+    <table><thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用逻辑</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead><tbody><tr><td>回复</td><td>后台-概览-待回复建言-回复</td><td>链接按钮</td><td>行存在</td><td>始终启用</td><td>点击</td><td>进入建言详情</td><td>无列表侧即时移除</td><td>无</td><td>无</td><td>内存导航 advice-detail</td></tr><tr><td>查看信箱列表</td><td>后台-概览-KPI指标卡-信箱数</td><td>卡片</td><td>无</td><td>始终启用</td><td>点击</td><td>进信箱列表</td><td>无</td><td>无</td><td>无</td><td>mailbox-list</td></tr></tbody></table>
+    <h4>验收标准</h4>
+    <p>Given 默认种子与默认日期 When 打开概览 Then 可见 4 个信箱 KPI。Given 待回复行 When 点回复 Then 打开对应建言详情。</p>
+  </article>
+
+  <article>
+    <h3>6.2 后台-信箱列表</h3>
+    <h4>页面目标</h4>
+    <p>维护信箱主数据与启停。</p>
+    <figure><img src="screenshots/后台-信箱列表-页面整体.png" alt="后台-信箱列表-页面整体截图"><figcaption><span class="component-path">后台-信箱列表-页面整体</span>：面包屑「信箱 / 信箱列表」。无勾选列、无横向滚动（tableLayout=fixed）。</figcaption></figure>
+    <figure><img src="screenshots/后台-信箱列表-工具栏.png" alt="后台-信箱列表-工具栏截图"><figcaption><span class="component-path">后台-信箱列表-工具栏</span>：「共 N 条」+「新建信箱」。不出现已选择计数，不出现批量停用。</figcaption></figure>
+    <figure><img src="screenshots/后台-信箱列表-列表表格.png" alt="后台-信箱列表-列表表格截图"><figcaption><span class="component-path">后台-信箱列表-列表表格</span>：列：名称（图标+链接）、负责人、标签、状态、创建时间、操作。无选择列。分页 pageSize=20。</figcaption></figure>
+    <figure><img src="screenshots/后台-信箱列表-行操作.png" alt="后台-信箱列表-行操作截图"><figcaption><span class="component-path">后台-信箱列表-行操作</span>：actionsMaxVisible=3，外显「详情」「上移」「下移」。首行上移 disabled。</figcaption></figure>
+    <figure><img src="screenshots/后台-信箱列表-更多菜单.png" alt="后台-信箱列表-更多菜单截图"><figcaption><span class="component-path">后台-信箱列表-更多菜单</span>：溢出「编辑」「停用」。无「查看链接」。</figcaption></figure>
+    <figure><img src="screenshots/后台-信箱列表-停用确认.png" alt="后台-信箱列表-停用确认截图"><figcaption><span class="component-path">后台-信箱列表-停用确认</span>：从更多菜单点停用后弹出。标题「停用信箱」，说明前台不可访问且保留历史。</figcaption></figure>
+    <h4>字段说明</h4>
+    <table><thead><tr><th>列名</th><th>组件路径</th><th>数据含义</th><th>格式</th><th>是否可排序</th><th>是否可筛选</th><th>行操作</th></tr></thead><tbody><tr><td>名称</td><td>后台-信箱列表-列表表格-名称</td><td>信箱 name + icon</td><td>链接</td><td>否</td><td>否</td><td>进详情</td></tr><tr><td>负责人</td><td>后台-信箱列表-列表表格-负责人</td><td>board.manager</td><td>文本</td><td>否</td><td>否</td><td>—</td></tr><tr><td>标签</td><td>后台-信箱列表-列表表格-标签</td><td>board.tags</td><td>Tag，空为 —</td><td>否</td><td>否</td><td>—</td></tr><tr><td>状态</td><td>后台-信箱列表-列表表格-状态</td><td>enabled/disabled</td><td>Badge 已启用/已停用</td><td>否</td><td>否</td><td>停用/启用</td></tr><tr><td>创建时间</td><td>后台-信箱列表-列表表格-创建时间</td><td>createdAt</td><td>YYYY-MM-DD HH:mm</td><td>否</td><td>否</td><td>—</td></tr></tbody></table>
+    <h4>操作说明</h4>
+    <table><thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用逻辑</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead><tbody><tr><td>新建信箱</td><td>后台-信箱列表-工具栏-新建信箱</td><td>主按钮</td><td>无</td><td>始终</td><td>点击</td><td>打开表单页</td><td>dirty 未保存离开会确认</td><td>无</td><td>无</td><td>mailbox-create</td></tr><tr><td>详情</td><td>后台-信箱列表-行操作-详情</td><td>链接/按钮</td><td>行存在</td><td>始终</td><td>点击</td><td>打开详情</td><td>无</td><td>无</td><td>无</td><td>mailbox-detail</td></tr><tr><td>上移</td><td>后台-信箱列表-行操作-上移</td><td>按钮</td><td>非第一行</td><td>index<=0 时 disabled</td><td>点击</td><td>同 kind 相邻互换</td><td>表格顺序变</td><td>无 toast</td><td>越界返回 false 无提示</td><td>moveForumBoard(id,-1)</td></tr><tr><td>下移</td><td>后台-信箱列表-行操作-下移</td><td>按钮</td><td>非最后一行</td><td>末行 disabled</td><td>点击</td><td>同 kind 相邻互换</td><td>表格顺序变</td><td>无 toast</td><td>越界返回 false 无提示</td><td>moveForumBoard(id,1)</td></tr><tr><td>编辑</td><td>后台-信箱列表-更多菜单-编辑</td><td>更多菜单</td><td>行存在</td><td>始终</td><td>点击</td><td>打开编辑</td><td>无</td><td>无</td><td>无</td><td>mailbox-edit</td></tr><tr><td>停用</td><td>后台-信箱列表-更多菜单-停用</td><td>更多菜单</td><td>status=enabled</td><td>文案随状态切换</td><td>确认</td><td>写 disabled</td><td>Badge 变已停用</td><td>message 已停用</td><td>无</td><td>内存 store</td></tr></tbody></table>
+  </article>
+
+  <article>
+    <h3>6.3 后台-新建/编辑信箱</h3>
+    <h4>页面目标</h4>
+    <p>创建或改信箱配置。编辑记录不存在显示 Empty「信箱不存在或已删除」。</p>
+    <figure><img src="screenshots/后台-新建信箱-表单页.png" alt="后台-新建信箱-表单页截图"><figcaption><span class="component-path">后台-新建信箱-表单页</span>：标题「新建信箱」，底栏固定创建/取消。</figcaption></figure>
+    <figure><img src="screenshots/后台-新建信箱-图片与名称.png" alt="后台-新建信箱-图片与名称截图"><figcaption><span class="component-path">后台-新建信箱-图片与名称</span>：信箱图片 picture-card，hint 3:4 ≤5MB；beforeUpload 返回 false，本地 FileReader 写入表单。名称 Input 必填。</figcaption></figure>
+    <figure><img src="screenshots/后台-新建信箱-可见范围.png" alt="后台-新建信箱-可见范围截图"><figcaption><span class="component-path">后台-新建信箱-可见范围</span>：全员 / 按部门 / 自定义人群 / 导入人群。</figcaption></figure>
+    <figure><img src="screenshots/后台-新建信箱-按部门.png" alt="后台-新建信箱-按部门截图"><figcaption><span class="component-path">后台-新建信箱-按部门</span>：选「按部门」出现部门 TreeSelect，必填。</figcaption></figure>
+    <figure><img src="screenshots/后台-新建信箱-自定义人群.png" alt="后台-新建信箱-自定义人群截图"><figcaption><span class="component-path">后台-新建信箱-自定义人群</span>：选「自定义人群」出现人员 TreeSelect，必填。</figcaption></figure>
+    <figure><img src="screenshots/后台-新建信箱-导入人群.png" alt="后台-新建信箱-导入人群截图"><figcaption><span class="component-path">后台-新建信箱-导入人群</span>：csv/xlsx 单文件 +「下载模板」。必填校验看 importFileName。模板为前端生成 CSV，无上传解析人数逻辑。</figcaption></figure>
+    <figure><img src="screenshots/后台-新建信箱-响应时效.png" alt="后台-新建信箱-响应时效截图"><figcaption><span class="component-path">后台-新建信箱-响应时效</span>：开关打开后出现 24h/48h/一周/不限时。extra 写到期前 1 小时消息提醒，代码无发送实现。</figcaption></figure>
+    <figure><img src="screenshots/后台-新建信箱-底栏操作.png" alt="后台-新建信箱-底栏操作截图"><figcaption><span class="component-path">后台-新建信箱-底栏操作</span>：创建走 validateFields + validateBoardDraft + saveForumBoard。取消：dirty 则「离开当前页？」确认。</figcaption></figure>
+    <figure><img src="screenshots/后台-新建信箱-校验错误.png" alt="后台-新建信箱-校验错误截图"><figcaption><span class="component-path">后台-新建信箱-校验错误</span>：空表提交出现：请输入名称、请输入信箱简介、请选择负责人、请选择响应时效。图片必填是隐藏 icon 字段，此截图未出图片红字。</figcaption></figure>
+    <figure><img src="screenshots/后台-编辑信箱-表单页.png" alt="后台-编辑信箱-表单页截图"><figcaption><span class="component-path">后台-编辑信箱-表单页</span>：编辑员工体验：图片已回填，允许匿名默认开，响应时效未开。负责人 TreeSelect 单选；已被其他信箱占用的人 disabled 并标注「已负责其他信箱」。</figcaption></figure>
+    <h4>字段说明</h4>
+    <table><thead><tr><th>字段名称</th><th>组件路径</th><th>控件类型</th><th>是否必填</th><th>默认值</th><th>校验规则</th><th>选项值</th><th>业务含义</th></tr></thead><tbody><tr><td>信箱图片</td><td>后台-新建信箱-图片与名称-上传</td><td>Upload</td><td>创建必填</td><td>空</td><td>请上传信箱图片</td><td>bmp/png/jpeg/jpg/gif</td><td>列表/详情缩略图</td></tr><tr><td>名称</td><td>后台-新建信箱-图片与名称-名称</td><td>Input</td><td>是</td><td>空</td><td>请输入名称；保存时名称不可与其他信箱重复</td><td>自由文本</td><td>信箱标识</td></tr><tr><td>信箱简介</td><td>后台-新建信箱-表单页-简介</td><td>TextArea</td><td>是</td><td>空</td><td>请输入信箱简介</td><td>—</td><td>后台详情展示；C 端入口简介未读此字段</td></tr><tr><td>可见范围</td><td>后台-新建信箱-可见范围</td><td>Radio</td><td>是</td><td>全员</td><td>请选择可见范围</td><td>全员/按部门/自定义人群/导入人群</td><td>组织范围文案</td></tr><tr><td>负责人</td><td>后台-新建信箱-表单页-负责人</td><td>TreeSelect 单选</td><td>是</td><td>空</td><td>请选择负责人；一人不能负责两个信箱</td><td>组织树，占用项灰</td><td>列表「负责人」列</td></tr><tr><td>回复人</td><td>后台-新建信箱-表单页-回复人</td><td>TreeSelect 多选</td><td>否</td><td>空</td><td>无</td><td>组织树人员</td><td>详情「回复人」</td></tr><tr><td>标签</td><td>后台-新建信箱-表单页-标签</td><td>Select mode=tags</td><td>否</td><td>空</td><td>回车添加</td><td>自由输入，非标签管理目录</td><td>列表 Tag</td></tr><tr><td>允许匿名</td><td>后台-新建信箱-表单页-允许匿名</td><td>Switch</td><td>否</td><td>信箱默认 true</td><td>无</td><td>开/关</td><td>C 端是否显示匿名勾选</td></tr><tr><td>响应时效</td><td>后台-新建信箱-响应时效</td><td>Switch+Select</td><td>开启后必选</td><td>关</td><td>请选择响应时效</td><td>24h/48h/一周/不限时</td><td>详情展示；提醒未实现</td></tr></tbody></table>
+    <h4>交互规则</h4>
+    <p>保存失败「信箱名称已存在」落到名称；「该负责人已配置到其他信箱」落到负责人。成功 message「已创建信箱」/「已保存信箱」并回列表。</p>
+  </article>
+
+  <article>
+    <h3>6.4 后台-信箱详情</h3>
+    <figure><img src="screenshots/后台-信箱详情-页面整体.png" alt="后台-信箱详情-页面整体截图"><figcaption><span class="component-path">后台-信箱详情-页面整体</span>：上半只读信息，下半嵌套该信箱建言表。</figcaption></figure>
+    <figure><img src="screenshots/后台-信箱详情-标题与操作.png" alt="后台-信箱详情-标题与操作截图"><figcaption><span class="component-path">后台-信箱详情-标题与操作</span>：图标、名称、状态；操作仅编辑、停用/启用。无查看链接。</figcaption></figure>
+    <figure><img src="screenshots/后台-信箱详情-信息描述.png" alt="后台-信箱详情-信息描述截图"><figcaption><span class="component-path">后台-信箱详情-信息描述</span>：可见范围、负责人、回复人、匿名、响应时效、标签、创建时间、简介。无背景图项（论坛才有）。</figcaption></figure>
+    <figure><img src="screenshots/后台-信箱详情-建言列表.png" alt="后台-信箱详情-建言列表截图"><figcaption><span class="component-path">后台-信箱详情-建言列表</span>：列：建言、建言内容、信箱、实际回复人、发起人、提交时间、操作（详情）。无指派/置顶/下架。</figcaption></figure>
+    <figure><img src="screenshots/后台-信箱详情-空态.png" alt="后台-信箱详情-空态截图"><figcaption><span class="component-path">后台-信箱详情-空态</span>：id 不存在：「信箱不存在或已删除」+ 返回信箱列表。</figcaption></figure>
+  </article>
+
+  <article>
+    <h3>6.5 后台-建言详情</h3>
+    <figure><img src="screenshots/后台-建言详情-已回复-页面整体.png" alt="后台-建言详情-已回复-页面整体截图"><figcaption><span class="component-path">后台-建言详情-已回复-页面整体</span>：经营发展种子建言：基本信息 + 内容 + 处理人回复 + 回复表单。无下架、无查看链接。</figcaption></figure>
+    <figure><img src="screenshots/后台-建言详情-基本信息.png" alt="后台-建言详情-基本信息截图"><figcaption><span class="component-path">后台-建言详情-基本信息</span>：标题、发起人、发起人部门、时间、所属信箱。匿名发起人按后台展示函数显示。</figcaption></figure>
+    <figure><img src="screenshots/后台-建言详情-内容.png" alt="后台-建言详情-内容截图"><figcaption><span class="component-path">后台-建言详情-内容</span>：正文；有图则 Image.PreviewGroup。</figcaption></figure>
+    <figure><img src="screenshots/后台-建言详情-处理人回复.png" alt="后台-建言详情-处理人回复截图"><figcaption><span class="component-path">后台-建言详情-处理人回复</span>：有 chairmanReplies/chairmanReply 才出此卡。展示回复人姓名·部门、内容、时间。</figcaption></figure>
+    <figure><img src="screenshots/后台-建言详情-回复建言.png" alt="后台-建言详情-回复建言截图"><figcaption><span class="component-path">后台-建言详情-回复建言</span>：回复账号默认陈产品（个人账号）；内容 TextArea maxLength=500，校验与 store 上限 FORUM_COMMENT_MAX=200。取消会 resetFields。</figcaption></figure>
+    <figure><img src="screenshots/后台-建言详情-待回复-页面整体.png" alt="后台-建言详情-待回复-页面整体截图"><figcaption><span class="component-path">后台-建言详情-待回复-页面整体</span>：无处理人回复卡，仅回复表单。</figcaption></figure>
+    <figure><img src="screenshots/后台-建言详情-待回复表单.png" alt="后台-建言详情-待回复表单截图"><figcaption><span class="component-path">后台-建言详情-待回复表单</span>：确认走 setChairmanReply；成功「已回复建言」。非法账号「请选择回复账号」。</figcaption></figure>
+    <figure><img src="screenshots/后台-建言详情-已驳回种子.png" alt="后台-建言详情-已驳回种子截图"><figcaption><span class="component-path">后台-建言详情-已驳回种子</span>：auditStatus 可为已驳回，详情页未单独展示审核结果。C 端可见性会隐藏已驳回。</figcaption></figure>
+    <h4>操作说明</h4>
+    <table><thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用逻辑</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead><tbody><tr><td>确认回复</td><td>后台-建言详情-回复建言-确认</td><td>主按钮</td><td>建言存在</td><td>始终</td><td>填内容点确认</td><td>追加 chairmanReplies</td><td>最新一条写入 chairmanReply</td><td>已回复建言</td><td>请输入回复内容 / 请选择回复账号 / 建言不存在</td><td>setChairmanReply</td></tr><tr><td>取消回复</td><td>后台-建言详情-回复建言-取消</td><td>按钮</td><td>无</td><td>始终</td><td>点击</td><td>reset 表单</td><td>不清历史回复</td><td>无</td><td>无</td><td>无</td></tr></tbody></table>
+  </article>
+
+  <article>
+    <h3>6.6 H5-信箱列表</h3>
+    <figure><img src="screenshots/H5-信箱列表-页面整体.png" alt="H5-信箱列表-页面整体截图"><figcaption><span class="component-path">H5-信箱列表-页面整体</span>：顶栏返回 + 标题「信箱列表」；两张入口卡；我的建言。返回调用 goH5Back。</figcaption></figure>
+    <figure><img src="screenshots/H5-信箱列表-顶栏.png" alt="H5-信箱列表-顶栏截图"><figcaption><span class="component-path">H5-信箱列表-顶栏</span>：无搜索、无 Tab。</figcaption></figure>
+    <figure><img src="screenshots/H5-信箱列表-信箱卡片.png" alt="H5-信箱列表-信箱卡片截图"><figcaption><span class="component-path">H5-信箱列表-信箱卡片</span>：MAILBOX_H5_DIRECTIONS：战略发展建言「李明远 · 经营管理中心」、员工体验建言「周岚 · 人力资源部」。不再显示「负责人 ·」。点照片或标题打开提交层。</figcaption></figure>
+    <figure><img src="screenshots/H5-信箱列表-简介展开.png" alt="H5-信箱列表-简介展开截图"><figcaption><span class="component-path">H5-信箱列表-简介展开</span>：purpose 长度≥70 才切换展开。员工体验简介约 75–85 字可展开；战略发展约 45–55 字无展开控件语义。</figcaption></figure>
+    <figure><img src="screenshots/H5-信箱列表-我的建言.png" alt="H5-信箱列表-我的建言截图"><figcaption><span class="component-path">H5-信箱列表-我的建言</span>：仅 author=周敏、boardName 属于 CLIENT_MAILBOX_BOARDS、未下架且审核非待审核/已驳回。展示标题、入口名、实名/匿名、状态、时间、摘要、图片。</figcaption></figure>
+    <figure><img src="screenshots/H5-信箱列表-空建言.png" alt="H5-信箱列表-空建言截图"><figcaption><span class="component-path">H5-信箱列表-空建言</span>：我的建言为空时文案「已有 N 条建言」，N=<code>mailboxProposalCount</code>（可见信箱建言总数，不限当前用户）。empty=1 预览把列表置空，故显示「已有 0 条建言」。不再使用「暂无建言」。</figcaption></figure>
+    <h4>组件显示逻辑</h4>
+    <table><thead><tr><th>组件路径</th><th>组件类型</th><th>默认状态</th><th>显示/隐藏逻辑</th><th>启用/禁用逻辑</th><th>数据来源</th><th>状态变化</th><th>空/错/加载状态</th><th>权限/条件控制</th></tr></thead><tbody><tr><td>H5-信箱列表-信箱卡片</td><td>入口卡</td><td>两张常显</td><td>写死，不读后台 enabled</td><td>始终可点提交</td><td>MAILBOX_H5_DIRECTIONS</td><td>无</td><td>无空态</td><td>无登录判断</td></tr><tr><td>H5-信箱列表-我的建言</td><td>列表</td><td>有则出列表</td><td>empty 预览强制空数组</td><td>条目始终可进详情</td><td>forumStore topics</td><td>提交成功后出现新行</td><td>已有 N 条建言</td><td>列表仅当前用户；空文案 N 含全部可见建言</td></tr><tr><td>H5-信箱列表-实名/匿名标</td><td>标签</td><td>按题显示</td><td>board.anonymous 为假则隐藏</td><td>只读</td><td>boards+topic.authorAnonymous</td><td>提交时写入</td><td>无</td><td>跟信箱开关</td></tr></tbody></table>
+  </article>
+
+  <article>
+    <h3>6.7 H5-提交建言</h3>
+    <figure><img src="screenshots/H5-提交建言-弹层.png" alt="H5-提交建言-弹层截图"><figcaption><span class="component-path">H5-提交建言-弹层</span>：标题「提交建言」。填写标题、内容；上传最多 9 张；无标签区（tags=[]）。经营发展/员工体验种子 anonymous=true，故显示「匿名发帖」勾选（文案沿用论坛，未改成匿名建言）。</figcaption></figure>
+    <figure><img src="screenshots/H5-提交建言-标题校验.png" alt="H5-提交建言-标题校验截图"><figcaption><span class="component-path">H5-提交建言-标题校验</span>：空标题点提交，toast「请填写标题」2 秒，弹层不关。成功 toast「已提交」。失败其他文案同样 toast。</figcaption></figure>
+    <h4>字段说明</h4>
+    <table><thead><tr><th>字段名称</th><th>组件路径</th><th>控件类型</th><th>是否必填</th><th>默认值</th><th>校验规则</th><th>选项值</th><th>业务含义</th></tr></thead><tbody><tr><td>标题</td><td>H5-提交建言-弹层-填写标题</td><td>input</td><td>是</td><td>空</td><td>trim 后空则请填写标题</td><td>—</td><td>建言标题</td></tr><tr><td>内容</td><td>H5-提交建言-弹层-填写内容</td><td>textarea</td><td>否</td><td>空</td><td>可空</td><td>—</td><td>正文</td></tr><tr><td>图片</td><td>H5-提交建言-弹层-上传图片</td><td>file multiple</td><td>否</td><td>空</td><td>最多 9</td><td>image/*</td><td>列表/详情图</td></tr><tr><td>匿名发帖</td><td>H5-提交建言-弹层-匿名发帖</td><td>checkbox</td><td>否</td><td>未勾选</td><td>仅 allowAnonymous 显示</td><td>开/关</td><td>authorAnonymous</td></tr></tbody></table>
+    <h4>操作说明</h4>
+    <table><thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用逻辑</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead><tbody><tr><td>提交</td><td>H5-提交建言-弹层-提交</td><td>底部按钮</td><td>弹层打开</td><td>始终</td><td>点击</td><td>publishClientTopic，boardName 用入口常量，chairName 用入口 handler</td><td>成功关层并刷新我的建言</td><td>已提交</td><td>请填写标题等 toast</td><td>内存 store</td></tr><tr><td>关闭</td><td>H5-提交建言-弹层-遮罩</td><td>scrim aria-label 关闭</td><td>弹层打开</td><td>始终</td><td>点遮罩</td><td>onClose 不提交</td><td>草稿随卸载丢失</td><td>无</td><td>无</td><td>无</td></tr></tbody></table>
+  </article>
+
+  <article>
+    <h3>6.8 H5-建言详情</h3>
+    <figure><img src="screenshots/H5-建言详情-页面整体.png" alt="H5-建言详情-页面整体截图"><figcaption><span class="component-path">H5-建言详情-页面整体</span>：顶栏返回列表。仅当建言属于当前用户可见集合才渲染。</figcaption></figure>
+    <figure><img src="screenshots/H5-建言详情-内容卡片.png" alt="H5-建言详情-内容卡片截图"><figcaption><span class="component-path">H5-建言详情-内容卡片</span>：入口名、标题、实名/匿名、状态（处理中/已回复/已驳回样式类）、时间、正文、图。有主席回复才出「回复」区。</figcaption></figure>
+    <figure><img src="screenshots/H5-建言详情-不存在.png" alt="H5-建言详情-不存在截图"><figcaption><span class="component-path">H5-建言详情-不存在</span>：id 不在「我的可见建言」显示「建言不存在」。他人建言、已驳回、下架均走此空态。</figcaption></figure>
+  </article>
+
+  <article>
+    <h3>6.9 PC-信箱列表 / 提交</h3>
+    <figure><img src="screenshots/PC-信箱列表-页面整体.png" alt="PC-信箱列表-页面整体截图"><figcaption><span class="component-path">PC-信箱列表-页面整体</span>：PcActivityShell 标题「信箱列表」，品牌回 C 端门户。模块与 H5 相同。</figcaption></figure>
+    <figure><img src="screenshots/PC-信箱列表-顶栏.png" alt="PC-信箱列表-顶栏截图"><figcaption><span class="component-path">PC-信箱列表-顶栏</span>：康尼品牌 + 标题。</figcaption></figure>
+    <figure><img src="screenshots/PC-信箱列表-信箱卡片.png" alt="PC-信箱列表-信箱卡片截图"><figcaption><span class="component-path">PC-信箱列表-信箱卡片</span>：同一套 MAILBOX_H5_DIRECTIONS，负责人同样是「姓名 · 部门」。</figcaption></figure>
+    <figure><img src="screenshots/PC-信箱列表-我的建言.png" alt="PC-信箱列表-我的建言截图"><figcaption><span class="component-path">PC-信箱列表-我的建言</span>：链接 toPcMailboxTopicHash。</figcaption></figure>
+    <figure><img src="screenshots/PC-提交建言-弹层.png" alt="PC-提交建言-弹层截图"><figcaption><span class="component-path">PC-提交建言-弹层</span>：复用 H5ForumCompose，校验与提交逻辑同 H5。</figcaption></figure>
+    <figure><img src="screenshots/PC-信箱列表-空建言.png" alt="PC-信箱列表-空建言截图"><figcaption><span class="component-path">PC-信箱列表-空建言</span>：empty=1 显示「已有 0 条建言」，与 H5 同一函数。</figcaption></figure>
+  </article>
+
+  <article>
+    <h3>6.10 PC-建言详情</h3>
+    <figure><img src="screenshots/PC-建言详情-页面整体.png" alt="PC-建言详情-页面整体截图"><figcaption><span class="component-path">PC-建言详情-页面整体</span>：宽屏详情；有回复时绿色回复区。种子「员工体验」周敏建言带多图与多条回复。</figcaption></figure>
+    <figure><img src="screenshots/PC-建言详情-内容卡片.png" alt="PC-建言详情-内容卡片截图"><figcaption><span class="component-path">PC-建言详情-内容卡片</span>：字段与 H5 详情一致。</figcaption></figure>
+    <figure><img src="screenshots/PC-建言详情-返回列表.png" alt="PC-建言详情-返回列表截图"><figcaption><span class="component-path">PC-建言详情-返回列表</span>：headerActions「返回列表」链到 #/c/pc/mailbox。</figcaption></figure>
+    <figure><img src="screenshots/PC-建言详情-不存在.png" alt="PC-建言详情-不存在截图"><figcaption><span class="component-path">PC-建言详情-不存在</span>：文案「建言不存在」。</figcaption></figure>
+  </article>
+</section>
+
+<section id="data-fields">
+  <h2>7. 数据字段与枚举</h2>
+  <table><thead><tr><th>枚举</th><th>取值</th><th>代码位置</th><th>备注</th></tr></thead><tbody><tr><td>BoardStatus</td><td>enabled / disabled</td><td>forum.ts boardStatusText</td><td>已启用 / 已停用</td></tr><tr><td>ForumVisibility</td><td>全员、按部门、自定义人群、导入人群</td><td>FORUM_VISIBILITY_OPTIONS</td><td>表单 Radio</td></tr><tr><td>MailboxResponseSla</td><td>24h、48h、一周、不限时</td><td>MAILBOX_RESPONSE_SLA_OPTIONS</td><td>开关打开才选</td></tr><tr><td>C 端建言状态</td><td>处理中、已回复、已驳回</td><td>mailboxProposalStatus</td><td>已驳回优先；有主席回复则已回复；否则处理中</td></tr><tr><td>C 端入口常量</td><td>boardName / title / handler / department / tags / purpose / photo</td><td>MAILBOX_H5_DIRECTIONS</td><td>提交 chairName 用 handler；卡片副标题用 handler · department</td></tr><tr><td>C 端可见信箱名</td><td>员工体验、经营发展、人才发展、建言献策</td><td>CLIENT_MAILBOX_BOARDS</td><td>我的建言过滤</td></tr><tr><td>回复账号</td><td>陈产品、论坛小助手、官方客服</td><td>forumCommentReplyAccountOptions</td><td>否则请选择回复账号</td></tr><tr><td>C 端当前用户</td><td>周敏</td><td>forumClientSelf</td><td>原型写死</td></tr></tbody></table>
+</section>
+
+<section id="apis">
+  <h2>8. API / 数据接口清单</h2>
+  <p>代码中无 <code>fetch</code> / <code>axios</code> / 表单 action。读写均在 <code>forumStore</code> 内存。</p>
+  <table><thead><tr><th>接口用途</th><th>方法</th><th>路径</th><th>触发场景</th><th>请求参数</th><th>响应字段</th><th>是否真实接口</th><th>备注</th></tr></thead><tbody><tr><td>保存信箱</td><td>函数</td><td>saveForumBoard</td><td>创建/保存</td><td>ForumBoardDraft + id?</td><td>ok+board / error</td><td>否</td><td>重名、负责人占用</td></tr><tr><td>启停信箱</td><td>函数</td><td>setForumBoardStatus(es)</td><td>启用停用</td><td>id(s)+status</td><td>无返回</td><td>否</td><td>列表已去掉批量停用，详情仍可单个启停</td></tr><tr><td>信箱排序</td><td>函数</td><td>moveForumBoard</td><td>上移/下移</td><td>id + dir -1|1</td><td>boolean</td><td>否</td><td>仅同 kind 互换</td></tr><tr><td>C 端发建言</td><td>函数</td><td>publishClientTopic</td><td>提交</td><td>boardName,title,content,images,author,anonymous,chairName</td><td>ok+id / 请填写标题</td><td>否</td><td>auditStatus=直接发布</td></tr><tr><td>后台回复</td><td>函数</td><td>setChairmanReply</td><td>确认回复</td><td>id,content,operator</td><td>ok / error</td><td>否</td><td>累加 replies</td></tr></tbody></table>
+  <p>建议接口 / <span class="status todo">待确认</span>：信箱 CRUD、启停、建言列表分页、回复、C 端提交、我的建言、SLA 提醒、人群导入解析、权限。</p>
+</section>
+
+<section id="non-functional">
+  <h2>9. 非功能需求</h2>
+  <ul>
+    <li>后台列表横向滚动：信箱表 scroll.x=1600，建言表 1400。</li>
+    <li>H5 视口按手机壳 <code>.c-h5-frame</code>；PC 用 <code>.c-pc-shell</code>。</li>
+    <li>图片上传前端限制提示 5MB，代码未拦实际文件大小。</li>
+    <li>回复框 UI maxLength=500 与校验 200 不一致。<span class="status todo">待确认</span></li>
+    <li>安全：无鉴权，C 端用户写死。无真实传输。</li>
+    <li>错误：后台 antd message/modal；C 端 toast 2s。</li>
+  </ul>
+</section>
+
+<section id="analytics">
+  <h2>10. 埋点与指标建议</h2>
+  <p><span class="status">建议补充</span> 代码无埋点。</p>
+  <table><thead><tr><th>事件名称</th><th>触发动作</th><th>关键属性</th><th>业务目的</th></tr></thead><tbody><tr><td>mailbox_submit_click</td><td>C 端点提交</td><td>boardName, anonymous, hasImage</td><td>提交转化</td></tr><tr><td>mailbox_submit_fail</td><td>标题为空等</td><td>error</td><td>校验摩擦</td></tr><tr><td>mailbox_admin_reply</td><td>后台确认回复</td><td>topicId, operator</td><td>处理时效</td></tr><tr><td>mailbox_board_disable</td><td>停用确认</td><td>boardId</td><td>供给治理</td></tr></tbody></table>
+</section>
+
+<section id="acceptance">
+  <h2>11. 验收标准</h2>
+  <ul>
+    <li>Given 后台 When 打开信箱应用 Then 菜单仅概览、信箱列表，默认概览。</li>
+    <li>Given 空新建表 When 点创建 Then 名称/简介/负责人报错；开时效未选则报请选择响应时效。</li>
+    <li>Given 负责人已被占用 When 再选同一人保存 Then 该负责人已配置到其他信箱。</li>
+    <li>Given 列表启用信箱 When 确认停用 Then 状态已停用，message 已停用。</li>
+    <li>Given 待回复建言 When 后台回复成功 Then 详情出现处理人回复，概览已回复口径依赖 chairmanReply。</li>
+    <li>Given H5/PC 列表 When 点入口 Then 打开提交建言；空标题 toast 请填写标题。</li>
+    <li>Given 提交成功 When 回到我的建言 Then 新纪录在前，状态处理中（无回复时）。</li>
+    <li>Given 信箱列表 When 看行操作 Then 外显详情/上移/下移，更多内为编辑/停用；无勾选与批量停用。首行上移不可点。</li>
+    <li>Given empty=1 When 打开 H5/PC 列表 Then 我的建言文案为「已有 0 条建言」，入口仍在。</li>
+    <li>Given C 端入口卡 When 阅读负责人 Then 为「李明远 · 经营管理中心」「周岚 · 人力资源部」，无「负责人 ·」前缀。</li>
+    <li>Given 不存在或无权建言 When 打开详情 Then 建言不存在。</li>
+  </ul>
+</section>
+
+<section id="risks">
+  <h2>12. 风险与待确认问题</h2>
+  <ol>
+    <li><span class="status todo">待确认</span> C 端只展示 2 个写死入口，后台 4 个信箱、启停、简介、负责人、标签均未驱动 C 端卡片。</li>
+    <li><span class="status todo">待确认</span> 入口 handler/department（李明远·经营管理中心 / 周岚·人力资源部）与后台 manager（周明远/林知夏）仍不一致。</li>
+    <li><span class="status todo">待确认</span> 响应时效「到期前 1 小时提醒」仅文案。</li>
+    <li><span class="status todo">待确认</span> 导入人群只存文件名，不解析名单。</li>
+    <li><span class="status todo">待确认</span> C 端隐藏已驳回，后台详情也不展示审核字段，员工看不到驳回原因。</li>
+    <li><span class="status todo">待确认</span> 概览「已回复」用 chairmanReply，C 端用 replies 数组，历史数据可能不一致。</li>
+    <li><span class="status todo">待确认</span> 提交勾选文案为「匿名发帖」。</li>
+    <li><span class="status todo">待确认</span> mailbox-messages、信箱标签管理页存在于论坛复用组件，信箱菜单未挂标签管理。</li>
+    <li><span class="status guess">根据页面推测需要</span> 停用后 C 端入口仍可提交，因入口不读 board.status。</li>
+  </ol>
+</section>
+
+</main>
+</div>
+</div>
+<script>
+  document.querySelectorAll('[data-toggle-toc]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var layout = document.getElementById('prdLayout');
+      var collapsed = layout.classList.toggle('toc-collapsed');
+      document.querySelectorAll('[data-toggle-toc]').forEach(function (btn) {
+        btn.setAttribute('aria-label', collapsed ? '显示目录' : '隐藏目录');
+        btn.setAttribute('title', collapsed ? '显示目录' : '隐藏目录');
+      });
+    });
+  });
+</script>
+</body>
+</html>

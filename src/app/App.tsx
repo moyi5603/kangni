@@ -40,9 +40,38 @@ import { LotteryDetailPage } from '../features/lottery/pages/LotteryDetailPage';
 import { CheckinListPage } from '../features/checkin/pages/CheckinListPage';
 import { CheckinFormPage } from '../features/checkin/pages/CheckinFormPage';
 import { CheckinDetailPage } from '../features/checkin/pages/CheckinDetailPage';
+import { ContestListPage } from '../features/skills-contest/pages/ContestListPage';
+import { ContestFormPage } from '../features/skills-contest/pages/ContestFormPage';
+import { ContestDetailPage } from '../features/skills-contest/pages/ContestDetailPage';
+import { ContestRegionListPage } from '../features/skills-contest/pages/ContestRegionListPage';
 import { LearningPlanListPage } from '../features/learning-plan/pages/LearningPlanListPage';
 import { LearningPlanFormPage } from '../features/learning-plan/pages/LearningPlanFormPage';
 import { LearningPlanMapPreview } from '../features/learning-plan/pages/LearningPlanMapPreview';
+import { MedalListPage } from '../features/medal/pages/MedalListPage';
+import { CareOverviewPage } from '../features/care/pages/CareOverviewPage';
+import { CareRuleListPage } from '../features/care/pages/CareRuleListPage';
+import { CareRuleFormPage } from '../features/care/pages/CareRuleFormPage';
+import { CareRecordListPage } from '../features/care/pages/CareRecordListPage';
+import { CareTemplateListPage } from '../features/care/pages/CareTemplateListPage';
+import { CareTemplateFormPage } from '../features/care/pages/CareTemplateFormPage';
+import { CareTemplateDetailPage } from '../features/care/pages/CareTemplateDetailPage';
+import { CareSettingsPage } from '../features/care/pages/CareSettingsPage';
+import { ForumBoardDetailPage } from '../features/forum/pages/ForumBoardDetailPage';
+import { ForumBoardFormPage } from '../features/forum/pages/ForumBoardFormPage';
+import { ForumBoardListPage } from '../features/forum/pages/ForumBoardListPage';
+import { ForumOverviewPage } from '../features/forum/pages/ForumOverviewPage';
+import { ForumRiskPage } from '../features/forum/pages/ForumRiskPage';
+import { ForumTagListPage } from '../features/forum/pages/ForumTagListPage';
+import { ForumTopicDetailPage } from '../features/forum/pages/ForumTopicDetailPage';
+import { ForumTopicListPage } from '../features/forum/pages/ForumTopicListPage';
+import { MailboxOverviewPage } from '../features/forum/pages/MailboxOverviewPage';
+import { findBoardByName } from '../features/forum/model/forum';
+import { getForumBoards, getForumTopic } from '../features/forum/model/forumStore';
+import { IncentiveDashboardPage } from '../features/incentive/pages/IncentiveDashboardPage';
+import { IncentiveBadgeListPage } from '../features/incentive/pages/IncentiveBadgeListPage';
+import { IncentiveBadgeFormPage } from '../features/incentive/pages/IncentiveBadgeFormPage';
+import { IncentiveRecordListPage } from '../features/incentive/pages/IncentiveRecordListPage';
+import { IncentiveSettingsPage } from '../features/incentive/pages/IncentiveSettingsPage';
 import { HtmlStudioPage } from '../features/workbench/pages/HtmlStudioPage';
 import { CourseDetailPage } from '../features/training/pages/CourseDetailPage';
 import { CourseOverviewPage } from '../features/training/pages/CourseOverviewPage';
@@ -101,6 +130,8 @@ import {
   getApplication,
   getDirectApplications,
   getOpenKeys,
+  isMutedHeaderApplication,
+  isMutedSwitcherApplication,
   visibleApplications,
   isLeafMenuKey,
   parseCEndHash,
@@ -184,7 +215,16 @@ export function App() {
         voteV2Id={cEnd.voteV2Id}
         voteV2OptionId={cEnd.voteV2OptionId}
         voteResponseId={cEnd.voteResponseId}
+        contestId={cEnd.contestId}
+        forumBoardId={cEnd.forumBoardId}
+        forumTopicId={cEnd.forumTopicId}
+        lotteryId={cEnd.lotteryId}
+        practiceCategoryId={cEnd.practiceCategoryId}
+        noteId={cEnd.noteId}
         h5Page={cEnd.h5Page}
+        empty={cEnd.empty}
+        profileTab={cEnd.profileTab}
+        profileSub={cEnd.profileSub}
       />
     );
   }
@@ -206,7 +246,7 @@ function AdminApp() {
   const currentApplication = getApplication(application) ?? applications[0];
   const sideNodes = applicationMenus[currentApplication.key] ?? [];
   const directApplications = getDirectApplications(b2bStandards.layout.applicationDirectVisibleMax);
-  const trail = findMenuTrail(sideNodes, page);
+  const trail = findMenuTrail(sideNodes, siderSelectedKey(page));
   const currentPage = trail.at(-1);
   const layoutBg = b2bStandards.theme.token.colorBgLayout;
   const layoutStyle = {
@@ -268,25 +308,8 @@ function AdminApp() {
     });
   };
 
-  const openContestCheckin = () => {
-    requestNavigation(() => {
-      ownerAppRef.current = 'skills-contest';
-      setOwnerApp('skills-contest');
-      setApplication('checkin');
-      setPage('checkin-list');
-      setRecordId(undefined);
-      setTab(undefined);
-      setMenuDrawerOpen(false);
-      syncLocation('checkin', 'checkin-list');
-    });
-  };
-
   const changePage = (key: string) => {
     if (!isLeafMenuKey(sideNodes, key)) return;
-    if (key === 'contest-checkin') {
-      openContestCheckin();
-      return;
-    }
     goToPage(key);
   };
 
@@ -307,11 +330,6 @@ function AdminApp() {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
-  useEffect(() => {
-    if (page !== 'contest-checkin') return;
-    openContestCheckin();
-  }, [page]);
-
   const renderSideMenu = () => (
     <Menu
       key={currentApplication.key}
@@ -326,17 +344,18 @@ function AdminApp() {
   const applicationCard = (
     <div className="application-card" aria-label="全部应用">
       <div className="application-card-heading">全部应用</div>
-      {APPLICATION_CATEGORIES.map((category) => (
+      {APPLICATION_CATEGORIES.map((category) => {
+        const items = visibleApplications().filter((item) => item.category === category);
+        if (!items.length) return null;
+        return (
         <section className="application-group" key={category}>
           <Typography.Text type="secondary" className="application-group-title">
             {category}
           </Typography.Text>
           <div className="application-grid">
-            {visibleApplications()
-              .filter((item) => item.category === category)
-              .map((item) => (
+            {items.map((item) => (
                 <button
-                  className={`application-item ${application === item.key ? 'is-active' : ''}`}
+                  className={`application-item ${application === item.key ? 'is-active' : ''} ${isMutedSwitcherApplication(item.key) ? 'is-muted' : ''}`}
                   key={item.key}
                   type="button"
                   onClick={() => changeApplication(item.key)}
@@ -347,7 +366,8 @@ function AdminApp() {
               ))}
           </div>
         </section>
-      ))}
+        );
+      })}
     </div>
   );
 
@@ -381,7 +401,10 @@ function AdminApp() {
             aria-label="打开 C 端预览"
             onClick={() => requestNavigation(goCEndPortal)}
           >
-            康尼
+            康尼（点这里查看C端页面）
+            <svg className="brand-hint-arrow" viewBox="0 0 72 24" aria-hidden="true">
+              <path d="M14 2 L2 12 L14 22 M2 12 H70" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </button>
         </div>
         <nav className="application-nav" aria-label="应用切换">
@@ -395,6 +418,7 @@ function AdminApp() {
               key: item.key,
               icon: navIcons[item.icon],
               label: item.label,
+              className: isMutedHeaderApplication(item.key) ? 'application-menu-muted' : undefined,
             }))}
           />
           <Popover
@@ -410,7 +434,7 @@ function AdminApp() {
               type="text"
               icon={<AppstoreOutlined />}
             >
-              全部应用
+              全部应用（点这里看相关后台页面）
             </Button>
           </Popover>
         </nav>
@@ -740,12 +764,27 @@ function AdminApp() {
               onBack={() => goToPage('lottery-list')}
               onEdit={(id) => goToPage('lottery-edit', String(id))}
             />
-          ) : page === 'contest-checkin' ? (
-            <PlaceholderPage
-              breadcrumbItems={breadcrumbItems}
-              title="跳转中"
-              applicationLabel={currentApplication.label}
+          ) : page === 'contest-list' ? (
+            <ContestListPage onNavigate={goToPage} />
+          ) : page === 'contest-create' || page === 'contest-edit' ? (
+            <ContestFormPage
+              key={`${page}-${recordId ?? 'new'}`}
+              mode={page === 'contest-edit' ? 'edit' : 'create'}
+              recordId={recordId}
+              onBack={() => goToPage('contest-list')}
+              onSaved={(id) => goToPage('contest-detail', String(id), 'detail')}
             />
+          ) : page === 'contest-detail' ? (
+            <ContestDetailPage
+              key={recordId ?? 'detail'}
+              recordId={recordId}
+              tab={tab}
+              onBack={() => goToPage('contest-list')}
+              onEdit={(id) => goToPage('contest-edit', String(id))}
+              onTabChange={(nextTab) => goToPage('contest-detail', recordId, nextTab)}
+            />
+          ) : page === 'region-list' ? (
+            <ContestRegionListPage />
           ) : page === 'checkin-list' ? (
             <CheckinListPage ownerApp={ownerApp} onNavigate={goToPage} />
           ) : page === 'checkin-create' || page === 'checkin-edit' ? (
@@ -776,6 +815,126 @@ function AdminApp() {
             />
           ) : page === 'learning-plan-preview' ? (
             <LearningPlanMapPreview recordId={recordId} onBack={() => goToPage('learning-plan-list')} />
+          ) : page === 'medal-list' || page === 'medal-create' || page === 'medal-edit' || page === 'medal-detail' ? (
+            <MedalListPage page={page} recordId={recordId} onNavigate={goToPage} />
+          ) : page === 'care-overview' ? (
+            <CareOverviewPage onNavigate={goToPage} />
+          ) : page === 'care-rules' ? (
+            <CareRuleListPage onNavigate={goToPage} />
+          ) : page === 'care-rule-create' || page === 'care-rule-edit' ? (
+            <CareRuleFormPage
+              key={`${page}-${recordId ?? 'new'}`}
+              mode={page === 'care-rule-edit' ? 'edit' : 'create'}
+              recordId={recordId}
+              onBack={() => goToPage('care-rules')}
+              onSaved={() => goToPage('care-rules')}
+            />
+          ) : page === 'care-records' ? (
+            <CareRecordListPage />
+          ) : page === 'care-templates' ? (
+            <CareTemplateListPage onNavigate={goToPage} />
+          ) : page === 'care-template-create' || page === 'care-template-edit' ? (
+            <CareTemplateFormPage
+              key={`${page}-${recordId ?? 'new'}`}
+              mode={page === 'care-template-edit' ? 'edit' : 'create'}
+              recordId={recordId}
+              onBack={() => goToPage('care-templates')}
+              onSaved={() => goToPage('care-templates')}
+            />
+          ) : page === 'care-template-detail' ? (
+            <CareTemplateDetailPage
+              recordId={recordId}
+              onBack={() => goToPage('care-templates')}
+              onEdit={(id) => goToPage('care-template-edit', id)}
+            />
+          ) : page === 'care-settings' ? (
+            <CareSettingsPage />
+          ) : page === 'forum-overview' ? (
+            <ForumOverviewPage onNavigate={goToPage} />
+          ) : page === 'forum-list' ? (
+            <ForumBoardListPage kind="forum" onNavigate={goToPage} />
+          ) : page === 'forum-create' || page === 'forum-edit' ? (
+            <ForumBoardFormPage
+              key={`${page}-${recordId ?? 'new'}`}
+              kind="forum"
+              mode={page === 'forum-edit' ? 'edit' : 'create'}
+              recordId={recordId}
+              onBack={() => goToPage('forum-list')}
+              onSaved={() => goToPage('forum-list')}
+            />
+          ) : page === 'forum-detail' ? (
+            <ForumBoardDetailPage
+              kind="forum"
+              recordId={recordId}
+              onBack={() => goToPage('forum-list')}
+              onEdit={(id) => goToPage('forum-edit', String(id))}
+              onNavigate={goToPage}
+            />
+          ) : page === 'forum-tags' ? (
+            <ForumTagListPage />
+          ) : page === 'topic-detail' ? (
+            <ForumTopicDetailPage
+              kind="forum"
+              recordId={recordId}
+              onBack={() => {
+                const topic = getForumTopic(Number(recordId));
+                const board = topic ? findBoardByName(getForumBoards(), topic.boardName) : undefined;
+                if (board) goToPage('forum-detail', String(board.id));
+                else goToPage('forum-list');
+              }}
+            />
+          ) : page === 'forum-risk' ? (
+            <ForumRiskPage />
+          ) : page === 'mailbox-overview' ? (
+            <MailboxOverviewPage onNavigate={goToPage} />
+          ) : page === 'mailbox-list' ? (
+            <ForumBoardListPage kind="mailbox" onNavigate={goToPage} />
+          ) : page === 'mailbox-create' || page === 'mailbox-edit' ? (
+            <ForumBoardFormPage
+              key={`${page}-${recordId ?? 'new'}`}
+              kind="mailbox"
+              mode={page === 'mailbox-edit' ? 'edit' : 'create'}
+              recordId={recordId}
+              onBack={() => goToPage('mailbox-list')}
+              onSaved={() => goToPage('mailbox-list')}
+            />
+          ) : page === 'mailbox-detail' ? (
+            <ForumBoardDetailPage
+              kind="mailbox"
+              recordId={recordId}
+              onBack={() => goToPage('mailbox-list')}
+              onEdit={(id) => goToPage('mailbox-edit', String(id))}
+              onNavigate={goToPage}
+            />
+          ) : page === 'mailbox-messages' ? (
+            <ForumTopicListPage kind="mailbox" boardId={recordId} onNavigate={goToPage} />
+          ) : page === 'advice-detail' ? (
+            <ForumTopicDetailPage
+              kind="mailbox"
+              recordId={recordId}
+              onBack={() => {
+                const topic = getForumTopic(Number(recordId));
+                const board = topic ? findBoardByName(getForumBoards(), topic.boardName) : undefined;
+                if (board) goToPage('mailbox-detail', String(board.id));
+                else goToPage('mailbox-list');
+              }}
+            />
+          ) : page === 'incentive-dashboard' ? (
+            <IncentiveDashboardPage onNavigate={goToPage} />
+          ) : page === 'incentive-badges' ? (
+            <IncentiveBadgeListPage onNavigate={goToPage} />
+          ) : page === 'incentive-badge-create' || page === 'incentive-badge-edit' ? (
+            <IncentiveBadgeFormPage
+              key={`${page}-${recordId ?? 'new'}`}
+              mode={page === 'incentive-badge-edit' ? 'edit' : 'create'}
+              recordId={recordId}
+              onBack={() => goToPage('incentive-badges')}
+              onSaved={() => goToPage('incentive-badges')}
+            />
+          ) : page === 'incentive-records' ? (
+            <IncentiveRecordListPage />
+          ) : page === 'incentive-settings' ? (
+            <IncentiveSettingsPage />
           ) : (
             <PlaceholderPage
               breadcrumbItems={breadcrumbItems}

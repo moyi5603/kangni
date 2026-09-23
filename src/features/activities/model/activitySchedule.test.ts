@@ -2,9 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   formatActivityScheduleTime,
   formatPickedSessionsLabel,
+  formatPickedSessionIndexLabel,
+  formatPickedSessionTimeLabel,
+  formatRecurringWeekdays,
   formatScheduleSignupTime,
   generateRecurringSessions,
   listClientSignupSessions,
+  visibleSignupSessions,
   isSessionEnded,
   isSessionSignupOpen,
   clientQuotaLabel,
@@ -18,17 +22,28 @@ import {
   syncSignupEndAt,
   validateActivitySchedule,
   validateSessionPick,
-  weekdayLabel,
+  filterOpenSessionPicks,
+  applyRepeatWeekdaySelection,
+  repeatWeekdayValues,
 } from './activitySchedule';
 
+describe('repeat weekday selection', () => {
+  it('normalizes checkbox string values so weekdays stay selected', () => {
+    const next = applyRepeatWeekdaySelection(
+      [{ weekday: 4, timeStart: '19:30', timeEnd: '21:00' }],
+      ['4', '1'],
+    );
+    expect(repeatWeekdayValues(next)).toEqual([1, 4]);
+    expect(next[1]).toMatchObject({ weekday: 4, timeStart: '19:30', timeEnd: '21:00' });
+  });
+});
+
 describe('generateRecurringSessions', () => {
-  it('builds one session per matching weekday in the cycle', () => {
+  it('builds one session per matching weekday in the window', () => {
     const sessions = generateRecurringSessions({
-      repeatWeekday: 3,
-      timeStart: '14:00',
-      timeEnd: '16:00',
-      cycleStart: '2026-08-26',
-      cycleEnd: '2026-09-09',
+      rules: [{ weekday: 3, timeStart: '14:00', timeEnd: '16:00' }],
+      windowStart: '2026-08-26 00:00',
+      windowEnd: '2026-09-09 23:59',
     });
     expect(sessions.map((item) => item.startAt)).toEqual([
       '2026-08-26 14:00',
@@ -39,14 +54,28 @@ describe('generateRecurringSessions', () => {
     expect(sessions).toHaveLength(3);
   });
 
+  it('uses a distinct clock per weekday and skips sessions outside the window', () => {
+    const sessions = generateRecurringSessions({
+      rules: [
+        { weekday: 2, timeStart: '14:00', timeEnd: '16:00' },
+        { weekday: 3, timeStart: '19:00', timeEnd: '21:00' },
+      ],
+      windowStart: '2026-09-01 08:00',
+      windowEnd: '2026-09-09 18:00',
+    });
+    expect(sessions.map((item) => `${item.startAt}~${item.endAt}`)).toEqual([
+      '2026-09-01 14:00~2026-09-01 16:00',
+      '2026-09-02 19:00~2026-09-02 21:00',
+      '2026-09-08 14:00~2026-09-08 16:00',
+    ]);
+  });
+
   it('returns empty when the range has no matching weekday', () => {
     expect(
       generateRecurringSessions({
-        repeatWeekday: 1,
-        timeStart: '09:00',
-        timeEnd: '10:00',
-        cycleStart: '2026-08-26',
-        cycleEnd: '2026-08-27',
+        rules: [{ weekday: 1, timeStart: '09:00', timeEnd: '10:00' }],
+        windowStart: '2026-08-26 00:00',
+        windowEnd: '2026-08-27 23:59',
       }),
     ).toEqual([]);
   });
@@ -67,6 +96,38 @@ describe('listClientSignupSessions', () => {
     ];
     expect(isSessionEnded(sessions[0]!, now)).toBe(true);
     expect(listClientSignupSessions(sessions, now).map((item) => item.id)).toEqual(['a', 'b', 'c', 'd', 'e']);
+    expect(listClientSignupSessions(sessions, now, Number.POSITIVE_INFINITY).map((item) => item.id)).toEqual([
+      'a',
+      'b',
+      'c',
+      'd',
+      'e',
+      'f',
+    ]);
+  });
+
+  it('previews five signup sessions until expanded', () => {
+    const ids = ['a', 'b', 'c', 'd', 'e', 'f'];
+    expect(visibleSignupSessions(ids, false)).toEqual(['a', 'b', 'c', 'd', 'e']);
+    expect(visibleSignupSessions(ids, true)).toEqual(ids);
+    expect(visibleSignupSessions(ids.slice(0, 5), false)).toEqual(['a', 'b', 'c', 'd', 'e']);
+  });
+});
+
+describe('filterOpenSessionPicks', () => {
+  const sessions = [
+    { id: 'live', startAt: '2026-08-25 09:00', endAt: '2026-08-25 18:00' },
+    { id: 'next', startAt: '2099-09-01 09:00', endAt: '2099-09-01 12:00' },
+  ];
+  const window = {
+    signupStartAt: '2019-01-01 09:00',
+    signupEndAt: '2099-09-01 09:00',
+    signupHoursBefore: 0,
+    now: Date.parse('2026-08-25T12:00:00'),
+  };
+
+  it('drops closed sessions and keeps open picks', () => {
+    expect(filterOpenSessionPicks(['live', 'next'], sessions, window)).toEqual(['next']);
   });
 });
 
@@ -82,26 +143,25 @@ describe('formatActivityScheduleTime', () => {
     ).toBe('2026-08-25 09:00 ~ 2026-08-25 17:00');
   });
 
-  it('summarizes recurring with weekday, clock, span and count', () => {
+  it('shows the activity window for recurring and appends session count', () => {
     expect(
       formatActivityScheduleTime({
         scheduleType: 'recurring',
-        startAt: '2026-08-26 14:00',
-        endAt: '2026-09-09 16:00',
-        repeatWeekday: 3,
-        timeStart: '14:00',
-        timeEnd: '16:00',
-        cycleStart: '2026-08-26',
-        cycleEnd: '2026-09-09',
+        startAt: '2026-08-26 08:00',
+        endAt: '2026-09-09 18:00',
         sessions: generateRecurringSessions({
-          repeatWeekday: 3,
-          timeStart: '14:00',
-          timeEnd: '16:00',
-          cycleStart: '2026-08-26',
-          cycleEnd: '2026-09-09',
+          rules: [{ weekday: 3, timeStart: '14:00', timeEnd: '16:00' }],
+          windowStart: '2026-08-26 08:00',
+          windowEnd: '2026-09-09 18:00',
         }),
       }),
-    ).toBe(`每${weekdayLabel(3)} ${'14:00-16:00'}（2026-08-26～2026-09-09，共 3 场）`);
+    ).toBe('2026-08-26 08:00 ~ 2026-09-09 18:00 · 共 3 场');
+    expect(
+      formatRecurringWeekdays([
+        { weekday: 3, timeStart: '14:00', timeEnd: '16:00' },
+        { weekday: 2, timeStart: '19:00', timeEnd: '21:00' },
+      ]),
+    ).toBe('每周二、周三');
   });
 
   it('summarizes series with first session and count', () => {
@@ -115,7 +175,7 @@ describe('formatActivityScheduleTime', () => {
           { id: 'b', startAt: '2026-09-10 09:00', endAt: '2026-09-10 17:00' },
         ],
       }),
-    ).toBe('首场 2026-08-26 09:00 ~ 2026-08-26 17:00 · 共 2 场');
+    ).toBe('2026-08-26 09:00 ~ 2026-09-10 17:00 · 共 2 场');
   });
 });
 
@@ -124,23 +184,34 @@ describe('validateActivitySchedule', () => {
     expect(
       validateActivitySchedule({
         scheduleType: 'recurring',
-        repeatWeekday: 1,
-        timeStart: '09:00',
-        timeEnd: '10:00',
-        cycleStart: '2026-08-26',
-        cycleEnd: '2026-08-27',
+        windowStart: '2026-08-26 00:00',
+        windowEnd: '2026-08-27 23:59',
+        repeatRules: [{ weekday: 1, timeStart: '09:00', timeEnd: '10:00' }],
         sessions: [],
       }),
-    ).toBe('该周期内没有可生成的场次');
+    ).toBe('该活动时间内没有可生成的场次');
   });
 
-  it('requires at least 2 series sessions', () => {
+  it('requires at least 2 series sessions inside the window', () => {
     expect(
       validateActivitySchedule({
         scheduleType: 'series',
+        windowStart: '2026-08-26 09:00',
+        windowEnd: '2026-09-10 17:00',
         sessions: [{ id: 'a', startAt: '2026-08-26 09:00', endAt: '2026-08-26 17:00' }],
       }),
     ).toBe('系列活动至少需要 2 场');
+    expect(
+      validateActivitySchedule({
+        scheduleType: 'series',
+        windowStart: '2026-08-26 09:00',
+        windowEnd: '2026-08-26 18:00',
+        sessions: [
+          { id: 'a', startAt: '2026-08-26 09:00', endAt: '2026-08-26 17:00' },
+          { id: 'b', startAt: '2026-08-27 09:00', endAt: '2026-08-27 12:00' },
+        ],
+      }),
+    ).toBe('第 2 场必须完全落在活动时间内');
   });
 });
 
@@ -190,6 +261,17 @@ describe('formatPickedSessionsLabel', () => {
     expect(formatPickedSessionsLabel(sessions, 'b、a')).toBe(
       '第 2 场 2026-09-10 09:00 ~ 2026-09-10 17:00；第 1 场 2026-08-26 09:00 ~ 2026-08-26 12:00',
     );
+  });
+});
+
+describe('formatPickedSession index and time', () => {
+  it('splits session index and time into two labels', () => {
+    const sessions = [
+      { id: 'a', startAt: '2026-08-26 09:00', endAt: '2026-08-26 12:00' },
+      { id: 'b', startAt: '2026-09-10 09:00', endAt: '2026-09-10 17:00' },
+    ];
+    expect(formatPickedSessionIndexLabel(sessions, 'b')).toBe('第 2 场');
+    expect(formatPickedSessionTimeLabel(sessions, 'b')).toBe('2026-09-10 09:00 ~ 2026-09-10 17:00');
   });
 });
 

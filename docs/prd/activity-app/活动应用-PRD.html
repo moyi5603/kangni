@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>活动应用 产品需求文档</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; line-height: 1.65; color: #1f2937; margin: 0; background: #f8fafc; }
+    .layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: 100vh; }
+    .layout.toc-collapsed { grid-template-columns: 0 minmax(0, 1fr); }
+    .toc { position: sticky; top: 0; height: 100vh; overflow: auto; border-right: 1px solid #d1d5db; background: #fff; padding: 16px; }
+    .layout.toc-collapsed .toc { transform: translateX(-100%); padding: 0; border: 0; }
+    .toc-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+    .toc-title { margin: 0; font-size: 15px; font-weight: 700; }
+    .icon-button { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; cursor: pointer; }
+    .icon-button svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .toc ol { list-style: none; padding: 0; margin: 0; }
+    .toc li { margin: 4px 0; }
+    .toc a { display: block; color: #374151; text-decoration: none; padding: 6px 8px; border-radius: 6px; font-size: 14px; }
+    .toc a:hover { background: #f3f4f6; color: #0f766e; }
+    .toc .sub a { padding-left: 18px; font-size: 13px; color: #6b7280; }
+    .content-wrap { min-width: 0; }
+    .floating-toc-toggle { position: fixed; left: 12px; top: 12px; z-index: 20; box-shadow: 0 4px 12px rgba(15,23,42,.12); }
+    main { max-width: 1180px; margin: 0 auto; padding: 32px 24px 64px; background: #fff; }
+    h1,h2,h3,h4 { color: #111827; line-height: 1.3; }
+    h2 { margin-top: 40px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 13px; }
+    th, td { border: 1px solid #d1d5db; padding: 8px 10px; vertical-align: top; }
+    th { background: #f3f4f6; text-align: left; }
+    figure { margin: 16px 0 24px; border: 1px solid #d1d5db; background: #f9fafb; padding: 12px; }
+    figure img { max-width: 100%; height: auto; display: block; border: 1px solid #e5e7eb; background: #fff; }
+    figcaption { margin-top: 8px; color: #4b5563; font-size: 13px; }
+    .component-path { font-weight: 600; color: #0f766e; }
+    .status { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #e0f2fe; color: #075985; font-size: 12px; margin-right: 4px; }
+    .status.impl { background: #dcfce7; color: #166534; }
+    .status.todo { background: #fee2e2; color: #991b1b; }
+    .status.guess { background: #fef3c7; color: #92400e; }
+    code { background: #f3f4f6; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+    @media (max-width: 860px) {
+      .layout { display: block; }
+      .toc { position: fixed; z-index: 15; width: 280px; box-shadow: 0 12px 30px rgba(15,23,42,.18); }
+      .layout.toc-collapsed .toc { transform: translateX(-100%); }
+      main { padding-top: 56px; }
+    }
+
+    .status.p0 { background:#fee2e2; color:#991b1b; }
+    .status.p1 { background:#fef3c7; color:#92400e; }
+    .status.p2 { background:#e0e7ff; color:#3730a3; }
+    .status.must { background:#fecaca; color:#7f1d1d; }
+    .note { background:#f8fafc; border-left:3px solid #0f766e; padding:8px 12px; margin:12px 0; }
+</style>
+</head>
+<body>
+<div class="layout" id="prdLayout">
+<aside class="toc" aria-label="PRD目录">
+  <div class="toc-header">
+    <p class="toc-title">目录</p>
+    <button class="icon-button toc-toggle" type="button" data-toggle-toc aria-label="隐藏目录" title="隐藏目录">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+    </button>
+  </div>
+  <nav><ol><li><a href="#doc-note">1. 文档说明</a></li>
+<li><a href="#overview">2. 功能概述与业务背景</a></li>
+<li><a href="#roles">3. 用户角色与权限</a></li>
+<li><a href="#ia">4. 页面结构 / 信息架构</a></li>
+<li><a href="#features">5. 功能清单与优先级</a></li>
+<li><a href="#visibility-rules">5.1 可见范围与司龄</a></li>
+<li><a href="#flows">6. 用户流程</a></li>
+<li><a href="#page-admin">7. 后台页面需求</a></li>
+<li><a href="#page-h5">8. H5 页面需求</a></li>
+<li><a href="#page-pc">9. PC 页面需求</a></li>
+<li><a href="#data-fields">10. 数据字段与枚举</a></li>
+<li><a href="#apis">11. API / 数据接口清单</a></li>
+<li><a href="#exceptions">12. 异常场景与边界条件</a></li>
+<li><a href="#non-functional">13. 非功能需求</a></li>
+<li><a href="#analytics">14. 埋点与指标建议</a></li>
+<li><a href="#acceptance">15. 验收标准</a></li>
+<li><a href="#risks">16. 风险与待确认问题</a></li></ol></nav>
+</aside>
+<div class="content-wrap">
+<button class="icon-button floating-toc-toggle" type="button" data-toggle-toc aria-label="显示目录" title="显示目录">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+</button>
+<main>
+  <h1>活动应用 产品需求文档</h1>
+  <section id="doc-note"><h2>1. 文档说明</h2><ul>
+<li>文档来源：基于康尼活动应用 React/TSX 原型反向分析（html-to-prd）。截图为 2026-09-07 本地 <code>http://localhost:5173/</code> 实机渲染。</li>
+<li>分析范围：管理后台 <code>#/activities/*</code>（含活动装修）；员工 H5 <code>#/c/h5/*</code>；员工 PC <code>#/c/pc/*</code>。不含兴趣圈活动、投票、课程。</li>
+<li>生成日期：2026-09-07</li>
+<li>本次对照增量：① ACTIVITY_MOCK_VERSION=38，种子 28 条（含志愿服务说明会）。② 周期/系列报名截止字段 Label 为「报名截止」，开场前 N 小时，placeholder「0 为开场即停」。③ 导入人群 extra 要求模板列：工号、姓名、部门。④ 活动评分：进行中或已结束均展示（canShowActivityRating）；已通过报名可评，每人一次 toast「已评分」。</li>
+<li>可信度：按钮文案、校验、状态机以代码为准。活动本体仍无 HTTP。装修与列表视图有 localStorage。接口列为建议而非已实现。</li>
+<li>标记：<span class="status impl">代码已实现</span> <span class="status guess">根据页面推测需要</span> <span class="status todo">待确认</span></li>
+<li>优先级：<span class="status p0">P0</span> 主路径；<span class="status p1">P1</span> 运营完整度；<span class="status p2">P2</span> 可延后。</li>
+<li>组件一律使用 <code>页面-模块-组件名称</code>。</li></ul></section>
+<section id="overview"><h2>2. 功能概述与业务背景</h2>
+<p><strong>做什么：</strong>活动应用覆盖企业员工活动全生命周期。运营在后台配置活动（封面、时间/场次、可见范围、报名收集项、积分、签到码），并可装修 H5/PC 首页版面；审核/发布后，员工在 H5 或 PC 发现活动、按场次报名、扫码签到、评论/评分/发瞬间；运营管理报名、评论、瞬间与奖品。</p>
+<p><strong>为什么做：</strong>把线下「通知 + 表格收名单」收口到统一规则：名额、多场次、审核、手动截止、终止、签到核销，员工自助参加，运营可复盘。</p>
+<p><strong>产品定位：</strong>康尼「员工与组织」下的活动运营中台 + 员工参加端。当前为可交互原型（内存 mock），用于评审交互而非生产。</p>
+<p><strong>核心场景：</strong>① HR 创建开放日/培训/疗休养/周期球类并发布；② 员工浏览报名；③ 现场扫码；④ 进行中或已结束后评分发瞬间（不限次数）、后台发奖导出。</p></section>
+<section id="roles"><h2>3. 用户角色与权限</h2>
+<p>原型<strong>无</strong>登录鉴权、角色表、菜单 ACL。下表是产品语义 + 代码条件分支。</p>
+<table><thead><tr><th>角色</th><th>入口</th><th>代码证据</th><th>可做</th><th>差异/限制</th></tr></thead><tbody><tr><td>后台运营（顶栏「陈产品」）</td><td>全部应用 → 活动</td><td>无 permission 判断</td><td>活动 CRUD、分类、规则设置（仅演示）、活动装修（仅演示）、审核发布、截止/终止、报名审、签到码、评论/瞬间马甲回复、奖品</td><td>任何人打开后台即可全部操作；已结束/终止不可保存编辑</td></tr><tr><td>员工（DEMO_SIGNUP_USER）</td><td>C 端预览 → 活动 H5/PC</td><td>姓名陈产品 / 手机 13800001111 / 华东大区 / 产品经理；无切换用户</td><td>看已发布且对本账号可见的活动、报名取消、赞藏评、进行中/已结束打分发瞬间（无次数上限）、H5 签到</td><td>见 5.1；PC 无签到页</td></tr><tr><td>活动发起人</td><td>C 端同一演示账号</td><td>展示码：shouldShowOrganizerCheckInQr 仅姓名全等；发起人字段为自由文本，不据此拦截取消/调整</td><td>详情展示签到二维码（姓名匹配时）</td><td>后台保存时自动已通过报名；C 端取消/调整与普通员工相同</td></tr><tr><td>活动审批人</td><td>列表/详情「审核」</td><td>canReviewActivity：审批开且待审核</td><td>通过/驳回活动</td><td>与报名审核开关分离</td></tr><tr><td>报名审核人</td><td>详情-报名 Tab</td><td>needAudit 且记录待审核</td><td>通过/驳回/批量</td><td>员工不能审他人</td></tr></tbody></table>
+<p class="note">奖品 Tab 文案写「康尼通过权限控制不显示此功能」，但 <code>detailTabs</code> 仍始终渲染。</p></section>
+<section id="ia"><h2>4. 页面结构 / 信息架构</h2>
+<table><thead><tr><th>端</th><th>页面</th><th>Hash</th><th>组件</th></tr></thead><tbody><tr><td>后台</td><td>概览</td><td>#/activities/activity-overview</td><td>ActivityOverviewPage</td></tr><tr><td>后台</td><td>活动管理</td><td>#/activities/activity-list</td><td>ActivityListPage；列表/卡片</td></tr><tr><td>后台</td><td>新建/复制</td><td>#/activities/activity-create[/{源id}]</td><td>ActivityFormPage create</td></tr><tr><td>后台</td><td>编辑</td><td>#/activities/activity-edit/{id}</td><td>ActivityFormPage edit；已结束/终止整表 disabled</td></tr><tr><td>后台</td><td>详情</td><td>#/activities/activity-detail/{id}[/{tab}]</td><td>tab=detail|signups|checkin|comments|moments|prizes</td></tr><tr><td>后台</td><td>分类 / 规则设置（仅演示）</td><td>#/activities/activity-categories|activity-rules</td><td>Category / ActivityRulesPage；侧栏 label 规则设置（仅演示）</td></tr><tr><td>后台</td><td>活动装修（仅演示）</td><td>#/activities/activity-layout[-mobile|-pc]</td><td>仅演示样式；生产以首页装修（H5/PC 装修）为准</td></tr><tr><td>H5</td><td>首页/搜索/全部</td><td>#/c/h5 | /search | /list</td><td>H5ActivityHome；首页读装修 draft</td></tr><tr><td>H5</td><td>详情/报名/签到</td><td>#/c/h5/{id}[/signup|/checkin]</td><td>Detail / Signup / CheckIn</td></tr><tr><td>H5</td><td>我的/收藏/瞬间</td><td>#/c/h5/my|favorites|moments</td><td>搜索栏右侧图标进 my；收藏仍 hash；搜索/全部页无入口</td></tr><tr><td>PC</td><td>对称路由</td><td>#/c/pc/…</td><td>报名 hash 打开详情+弹窗；无 checkin</td></tr></tbody></table>
+</section>
+<section id="features"><h2>5. 功能清单与优先级</h2>
+<table><thead><tr><th>模块</th><th>功能点</th><th>说明</th><th>端</th><th>优先级</th><th>状态</th></tr></thead><tbody><tr><td>配置</td><td>新建/编辑/复制</td><td>封面 jpg/png；标题 max20；发起人 max20；详情必填；已结束/终止禁编辑</td><td>后台</td><td><span class="status p0">P0</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>配置</td><td>举办方式</td><td>单次 / 周期（周几+时段）/ 系列≥2 场；编辑不可改类型</td><td>后台</td><td><span class="status p0">P0</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>发布</td><td>审批、发布、撤销</td><td>撤销仅已发布+未开始；进行中引导终止</td><td>后台</td><td><span class="status p0">P0</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>运营</td><td>置顶、截止/恢复报名、终止、删除、批量</td><td>终止不可恢复为进行中</td><td>后台</td><td><span class="status p0">P0</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>运营</td><td>列表/卡片视图</td><td>ListViewSegmented；localStorage activity-list-view</td><td>后台</td><td><span class="status p1">P1</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>报名运营</td><td>审、导入导出、添加、可搜索场次筛</td><td>发起人自动占已通过名额；一人一行多场拼文案</td><td>后台</td><td><span class="status p0">P0</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>社交</td><td>赞藏评分享、评分瞬间；后台马甲回复</td><td>回复账号：陈产品（个人）/活动小助手/官方客服；内容 max500</td><td>后台+H5/PC</td><td><span class="status p1">P1</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>装修</td><td>活动装修（仅演示）</td><td>装修以首页装修为准，此处仅演示样式；生产不作为装修入口</td><td>后台</td><td><span class="status p1">P1</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>发现</td><td>分类、搜索、列表、详情</td><td>已发布且对当前员工可见（见 5.1）；首页块顺序/条数由装修 latestCount</td><td>H5/PC</td><td><span class="status p0">P0</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>报名</td><td>选场次、填表、提交/调整/取消</td><td>H5 整页；PC 弹窗；不可见活动不可报名</td><td>H5/PC</td><td><span class="status p0">P0</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>签到</td><td>静/动态码、H5 扫码</td><td>动态码 5 分钟刷新不可下载</td><td>后台+H5</td><td><span class="status p0">P0</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>分类规则</td><td>分类启停、报名积分上下限</td><td>菜单/页标题「规则设置（仅演示）」；活动积分默认 1～20；评论/打分/瞬间仍单次+日上限</td><td>后台</td><td><span class="status p1">P1</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>我的</td><td>五态报名、收藏、往期</td><td>首页搜索行右侧图标进报名页（aria 我的活动）；无搜索块则入口消失；收藏无入口</td><td>H5/PC</td><td><span class="status p1">P1</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>概览</td><td>KPI/图表/待办/进行中表</td><td>日期范围过滤；KPI 点进列表不带筛参</td><td>后台</td><td><span class="status p1">P1</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>奖品</td><td>发放/导入/指定分组</td><td>仅已结束已发布；无分组字段则无「指定分组」目标</td><td>后台</td><td><span class="status p2">P2</span></td><td><span class="status impl">代码已实现</span></td></tr></tbody></table>
+<article id="visibility-rules"><h3>5.1 可见范围与司龄（C 端过滤）</h3>
+<p>H5 / PC 员工端<strong>必须</strong>按当前登录员工过滤活动数据，不能只看 <code>publishStatus=已发布</code>。后台运营列表、详情、报名 Tab 不过滤可见范围。</p>
+<p>判定顺序：① 未发布 → 对员工不可见。② 当前员工是该活动发起人（姓名或手机匹配）→ 可见。③ 按可见范围命中。④ 若开启报名司龄限制，当前员工司龄（整年）&lt; 年限 → 不可见且不可报名。四步都过才进入 C 端数据集。</p>
+<table><thead><tr><th>可见范围</th><th>命中规则</th><th>未命中</th></tr></thead><tbody><tr><td>全员</td><td>任意在职员工（仍过发布与司龄）</td><td>—</td></tr><tr><td>按部门</td><td>员工所属部门 ∈ 已选部门，或为已选节点的下级部门（TreeSelect SHOW_PARENT：勾父部门含下级）</td><td>列表不出现；深链详情/报名/签到等同「活动不存在」</td></tr><tr><td>自定义人群</td><td>员工姓名 ∈ customPeople</td><td>同上</td></tr><tr><td>导入人群</td><td>员工姓名或手机号 ∈ importedPeople（导入文件解析出的名单）</td><td>同上</td></tr></tbody></table>
+<p>作用面：首页活动块与轮播（指向不可见活动的图不展示或不可点进该活动）、搜索、全部活动、往期精彩回顾、详情、报名页、签到页。收藏/我的报名仍可列出本人历史记录；活动已不可见时卡片「活动已失效」，不可再进详情。</p>
+<p>司龄：高级设置「报名司龄限制=有限制」时，年限 ≥0。无该员工司龄则视为 0。关闭限制则跳过本步。</p>
+<p>原型现状：<code>clientVisibleActivities</code> 仍等于 <code>publishedActivities</code>，演示用户无司龄字段。实现时改过滤函数，详情用同一套可见集合取活动，禁止未命中深链。</p></article></section>
+<section id="flows"><h2>6. 用户流程</h2>
+<h3>6.1 创建发布</h3><p>后台-活动管理-新建活动 → 保存（audit 待提交或无需审核）→ 可选提交审批 → 审核通过 → 发布。仅对命中可见范围（及司龄）的员工出现。失败：表单校验 message.error。</p>
+<h3>6.2 员工报名</h3><p>详情 CTA「立即报名」→ H5 跳转 signup / PC 弹窗 → 勾选未截止场次 → 填姓名等 → 确认报名。toast「报名成功」。满员仅标「已满」，仍可勾选且提交不拦配额。</p>
+<h3>6.3 取消</h3><p>报名窗内 + 已报名：单场次 CTA「取消报名」→ 弹窗「取消后将释放名额，报名截止前可以再次报名。」→ 确认取消。多场次 CTA 为「立即报名」(adjust)。发起人字段是文本，不校验身份，取消/调整规则与普通员工相同。</p>
+<h3>6.4 签到</h3><p>后台开启扫码签到 → 列表更多或详情 Tab 出示码（H5 URL <code>#/c/h5/{id}/checkin?s=&amp;t=</code>）。员工仅 H5 打开。PC 无 checkin 路由。发起人姓名全等时详情内嵌 OrganizerCheckInQr。</p>
+<h3>6.5 装修首页</h3><p class="note">产品说明：C 端首页版面以「首页装修」（H5/PC 装修）为准。「活动装修（仅演示）」仅演示活动卡片与组件样式，不作为生产装修入口。</p>
+<p>原型页：后台-活动装修 → 选移动端/PC → 拖入搜索/轮播/活动/瞬间 → 右侧改样式与 latestCount → 画布改动即时 <code>saveActivityDecoration</code> 写 draft → 点保存 <code>publishActivityDecoration</code> toast「已保存，C端首页已更新」。C 端首页实际 <code>useActivityDecoration</code> 读的是 draft，未点保存也会在刷新后看到草稿（localStorage）。</p></section>
+<section id="page-admin"><h2>7. 后台页面需求</h2>
+<article><h3>7.1 后台-概览</h3><h4>页面目标</h4><p>运营看到待办量与活动健康度，跳转列表处理。</p>
+<figure><img src="screenshots/后台-概览-页面整体.png" alt="后台-概览-页面整体截图"><figcaption><span class="component-path">后台-概览-页面整体</span>：标题旁 OverviewDateRange；KPI、状态/分类饼图、「待办关注」「进行中的活动」。</figcaption></figure>
+<figure><img src="screenshots/后台-概览-KPI指标卡.png" alt="后台-概览-KPI指标卡截图"><figcaption><span class="component-path">后台-概览-KPI指标卡</span>：待审核活动 / 待审核报名 / 进行中活动 / 总报名人数 / 已发布活动。均 onNavigate(activity-list)，无 query。日期范围默认近 30 天，可切日/月。报名人数按 uniqueBySignupOccupant。</figcaption></figure>
+<h4>组件显示逻辑</h4>
+<table><thead><tr><th>组件路径</th><th>组件类型</th><th>默认状态</th><th>显示/隐藏</th><th>启用/禁用</th><th>数据来源</th><th>状态变化</th><th>空/错/加载</th><th>权限</th></tr></thead><tbody><tr><td>后台-概览-日期范围</td><td>RangePicker</td><td>defaultOverviewDateRange</td><td>始终</td><td>始终</td><td>OverviewDateRange</td><td>改范围重算 KPI/表</td><td>无</td><td>无</td></tr><tr><td>后台-概览-待办关注</td><td>Table</td><td>有数据则展示</td><td>始终</td><td>详情可点</td><td>buildAttentionRows</td><td>报名待审核点详情带 tab=signups</td><td>暂无待办</td><td>无</td></tr><tr><td>后台-概览-进行中的活动</td><td>Table</td><td>进行中</td><td>始终</td><td>详情可点</td><td>buildInProgressActivityRows</td><td>分页 b2bStandards.table</td><td>当前没有进行中的活动</td><td>无</td></tr></tbody></table>
+<h4>操作说明</h4>
+<table><thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead><tbody><tr><td>查看待办活动</td><td>后台-概览-KPI指标卡</td><td>KPI 卡片</td><td>无</td><td>始终</td><td>点击</td><td>进入活动列表</td><td>无</td><td>无</td><td>无</td><td>hash activity-list，无 API</td></tr></tbody></table>
+<h4>验收</h4><p>Given 存在待审核活动 When 打开概览 Then KPI 数字与列表一致。Given 点击 KPI When 进入列表 Then 不自动带审核筛选项（现状）。</p></article>
+<article><h3>7.2 后台-活动管理</h3>
+<figure><img src="screenshots/后台-活动管理-页面整体.png" alt="后台-活动管理-页面整体截图"><figcaption><span class="component-path">后台-活动管理-页面整体</span>：查询区 + 列表/卡片切换 + 新建活动。顶栏当前用户陈产品。</figcaption></figure>
+<figure><img src="screenshots/后台-活动管理-查询筛选.png" alt="后台-活动管理-查询筛选截图"><figcaption><span class="component-path">后台-活动管理-查询筛选</span>：活动标题、审核状态、状态；查询/重置/展开。查询成功文案「查询完成」。</figcaption></figure>
+<figure><img src="screenshots/后台-活动管理-列表表格.png" alt="后台-活动管理-列表表格截图"><figcaption><span class="component-path">后台-活动管理-列表表格</span>：列：标题（可置顶 Tag）、分类、举办方式、活动时间、审核状态、状态、操作。工具栏「展示形式」列表/卡片。</figcaption></figure>
+<figure><img src="screenshots/后台-活动管理-卡片视图.png" alt="后台-活动管理-卡片视图截图"><figcaption><span class="component-path">后台-活动管理-卡片视图</span>：MediaEntityCardGrid：封面、标题、时间摘要、生命周期状态、置顶/审核 Tag。</figcaption></figure>
+<figure><img src="screenshots/后台-活动管理-行操作.png" alt="后台-活动管理-行操作截图"><figcaption><span class="component-path">后台-活动管理-行操作</span>：详情、编辑、复制、更多操作。</figcaption></figure>
+<figure><img src="screenshots/后台-活动管理-截止报名确认.png" alt="后台-活动管理-更多菜单截图"><figcaption><span class="component-path">后台-活动管理-更多菜单</span>：更多含撤销、取消置顶、截止报名、终止活动（红）、删除。截图为菜单展开态，非确认框。确认框文案见下表。</figcaption></figure>
+<figure><img src="screenshots/后台-活动管理-签到码弹窗.png" alt="后台-活动管理-更多菜单-签到码项截图"><figcaption><span class="component-path">后台-活动管理-更多菜单-签到码项</span>：开启签到的活动更多中出现「签到码」。点击后应开 Modal 嵌 ActivityQrCheckInPage。</figcaption></figure>
+<h4>字段说明（筛选）</h4>
+<table><thead><tr><th>字段名称</th><th>组件路径</th><th>控件类型</th><th>是否必填</th><th>默认值</th><th>校验规则</th><th>选项值</th><th>业务含义</th></tr></thead><tbody><tr><td>活动标题</td><td>后台-活动管理-查询筛选-活动标题</td><td>Input</td><td>否</td><td>空</td><td>无 maxlength 在筛选项</td><td>—</td><td>模糊匹配标题</td></tr><tr><td>审核状态</td><td>后台-活动管理-查询筛选-审核状态</td><td>Select</td><td>否</td><td>全部</td><td>—</td><td>待提交/待审核/已通过/已驳回/无需审核</td><td>auditStatus</td></tr><tr><td>状态</td><td>后台-活动管理-查询筛选-状态</td><td>Select</td><td>否</td><td>全部</td><td>—</td><td>未发布/未开始/进行中/已结束/已终止</td><td>lifecycle 展示态</td></tr><tr><td>分类</td><td>展开后</td><td>Select</td><td>否</td><td>全部</td><td>—</td><td>启用分类</td><td>category</td></tr><tr><td>举办方式</td><td>展开后</td><td>Select</td><td>否</td><td>全部</td><td>—</td><td>单次/周期/系列</td><td>scheduleType</td></tr><tr><td>活动时间/创建时间/发布时间</td><td>展开后</td><td>RangePicker</td><td>否</td><td>空</td><td>—</td><td>—</td><td>落在区间内</td></tr></tbody></table>
+<h4>操作说明</h4>
+<table><thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead><tbody><tr><td>新建活动</td><td>后台-活动管理-新建活动</td><td>主按钮</td><td>无</td><td>始终</td><td>点击</td><td>打开表单</td><td>无</td><td>无</td><td>无</td><td>activity-create</td></tr><tr><td>详情</td><td>后台-活动管理-行操作-详情</td><td>链接</td><td>无</td><td>始终</td><td>点击</td><td>进详情</td><td>无</td><td>无</td><td>无</td><td>activity-detail/{id}</td></tr><tr><td>编辑</td><td>同上-编辑</td><td>按钮</td><td>canEditActivity</td><td>已结束/终止 disabled，tooltip「活动已结束/已终止，不能编辑」</td><td>点击</td><td>进编辑</td><td>无</td><td>无</td><td>无</td><td>activity-edit/{id}</td></tr><tr><td>复制</td><td>同上-复制</td><td>按钮</td><td>无</td><td>始终（含已结束）</td><td>点击</td><td>带源数据新建</td><td>无</td><td>无</td><td>无</td><td>activity-create/{id}</td></tr><tr><td>提交审批</td><td>更多或行内</td><td>按钮</td><td>canSubmitApproval</td><td>否则不出现</td><td>确认</td><td>audit=待审核</td><td>是</td><td>已提交「」审批</td><td>当前不可提交审批</td><td>内存 store</td></tr><tr><td>审核</td><td>行内</td><td>按钮</td><td>canReviewActivity</td><td>仅待审核出现</td><td>打开审核弹窗</td><td>通过/驳回</td><td>audit 变</td><td>弹窗内</td><td>无</td><td>ActivityReviewModal</td></tr><tr><td>发布</td><td>行内</td><td>按钮</td><td>未发布</td><td>canPublishActivity 否则 disabled，tooltip 仅审批通过或无需审核…</td><td>点击</td><td>publish=已发布</td><td>是</td><td>已发布「」</td><td>无法发布</td><td>patchActivities</td></tr><tr><td>撤销</td><td>更多</td><td>按钮</td><td>已发布</td><td>未开始才启用；进行中 disabled+tooltip 引导终止</td><td>确认「撤销后活动不再对员工可见。发布时间保留。」</td><td>publish=未发布</td><td>是</td><td>已撤销「」</td><td>revokeActivityBlockReason</td><td>内存</td></tr><tr><td>截止报名</td><td>更多</td><td>按钮</td><td>canCloseActivitySignup</td><td>已发布且未手操截止且报名未到点</td><td>确认</td><td>signupEndAt=now，写 signupClosedAt</td><td>是</td><td>已截止「」报名</td><td>无</td><td>applyCloseActivitySignup</td></tr><tr><td>恢复报名</td><td>更多</td><td>按钮</td><td>canReopenActivitySignup</td><td>有 signupClosedAt 且未终止</td><td>确认</td><td>还原截止</td><td>是</td><td>已恢复「」报名</td><td>无</td><td>单次还原 stash；周期/系列 syncSignupEndAt</td></tr><tr><td>终止</td><td>更多</td><td>按钮</td><td>canTerminateActivity</td><td>已发布且进行中</td><td>确认「未举办场次不再进行，且不可恢复为进行中。」</td><td>activityStatus=已终止</td><td>是</td><td>已终止「」</td><td>无</td><td>applyTerminateActivity</td></tr><tr><td>删除</td><td>更多</td><td>按钮</td><td>无</td><td>始终</td><td>确认「删除后不可恢复。」</td><td>从列表移除</td><td>是</td><td>已删除「」</td><td>无</td><td>filter id</td></tr><tr><td>置顶</td><td>更多</td><td>按钮</td><td>无</td><td>始终</td><td>点击</td><td>pinned 翻转</td><td>是</td><td>已置顶/已取消置顶「」</td><td>无</td><td>内存</td></tr><tr><td>签到码</td><td>更多</td><td>按钮</td><td>checkInEnabled</td><td>未开启则无此项</td><td>点击</td><td>Modal 二维码</td><td>无</td><td>无</td><td>无</td><td>无独立路由</td></tr><tr><td>展示形式</td><td>后台-活动管理-展示形式</td><td>Segmented</td><td>无</td><td>始终</td><td>点列表/卡片</td><td>切换 Table / MediaEntityCardGrid</td><td>写入 localStorage activity-list-view</td><td>无</td><td>无</td><td>无 API</td></tr><tr><td>批量撤销/提交/发布/设分类</td><td>勾选后批量栏</td><td>按钮</td><td>有选中且为列表视图</td><td>按 can* 过滤；卡片视图不显示批量栏</td><td>点击</td><td>批量 patch</td><td>是</td><td>已撤销 N 个…</td><td>已选活动均不可…</td><td>内存</td></tr></tbody></table>
+<h4>交互规则</h4><p>行内状态按钮互斥：能提交则显示提交；否则能审则审核；否则已发布显示撤销；否则显示发布。查询不改 URL。空表：有筛选「没有符合条件的活动」，否则标准 emptyText。</p>
+<h4>权限/状态</h4>
+<table><thead><tr><th>按钮</th><th>待提交</th><th>待审核</th><th>已通过未发</th><th>无需审核未发</th><th>已发未开始</th><th>进行中</th><th>已结束/终止</th></tr></thead><tbody><tr><td>提交审批</td><td>审批开则有</td><td>—</td><td>—</td><td>—</td><td>按 audit</td><td>同左</td><td>同左</td></tr><tr><td>审核</td><td>—</td><td>有</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr><tr><td>发布</td><td>禁</td><td>禁</td><td>有</td><td>有</td><td>—</td><td>—</td><td>—</td></tr><tr><td>撤销</td><td>—</td><td>—</td><td>—</td><td>—</td><td>启用</td><td>禁用</td><td>无</td></tr><tr><td>截止报名</td><td>—</td><td>—</td><td>—</td><td>—</td><td>报名未截止则有</td><td>同</td><td>无</td></tr><tr><td>终止</td><td>—</td><td>—</td><td>—</td><td>—</td><td>无</td><td>有</td><td>无</td></tr><tr><td>编辑</td><td>未结束有</td><td>同</td><td>同</td><td>同</td><td>有</td><td>有</td><td>禁用</td></tr><tr><td>删除复制</td><td>有</td><td>有</td><td>有</td><td>有</td><td>有</td><td>有</td><td>有</td></tr></tbody></table>
+</article>
+<article><h3>7.3 后台-新增/编辑活动</h3>
+<figure><img src="screenshots/后台-新增活动-表单页.png" alt="后台-新增活动-表单页截图"><figcaption><span class="component-path">后台-新增活动-表单页</span>：封面、标题、分类、地点、发起人、活动时间、举办方式。底部取消/保存/提交审核。</figcaption></figure>
+<figure><img src="screenshots/后台-新增活动-报名分组.png" alt="后台-新增活动-报名分组设置截图"><figcaption><span class="component-path">后台-新增活动-报名分组设置</span>：独立 Card。是否设置默认关；开后 SignupGroupsEditor，至少 2 组，名称 max20，合计须等于报名总人数。</figcaption></figure>
+<figure><img src="screenshots/后台-新增活动-高级设置.png" alt="后台-新增活动-高级设置截图"><figcaption><span class="component-path">后台-新增活动-高级设置</span>：展开后含报名审核、司龄、活动积分、扫码签到、报名字段。发送消息通知不在此折叠。</figcaption></figure>
+<figure><img src="screenshots/后台-编辑活动-系列场次.png" alt="后台-编辑活动-系列场次截图"><figcaption><span class="component-path">后台-编辑活动-系列场次</span>：系列活动编辑：场次 RangePicker；举办方式编辑态 disabled。</figcaption></figure>
+<figure><img src="screenshots/后台-编辑活动-已结束锁定.png" alt="后台-编辑活动-已结束锁定截图"><figcaption><span class="component-path">后台-编辑活动-已结束锁定</span>：Alert「活动已结束，不能编辑」；Form disabled；底部只留取消，无保存/提交。</figcaption></figure>
+<h4>字段说明</h4>
+<table><thead><tr><th>字段名称</th><th>组件路径</th><th>控件类型</th><th>是否必填</th><th>默认值</th><th>校验规则</th><th>选项值</th><th>业务含义</th></tr></thead><tbody><tr><td>封面图片</td><td>后台-新增活动-封面图片</td><td>Upload→url</td><td>是</td><td>空</td><td>jpg/png；请上传封面图片</td><td>—</td><td>C 端封面</td></tr><tr><td>活动标题</td><td>后台-新增活动-活动标题</td><td>Input</td><td>是</td><td>空</td><td>maxLength=20 showCount</td><td>—</td><td>列表/C 端标题</td></tr><tr><td>分类</td><td>后台-新增活动-分类</td><td>Select</td><td>是</td><td>空</td><td>请选择分类；仅启用项（编辑可保留当前禁用）</td><td>分类管理数据</td><td>C 端 Tab 与筛</td></tr><tr><td>活动地点</td><td>后台-新增活动-活动地点</td><td>Input</td><td>否</td><td>总部一号楼多功能厅(mock 默认)</td><td>无</td><td>—</td><td>C 端地点</td></tr><tr><td>发起人</td><td>后台-新增活动-发起人</td><td>Input</td><td>是</td><td>陈产品(默认)</td><td>maxLength=20；请输入发起人</td><td>—</td><td>保存时 ensureOrganizerSignup</td></tr><tr><td>活动时间</td><td>后台-新增活动-活动时间</td><td>RangePicker</td><td>是</td><td>空</td><td>请选择活动时间；结束不得早于开始</td><td>—</td><td>生命周期计算窗</td></tr><tr><td>举办方式</td><td>后台-新增活动-举办方式</td><td>Radio</td><td>是</td><td>once</td><td>请选择举办方式；编辑 disabled</td><td>单次/周期/系列</td><td>场次生成策略</td></tr><tr><td>报名时间</td><td>单次-报名起止</td><td>RangePicker</td><td>单次是</td><td>—</td><td>—</td><td>—</td><td>signupStartAt/EndAt</td></tr><tr><td>名额</td><td>后台-新增活动-名额</td><td>InputNumber</td><td>是</td><td>50</td><td>≥1；周期/系列=每场上限</td><td>—</td><td>C 端已报名 a/b</td></tr><tr><td>周几+时段</td><td>周期</td><td>Checkbox+Time</td><td>周期是</td><td>—</td><td>请选择重复的周几；请填写{周}时段；无场次则报错</td><td>周一…日</td><td>generateRecurringSessions</td></tr><tr><td>场次列表</td><td>系列</td><td>RangePicker 列表</td><td>系列是</td><td>—</td><td>至少 2 场；每场落在活动时间内</td><td>—</td><td>sessions</td></tr><tr><td>报名开始</td><td>周期/系列</td><td>DatePicker</td><td>是</td><td>—</td><td>请选择报名开始时间</td><td>—</td><td>signupStartAt</td></tr><tr><td>报名截止</td><td>周期/系列-开场前小时</td><td>InputNumber</td><td>是</td><td>0</td><td>≥0；placeholder「0 为开场即停」</td><td>—</td><td>signupHoursBefore；UI Label「报名截止」</td></tr><tr><td>活动详情</td><td>后台-新增活动-活动详情</td><td>RichText</td><td>是</td><td>—</td><td>请填写活动详情</td><td>—</td><td>C 端介绍 HTML；工具栏「区块背景」；disabled 藏工具栏</td></tr><tr><td>可见范围</td><td>后台-新增活动-可见范围</td><td>Radio</td><td>是</td><td>全员</td><td>请选择可见范围</td><td>全员/按部门/自定义人群/导入人群</td><td>C 端过滤，见 5.1</td></tr><tr><td>选择部门</td><td>可见=按部门</td><td>TreeSelect</td><td>条件必填</td><td>空</td><td>请选择部门</td><td>orgDepartmentTree</td><td>C 端按部门及下级命中</td></tr><tr><td>选择人员</td><td>可见=自定义</td><td>TreeSelect</td><td>条件必填</td><td>空</td><td>请选择人员</td><td>人员树，部门节点不可选</td><td>C 端按姓名命中</td></tr><tr><td>导入人群</td><td>可见=导入</td><td>Upload</td><td>条件必填</td><td>空</td><td>请导入人群文件；csv/xlsx</td><td>模板列：工号、姓名、部门</td><td>C 端按姓名或手机命中</td></tr><tr><td>发送消息通知</td><td>后台-新增活动-可见范围卡</td><td>Switch</td><td>否</td><td>关</td><td>—</td><td>—</td><td>notifyOnPublish，无真实推送</td></tr><tr><td>是否设置分组</td><td>后台-新增活动-报名分组设置</td><td>Switch</td><td>否</td><td>不设置</td><td>开则各组人数合计=报名总人数，否则拦保存</td><td>已设置/不设置</td><td>setGroupSignupEnabled</td></tr><tr><td>分组</td><td>后台-新增活动-报名分组设置-分组</td><td>SignupGroupsEditor</td><td>开则≥2 组</td><td>空名+限 0</td><td>名称 maxLength=20；至少 2 组不可删到 1</td><td>添加分组</td><td>C 端多选组+上限 N 人</td></tr><tr><td>是否审核报名</td><td>高级</td><td>Switch</td><td>否</td><td>关</td><td>—</td><td>—</td><td>signupSettings.needAudit</td></tr><tr><td>审批流节点</td><td>审核开时</td><td>Editor</td><td>否</td><td>空</td><td>—</td><td>—</td><td>报名审批，非活动审批</td></tr><tr><td>报名司龄限制</td><td>高级</td><td>Switch+Number</td><td>开则年限必填</td><td>关</td><td>年限≥0</td><td>—</td><td>开启后 C 端不可见且不可报，见 5.1</td></tr><tr><td>活动积分</td><td>高级</td><td>Switch+Number</td><td>开则必填</td><td>开/规则页 signupPointsMin</td><td>须在 signupPointsMin～signupPointsMax（默认 1～20）</td><td>—</td><td>extra：规则范围 min～max；表单无每日上限</td></tr><tr><td>扫码签到</td><td>高级</td><td>Switch</td><td>否</td><td>关</td><td>—</td><td>—</td><td>checkInEnabled</td></tr><tr><td>开始前可扫</td><td>签到开</td><td>Number</td><td>是</td><td>30</td><td>分钟</td><td>—</td><td>checkInOpenMinutesBefore</td></tr><tr><td>动态二维码</td><td>高级</td><td>Switch</td><td>否</td><td>关</td><td>—</td><td>—</td><td>5 分钟刷新</td></tr><tr><td>报名字段</td><td>高级-SignupFieldsEditor</td><td>编辑器</td><td>至少 1 项</td><td>固定「姓名」必填</td><td>见 signupFields 校验</td><td>预设+自定义</td><td>C 端表单</td></tr></tbody></table>
+<h4>操作说明</h4>
+<table><thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead><tbody><tr><td>取消</td><td>后台-新增活动-取消</td><td>次按钮</td><td>无</td><td>始终</td><td>点击</td><td>dirty 则确认「未保存的修改将丢失。」</td><td>丢草稿</td><td>无</td><td>无</td><td>回列表</td></tr><tr><td>保存</td><td>后台-新增活动-保存</td><td>主按钮</td><td>校验通过且未锁定</td><td>editLockedReason 时整组不渲染</td><td>点击</td><td>upsertActivity</td><td>写入</td><td>活动已保存/已更新</td><td>message.error 积分或场次；锁定时 warning 锁定文案</td><td>回列表</td></tr><tr><td>提交审核/审批</td><td>后台-新增活动-提交审核</td><td>按钮</td><td>create 或 canSubmitApproval(editing)</td><td>showSubmit 为假则无</td><td>点击 save(true)</td><td>audit=待审核</td><td>是</td><td>已提交审核/已提交审批</td><td>同保存校验</td><td>回列表</td></tr></tbody></table>
+<h4>校验规则</h4><p>分组人数合计必须等于报名总人数，不符则静默不提交（表单内联）。自定义文本字数 1～200。同行人最多 1～20 且至少勾选一项收集。单选/多选≥2 选项。周期无生成场次：「该活动时间内没有可生成的场次」。</p>
+<h4>异常</h4><p>缺封面/标题/分类/详情拦提交。已结束/终止：列表编辑禁用；若直达 edit hash，表单 Alert + disabled + 点保存走 warning。进行中仍可改时间/名额/可见范围（举办方式仍锁）。</p></article>
+<article><h3>7.4 后台-活动详情</h3>
+<figure><img src="screenshots/后台-活动详情-页面整体.png" alt="后台-活动详情-页面整体截图"><figcaption><span class="component-path">后台-活动详情-页面整体</span>：面包屑 + ActivityDetailHeader + Tabs。Tab：详情/报名/签到码/评论/精彩瞬间/奖品。</figcaption></figure>
+<figure><img src="screenshots/后台-活动详情-页头.png" alt="后台-活动详情-页头截图"><figcaption><span class="component-path">后台-活动详情-页头</span>：封面、分类/生命周期/审核 Tag、标题右侧操作、事实行（活动/报名时间、地点、报名截止、终止时间）、嵌入 ActivityStatsRow。</figcaption></figure>
+<figure><img src="screenshots/后台-活动详情-标题与操作.png" alt="后台-活动详情-页头-操作截图"><figcaption><span class="component-path">后台-活动详情-页头-操作</span>：审核/提交/编辑互斥；复制创建；签到码切 Tab；截止/恢复/终止/删除。已结束编辑 disabled+Tooltip。</figcaption></figure>
+<figure><img src="screenshots/后台-活动详情-统计条.png" alt="后台-活动详情-页头-指标截图"><figcaption><span class="component-path">后台-活动详情-页头-指标</span>：顺序：报名人数（/总名额）、评论数、精彩瞬间数、待审核报名、报名额使用率、平均分、评分人数。报名人数/待审核按 uniqueBySignupOccupant。</figcaption></figure>
+<figure><img src="screenshots/后台-活动详情-场次表.png" alt="后台-活动详情-详情Tab-场次截图"><figcaption><span class="component-path">后台-活动详情-详情Tab-场次</span>：needsSessionPick 才渲染 ActivitySessionsDetailCard：场次/开始/结束/报名截止/人数上限。</figcaption></figure>
+<figure><img src="screenshots/后台-活动详情-报名Tab.png" alt="后台-活动详情-报名Tab截图"><figcaption><span class="component-path">后台-活动详情-报名Tab</span>：周期/系列：SignupSessionSearchSelect（showSearch，全部场次+第 n 场+起止）。无场次概况表。人表场次列仅「第 n 场」，场次时间另列。</figcaption></figure>
+<figure><img src="screenshots/后台-活动详情-报名场次筛.png" alt="后台-活动详情-报名Tab-场次筛截图"><figcaption><span class="component-path">后台-活动详情-报名Tab-场次筛</span>：收起态可见场次（字段序：姓名、部门、场次、状态；报名时间在展开后）。点查询才过滤。</figcaption></figure>
+<figure><img src="screenshots/后台-活动详情-签到码Tab.png" alt="后台-活动详情-签到码Tab截图"><figcaption><span class="component-path">后台-活动详情-签到码Tab</span>：场次二维码表；静态可下载；动态码提示每 5 分钟刷新不支持下载。</figcaption></figure>
+<figure><img src="screenshots/后台-活动详情-评论Tab.png" alt="后台-活动详情-评论Tab截图"><figcaption><span class="component-path">后台-活动详情-评论Tab</span>：筛内容/评论人/时间；列：内容、评论人（头像）、部门、时间、点赞数。行操作回复/删除。删除级联子回复。</figcaption></figure>
+<figure><img src="screenshots/后台-活动详情-评论回复.png" alt="后台-活动详情-评论Tab-回复弹窗截图"><figcaption><span class="component-path">后台-活动详情-评论Tab-回复弹窗</span>：Modal「回复评论」。回复账号默认陈产品（个人账号）；另有活动小助手、官方客服。回复内容必填 maxLength=500。成功 toast 回复成功。</figcaption></figure>
+<figure><img src="screenshots/后台-活动详情-精彩瞬间Tab.png" alt="后台-活动详情-精彩瞬间Tab截图"><figcaption><span class="component-path">后台-活动详情-精彩瞬间Tab</span>：筛内容/类型/提交人/时间。行：详情、删除。详情抽屉 footer「回复」评论该瞬间；评论/回复旁也可回复或删除。</figcaption></figure>
+<figure><img src="screenshots/后台-活动详情-瞬间回复.png" alt="后台-活动详情-瞬间详情-行内回复截图"><figcaption><span class="component-path">后台-活动详情-瞬间详情-行内回复</span>：MomentInlineReplyForm：回复账号 + 回复内容 + 取消/确认。成功回复成功。</figcaption></figure>
+<figure><img src="screenshots/后台-活动详情-奖品发放Tab.png" alt="后台-活动详情-奖品发放Tab截图"><figcaption><span class="component-path">后台-活动详情-奖品发放Tab</span>：Tab 标题含权限文案但仍展示。发放：canGrantPrize 已发布且已结束，否则 grantPrizeBlockReason。目标类型 visiblePrizeTargetTypes：无分组字段则无「指定分组」。</figcaption></figure>
+<h4>组件显示逻辑</h4>
+<table><thead><tr><th>组件路径</th><th>组件类型</th><th>默认状态</th><th>显示/隐藏</th><th>启用/禁用</th><th>数据来源</th><th>状态变化</th><th>空/错/加载</th><th>权限</th></tr></thead><tbody><tr><td>后台-活动详情-编辑按钮</td><td>Button</td><td>未结束启用</td><td>始终显示</td><td>已结束/终止 disabled+Tooltip</td><td>activityStatus</td><td>—</td><td>—</td><td>canEditActivity</td></tr><tr><td>后台-活动详情-签到码按钮</td><td>Button</td><td>checkInEnabled</td><td>未开启隐藏</td><td>可点切 Tab</td><td>活动字段</td><td>—</td><td>未开启扫码签到</td><td>无</td></tr><tr><td>后台-活动详情-场次卡</td><td>Card+Table</td><td>周期/系列</td><td>needsSessionPick 才显示</td><td>只读</td><td>sessions + signupHoursBefore</td><td>终止后未开场不再举行</td><td>无场次则整卡不渲染</td><td>无</td></tr><tr><td>后台-活动详情-报名-场次筛</td><td>Select showSearch</td><td>全部场次</td><td>周期/系列</td><td>点查询才生效</td><td>sessionSelectOptions</td><td>filterBySessionId 按 answers.场次</td><td>—</td><td>无</td></tr><tr><td>后台-活动详情-奖品Tab</td><td>Tab</td><td>始终在 tab 列表</td><td>始终</td><td>发放受 canGrantPrize</td><td>prizes</td><td>结束后可发</td><td>演示导入限制</td><td>文案声称隐藏但未藏</td></tr><tr><td>后台-活动详情-评论Tab-回复弹窗</td><td>Modal</td><td>点回复打开</td><td>有评论行</td><td>始终可开</td><td>author+content</td><td>adminReplyActivityComment</td><td>comments 新增子回复</td><td>空内容拦提交</td><td>无 RBAC</td></tr><tr><td>后台-活动详情-瞬间详情-行内回复</td><td>MomentInlineReplyForm</td><td>点回复展开</td><td>详情抽屉已开</td><td>始终</td><td>author+content max500</td><td>adminCommentOnMoment / adminReplyMomentComment</td><td>瞬间评论树</td><td>空内容拦提交</td><td>无</td></tr></tbody></table>
+<h4>操作说明</h4>
+<table><thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用逻辑</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead><tbody><tr><td>回复评论</td><td>后台-活动详情-评论Tab-回复</td><td>行按钮回复</td><td>有评论</td><td>始终</td><td>选回复账号、填内容、确定</td><td>adminReplyActivityComment；value=陈产品 展示「陈产品（个人账号）」</td><td>新增 parentId 子记录</td><td>回复成功</td><td>请选择回复账号 / 请输入回复内容</td><td>无 HTTP</td></tr><tr><td>删除评论</td><td>后台-活动详情-评论Tab-删除</td><td>行/批量删除</td><td>有记录</td><td>始终</td><td>确认</td><td>removeCommentsAndDescendants</td><td>删根及全部子孙</td><td>已删除…</td><td>—</td><td>无</td></tr><tr><td>回复瞬间</td><td>后台-活动详情-瞬间详情-回复</td><td>抽屉 footer 回复或评论旁回复</td><td>详情已开</td><td>始终</td><td>选账号填内容确认</td><td>adminCommentOnMoment / adminReplyMomentComment</td><td>瞬间评论树</td><td>回复成功</td><td>请选择回复账号 / 请输入回复内容</td><td>无 HTTP</td></tr></tbody></table>
+<p>报名操作成功：「已通过/已驳回/已删除「」的报名」「已导出 N 条报名」。驳回弹窗 extra「选填」，非必填。一人报多场仍<strong>一行</strong>，场次列拼接「第 n 场」；筛指定场次只要 answers 含该 id 即保留该行（不拆行）。</p>
+<p>id 无效：Empty「未找到该活动」。详情 HTML 空：「暂无详情」。无收集字段：「暂无收集字段」。</p></article>
+<article><h3>7.5 后台-分类管理 / 规则设置（仅演示）</h3>
+<figure><img src="screenshots/后台-分类管理-页面整体.png" alt="后台-分类管理-页面整体截图"><figcaption><span class="component-path">后台-分类管理-页面整体</span>：分类名称 maxLength=10；启用/禁用；占用中不可删。</figcaption></figure>
+<figure><img src="screenshots/后台-规则设置-页面整体.png" alt="后台-规则设置（仅演示）-页面整体截图"><figcaption><span class="component-path">后台-规则设置（仅演示）-页面整体</span>：标题与面包屑「规则设置（仅演示）」。活动积分：下限 — 上限（默认 1–20），失败「上限不能小于下限」。后三行评论/打分/精彩瞬间：积分 + 每日上限。保存 toast「规则设置已保存」。</figcaption></figure>
+<table><thead><tr><th>操作名称</th><th>组件路径</th><th>成功反馈</th><th>失败反馈</th></tr></thead><tbody><tr><td>保存分类</td><td>后台-分类管理-保存</td><td>分类已创建/已更新</td><td>—</td></tr><tr><td>删除分类</td><td>后台-分类管理-删除</td><td>已删除「」</td><td>分类「」已被活动使用，无法删除</td></tr><tr><td>批量启用/禁用</td><td>后台-分类管理-批量</td><td>已启用/禁用 N 个分类</td><td>已选分类均已启用/禁用</td></tr><tr><td>保存规则</td><td>后台-规则设置（仅演示）-保存</td><td>规则设置已保存</td><td>validateActivityPointRules 的 message.error</td></tr></tbody></table>
+</article>
+<article><h3>7.6 后台-活动装修（仅演示）</h3>
+<p class="note">产品说明：<strong>装修以首页装修为准</strong>，此处仅演示样式。生产不单独维护活动装修；C 端发现页走统一 H5/PC 装修（微页面）。本页工作台仅方便对照卡片字段、列表样式等演示效果。</p>
+<figure><img src="screenshots/后台-活动装修-页面整体.png" alt="后台-活动装修-页面整体截图"><figcaption><span class="component-path">后台-活动装修-页面整体</span>：侧栏「活动装修（仅演示）」。面包屑/标题「活动装修」。titleExtra：仅方便演示使用，实际无此装修页面，统一在H5/PC装修中实现。顶栏切移动端/PC。</figcaption></figure>
+<figure><img src="screenshots/后台-活动装修-组件库.png" alt="后台-活动装修-组件库截图"><figcaption><span class="component-path">后台-活动装修-组件库</span>：可拖可点：搜索、轮播图、活动、精彩瞬间。无悬浮按钮。</figcaption></figure>
+<figure><img src="screenshots/后台-活动装修-画布.png" alt="后台-活动装修-画布截图"><figcaption><span class="component-path">后台-活动装修-画布</span>：默认块顺序：轮播 → 搜索 → 活动 → 精彩瞬间。页面标题默认「员工活动」。预览分类 Tab 仅全部/文化/体育/培训（无公益）。</figcaption></figure>
+<figure><img src="screenshots/后台-活动装修-字段设置.png" alt="后台-活动装修-右侧配置-字段设置截图"><figcaption><span class="component-path">后台-活动装修-右侧配置-字段设置</span>：选中活动块后：置顶、分类、举办方式、状态、点赞、标题、活动时间、活动地点、报名进度、报名按钮。默认开。</figcaption></figure>
+<h4>字段说明</h4>
+<table><thead><tr><th>字段名称</th><th>组件路径</th><th>控件类型</th><th>是否必填</th><th>默认值</th><th>校验规则</th><th>选项值</th><th>业务含义</th></tr></thead><tbody><tr><td>页面标题</td><td>后台-活动装修-页面设置-页面标题</td><td>Input</td><td>空则回落员工活动</td><td>员工活动</td><td>maxLength=20</td><td>—</td><td>C 端 Shell 标题</td></tr><tr><td>区块标题</td><td>右侧配置-标题</td><td>Input</td><td>否</td><td>组件类型名</td><td>slice 0～40</td><td>—</td><td>活动/瞬间栏目标题</td></tr><tr><td>列表样式</td><td>右侧-样式</td><td>选择</td><td>活动/瞬间</td><td>活动 large-image；瞬间 H5 scroll / PC large-image</td><td>按类型限制</td><td>大图/一行两列/左图右文/左文右图/横向滑动</td><td>C 端卡片布局</td></tr><tr><td>展示条数 latestCount</td><td>右侧</td><td>Number</td><td>是</td><td>H5 活动3/瞬间3；PC 活动6/瞬间5</td><td>1～20</td><td>—</td><td>首页切片</td></tr><tr><td>搜索占位</td><td>搜索块</td><td>text</td><td>否</td><td>搜索活动名称</td><td>—</td><td>—</td><td>点进独立搜索页</td></tr><tr><td>轮播</td><td>轮播块</td><td>slides+样式</td><td>无图则 C 端不渲染</td><td>3 张演示图</td><td>高 80～420；间隔 1～10 秒</td><td>bleed/inset/split；dot/number</td><td>HomeBanner</td></tr><tr><td>查看全部</td><td>showMore</td><td>Switch+颜色+链接</td><td>否</td><td>开</td><td>链接可指 list 或 past-moments</td><td>—</td><td>H5/PC 跳转全部或往期</td></tr><tr><td>字段设置（活动）</td><td>右侧-字段设置</td><td>Switch×10</td><td>否</td><td>全开</td><td>关则 C 端对应元素不渲染</td><td>置顶/分类/举办方式/状态/点赞/标题/活动时间/活动地点/报名进度/报名按钮</td><td>decoActivityCardFields</td></tr><tr><td>字段设置（瞬间）</td><td>右侧-字段设置</td><td>Switch×2</td><td>否</td><td>全开</td><td>关则往期卡片少标题或状态</td><td>标题、状态</td><td>DECO_MOMENT_CARD_FIELD_TOGGLES</td></tr></tbody></table>
+<h4>操作说明</h4>
+<table><thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置</th><th>启用/禁用</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功</th><th>失败</th><th>跳转/接口</th></tr></thead><tbody><tr><td>添加组件</td><td>后台-活动装修-组件库</td><td>chip 点击或拖入画布</td><td>无</td><td>始终</td><td>点击/drop</td><td>addDecoBlock + save draft</td><td>localStorage</td><td>无单独 toast</td><td>无</td><td>无 HTTP</td></tr><tr><td>页面设置</td><td>后台-活动装修-页面设置</td><td>按钮</td><td>无</td><td>始终</td><td>改标题确定</td><td>commit pageTitle</td><td>draft</td><td>无</td><td>无</td><td>Modal</td></tr><tr><td>保存</td><td>后台-活动装修-保存</td><td>主按钮</td><td>无</td><td>始终</td><td>点击</td><td>publishActivityDecoration 复制 draft→published</td><td>published 更新</td><td>已保存，C端首页已更新</td><td>无</td><td>C 端实际读 draft 非 published</td></tr><tr><td>端切换</td><td>DecorationSurfaceTabs</td><td>Tab</td><td>无</td><td>始终</td><td>点移动端/PC</td><td>换 surface 画布</td><td>独立两套 page</td><td>无</td><td>无</td><td>activity-layout-mobile/pc</td></tr><tr><td>字段开关</td><td>后台-活动装修-字段设置</td><td>Switch</td><td>选中活动/瞬间块</td><td>始终</td><td>关某项</td><td>commit + draft persist</td><td>C 端对应元素不渲染</td><td>无 toast</td><td>无</td><td>无 HTTP</td></tr></tbody></table>
+<p>C 端 <code>useActivityDecoration</code> 绑定 draft。拖拽即 persist。published 仅「保存」写入，员工端未使用 <code>usePublishedActivityDecoration</code>。</p></article></section>
+<section id="page-h5"><h2>8. H5 页面需求</h2>
+<article><h3>8.1 H5-首页 / 搜索 / 全部</h3>
+<figure><img src="screenshots/H5-首页-页面整体.png" alt="H5-首页-页面整体截图"><figcaption><span class="component-path">H5-首页-页面整体</span>：装修 draft 块顺序：轮播 → HomeSearchRow（搜索按钮+我的图标）→ 活动列表（块 latestCount，默认 3）→ 往期精彩回顾。悬浮回主页。顶栏无「我的活动」文字。</figcaption></figure>
+<figure><img src="screenshots/H5-首页-搜索行.png" alt="H5-首页-搜索行截图"><figcaption><span class="component-path">H5-首页-搜索行</span>：HomeSearchRow：左搜索按钮，右 40×40 用户图标按钮，aria-label=我的活动。</figcaption></figure>
+<figure><img src="screenshots/H5-首页-我的活动.png" alt="H5-首页-我的活动截图"><figcaption><span class="component-path">H5-首页-我的活动</span>：图标按钮 goH5MySignups → #/c/h5/my。依赖装修存在 search 块；删除搜索块后首页无此入口。搜索页/全部活动不渲染。</figcaption></figure>
+<figure><img src="screenshots/H5-首页-轮播图.png" alt="H5-首页-轮播图截图"><figcaption><span class="component-path">H5-首页-轮播图</span>：HomeBanner：无有效图片则整块不渲染；可点进活动/投票/全部/往期。</figcaption></figure>
+<figure><img src="screenshots/H5-首页-搜索入口.png" alt="H5-首页-搜索入口截图"><figcaption><span class="component-path">H5-首页-搜索入口</span>：来自装修 search 块；点击进 #/c/h5/search，不在首页内过滤。</figcaption></figure>
+<figure><img src="screenshots/H5-首页-活动卡片.png" alt="H5-首页-活动卡片截图"><figcaption><span class="component-path">H5-首页-活动卡片</span>：大图：封面 badge+赞+叠标题；HomeQuotaBlock 已报名 a/b、余N位、进度、头像≤4、N人、CTA。左图右文/左文右图：封面无 badge；ActivitySideCopy 标题+置顶/状态/分类/举办方式；compact 名额无头像。</figcaption></figure>
+<figure><img src="screenshots/H5-搜索-空查询.png" alt="H5-搜索-空查询截图"><figcaption><span class="component-path">H5-搜索-空查询</span>：独立搜索页：壳标题「搜索」；ActivitySearchBar 顶栏；空 query「输入名称搜索活动」。无我的图标。</figcaption></figure>
+<figure><img src="screenshots/H5-搜索-有结果.png" alt="H5-搜索-有结果截图"><figcaption><span class="component-path">H5-搜索-有结果</span>：输入「篮球」匹配标题。无匹配「没有匹配的活动」。</figcaption></figure>
+<figure><img src="screenshots/H5-全部活动-页面整体.png" alt="H5-全部活动-页面整体截图"><figcaption><span class="component-path">H5-全部活动-页面整体</span>：可搜+分类（含公益）；有关键字无结果「未找到相关活动」。</figcaption></figure>
+<p>活动块分类 Tab 用 CLIENT_TABS（含公益）。装修画布预览 Tab 写死四项无公益，两端不一致。瞬间块无数据时整段不渲染（非空文案）。列表/搜索/全部数据源须为 5.1 可见集合。卡片字段由装修开关控制，默认全显。</p></article>
+<article><h3>8.2 H5-活动详情</h3>
+<figure><img src="screenshots/H5-活动详情-页面整体.png" alt="H5-活动详情-页面整体截图"><figcaption><span class="component-path">H5-活动详情-页面整体</span>：周四篮球夜：进行中/置顶/周期/体育；活动时间窗与共 N 场；每场开场截止；发起人；OrganizerCheckInQr 仅姓名全等；最近场次余位；已报名人员；介绍。进行中亦可出活动评分区。</figcaption></figure>
+<figure><img src="screenshots/H5-活动详情-已报名人员.png" alt="H5-活动详情-已报名人员截图"><figcaption><span class="component-path">H5-活动详情-已报名人员</span>：入口：头像堆（预览 5）+已报名人员（N）+查看名单。空：「已报名人员 · 暂无已通过报名」。点开 H5 sheet：两列姓名+部门；周期/系列场次日期 Tab；N>5 出搜索姓名或部门。</figcaption></figure>
+<figure><img src="screenshots/H5-活动详情-底栏操作.png" alt="H5-活动详情-底栏操作截图"><figcaption><span class="component-path">H5-活动详情-底栏操作</span>：点赞、收藏、评论（滚到社交区）、分享、主 CTA。</figcaption></figure>
+<figure><img src="screenshots/H5-活动详情-报名CTA.png" alt="H5-活动详情-报名CTA截图"><figcaption><span class="component-path">H5-活动详情-报名CTA</span>：可报时「立即报名」启用，跳转 /signup。</figcaption></figure>
+<figure><img src="screenshots/H5-已结束活动-详情.png" alt="H5-已结束活动-详情截图"><figcaption><span class="component-path">H5-已结束活动-详情</span>：已结束活动展示评分区；CTA「报名已结束」禁用。进行中活动同样可出评分区。</figcaption></figure>
+<figure><img src="screenshots/H5-已结束活动-评分.png" alt="H5-活动详情-活动评分截图"><figcaption><span class="component-path">H5-活动详情-活动评分</span>：canShowActivityRating：进行中或已结束。已通过报名可评 1～5 星 + 确认评分；每人一次，toast「已评分」。</figcaption></figure>
+<figure><img src="screenshots/H5-活动不存在-空态.png" alt="H5-活动详情-活动不存在截图"><figcaption><span class="component-path">H5-活动详情-活动不存在</span>：非法 id：标题与正文「活动不存在」，主按钮返回列表，另有返回上一页/回主页。</figcaption></figure>
+<h4>CTA 状态</h4>
+<table><thead><tr><th>条件</th><th>按钮文案</th><th>启用</th><th>点击</th></tr></thead><tbody><tr><td>已结束或已终止</td><td>报名已结束</td><td>否</td><td>无</td></tr><tr><td>now &lt; signupStartAt</td><td>报名未开始</td><td>否</td><td>无</td></tr><tr><td>已报名+可取消+多场次</td><td>立即报名</td><td>是</td><td>adjust 进报名页</td></tr><tr><td>已报名+可取消</td><td>取消报名</td><td>是</td><td>打开取消弹窗</td></tr><tr><td>已报名其他</td><td>已报名</td><td>否</td><td>无</td></tr><tr><td>报名窗关</td><td>报名已截止</td><td>否</td><td>无</td></tr><tr><td>可报</td><td>立即报名</td><td>是</td><td>signup 页</td></tr></tbody></table>
+<p>无 CTA 文案「已满员」。场次「已满」不禁用勾选、不拦提交。分享：选择联系人 → 确定（N）→ toast「已分享给 N 人」。评论成功「评论成功」。发布瞬间：报名已通过且活动进行中或已结束即可，不限次数；未开始/已终止不可发。按钮「发布瞬间」，成功「发布成功」。</p></article>
+<article><h3>8.3 H5-报名页</h3>
+<figure><img src="screenshots/H5-报名页-表单.png" alt="H5-报名页-表单截图"><figcaption><span class="component-path">H5-报名页-表单</span>：legend 创建=确认报名、调整=立即报名。场次：截止（已截止）disabled；余N位/已满仅文案。默认 5 场，「展开全部场次」。空「暂无可以报名的场次」。</figcaption></figure>
+<table><thead><tr><th>字段名称</th><th>组件路径</th><th>控件类型</th><th>是否必填</th><th>默认值</th><th>校验规则</th><th>选项值</th><th>业务含义</th></tr></thead><tbody><tr><td>参加场次</td><td>H5-报名页-参加场次</td><td>checkbox 组</td><td>周期/系列是</td><td>无</td><td>请选择要参加的场次；请选择仍可报名的场次</td><td>未截止场次；已满仍可勾</td><td>CLIENT_SIGNUP_SESSION_LIMIT=5</td></tr><tr><td>姓名</td><td>H5-报名页-姓名</td><td>text</td><td>是（固定）</td><td>陈产品</td><td>不能为空；最多 20 字</td><td>—</td><td>报名身份</td></tr><tr><td>手机号</td><td>H5-报名页-手机号</td><td>text digit</td><td>按活动配置</td><td>13800001111</td><td>仅允许输入数字；最多 11 字</td><td>—</td><td>联系方式</td></tr><tr><td>报名类型</td><td>类型>1 时</td><td>radio</td><td>是</td><td>第一项</td><td>types=0 显示暂不可报名</td><td>signupSettings.type</td><td>canSubmit 需已选</td></tr><tr><td>分组选择</td><td>H5-报名页-分组</td><td>checkbox 组</td><td>按配置</td><td>—</td><td>展示上限文案，满员不禁用</td><td>组名（上限 N 人）</td><td>inputType=group；提交不拦组余量</td></tr><tr><td>同行人</td><td>companion</td><td>人数+子表</td><td>子项必填</td><td>0</td><td>最多 1～20</td><td>姓名/手机/身份证</td><td>占额外名额 待确认</td></tr></tbody></table>
+<h4>操作</h4>
+<table><thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置</th><th>启用/禁用</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功</th><th>失败</th><th>跳转</th></tr></thead><tbody><tr><td>确认报名</td><td>H5-报名页-确认报名</td><td>主按钮</td><td>types>0 且已选类型且（无需场次或有可报场次）</td><td>canSubmit 否则禁用</td><td>点击</td><td>saveClientSignup</td><td>报名记录</td><td>报名成功 / 已更新报名 / 已取消报名(清光场次)</td><td>校验文案；窗关则 CTA 文案作 toast</td><td>回详情</td></tr><tr><td>取消</td><td>H5-报名页-取消</td><td>次按钮</td><td>无</td><td>始终</td><td>点击</td><td>关闭页</td><td>无</td><td>无</td><td>无</td><td>回详情</td></tr></tbody></table>
+</article>
+<article><h3>8.4 H5-我的 / 收藏 / 瞬间 / 签到</h3>
+<figure><img src="screenshots/H5-我的报名-页面整体.png" alt="H5-我的报名-页面整体截图"><figcaption><span class="component-path">H5-我的报名-页面整体</span>：左图右文卡片（H5_MY_SIGNUPS_LIST_STYLE=left-image）。Tab：待审核/待参加/进行中/已结束/已驳回。</figcaption></figure>
+<figure><img src="screenshots/H5-我的收藏-页面整体.png" alt="H5-我的收藏-页面整体截图"><figcaption><span class="component-path">H5-我的收藏-页面整体</span>：空「还没有收藏活动」+去看看活动。失效活动「活动已失效」。</figcaption></figure>
+<figure><img src="screenshots/H5-往期瞬间-页面整体.png" alt="H5-往期瞬间-页面整体截图"><figcaption><span class="component-path">H5-往期瞬间-页面整体</span>：读装修 moments.listStyle；首页 scroll 在本页变 two-col。空「暂无已结束活动」。</figcaption></figure>
+<figure><img src="screenshots/H5-签到页-结果.png" alt="H5-签到页-场次不存在截图"><figcaption><span class="component-path">H5-签到页-场次不存在</span>：无有效 s/t：活动名下展示「场次不存在」，按钮返回活动。</figcaption></figure>
+<h4>签到失败文案（代码）</h4><p>该活动未开启扫码签到；场次不存在；二维码无效或已刷新；还未到签到时间；签到已截止；请先报名该活动；报名通过后才能签到；未报名该场次。成功：签到成功；已签：你已签到过这场。</p></article></section>
+<section id="page-pc"><h2>9. PC 页面需求</h2>
+<figure><img src="screenshots/PC-首页-页面整体.png" alt="PC-首页-页面整体截图"><figcaption><span class="component-path">PC-首页-页面整体</span>：装修：轮播 + HomeSearchRow + 活动网格（latestCount 默认 6，PC 列数 columnCount）+ 往期。卡片样式同 H5 五套 listStyle。顶栏无我的入口。</figcaption></figure>
+<figure><img src="screenshots/PC-首页-搜索行.png" alt="PC-首页-搜索行截图"><figcaption><span class="component-path">PC-首页-搜索行</span>：与 H5 同结构 HomeSearchRow；搜索不再塞进活动区块标题栏。</figcaption></figure>
+<figure><img src="screenshots/PC-首页-我的活动.png" alt="PC-首页-我的活动截图"><figcaption><span class="component-path">PC-首页-我的活动</span>：c-home-mine-btn → goPcMySignups。搜索页/全部活动无此按钮。</figcaption></figure>
+<figure><img src="screenshots/PC-首页-轮播图.png" alt="PC-首页-轮播图截图"><figcaption><span class="component-path">PC-首页-轮播图</span>：PC 轮播按 375:bannerHeight 比例；无图不渲染。</figcaption></figure>
+<figure><img src="screenshots/PC-全部活动-页面整体.png" alt="PC-全部活动-页面整体截图"><figcaption><span class="component-path">PC-全部活动-页面整体</span>：与 H5 同一套过滤与 CTA 文案，布局为网格。</figcaption></figure>
+<figure><img src="screenshots/PC-搜索-页面整体.png" alt="PC-搜索-页面整体截图"><figcaption><span class="component-path">PC-搜索-页面整体</span>：搜索变体，逻辑同 H5。</figcaption></figure>
+<figure><img src="screenshots/PC-活动详情-页面整体.png" alt="PC-活动详情-页面整体截图"><figcaption><span class="component-path">PC-活动详情-页面整体</span>：左介绍右 aside：名额、签到码（发起人）、场次、名单、engage、CTA。</figcaption></figure>
+<figure><img src="screenshots/PC-活动详情-右侧栏.png" alt="PC-活动详情-右侧栏截图"><figcaption><span class="component-path">PC-活动详情-右侧栏</span>：名额与 CTA 固定在右侧。已报名人员同 H5 组件，弹层为 Modal。</figcaption></figure>
+<figure><img src="screenshots/PC-活动详情-已报名人员.png" alt="PC-活动详情-已报名人员截图"><figcaption><span class="component-path">PC-活动详情-已报名人员</span>：Modal 两列名单；场次日期 Tab 与搜索规则同 H5。</figcaption></figure>
+<figure><img src="screenshots/PC-活动详情-报名弹窗.png" alt="PC-活动详情-报名弹窗截图"><figcaption><span class="component-path">PC-活动详情-报名弹窗</span>：hash /signup 或点立即报名打开 PcSignupModal，表单与 H5 SignupForm 同一套。</figcaption></figure>
+<figure><img src="screenshots/PC-已结束活动-详情.png" alt="PC-已结束活动-详情截图"><figcaption><span class="component-path">PC-已结束活动-详情</span>：评分与瞬间规则同 H5。</figcaption></figure>
+<figure><img src="screenshots/PC-我的报名-页面整体.png" alt="PC-我的报名-页面整体截图"><figcaption><span class="component-path">PC-我的报名-页面整体</span>：PC_MY_SIGNUPS_LIST_STYLE=left-image，不跟首页装修 listStyle。五 Tab 同 H5。</figcaption></figure>
+<figure><img src="screenshots/PC-我的收藏-页面整体.png" alt="PC-我的收藏-页面整体截图"><figcaption><span class="component-path">PC-我的收藏-页面整体</span>：空态同 H5。</figcaption></figure>
+<figure><img src="screenshots/PC-往期瞬间-页面整体.png" alt="PC-往期瞬间-页面整体截图"><figcaption><span class="component-path">PC-往期瞬间-页面整体</span>：返回 ← 返回首页。</figcaption></figure>
+<p>PC 无独立 checkin 路由。员工扫码必须用 H5 URL。发现/搜索/详情过滤同 5.1。发起人若在 PC 详情满足姓名全等，可在 aside 看 OrganizerCheckInQr。</p></section>
+<section id="data-fields"><h2>10. 数据字段与枚举</h2>
+<table><thead><tr><th>枚举</th><th>值</th><th>用途</th></tr></thead><tbody><tr><td>activityTypes</td><td>公司活动、疗休养活动、体检活动、项目活动</td><td>表单类型；疗休养有额外行程字段</td></tr><tr><td>visibilityOptions</td><td>全员、按部门、自定义人群、导入人群</td><td>后台配置；C 端按 5.1 过滤</td></tr><tr><td>auditStatuses</td><td>待提交、待审核、已通过、已驳回、无需审核</td><td>活动审批</td></tr><tr><td>publishStatuses</td><td>未发布、已发布</td><td>C 端可见门槛</td></tr><tr><td>activityStatuses</td><td>未开始、进行中、已结束、已终止</td><td>时间/终止写入</td></tr><tr><td>lifecycleStatuses</td><td>未发布 + 上述四态</td><td>列表展示：未发布优先</td></tr><tr><td>scheduleType</td><td>once / recurring / series</td><td>单次/周期/系列</td></tr><tr><td>CLIENT_TABS</td><td>全部、文化、体育、培训、公益</td><td>C 端分类，与后台分类名耦合</td></tr><tr><td>报名记录状态</td><td>待审核、已通过、已驳回</td><td>related signups</td></tr><tr><td>activityDecoBlockTypes</td><td>search / banner / activity / moments</td><td>首页装修块</td></tr><tr><td>activityDecoListStyles</td><td>large-image / two-col / left-image / left-text / scroll</td><td>卡片布局</td></tr><tr><td>sessionOverviewStatuses</td><td>未开始、进行中、已结束、已取消</td><td>纯函数 deriveClockSessionStatus；报名 Tab 未渲染概况表</td></tr><tr><td>ACTIVITY_DECO_MOCK_VERSION</td><td>11</td><td>localStorage 版本不匹配则丢弃装修</td></tr></tbody></table>
+<p>ACTIVITY_MOCK_VERSION=38。种子活动 28 条（含志愿服务说明会）。ACTIVITY_POINT_RULES_MOCK_VERSION=7。报名积分默认下限 1、上限 20；signupPointsDailyMax 仍存模型默认 10，规则页活动积分行不展示。评论/打分/瞬间默认单次 1、日上限 10。装修 STORAGE_KEY=<code>koni-activity-decoration</code>。</p></section>
+<section id="apis"><h2>11. API / 数据接口清单</h2>
+<p>代码中<strong>无</strong> fetch / axios。活动/报名仍内存 mock。装修与列表视图使用 localStorage。engagement 刷新仍丢。</p>
+<table><thead><tr><th>接口用途</th><th>方法</th><th>路径</th><th>触发场景</th><th>请求参数</th><th>响应字段</th><th>是否真实接口</th><th>备注</th></tr></thead><tbody><tr><td>活动 CRUD</td><td>—</td><td>—</td><td>保存/删</td><td>Activity</td><td>—</td><td>否</td><td>activityStore</td></tr><tr><td>发布/撤销/终止/截止报名</td><td>—</td><td>—</td><td>列表按钮</td><td>id</td><td>—</td><td>否</td><td>patchActivities</td></tr><tr><td>报名提交/取消/签到</td><td>—</td><td>—</td><td>C 端</td><td>answers / token</td><td>—</td><td>否</td><td>signupStore</td></tr><tr><td>签到码 URL</td><td>—</td><td>hash</td><td>扫码</td><td>s,t</td><td>—</td><td>否</td><td>activityCheckIn 拼 #/c/h5/{id}/checkin</td></tr><tr><td>装修草稿/发布</td><td>localStorage</td><td>koni-activity-decoration</td><td>拖拽/保存</td><td>draft+published 两套 page</td><td>pageTitle+blocks</td><td>否（浏览器存储）</td><td>C 端读 draft</td></tr><tr><td>列表视图</td><td>localStorage</td><td>activity-list-view</td><td>切列表/卡片</td><td>list|card</td><td>—</td><td>否</td><td>readListViewMode</td></tr></tbody></table>
+<p>建议接口（推测需要，非已实现）：GET/POST/PUT/DELETE /activities；POST publish/revoke/terminate/close-signup；报名审批；分类；积分规则；签到校验；文件导入。</p></section>
+<section id="exceptions"><h2>12. 异常场景与边界条件</h2>
+<table><thead><tr><th>场景</th><th>用户操作</th><th>系统行为</th><th>证据</th></tr></thead><tbody><tr><td>非法活动 id</td><td>打开 #/c/h5/999</td><td>活动不存在 + 返回列表</td><td>截图 H5-活动不存在</td></tr><tr><td>签到缺场次参数</td><td>打开 checkin 无 query</td><td>场次不存在</td><td>截图 H5-签到页</td></tr><tr><td>动态码过期</td><td>扫旧码</td><td>二维码无效或已刷新</td><td>activityCheckIn</td></tr><tr><td>未报名扫码</td><td>扫码</td><td>请先报名该活动 / 未报名该场次 / 报名通过后才能签到</td><td>applyActivityCheckIn</td></tr><tr><td>过早/过晚扫</td><td>扫码</td><td>还未到签到时间 / 签到已截止</td><td>开放分钟与场次结束</td></tr><tr><td>报名校验</td><td>空姓名/超长/非数字</td><td>{label}不能为空 / 不能超过 N 字 / 仅允许输入数字</td><td>SignupForm</td></tr><tr><td>满员场次</td><td>勾选</td><td>展示已满；checkbox 不禁用；提交不校验名额</td><td>SignupForm remainLabel</td></tr><tr><td>活动占用去重</td><td>一人多场</td><td>活动已报名人数按人计 1；场次余位按含该场次的记录数</td><td>uniqueBySignupOccupant vs sessionOccupiedCount</td></tr><tr><td>截止后取消</td><td>取消报名</td><td>报名已截止，无法取消</td><td>cancelSignup closed</td></tr><tr><td>发起人取消</td><td>点取消</td><td>与普通员工相同：弹窗确认后取消报名</td><td>发起人是文本，不拦截</td></tr><tr><td>批量发布无资格</td><td>批量发布</td><td>已选未发布活动均未审批通过… 或均已发布</td><td>ActivityListPage</td></tr><tr><td>分类占用删除</td><td>删除分类</td><td>分类「」已被活动使用，无法删除</td><td>isCategoryInUse</td></tr><tr><td>奖品导入非模板</td><td>导入</td><td>演示环境请下载 CSV 模板后导入</td><td>PrizeList</td></tr><tr><td>未保存离开表单</td><td>取消</td><td>未保存的修改将丢失</td><td>dirty confirm</td></tr><tr><td>已结束/已终止点编辑</td><td>列表/详情编辑按钮 disabled</td><td>toast：活动已结束/已终止，不能编辑</td><td>canEditActivity</td></tr><tr><td>装修去掉搜索块</td><td>画布删除搜索</td><td>首页无搜索也无「我的活动」图标</td><td>HomeMineBtn 只包在 search 块</td></tr><tr><td>搜索/全部页找我的</td><td>进 search 或 list</td><td>无 c-home-mine-btn</td><td>H5ActivityHome 测试</td></tr><tr><td>单次活动报名 Tab</td><td>打开报名</td><td>无场次筛、无人表场次列</td><td>needsSessionPick=false</td></tr><tr><td>装修无轮播图</td><td>去掉全部 imageUrl</td><td>HomeBanner return null</td><td>HomeBanner</td></tr><tr><td>可见范围外用户</td><td>打开列表/深链</td><td>不出现；详情/报名/签到「活动不存在」</td><td>5.1；原型未接</td></tr><tr><td>司龄不足</td><td>打开列表/报名</td><td>不可见且不可报</td><td>5.1 报名司龄限制</td></tr></tbody></table>
+</section>
+<section id="non-functional"><h2>13. 非功能需求</h2>
+<ul><li>兼容：后台 Ant Design 桌面布局；H5 390 宽卡片；PC 宽屏双栏。<span class="status todo">待确认</span> 具体浏览器矩阵。</li>
+<li>性能：活动列表 mock 28 条。首页条数由装修 latestCount（默认 H5 3 / PC 6）。</li>
+<li>安全：无鉴权、无 CSRF、签到 token 仅前端生成。<span class="status todo">待确认</span></li>
+<li>无障碍：部分 role=dialog/tablist；H5 底栏 aria 点赞/收藏。</li>
+<li>错误：antd message / CEndToast；无全局错误页除活动不存在。</li></ul></section>
+<section id="analytics"><h2>14. 埋点与指标建议</h2><p><span class="status guess">建议补充</span> 代码无埋点 SDK。</p>
+<table><thead><tr><th>事件名称</th><th>触发动作</th><th>关键属性</th><th>业务目的</th></tr></thead><tbody><tr><td>activity_publish</td><td>发布成功</td><td>activity_id, schedule_type</td><td>发布漏斗</td></tr><tr><td>activity_signup_submit</td><td>确认报名</td><td>id, session_ids, is_adjust</td><td>报名转化</td></tr><tr><td>activity_signup_cancel</td><td>确认取消</td><td>id</td><td>流失</td></tr><tr><td>activity_checkin_result</td><td>扫码结果</td><td>id, session_id, result</td><td>核销率</td></tr><tr><td>activity_cta_disabled_click</td><td>点禁用 CTA</td><td>label</td><td>发现规则误解</td></tr></tbody></table>
+</section>
+<section id="acceptance"><h2>15. 验收标准</h2>
+<ul>
+<li>Given 未发布活动 When 员工打开 H5 列表 Then 不出现该活动。</li>
+<li>Given 可见范围=按部门 When 员工部门不在已选及下级 Then 列表/搜索/往期不出现；打开详情 hash 为「活动不存在」。</li>
+<li>Given 自定义人群不含当前姓名 When 打开 Then 同上。</li>
+<li>Given 导入人群不含当前姓名与手机 When 打开 Then 同上。</li>
+<li>Given 报名司龄限制=3 年且员工司龄&lt;3 When 打开 Then 不可见且不可报名。</li>
+<li>Given 发起人本人 When 可见范围不含自己 Then 仍可见自己发起的活动。</li>
+<li>Given 已发布可报活动 When 员工提交合法表单 Then toast 报名成功且后台报名 Tab 可见。</li>
+<li>Given 已报名且报名窗内 When 点取消报名 Then 弹窗确认后取消，发起人字段不拦截。</li>
+<li>Given 进行中已发布 When 点撤销 Then 按钮禁用并提示应终止。</li>
+<li>Given 开启静态签到 When 下载二维码 Then 成功提示二维码已下载。</li>
+<li>Given 动态码 When 过期再扫 Then 二维码无效或已刷新。</li>
+<li>Given 已结束或进行中且已通过报名 When 评分 Then 首次 toast 已评分，重复不可再评。</li>
+<li>Given 进行中已通过报名 When 打开详情 Then 可见活动评分区块。</li>
+<li>Given 报名已通过且活动进行中或已结束 When 打开发布瞬间 Then 可发布，且不限制条数。</li>
+<li>Given 分类被活动引用 When 删除 Then 无法删除提示。</li>
+<li>Given 已结束活动 When 点编辑 Then 禁用并提示活动已结束，不能编辑。</li>
+<li>Given 装修保存 When 打开 H5 首页 Then 标题与块顺序与画布一致（现状：草稿即可见，不点保存也会变）。</li>
+<li>Given 周期活动报名 Tab When 收起查询 Then 仍能看到场次 Select；单次活动无该筛、无人表场次列。</li>
+<li>Given 概览改日期范围 When 刷新 KPI Then 数字与待办/进行中表随范围变。</li>
+<li>Given 打开规则页 When 看标题与侧栏 Then 文案为「规则设置（仅演示）」。</li>
+<li>Given 打开活动装修 When 看侧栏 Then 「活动装修（仅演示）」；页内可见「仅演示样式、以首页装修为准」类说明。</li>
+<li>Given 规则页活动积分上限小于下限 When 失焦或保存 Then 「上限不能小于下限」。</li>
+<li>Given 规则页评论每日上限小于单次 When 保存 Then 「每日上限不能小于单次积分」。</li>
+<li>Given 活动积分开启且填出范围 When 保存活动 Then 「报名积分须在 min～max 之间」或表单项「须在 min～max 之间」。</li>
+<li>Given 周期报名页超过 5 场 When 未展开 Then 只显示 5 场且有「展开全部场次」。</li>
+<li>Given 评论 Tab 点回复 When 选马甲账号并填内容 Then toast 回复成功且员工端可见该回复。</li>
+<li>Given 装修关闭「报名按钮」When 打开 H5 首页 Then 活动卡无 CTA 文案。</li>
+<li>Given 搜索页或全部活动页 When 查看顶栏/搜索行 Then 无我的活动按钮。</li>
+</ul></section>
+<section id="risks"><h2>16. 风险与待确认问题</h2><ul>
+<li>真实组织树、导入模板列、推送渠道、积分入账账户 <span class="status todo">待确认</span>。</li>
+<li>报名是否允许一人多场占多个名额、同行人是否占名额 <span class="status todo">待确认</span>。</li>
+<li>活动审批默认关（activityApprovalEnabled=false），生产是否默认开 <span class="status todo">待确认</span>。</li>
+<li>兴趣圈活动是否复用本 PRD 状态机——代码另有 interest-group-activity-*，本文件不覆盖。</li>
+<li>装修「保存」与 C 端读 draft 语义分裂。</li>
+<li>截图「签到码弹窗/截止确认」实际为更多菜单展开态；确认框与 QR Modal 以文案表为准。</li>
+</ul></section>
+</main>
+</div>
+</div>
+<script>
+  document.querySelectorAll('[data-toggle-toc]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var layout = document.getElementById('prdLayout');
+      var collapsed = layout.classList.toggle('toc-collapsed');
+      document.querySelectorAll('[data-toggle-toc]').forEach(function (btn) {
+        btn.setAttribute('aria-label', collapsed ? '显示目录' : '隐藏目录');
+        btn.setAttribute('title', collapsed ? '显示目录' : '隐藏目录');
+      });
+    });
+  });
+</script>
+</body>
+</html>

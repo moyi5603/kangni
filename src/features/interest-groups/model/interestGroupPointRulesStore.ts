@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import {
   ACTIVITY_POINT_RULES_MOCK_VERSION,
   cloneActivityPointRules,
-  initialActivityPointRules,
+  initialInterestGroupPointRules,
   type ActivityPointRules,
 } from '../../activities/model/activityPointRules';
 
 let mockVersion = ACTIVITY_POINT_RULES_MOCK_VERSION;
-let rules = cloneActivityPointRules(initialActivityPointRules);
+let rules = cloneActivityPointRules(initialInterestGroupPointRules);
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -16,7 +16,7 @@ function emit() {
 
 function syncMockData() {
   if (mockVersion === ACTIVITY_POINT_RULES_MOCK_VERSION) return;
-  rules = cloneActivityPointRules(initialActivityPointRules);
+  rules = cloneActivityPointRules(initialInterestGroupPointRules);
   mockVersion = ACTIVITY_POINT_RULES_MOCK_VERSION;
   emit();
 }
@@ -24,7 +24,7 @@ function syncMockData() {
 if (import.meta.hot) {
   import.meta.hot.accept('../../activities/model/activityPointRules', (mod) => {
     if (!mod) return;
-    rules = cloneActivityPointRules(mod.initialActivityPointRules);
+    rules = cloneActivityPointRules(mod.initialInterestGroupPointRules);
     mockVersion = mod.ACTIVITY_POINT_RULES_MOCK_VERSION;
     emit();
   });

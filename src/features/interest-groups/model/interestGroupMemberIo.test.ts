@@ -7,23 +7,29 @@ import {
 } from './interestGroupMemberIo';
 
 describe('interestGroupMemberIo', () => {
-  it('parses name, phone and department', () => {
-    const text = '姓名,手机号,部门\n周工,13800001005,总装车间\n林销,13800001008,华南大区';
+  it('parses name and department without phone', () => {
+    const text = '姓名,部门\n周工,总装车间\n林销,华南大区';
     expect(parseInterestGroupMemberImportCsv(text)).toEqual({
       rows: [
-        { name: '周工', phone: '13800001005', department: '总装车间' },
-        { name: '林销', phone: '13800001008', department: '华南大区' },
+        { name: '周工', department: '总装车间' },
+        { name: '林销', department: '华南大区' },
       ],
       errors: [],
     });
   });
 
+  it('rejects import tables that still use a phone header', () => {
+    const parsed = parseInterestGroupMemberImportCsv('姓名,手机号,部门\n周工,13800001005,总装车间');
+    expect(parsed.rows).toEqual([]);
+    expect(parsed.errors).toEqual(['表头须为：姓名、部门']);
+  });
+
   it('resolves org people and skips existing or unknown names', () => {
     const resolved = resolveInterestGroupMemberImport(
       [
-        { name: '周工', phone: '13800001005', department: '总装车间' },
-        { name: '张悦', phone: '13800000000', department: '前端组' },
-        { name: '路人甲', phone: '13800001999', department: '前端组' },
+        { name: '周工', department: '总装车间' },
+        { name: '张悦', department: '前端组' },
+        { name: '路人甲', department: '前端组' },
       ],
       new Set(['张悦']),
     );

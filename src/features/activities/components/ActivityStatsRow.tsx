@@ -25,14 +25,14 @@ export function ActivityStatsRow({ activity, embedded = false }: { activity: Act
       value: stats.signupCount,
       suffix: signupTotalLimit > 0 ? `/ ${signupTotalLimit}` : undefined,
     },
+    { title: '评论数', value: stats.commentCount },
+    { title: '精彩瞬间数', value: stats.momentCount },
     { title: '待审核报名', value: stats.pendingSignupCount },
     {
       title: '报名额使用率',
       value: stats.quotaUsage === null ? '—' : stats.quotaUsage,
       suffix: stats.quotaUsage === null ? undefined : '%',
     },
-    { title: '评论数', value: stats.commentCount },
-    { title: '精彩瞬间数', value: stats.momentCount },
     { title: '平均分', value: ratingAverage === null ? '—' : ratingAverage.toFixed(1) },
     { title: '评分人数', value: activityRatingCount(activity.id) },
   ];

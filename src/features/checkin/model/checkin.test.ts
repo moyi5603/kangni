@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CHECKIN_MOODS,
   CHECKIN_OWNER_APP_LABEL,
+  applyCheckinMood,
   canDeleteCheckinTheme,
+  checkinRewardLines,
   checkinStatusOf,
   calendarDayKey,
   nextStreak,
@@ -80,6 +83,28 @@ describe('shouldGrantReward', () => {
   it('requires streak / total thresholds', () => {
     expect(shouldGrantReward(rule({ trigger: 'streak', streakDays: 7 }), { streak: 6, total: 6, alreadyGranted: false })).toBe(false);
     expect(shouldGrantReward(rule({ trigger: 'total', totalTimes: 5 }), { streak: 1, total: 5, alreadyGranted: false })).toBe(true);
+  });
+});
+
+describe('checkin mood', () => {
+  it('lists six moods for the H5 calendar', () => {
+    expect(CHECKIN_MOODS).toEqual(['平静', '惊喜', '幸福', '担忧', '愤怒', '悲伤']);
+  });
+
+  it('writes optional mood on submit and can update later', () => {
+    const first = submitCheckinResult({
+      theme: theme(),
+      logs: [],
+      grants: [],
+      userId: 'u1',
+      at: '2026-09-10 09:00',
+      mood: '平静',
+    });
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    expect(first.log.mood).toBe('平静');
+    const next = applyCheckinMood([first.log], first.log.id, '幸福');
+    expect(next[0]?.mood).toBe('幸福');
   });
 });
 
@@ -212,6 +237,48 @@ describe('submitCheckinResult', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.grants.some((g) => g.rewardKind === '勋章')).toBe(true);
+  });
+});
+
+describe('checkinRewardLines', () => {
+  it('lists points, medal names and lottery chances', () => {
+    expect(
+      checkinRewardLines(
+        [
+          {
+            id: 1,
+            themeId: 1,
+            ruleId: 'p',
+            userId: 'u1',
+            user: '周洁',
+            department: '品牌',
+            rewardKind: '积分',
+            content: '+5',
+            ruleSummary: '每次打卡',
+            grantedAt: '2026-09-11 09:00',
+            status: '成功',
+          },
+          {
+            id: 2,
+            themeId: 1,
+            ruleId: 'm',
+            userId: 'u1',
+            user: '周洁',
+            department: '品牌',
+            rewardKind: '勋章',
+            content: 'attend',
+            ruleSummary: '连续 7 天',
+            grantedAt: '2026-09-11 09:00',
+            status: '成功',
+          },
+        ],
+        { medalName: (id) => (id === 'attend' ? '满勤打卡' : id), lotteryChance: 2 },
+      ),
+    ).toEqual(['积分 +5', '勋章「满勤打卡」', '抽奖次数 +2']);
+  });
+
+  it('returns empty when nothing was granted', () => {
+    expect(checkinRewardLines([])).toEqual([]);
   });
 });
 

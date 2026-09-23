@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react';
+import dayjs from 'dayjs';
 import { getActivities, patchActivities } from './activityStore';
-import { CATEGORY_MOCK_VERSION, initialCategories, type ActivityCategoryRecord } from './category';
+import {
+  CATEGORY_MOCK_VERSION,
+  compareActivityCategories,
+  countActivityCategoryUsage,
+  initialCategories,
+  nextActivityCategoryOrder,
+  type ActivityCategoryFormValues,
+  type ActivityCategoryRecord,
+} from './category';
 
 let mockVersion = CATEGORY_MOCK_VERSION;
 let categories = [...initialCategories];
@@ -28,45 +37,97 @@ if (import.meta.hot) {
 
 export function getCategories(): ActivityCategoryRecord[] {
   syncMockData();
-  return categories;
+  return [...categories].sort(compareActivityCategories);
 }
 
-export function isCategoryInUse(name: string): boolean {
-  return getActivities().some((activity) => activity.category === name);
-}
+export type DeleteCategoryResult = { ok: true; activityCount: number } | { ok: false; reason: 'not-found' };
 
-export function upsertCategory(category: ActivityCategoryRecord) {
-  const current = categories.find((item) => item.id === category.id);
-  categories = current ? categories.map((item) => (item.id === category.id ? category : item)) : [category, ...categories];
-  if (current && current.name !== category.name) {
-    patchActivities((list) =>
-      list.map((activity) => (activity.category === current.name ? { ...activity, category: category.name } : activity)),
-    );
-  }
-  emit();
-}
-
-export function removeCategory(id: number): boolean {
+export function deleteCategory(id: number): DeleteCategoryResult {
+  syncMockData();
   const current = categories.find((item) => item.id === id);
-  if (!current) return false;
-  if (isCategoryInUse(current.name)) return false;
+  if (!current) return { ok: false, reason: 'not-found' };
+  const activityCount = countActivityCategoryUsage(current.name, getActivities());
   categories = categories.filter((item) => item.id !== id);
+  patchActivities((list) =>
+    list.map((activity) => (activity.category === current.name ? { ...activity, category: '未分类' } : activity)),
+  );
   emit();
-  return true;
+  return { ok: true, activityCount };
+}
+
+export function upsertCategory(values: ActivityCategoryFormValues, id?: number): ActivityCategoryRecord {
+  syncMockData();
+  const name = values.name.trim();
+  if (id) {
+    const current = categories.find((item) => item.id === id);
+    if (!current) throw new Error('分类不存在');
+    const next: ActivityCategoryRecord = {
+      ...current,
+      name,
+      order: values.order ?? current.order,
+    };
+    categories = categories.map((item) => (item.id === id ? next : item));
+    if (current.name !== name) {
+      patchActivities((list) =>
+        list.map((activity) => (activity.category === current.name ? { ...activity, category: name } : activity)),
+      );
+    }
+    emit();
+    return next;
+  }
+  const created: ActivityCategoryRecord = {
+    id: Date.now(),
+    name,
+    order: values.order ?? nextActivityCategoryOrder(categories),
+    status: '启用',
+    createdAt: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+  };
+  categories = [created, ...categories];
+  emit();
+  return created;
 }
 
 export function setCategoryStatus(ids: number[], status: ActivityCategoryRecord['status']) {
+  syncMockData();
   const idSet = new Set(ids);
   categories = categories.map((item) => (idSet.has(item.id) ? { ...item, status } : item));
   emit();
 }
 
+export function moveCategory(id: number, dir: -1 | 1): boolean {
+  syncMockData();
+  const sorted = [...categories].sort(compareActivityCategories);
+  const index = sorted.findIndex((item) => item.id === id);
+  const nextIndex = index + dir;
+  if (index < 0 || nextIndex < 0 || nextIndex >= sorted.length) return false;
+  const current = sorted[index];
+  const neighbor = sorted[nextIndex];
+  if (current.order === neighbor.order) {
+    const currentCreated = current.createdAt;
+    sorted[index] = { ...current, createdAt: neighbor.createdAt };
+    sorted[nextIndex] = { ...neighbor, createdAt: currentCreated };
+  } else {
+    sorted[index] = { ...current, order: neighbor.order };
+    sorted[nextIndex] = { ...neighbor, order: current.order };
+  }
+  const nextById = new Map(sorted.map((item) => [item.id, item]));
+  categories = categories.map((item) => nextById.get(item.id) ?? item);
+  emit();
+  return true;
+}
+
+export function __resetCategoryStoreForTest() {
+  categories = [...initialCategories];
+  mockVersion = CATEGORY_MOCK_VERSION;
+  emit();
+}
+
 export function useCategories() {
-  const [list, setList] = useState<ActivityCategoryRecord[]>(() => [...categories]);
+  const [list, setList] = useState<ActivityCategoryRecord[]>(() => [...categories].sort(compareActivityCategories));
   useEffect(() => {
     syncMockData();
-    setList([...categories]);
-    const onChange = () => setList([...categories]);
+    setList([...categories].sort(compareActivityCategories));
+    const onChange = () => setList([...categories].sort(compareActivityCategories));
     listeners.add(onChange);
     return () => {
       listeners.delete(onChange);

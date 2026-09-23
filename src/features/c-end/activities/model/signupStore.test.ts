@@ -8,6 +8,7 @@ import {
   resetClientSignups,
   submitSignup,
   cancelSignup,
+  cancelSignupToast,
   applyActivityCheckIn,
   updateSignup,
 } from './signupStore';
@@ -79,7 +80,7 @@ describe('signup store', () => {
     expect(row).toMatchObject({
       name: DEMO_SIGNUP_USER.name,
       signupType: '个人报名',
-      department: '职能中心',
+      department: '华东大区',
       status: '已通过',
     });
   });
@@ -109,16 +110,26 @@ describe('signup store', () => {
 
   it('cancels before the signup deadline and frees the seat', () => {
     loadDemoSignups();
+    expect(cancelSignup(26, Date.parse('2026-08-19T12:00:00'))).toBe('ok');
+    expect(getUserSignups().some((item) => item.activityId === 26)).toBe(false);
+    expect(getRelatedList('signups').find((item) => item.id === 18)?.status).toBe('已取消');
+    expect(submitSignup(26, '个人报名')).toBe('ok');
+  });
+
+  it('lets the organizer cancel before the deadline', () => {
+    loadDemoSignups();
     expect(cancelSignup(2, Date.parse('2026-08-19T12:00:00'))).toBe('ok');
     expect(getUserSignups().some((item) => item.activityId === 2)).toBe(false);
     expect(getRelatedList('signups').find((item) => item.id === 4)?.status).toBe('已取消');
-    expect(submitSignup(2, '个人报名')).toBe('ok');
+    expect(cancelSignupToast('ok')).toBe('已取消报名');
+    expect(cancelSignupToast('closed')).toBe('报名已截止，无法取消');
+    expect(cancelSignupToast('missing')).toBe('取消失败');
   });
 
   it('refuses cancel after the signup deadline', () => {
     loadDemoSignups();
-    expect(cancelSignup(2, Date.parse('2026-09-01T12:00:00'))).toBe('closed');
-    expect(getUserSignups().some((item) => item.activityId === 2)).toBe(true);
+    expect(cancelSignup(26, Date.parse('2027-01-01T12:00:00'))).toBe('closed');
+    expect(getUserSignups().some((item) => item.activityId === 26)).toBe(true);
   });
 
   it('reflects admin status patches on the client list', () => {
@@ -176,6 +187,15 @@ describe('signup store', () => {
     expect(applyActivityCheckIn(26, session!.id, token, now)).toEqual({ ok: true, already: true });
     const row = getRelatedList('signups').find((item) => item.id === 18);
     expect(row?.checkIns?.[session!.id]).toMatch(/^\d{4}-\d{2}-\d{2} /);
+  });
+
+  it('lets the organizer change session picks', () => {
+    restoreRelatedSignups();
+    const before = getRelatedList('signups').find((item) => item.activityId === 27 && item.name === '陈产品');
+    expect(updateSignup(27, '个人报名', { 场次: 's-0-202609050900' }, Date.parse('2026-08-27T11:00:00'))).toBe('ok');
+    expect(getRelatedList('signups').find((item) => item.id === before?.id)?.answers?.['场次']).toBe(
+      's-0-202609050900',
+    );
   });
 
   it('updates unfinished session picks on an existing signup', () => {

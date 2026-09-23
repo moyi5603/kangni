@@ -1,18 +1,26 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   applicationMenus,
   applications,
   getApplication,
   getDirectApplications,
+  isMutedHeaderApplication,
+  isMutedSwitcherApplication,
   visibleApplications,
   parseCEndHash,
   parseLocationHash,
   siderSelectedKey,
   toLocationHash,
   toCEndPortalHash,
+  goH5Back,
   toH5CourseListHash,
   toH5ExamListHash,
+  toH5PracticeBankHash,
+  toH5PracticeQuizHash,
+  toH5LearningPlanListHash,
   toH5VoteListHash,
+  withCEndEmpty,
+  isCEndEmptyHash,
   toH5VoteV2ListHash,
   toH5VoteV2RecordsHash,
   toH5VoteV2HomeHash,
@@ -56,8 +64,37 @@ import {
   toPcActivitySearchHash,
   toPcPastMomentsHash,
   toH5HonorHash,
+  toH5IncentiveHash,
+  toPcIncentiveHash,
+  parseIncentiveH5Hash,
+  toH5DailyCheckinHash,
+  toH5LotteryListHash,
+  toH5LotteryPlayHash,
+  toH5ContestHomeHash,
+  toH5ContestMineHash,
+  toH5ContestEventsHash,
+  toH5ContestDocsHash,
+  toH5ContestDetailHash,
+  toH5ContestSignupHash,
+  toH5ContestChallengeHash,
+  toH5ContestRankHash,
+  toH5ContestWrongHash,
+  toH5CourseNotesHash,
+  toH5CourseNoteHash,
   toH5HonorAdminHash,
   toH5InterestGroupsHash,
+  toH5ForumHash,
+  toH5ForumBoardHash,
+  toH5ForumTopicHash,
+  toH5ForumMineHash,
+  toPcForumBoardHash,
+  toPcForumTopicHash,
+  toPcForumMineHash,
+  toH5MailboxHash,
+  toH5MailboxTopicHash,
+  toPcMailboxHash,
+  toPcMailboxTopicHash,
+  toPcProfileHash,
   toPcInterestGroupsHash,
   toH5IgPastMomentsHash,
   toPcIgPastMomentsHash,
@@ -69,18 +106,14 @@ import {
 describe('workbench application menus', () => {
   it('exposes H5装修 and PC装修 as first-level items', () => {
     expect(applicationMenus.workbench).toEqual([
-      {
-        key: 'workbench-overview',
-        icon: 'dashboard',
-        label: '概览',
-        children: [
-          { key: 'dashboard', icon: 'dashboard', label: '数据看板' },
-          { key: 'my-tasks', icon: 'checkSquare', label: '我的待办' },
-        ],
-      },
       { key: 'h5-decoration', icon: 'layout', label: 'H5装修' },
       { key: 'pc-decoration', icon: 'appstore', label: 'PC装修' },
     ]);
+    expect(applicationMenus.workbench.some((item) => item.label === '数据看板' || item.label === '我的待办' || item.label === '概览')).toBe(false);
+    expect(getApplication('workbench')?.defaultPage).toBe('h5-decoration');
+    expect(parseLocationHash('#/workbench')).toEqual({ application: 'workbench', page: 'h5-decoration' });
+    expect(parseLocationHash('#/workbench/dashboard')).toEqual({ application: 'workbench', page: 'h5-decoration' });
+    expect(parseLocationHash('#/workbench/my-tasks')).toEqual({ application: 'workbench', page: 'h5-decoration' });
     expect(parseLocationHash('#/workbench/h5-decoration')).toEqual({
       application: 'workbench',
       page: 'h5-decoration',
@@ -99,6 +132,26 @@ describe('applications', () => {
     expect(applications.some((item) => item.label === '培训课程')).toBe(false);
   });
 
+  it('marks 组织管理, 商品管理 and 订单管理 as muted header apps that stay clickable', () => {
+    expect(isMutedHeaderApplication('organization')).toBe(true);
+    expect(isMutedHeaderApplication('products')).toBe(true);
+    expect(isMutedHeaderApplication('orders')).toBe(true);
+    expect(isMutedHeaderApplication('workbench')).toBe(false);
+    expect(isMutedHeaderApplication('care')).toBe(false);
+  });
+
+  it('marks 课程, 技能大赛, 考试练习, 直播, 抽奖, 打卡 and 学习计划 as muted switcher apps that stay clickable', () => {
+    expect(isMutedSwitcherApplication('training')).toBe(true);
+    expect(isMutedSwitcherApplication('skills-contest')).toBe(true);
+    expect(isMutedSwitcherApplication('exam')).toBe(true);
+    expect(isMutedSwitcherApplication('live')).toBe(true);
+    expect(isMutedSwitcherApplication('lottery')).toBe(true);
+    expect(isMutedSwitcherApplication('checkin')).toBe(true);
+    expect(isMutedSwitcherApplication('learning-plan')).toBe(true);
+    expect(isMutedSwitcherApplication('activities')).toBe(false);
+    expect(isMutedSwitcherApplication('care')).toBe(false);
+  });
+
   it('hides 评优, 人文关怀, 员工体验 and 员工体检 from 全部应用, and shows 投票 as v2', () => {
     const labels = visibleApplications().map((item) => item.label);
     expect(labels).not.toContain('评优');
@@ -107,9 +160,17 @@ describe('applications', () => {
     expect(labels).not.toContain('人文关怀');
     expect(labels).not.toContain('员工体验');
     expect(labels).not.toContain('员工体检');
+    expect(labels).not.toContain('工作台');
+    expect(labels).not.toContain('组织管理');
+    expect(labels).not.toContain('商品管理');
+    expect(labels).not.toContain('订单管理');
+    expect(labels).not.toContain('业务运营');
     expect(labels).toContain('投票');
     expect(labels).toContain('活动');
     expect(labels).toContain('课程');
+    expect(labels).toContain('论坛');
+    expect(labels).toContain('信箱');
+    expect(labels).toContain('员工关怀');
   });
 });
 
@@ -179,6 +240,26 @@ describe('C-end navigation', () => {
     expect(toCEndPortalHash()).toBe('#/c');
   });
 
+  it('marks empty preview from query string', () => {
+    expect(isCEndEmptyHash('#/c/h5?empty=1')).toBe(true);
+    expect(withCEndEmpty('#/c/h5')).toBe('#/c/h5?empty=1');
+    expect(parseCEndHash('#/c/h5?empty=1')).toEqual({ kind: 'c-end', surface: 'h5', empty: true });
+    expect(parseCEndHash('#/c/h5/votes-v2?empty=1')).toMatchObject({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'votes-v2',
+      empty: true,
+    });
+  });
+
+  it('H5 back uses browser history', () => {
+    const history = { back: vi.fn() };
+    vi.stubGlobal('window', { history });
+    goH5Back();
+    expect(history.back).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
+  });
+
   it('parses the H5 my signups page', () => {
     expect(parseCEndHash('#/c/h5/my')).toEqual({
       kind: 'c-end',
@@ -193,6 +274,63 @@ describe('C-end navigation', () => {
       surface: 'pc',
       h5Page: 'my',
     });
+  });
+
+  it('parses the PC personal center', () => {
+    expect(parseCEndHash('#/c/pc/profile')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'profile',
+      profileTab: 'home',
+    });
+    expect(parseCEndHash('#/c/pc/profile/edit')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'profile',
+      profileTab: 'edit',
+    });
+    expect(parseCEndHash('#/c/pc/profile/interactions')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'profile',
+      profileTab: 'interactions',
+      profileSub: 'likes',
+    });
+    expect(parseCEndHash('#/c/pc/profile/interactions/comments')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'profile',
+      profileTab: 'interactions',
+      profileSub: 'comments',
+    });
+    expect(toPcProfileHash()).toBe('#/c/pc/profile');
+    expect(toPcProfileHash('edit')).toBe('#/c/pc/profile/edit');
+    expect(toPcProfileHash('interactions', 'favorites')).toBe('#/c/pc/profile/interactions/favorites');
+    expect(parseCEndHash('#/c/pc/profile/activities')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'profile',
+      profileTab: 'activities',
+    });
+    expect(parseCEndHash('#/c/pc/profile/posts')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'profile',
+      profileTab: 'posts',
+    });
+    expect(parseCEndHash('#/c/pc/profile/medals')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'profile',
+      profileTab: 'medals',
+    });
+    expect(parseCEndHash('#/c/pc/profile/care')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'profile',
+      profileTab: 'care',
+    });
+    expect(toPcProfileHash('posts')).toBe('#/c/pc/profile/posts');
   });
 
   it('keeps parsing numeric activity details', () => {
@@ -280,6 +418,22 @@ describe('C-end navigation', () => {
 
   it('builds the H5 exam list hash', () => {
     expect(toH5ExamListHash()).toBe('#/c/h5/exams');
+  });
+
+  it('parses H5 practice bank and quiz', () => {
+    expect(parseCEndHash('#/c/h5/practice')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'practice-bank',
+    });
+    expect(parseCEndHash('#/c/h5/practice/101')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'practice-quiz',
+      practiceCategoryId: 101,
+    });
+    expect(toH5PracticeBankHash()).toBe('#/c/h5/practice');
+    expect(toH5PracticeQuizHash(101)).toBe('#/c/h5/practice/101');
   });
 
   it('parses and builds the H5 vote list hash', () => {
@@ -474,6 +628,262 @@ describe('C-end navigation', () => {
 
   it('builds the H5 honor hash', () => {
     expect(toH5HonorHash()).toBe('#/c/h5/honor');
+  });
+
+  it('parses the H5 incentive page', () => {
+    expect(parseCEndHash('#/c/h5/incentive')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'incentive',
+    });
+    expect(toH5IncentiveHash()).toBe('#/c/h5/incentive');
+    expect(parseCEndHash('#/c/pc/incentive')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'incentive',
+    });
+    expect(toPcIncentiveHash()).toBe('#/c/pc/incentive');
+    expect(toPcIncentiveHash('issue')).toBe('#/c/pc/incentive/issue');
+    expect(parseIncentiveH5Hash('#/c/pc/incentive/person/E001')).toEqual({ page: 'person', id: 'E001' });
+  });
+
+  it('gives each incentive H5 screen its own hash', () => {
+    expect(parseCEndHash('#/c/h5/incentive/issue')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'incentive',
+    });
+    expect(parseCEndHash('#/c/h5/incentive/person/E001')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'incentive',
+    });
+    expect(toH5IncentiveHash('home')).toBe('#/c/h5/incentive');
+    expect(toH5IncentiveHash('issue')).toBe('#/c/h5/incentive/issue');
+    expect(toH5IncentiveHash('ranking')).toBe('#/c/h5/incentive/ranking');
+    expect(toH5IncentiveHash('profile')).toBe('#/c/h5/incentive/profile');
+    expect(toH5IncentiveHash('messages')).toBe('#/c/h5/incentive/messages');
+    expect(toH5IncentiveHash('award')).toBe('#/c/h5/incentive/award');
+    expect(toH5IncentiveHash('person', 'E001')).toBe('#/c/h5/incentive/person/E001');
+    expect(toH5IncentiveHash('company', '2026-07-林晓云-0')).toBe(
+      `#/c/h5/incentive/company/${encodeURIComponent('2026-07-林晓云-0')}`,
+    );
+    expect(parseIncentiveH5Hash('#/c/h5/incentive')).toEqual({ page: 'home' });
+    expect(parseIncentiveH5Hash('#/c/h5/incentive/issue')).toEqual({ page: 'issue' });
+    expect(parseIncentiveH5Hash('#/c/h5/incentive/ranking')).toEqual({ page: 'ranking' });
+    expect(parseIncentiveH5Hash('#/c/h5/incentive/ranking/P02')).toEqual({ page: 'ranking', id: 'P02' });
+    expect(toH5IncentiveHash('ranking', 'P02')).toBe('#/c/h5/incentive/ranking/P02');
+    expect(toPcIncentiveHash('ranking', 'P02')).toBe('#/c/pc/incentive/ranking/P02');
+    expect(parseIncentiveH5Hash('#/c/h5/incentive/profile')).toEqual({ page: 'profile' });
+    expect(parseIncentiveH5Hash('#/c/h5/incentive/messages')).toEqual({ page: 'messages' });
+    expect(parseIncentiveH5Hash('#/c/h5/incentive/award')).toEqual({ page: 'award' });
+    expect(parseIncentiveH5Hash('#/c/h5/incentive/person/E001')).toEqual({ page: 'person', id: 'E001' });
+    expect(parseIncentiveH5Hash(`#/c/h5/incentive/company/${encodeURIComponent('2026-07-林晓云-0')}`)).toEqual({
+      page: 'company',
+      id: '2026-07-林晓云-0',
+    });
+  });
+
+  it('parses the H5 daily check-in page', () => {
+    expect(parseCEndHash('#/c/h5/daily-checkin')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'daily-checkin',
+    });
+    expect(toH5DailyCheckinHash()).toBe('#/c/h5/daily-checkin');
+  });
+
+  it('parses H5 learning plans', () => {
+    expect(parseCEndHash('#/c/h5/learning-plans')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'learning-plans',
+    });
+    expect(toH5LearningPlanListHash()).toBe('#/c/h5/learning-plans');
+  });
+
+  it('parses forum H5 pages', () => {
+    expect(parseCEndHash('#/c/h5/forum')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'forum',
+    });
+    expect(parseCEndHash('#/c/h5/forum/1')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'forum-board',
+      forumBoardId: 1,
+    });
+    expect(parseCEndHash('#/c/h5/forum-topic/1')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'forum-topic',
+      forumTopicId: 1,
+    });
+    expect(toH5ForumHash()).toBe('#/c/h5/forum');
+    expect(toH5ForumBoardHash(1)).toBe('#/c/h5/forum/1');
+    expect(toH5ForumTopicHash(1)).toBe('#/c/h5/forum-topic/1');
+    expect(parseCEndHash('#/c/h5/forum-mine')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'forum-mine',
+    });
+    expect(toH5ForumMineHash()).toBe('#/c/h5/forum-mine');
+  });
+
+  it('parses forum PC pages', () => {
+    expect(parseCEndHash('#/c/pc/forum')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'forum',
+    });
+    expect(parseCEndHash('#/c/pc/forum/1')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'forum-board',
+      forumBoardId: 1,
+    });
+    expect(parseCEndHash('#/c/pc/forum-topic/1')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'forum-topic',
+      forumTopicId: 1,
+    });
+    expect(toPcForumBoardHash(1)).toBe('#/c/pc/forum/1');
+    expect(toPcForumTopicHash(1)).toBe('#/c/pc/forum-topic/1');
+    expect(parseCEndHash('#/c/pc/forum-mine')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'forum-mine',
+    });
+    expect(toPcForumMineHash()).toBe('#/c/pc/forum-mine');
+  });
+
+  it('parses mailbox H5 home', () => {
+    expect(parseCEndHash('#/c/h5/mailbox')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'mailbox',
+    });
+    expect(toH5MailboxHash()).toBe('#/c/h5/mailbox');
+    expect(toH5MailboxTopicHash(21)).toBe('#/c/h5/mailbox/21');
+    expect(parseCEndHash('#/c/h5/mailbox/21')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'mailbox-topic',
+      forumTopicId: 21,
+    });
+    expect(toPcMailboxHash()).toBe('#/c/pc/mailbox');
+    expect(toPcMailboxTopicHash(21)).toBe('#/c/pc/mailbox/21');
+    expect(parseCEndHash('#/c/pc/mailbox')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'mailbox',
+    });
+    expect(parseCEndHash('#/c/pc/mailbox/21')).toEqual({
+      kind: 'c-end',
+      surface: 'pc',
+      h5Page: 'mailbox-topic',
+      forumTopicId: 21,
+    });
+  });
+
+  it('parses skills contest H5 pages', () => {
+    expect(parseCEndHash('#/c/h5/skills-contest')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'contest-home',
+    });
+    expect(parseCEndHash('#/c/h5/skills-contest/mine')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'contest-mine',
+    });
+    expect(parseCEndHash('#/c/h5/skills-contest/events')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'contest-events',
+    });
+    expect(parseCEndHash('#/c/h5/skills-contest/docs')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'contest-docs',
+    });
+    expect(toH5ContestEventsHash()).toBe('#/c/h5/skills-contest/events');
+    expect(toH5ContestDocsHash()).toBe('#/c/h5/skills-contest/docs');
+    expect(parseCEndHash('#/c/h5/skills-contest/wrong')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'contest-wrong',
+    });
+    expect(toH5ContestWrongHash()).toBe('#/c/h5/skills-contest/wrong');
+    expect(parseCEndHash('#/c/h5/notes')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'course-notes',
+    });
+    expect(parseCEndHash('#/c/h5/skills-contest/notes')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'course-notes',
+    });
+    expect(toH5CourseNotesHash()).toBe('#/c/h5/skills-contest/notes');
+    expect(parseCEndHash('#/c/h5/skills-contest/notes/1')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'course-note-detail',
+      noteId: 1,
+    });
+    expect(parseCEndHash('#/c/h5/notes/1')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'course-note-detail',
+      noteId: 1,
+    });
+    expect(toH5CourseNoteHash(1)).toBe('#/c/h5/skills-contest/notes/1');
+    expect(parseCEndHash('#/c/h5/contest-1')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      contestId: 1,
+      h5Page: 'contest-detail',
+    });
+    expect(parseCEndHash('#/c/h5/contest-1/signup')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      contestId: 1,
+      h5Page: 'contest-signup',
+    });
+    expect(parseCEndHash('#/c/h5/contest-1/challenge')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      contestId: 1,
+      h5Page: 'contest-challenge',
+    });
+    expect(parseCEndHash('#/c/h5/contest-1/rank')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      contestId: 1,
+      h5Page: 'contest-rank',
+    });
+    expect(parseCEndHash('#/c/h5/lottery')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'lottery',
+    });
+    expect(parseCEndHash('#/c/h5/lottery/1')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'lottery-play',
+      lotteryId: 1,
+    });
+    expect(toH5LotteryListHash()).toBe('#/c/h5/lottery');
+    expect(toH5LotteryPlayHash(1)).toBe('#/c/h5/lottery/1');
+    expect(toH5ContestHomeHash()).toBe('#/c/h5/skills-contest');
+    expect(toH5ContestMineHash()).toBe('#/c/h5/skills-contest/mine');
+    expect(toH5ContestDetailHash(1)).toBe('#/c/h5/contest-1');
+    expect(toH5ContestSignupHash(1)).toBe('#/c/h5/contest-1/signup');
+    expect(toH5ContestChallengeHash(1)).toBe('#/c/h5/contest-1/challenge');
+    expect(toH5ContestRankHash(1)).toBe('#/c/h5/contest-1/rank');
   });
 
   it('parses the H5 honor admin page', () => {
@@ -752,24 +1162,58 @@ describe('skills-contest application', () => {
     });
   });
 
-  it('uses four first-level menus with no children, including 打卡', () => {
+  it('uses three first-level menus with no children', () => {
     expect(applicationMenus['skills-contest']).toEqual([
       { key: 'contest-list', icon: 'trophy', label: '赛事管理' },
-      { key: 'signup-list', icon: 'unorderedList', label: '报名' },
+      { key: 'region-list', icon: 'apartment', label: '区域配置' },
       { key: 'score-list', icon: 'checkCircle', label: '成绩' },
-      { key: 'contest-checkin', icon: 'clock', label: '打卡' },
     ]);
   });
 
-  it('parses a leaf hash', () => {
-    expect(parseLocationHash('#/skills-contest/signup-list')).toEqual({
+  it('parses a leaf hash and falls back unknown checkin hash', () => {
+    expect(parseLocationHash('#/skills-contest/region-list')).toEqual({
       application: 'skills-contest',
-      page: 'signup-list',
+      page: 'region-list',
     });
     expect(parseLocationHash('#/skills-contest/contest-checkin')).toEqual({
       application: 'skills-contest',
-      page: 'contest-checkin',
+      page: 'contest-list',
     });
+  });
+
+  it('redirects legacy signup-list hash to contest-list', () => {
+    expect(parseLocationHash('#/skills-contest/signup-list')).toEqual({
+      application: 'skills-contest',
+      page: 'contest-list',
+    });
+  });
+
+  it('parses contest hidden pages and highlights 赛事管理', () => {
+    expect(parseLocationHash('#/skills-contest/contest-create')).toEqual({
+      application: 'skills-contest',
+      page: 'contest-create',
+    });
+    expect(parseLocationHash('#/skills-contest/contest-detail/1/signups')).toEqual({
+      application: 'skills-contest',
+      page: 'contest-detail',
+      recordId: '1',
+      tab: 'signups',
+    });
+    expect(parseLocationHash('#/skills-contest/contest-detail/1/challenge-logs')).toEqual({
+      application: 'skills-contest',
+      page: 'contest-detail',
+      recordId: '1',
+      tab: 'challenge-logs',
+    });
+    expect(parseLocationHash('#/skills-contest/contest-detail/1/plans')).toEqual({
+      application: 'skills-contest',
+      page: 'contest-detail',
+      recordId: '1',
+      tab: 'plans',
+    });
+    expect(siderSelectedKey('contest-create')).toBe('contest-list');
+    expect(siderSelectedKey('contest-edit')).toBe('contest-list');
+    expect(siderSelectedKey('contest-detail')).toBe('contest-list');
   });
 
   it('falls back to contest-list when page is missing or unknown', () => {
@@ -1581,6 +2025,277 @@ describe('learning-plan application', () => {
     expect(siderSelectedKey('learning-plan-create')).toBe('learning-plan-list');
     expect(siderSelectedKey('learning-plan-edit')).toBe('learning-plan-list');
     expect(siderSelectedKey('learning-plan-preview')).toBe('learning-plan-list');
+  });
+});
+
+describe('incentive application', () => {
+  it('registers 即时激励 with dashboard default and four menus', () => {
+    expect(getApplication('incentive')).toEqual({
+      key: 'incentive',
+      label: '即时激励',
+      category: '员工与组织',
+      icon: 'rocket',
+      defaultPage: 'incentive-dashboard',
+    });
+    const keys = applications.map((item) => item.key);
+    expect(keys.indexOf('incentive')).toBe(keys.indexOf('learning-plan') + 1);
+    expect(keys.indexOf('incentive')).toBe(keys.indexOf('medal') - 1);
+    expect(applicationMenus.incentive).toEqual([
+      { key: 'incentive-dashboard', icon: 'dashboard', label: '概览' },
+      { key: 'incentive-badges', icon: 'trophy', label: '勋章管理' },
+      { key: 'incentive-records', icon: 'unorderedList', label: '发放记录' },
+      { key: 'incentive-settings', icon: 'appstore', label: '规则设置' },
+    ]);
+  });
+
+  it('parses hashes and maps badge form pages to 勋章管理', () => {
+    expect(parseLocationHash('#/incentive')).toEqual({ application: 'incentive', page: 'incentive-dashboard' });
+    expect(parseLocationHash('#/incentive/not-a-page')).toEqual({ application: 'incentive', page: 'incentive-dashboard' });
+    expect(parseLocationHash('#/incentive/incentive-dashboard')).toEqual({
+      application: 'incentive',
+      page: 'incentive-dashboard',
+    });
+    expect(parseLocationHash('#/incentive/incentive-badge-create')).toEqual({
+      application: 'incentive',
+      page: 'incentive-badge-create',
+    });
+    expect(parseLocationHash('#/incentive/incentive-badge-edit/b1')).toEqual({
+      application: 'incentive',
+      page: 'incentive-badge-edit',
+      recordId: 'b1',
+    });
+    expect(siderSelectedKey('incentive-badge-create')).toBe('incentive-badges');
+    expect(siderSelectedKey('incentive-badge-edit')).toBe('incentive-badges');
+  });
+
+  it('shows 即时激励 in 全部应用 but not top-bar direct apps', () => {
+    expect(visibleApplications().map((item) => item.label)).toContain('即时激励');
+    expect(getDirectApplications(4).map((item) => item.key)).not.toContain('incentive');
+  });
+});
+
+describe('medal application', () => {
+  it('registers 勋章 under 员工与组织 with medal-list as default', () => {
+    expect(getApplication('medal')).toEqual({
+      key: 'medal',
+      label: '勋章',
+      category: '员工与组织',
+      icon: 'trophy',
+      defaultPage: 'medal-list',
+    });
+    const keys = applications.map((item) => item.key);
+    expect(keys.indexOf('medal')).toBe(keys.indexOf('incentive') + 1);
+    expect(keys.indexOf('medal')).toBe(keys.indexOf('forum') - 1);
+  });
+
+  it('uses a single first-level menu for 勋章管理', () => {
+    expect(applicationMenus.medal).toEqual([
+      { key: 'medal-list', icon: 'trophy', label: '勋章管理' },
+    ]);
+  });
+
+  it('parses leaf hash and falls back to 勋章管理', () => {
+    expect(parseLocationHash('#/medal/medal-list')).toEqual({
+      application: 'medal',
+      page: 'medal-list',
+    });
+    expect(parseLocationHash('#/medal')).toEqual({
+      application: 'medal',
+      page: 'medal-list',
+    });
+    expect(parseLocationHash('#/medal/not-a-page')).toEqual({
+      application: 'medal',
+      page: 'medal-list',
+    });
+  });
+
+  it('parses create, edit and detail hashes and keeps 勋章管理 selected', () => {
+    expect(parseLocationHash('#/medal/medal-create')).toEqual({
+      application: 'medal',
+      page: 'medal-create',
+    });
+    expect(parseLocationHash('#/medal/medal-edit/2')).toEqual({
+      application: 'medal',
+      page: 'medal-edit',
+      recordId: '2',
+    });
+    expect(parseLocationHash('#/medal/medal-detail/2')).toEqual({
+      application: 'medal',
+      page: 'medal-detail',
+      recordId: '2',
+    });
+    expect(siderSelectedKey('medal-create')).toBe('medal-list');
+    expect(siderSelectedKey('medal-edit')).toBe('medal-list');
+    expect(siderSelectedKey('medal-detail')).toBe('medal-list');
+  });
+
+  it('shows 勋章 in 全部应用 switcher but not in top-bar direct apps', () => {
+    expect(visibleApplications().map((item) => item.label)).toContain('勋章');
+    expect(getDirectApplications(4).map((item) => item.key)).not.toContain('medal');
+  });
+});
+
+describe('forum application', () => {
+  it('registers 论坛 under 员工与组织 with forum-overview as default', () => {
+    expect(getApplication('forum')).toEqual({
+      key: 'forum',
+      label: '论坛',
+      category: '员工与组织',
+      icon: 'read',
+      defaultPage: 'forum-overview',
+    });
+    const keys = applications.map((item) => item.key);
+    expect(keys.indexOf('forum')).toBe(keys.indexOf('medal') + 1);
+    expect(keys.indexOf('mailbox')).toBe(keys.indexOf('forum') + 1);
+    expect(keys.indexOf('mailbox')).toBe(keys.indexOf('care') - 1);
+  });
+
+  it('keeps only forum menus under 论坛', () => {
+    expect(applicationMenus.forum).toEqual([
+      { key: 'forum-overview', icon: 'dashboard', label: '概览' },
+      { key: 'forum-list', icon: 'read', label: '论坛列表' },
+      { key: 'forum-tags', icon: 'tags', label: '标签管理' },
+      { key: 'forum-risk', icon: 'checkCircle', label: '禁言管理' },
+    ]);
+  });
+
+  it('parses leaf hash and falls back to 论坛概览', () => {
+    expect(parseLocationHash('#/forum/forum-overview')).toEqual({
+      application: 'forum',
+      page: 'forum-overview',
+    });
+    expect(parseLocationHash('#/forum/forum-list')).toEqual({
+      application: 'forum',
+      page: 'forum-list',
+    });
+    expect(parseLocationHash('#/forum/forum-topics')).toEqual({
+      application: 'forum',
+      page: 'forum-overview',
+    });
+    expect(parseLocationHash('#/forum/forum-tags')).toEqual({
+      application: 'forum',
+      page: 'forum-tags',
+    });
+    expect(parseLocationHash('#/forum')).toEqual({
+      application: 'forum',
+      page: 'forum-overview',
+    });
+    expect(parseLocationHash('#/forum/not-a-page')).toEqual({
+      application: 'forum',
+      page: 'forum-overview',
+    });
+  });
+
+  it('parses hidden hashes and keeps list menus selected', () => {
+    expect(parseLocationHash('#/forum/forum-create')).toEqual({
+      application: 'forum',
+      page: 'forum-create',
+    });
+    expect(parseLocationHash('#/forum/forum-edit/2')).toEqual({
+      application: 'forum',
+      page: 'forum-edit',
+      recordId: '2',
+    });
+    expect(parseLocationHash('#/forum/forum-detail/2')).toEqual({
+      application: 'forum',
+      page: 'forum-detail',
+      recordId: '2',
+    });
+    expect(parseLocationHash('#/forum/topic-detail/3')).toEqual({
+      application: 'forum',
+      page: 'topic-detail',
+      recordId: '3',
+    });
+    expect(siderSelectedKey('forum-create')).toBe('forum-list');
+    expect(siderSelectedKey('forum-edit')).toBe('forum-list');
+    expect(siderSelectedKey('forum-detail')).toBe('forum-list');
+    expect(siderSelectedKey('mailbox-create')).toBe('mailbox-list');
+    expect(siderSelectedKey('mailbox-edit')).toBe('mailbox-list');
+    expect(siderSelectedKey('mailbox-detail')).toBe('mailbox-list');
+    expect(siderSelectedKey('topic-detail')).toBe('forum-list');
+    expect(siderSelectedKey('advice-detail')).toBe('mailbox-list');
+    expect(siderSelectedKey('mailbox-messages')).toBe('mailbox-list');
+  });
+
+  it('shows 论坛 in 全部应用 switcher but not in top-bar direct apps', () => {
+    expect(visibleApplications().map((item) => item.label)).toContain('论坛');
+    expect(getDirectApplications(4).map((item) => item.key)).not.toContain('forum');
+  });
+});
+
+describe('mailbox application', () => {
+  it('registers 信箱 as a standalone app next to 论坛', () => {
+    expect(getApplication('mailbox')).toEqual({
+      key: 'mailbox',
+      label: '信箱',
+      category: '员工与组织',
+      icon: 'fileText',
+      defaultPage: 'mailbox-overview',
+    });
+    expect(applicationMenus.mailbox).toEqual([
+      { key: 'mailbox-overview', icon: 'dashboard', label: '概览' },
+      { key: 'mailbox-list', icon: 'fileText', label: '信箱列表' },
+    ]);
+    expect(visibleApplications().map((item) => item.label)).toContain('信箱');
+    expect(getDirectApplications(4).map((item) => item.key)).not.toContain('mailbox');
+  });
+
+  it('parses 信箱 hashes and remaps legacy forum mailbox routes', () => {
+    expect(parseLocationHash('#/mailbox')).toEqual({ application: 'mailbox', page: 'mailbox-overview' });
+    expect(parseLocationHash('#/mailbox/mailbox-overview')).toEqual({ application: 'mailbox', page: 'mailbox-overview' });
+    expect(parseLocationHash('#/mailbox/mailbox-list')).toEqual({ application: 'mailbox', page: 'mailbox-list' });
+    expect(parseLocationHash('#/mailbox/mailbox-tags')).toEqual({ application: 'mailbox', page: 'mailbox-overview' });
+    expect(parseLocationHash('#/mailbox/mailbox-create')).toEqual({ application: 'mailbox', page: 'mailbox-create' });
+    expect(parseLocationHash('#/forum/mailbox-list')).toEqual({ application: 'mailbox', page: 'mailbox-list' });
+    expect(parseLocationHash('#/forum/mailbox-messages')).toEqual({ application: 'mailbox', page: 'mailbox-messages' });
+    expect(parseLocationHash('#/forum/advice-detail/3')).toEqual({
+      application: 'mailbox',
+      page: 'advice-detail',
+      recordId: '3',
+    });
+  });
+});
+
+describe('employee care application', () => {
+  it('shows 员工关怀 in 全部应用 as renamed care app, not 人文关怀', () => {
+    expect(getApplication('care')).toEqual({
+      key: 'care',
+      label: '员工关怀',
+      category: '员工与组织',
+      icon: 'gift',
+      defaultPage: 'care-overview',
+    });
+    const labels = visibleApplications().map((item) => item.label);
+    expect(labels).toContain('员工关怀');
+    expect(labels).not.toContain('人文关怀');
+    expect(getDirectApplications(4).map((item) => item.key)).not.toContain('care');
+    expect(applicationMenus.care).toEqual([
+      { key: 'care-overview', icon: 'dashboard', label: '概览' },
+      { key: 'care-rules', icon: 'calendar', label: '关怀规则' },
+      { key: 'care-records', icon: 'checkCircle', label: '关怀记录' },
+      { key: 'care-templates', icon: 'fileText', label: '关怀模板' },
+      { key: 'care-settings', icon: 'appstore', label: '关怀设置' },
+    ]);
+    expect(applicationMenus.care.some((item) => item.children?.length)).toBe(false);
+    expect(applicationMenus.care.map((item) => item.key)).not.toContain('care-info');
+    expect(applicationMenus.care.map((item) => item.key)).not.toContain('care-operation');
+  });
+
+  it('parses default hash for 概览 and maps legacy 关怀计划 / 关怀类型', () => {
+    expect(parseLocationHash('#/care')).toEqual({ application: 'care', page: 'care-overview' });
+    expect(parseLocationHash('#/care/care-overview')).toEqual({ application: 'care', page: 'care-overview' });
+    expect(parseLocationHash('#/care/care-info')).toEqual({ application: 'care', page: 'care-overview' });
+    expect(parseLocationHash('#/care/care-rules')).toEqual({ application: 'care', page: 'care-rules' });
+    expect(parseLocationHash('#/care/care-plans')).toEqual({ application: 'care', page: 'care-rules' });
+    expect(parseLocationHash('#/care/care-types')).toEqual({ application: 'care', page: 'care-settings' });
+  });
+
+  it('keeps hidden rule/template pages on 员工关怀 sider keys', () => {
+    expect(siderSelectedKey('care-rule-create')).toBe('care-rules');
+    expect(siderSelectedKey('care-rule-edit')).toBe('care-rules');
+    expect(siderSelectedKey('care-template-create')).toBe('care-templates');
+    expect(siderSelectedKey('care-template-edit')).toBe('care-templates');
+    expect(siderSelectedKey('care-template-detail')).toBe('care-templates');
   });
 });
 

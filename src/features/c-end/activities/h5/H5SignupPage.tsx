@@ -1,7 +1,11 @@
 import { useActivities } from '../../../activities/model/activityStore';
-import { goCEnd } from '../../../../app/navigation';
+import { goH5Back, goCEnd } from '../../../../app/navigation';
 import { getPublishedActivity, signupCta, signupLimit, signupTypes } from '../model/clientActivity';
-import { getUserSignupAnswers, saveClientSignup, useHasSignedUp } from '../model/signupStore';
+import {
+  getUserSignupAnswers,
+  saveClientSignup,
+  useHasSignedUp,
+} from '../model/signupStore';
 import { useCEndToast } from '../components/CEndToast';
 import { SignupForm } from '../components/SignupForm';
 import { H5ActivityShell } from './H5ActivityShell';
@@ -14,7 +18,7 @@ export function H5SignupPage({ id }: { id: number }) {
 
   if (!activity) {
     return (
-      <H5ActivityShell title="活动不存在" onBack={() => goCEnd('h5')}>
+      <H5ActivityShell title="活动不存在" onBack={goH5Back}>
         <div className="c-missing">
           <p className="c-empty">活动不存在</p>
           <button className="c-btn c-btn-primary" type="button" onClick={() => goCEnd('h5')}>
@@ -27,7 +31,7 @@ export function H5SignupPage({ id }: { id: number }) {
 
   const types = signupTypes(activity);
   const adjusting = signedUp;
-  const back = () => goCEnd('h5', activity.id);
+  const back = goH5Back;
 
   const confirm = (type: string, answers: Record<string, string>) => {
     const freshCta = signupCta(activity, signedUp, Date.now(), { allowCancel: true });
@@ -38,13 +42,19 @@ export function H5SignupPage({ id }: { id: number }) {
     }
     const result = saveClientSignup(activity.id, type, answers);
     toast.show(
-      result === 'ok' ? (adjusting ? '已更新报名' : '报名成功') : result === 'cancelled' ? '已取消报名' : '已报名',
+      result === 'ok'
+        ? adjusting
+          ? '已更新报名'
+          : '报名成功'
+        : result === 'cancelled'
+          ? '已取消报名'
+          : '已报名',
     );
     back();
   };
 
   return (
-    <H5ActivityShell title={adjusting ? '调整报名' : '填写报名信息'} onBack={back}>
+    <H5ActivityShell title={adjusting ? '立即报名' : '填写报名信息'} onBack={back}>
       <div className="c-signup-page">
         <p className="c-signup-page-title">{activity.title}</p>
         <SignupForm
@@ -52,6 +62,7 @@ export function H5SignupPage({ id }: { id: number }) {
           fields={activity.signupFields}
           scheduleType={activity.scheduleType}
           sessions={activity.sessions}
+          terminatedAt={activity.terminatedAt}
           signupStartAt={activity.signupStartAt}
           signupEndAt={activity.signupEndAt}
           signupHoursBefore={activity.signupHoursBefore}

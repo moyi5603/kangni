@@ -89,13 +89,13 @@ export function momentImageGridMod(count: number): string {
 }
 
 export function canSubmitMoment(activityStatus: ActivityStatus, approvedSignup: boolean): boolean {
-  return approvedSignup && activityStatus === '已结束';
+  return approvedSignup && (activityStatus === '进行中' || activityStatus === '已结束');
 }
 
 export function submitBlockReason(activityStatus: ActivityStatus, approvedSignup: boolean): string | undefined {
-  if (activityStatus !== '已结束') {
-    return activityStatus === '未开始' ? '活动未开始，暂不能发布瞬间' : '活动结束后才能发布瞬间';
-  }
+  if (activityStatus === '未开始') return '活动未开始，暂不能发布瞬间';
+  if (activityStatus === '已终止') return '活动已终止，不能发布瞬间';
+  if (activityStatus !== '进行中' && activityStatus !== '已结束') return '当前活动状态不能发布瞬间';
   if (!approvedSignup) return '报名通过后才能发布瞬间';
   return undefined;
 }

@@ -15,5 +15,6 @@ describe('InterestGroupMomentListPage', () => {
     expect(html).toContain('已通过');
     expect(html).toContain('初夏漫步打卡');
     expect(html).toContain('详情');
+    expect(html).not.toContain(`aria-label="回复 初夏漫步打卡，夕阳刚好。"`);
   });
 });

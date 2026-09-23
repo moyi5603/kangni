@@ -37,6 +37,7 @@ function createQuestionStore(seed: QuestionStoreSeed) {
   const initial = cloneSeed(seed);
   let questions = [...initial.questions];
   let questionCategoryTree = [...initial.categoryTree];
+  let lastCategoryNodeId = 0;
   const listeners = new Set<() => void>();
 
   function emit() {
@@ -122,7 +123,9 @@ function createQuestionStore(seed: QuestionStoreSeed) {
 
   function addQuestionCategoryNode(name: string, parentId: number | null = null): QuestionCategoryNode | null {
     if (!canAddCategoryChild(questionCategoryTree, parentId)) return null;
-    const node: QuestionCategoryNode = { id: Date.now(), name };
+    const id = Math.max(Date.now(), lastCategoryNodeId + 1);
+    lastCategoryNodeId = id;
+    const node: QuestionCategoryNode = { id, name };
     if (parentId == null) questionCategoryTree = [...questionCategoryTree, node];
     else questionCategoryTree = insertCategory(questionCategoryTree, parentId, node);
     emit();
@@ -164,6 +167,8 @@ function createQuestionStore(seed: QuestionStoreSeed) {
     reset,
     useQuestions,
     useQuestionCategoryTree,
+    listQuestions: () => questions,
+    getCategoryTree: () => questionCategoryTree,
     getQuestion,
     upsertQuestion,
     removeQuestion,

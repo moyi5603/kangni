@@ -48,9 +48,9 @@ export function RecentSessionsStrip({
   phone?: string;
 }) {
   useRelated('signups', activity.id);
-  if (!shouldShowRecentSessions(activity.scheduleType, activity.sessions ?? [], now)) return null;
+  if (!shouldShowRecentSessions(activity.scheduleType, activity.sessions ?? [], now, activity.terminatedAt)) return null;
 
-  const sessions = listClientSignupSessions(activity.sessions ?? [], now);
+  const sessions = listClientSignupSessions(activity.sessions ?? [], now, undefined, activity.terminatedAt);
   const picked = userPickedSessionIds(activity.id, phone);
   const signedCount = userSignedRecentSessionCount(activity, phone, now);
 

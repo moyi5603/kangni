@@ -1,10 +1,10 @@
 import { commentCount, type MomentRecord } from '../../activities/model/moment';
 
-export const INTEREST_GROUP_MOMENT_MOCK_VERSION = 3;
+export const INTEREST_GROUP_MOMENT_MOCK_VERSION = 4;
 
 export type InterestGroupMoment = Omit<MomentRecord, 'activityId'> & {
   groupId: number;
-  activityId?: number;
+  activityId: number;
 };
 
 export function interestGroupMomentCommentTotal(item: InterestGroupMoment): number {
@@ -67,6 +67,7 @@ export const initialInterestGroupMoments: InterestGroupMoment[] = [
   {
     id: 4,
     groupId: 1,
+    activityId: 102,
     author: '张悦',
     content: '夜跑收工，江风把汗吹干。',
     type: '图文类型',
@@ -80,6 +81,7 @@ export const initialInterestGroupMoments: InterestGroupMoment[] = [
   {
     id: 5,
     groupId: 2,
+    activityId: 201,
     author: '陈产品',
     content: '连营第二天，溪边煮面最香。',
     type: '图文类型',
@@ -93,6 +95,7 @@ export const initialInterestGroupMoments: InterestGroupMoment[] = [
   {
     id: 6,
     groupId: 3,
+    activityId: 301,
     author: '王芳',
     content: '书吧灯还亮着，围读散场合影。',
     type: '图文类型',
@@ -106,6 +109,7 @@ export const initialInterestGroupMoments: InterestGroupMoment[] = [
   {
     id: 7,
     groupId: 4,
+    activityId: 401,
     author: '黄码',
     content: '五黑翻盘，这把要回看十遍。',
     type: '图文类型',
@@ -119,6 +123,7 @@ export const initialInterestGroupMoments: InterestGroupMoment[] = [
   {
     id: 8,
     groupId: 1,
+    activityId: 102,
     author: '林浅',
     content: '配速组第一次破五，全员击掌。',
     type: '图文类型',

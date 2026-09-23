@@ -1,5 +1,5 @@
 import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Checkbox, Divider, Flex, Form, Input, InputNumber, Radio, Space, Switch, Tag, Tooltip, Typography } from 'antd';
+import { Button, Checkbox, Divider, Flex, Input, InputNumber, Radio, Space, Switch, Tag, Tooltip, Typography } from 'antd';
 import {
   COMPANION_COLLECT_OPTIONS,
   COMPANION_MAX_MAX,
@@ -9,64 +9,53 @@ import {
   CUSTOM_TEXT_MAX_LENGTH_MIN,
   addSignupField,
   createCustomSignupField,
-  groupLimitsSum,
   moveSignupField,
   presetSignupFields,
   removeSignupField,
   renameSignupField,
   setSignupFieldCompanion,
-  setSignupFieldGroups,
   setSignupFieldMaxLength,
   setSignupFieldOptions,
   setSignupFieldRequired,
   signupFieldInputTypeLabels,
+  withoutGroupSignupField,
   type CompanionCollectField,
   type SignupField,
   type SignupFieldInputType,
-  type SignupGroupOption,
 } from '../model/signupFields';
 
 type SignupFieldsEditorProps = {
   value?: SignupField[];
   onChange?: (value: SignupField[]) => void;
-  /** 活动报名总人数，用于分组选择合计校验提示 */
   signupTotalLimit?: number;
 };
 
 const customTypes: Array<Extract<SignupFieldInputType, 'text' | 'radio' | 'checkbox'>> = ['text', 'radio', 'checkbox'];
+const palettePresets = presetSignupFields.filter((field) => field.inputType !== 'group');
 
-function resolveSignupTotalLimit(...candidates: unknown[]): number | undefined {
-  for (const value of candidates) {
-    if (typeof value === 'number' && Number.isFinite(value)) return value;
-  }
-  return undefined;
+function withPreservedGroups(source: SignupField[], rest: SignupField[]): SignupField[] {
+  return [...rest, ...source.filter((field) => field.inputType === 'group')];
 }
 
-export function SignupFieldsEditor({ value, onChange, signupTotalLimit }: SignupFieldsEditorProps) {
-  const form = Form.useFormInstance();
-  const watchedTotal = Form.useWatch('signupTotalLimit', form);
-  const total = resolveSignupTotalLimit(signupTotalLimit, watchedTotal);
+export function SignupFieldsEditor({ value, onChange }: SignupFieldsEditorProps) {
   const fields = value ?? [];
-  const emit = (next: SignupField[]) => onChange?.(next);
+  const visible = withoutGroupSignupField(fields);
+  const emit = (rest: SignupField[]) => onChange?.(withPreservedGroups(fields, rest));
 
   const updateOption = (field: SignupField, index: number, option: string) => {
     const options = (field.options ?? []).map((item, i) => (i === index ? option : item));
-    emit(setSignupFieldOptions(fields, field.key, options));
+    emit(setSignupFieldOptions(visible, field.key, options));
   };
 
   const removeOption = (field: SignupField, index: number) => {
     const current = field.options ?? [];
     if (current.length <= 2) return;
     const options = current.filter((_, i) => i !== index);
-    emit(setSignupFieldOptions(fields, field.key, options));
+    emit(setSignupFieldOptions(visible, field.key, options));
   };
 
   const addOption = (field: SignupField) => {
-    emit(setSignupFieldOptions(fields, field.key, [...(field.options ?? []), '']));
-  };
-
-  const updateGroups = (field: SignupField, groups: SignupGroupOption[]) => {
-    emit(setSignupFieldGroups(fields, field.key, groups));
+    emit(setSignupFieldOptions(visible, field.key, [...(field.options ?? []), '']));
   };
 
   const updateCompanion = (
@@ -74,18 +63,15 @@ export function SignupFieldsEditor({ value, onChange, signupTotalLimit }: Signup
     companionMax = field.companionMax ?? 1,
     companionFields = field.companionFields ?? [],
   ) => {
-    emit(setSignupFieldCompanion(fields, field.key, companionMax, companionFields));
+    emit(setSignupFieldCompanion(visible, field.key, companionMax, companionFields));
   };
 
   return (
     <div className="signup-fields-editor">
       <div className="signup-fields-selected">
-        <Typography.Text strong>已选字段（{fields.length}）</Typography.Text>
+        <Typography.Text strong>已选字段（{visible.length}）</Typography.Text>
         <div className="signup-fields-list">
-          {fields.map((field, index) => {
-            const groupSum = groupLimitsSum(field.groups);
-            const groupSumMatched = field.inputType === 'group' && total != null && groupSum === total;
-
+          {visible.map((field, index) => {
             return (
               <div key={field.key} className="signup-field-row">
                 <div className="signup-field-main">
@@ -96,7 +82,7 @@ export function SignupFieldsEditor({ value, onChange, signupTotalLimit }: Signup
                     showCount={field.source === 'custom'}
                     placeholder="请输入字段名"
                     disabled={field.source !== 'custom'}
-                    onChange={(event) => emit(renameSignupField(fields, field.key, event.target.value))}
+                    onChange={(event) => emit(renameSignupField(visible, field.key, event.target.value))}
                   />
                   {field.source === 'custom' && field.inputType === 'text' ? (
                     <Flex className="signup-field-max-length" align="center" gap={8}>
@@ -109,7 +95,7 @@ export function SignupFieldsEditor({ value, onChange, signupTotalLimit }: Signup
                         addonAfter="字"
                         style={{ width: 128 }}
                         onChange={(value) =>
-                          emit(setSignupFieldMaxLength(fields, field.key, typeof value === 'number' ? value : null))
+                          emit(setSignupFieldMaxLength(visible, field.key, typeof value === 'number' ? value : null))
                         }
                       />
                     </Flex>
@@ -121,7 +107,7 @@ export function SignupFieldsEditor({ value, onChange, signupTotalLimit }: Signup
                       size="small"
                       checked={field.required}
                       disabled={field.fixed}
-                      onChange={(checked) => emit(setSignupFieldRequired(fields, field.key, checked))}
+                      onChange={(checked) => emit(setSignupFieldRequired(visible, field.key, checked))}
                     />
                   </span>
                   <Space size={4}>
@@ -131,7 +117,7 @@ export function SignupFieldsEditor({ value, onChange, signupTotalLimit }: Signup
                         size="small"
                         icon={<ArrowUpOutlined />}
                         disabled={index === 0}
-                        onClick={() => emit(moveSignupField(fields, field.key, -1))}
+                        onClick={() => emit(moveSignupField(visible, field.key, -1))}
                       />
                     </Tooltip>
                     <Tooltip title="下移">
@@ -139,8 +125,8 @@ export function SignupFieldsEditor({ value, onChange, signupTotalLimit }: Signup
                         type="text"
                         size="small"
                         icon={<ArrowDownOutlined />}
-                        disabled={index === fields.length - 1}
-                        onClick={() => emit(moveSignupField(fields, field.key, 1))}
+                        disabled={index === visible.length - 1}
+                        onClick={() => emit(moveSignupField(visible, field.key, 1))}
                       />
                     </Tooltip>
                     <Tooltip title={field.fixed ? '系统字段不可删除' : '删除'}>
@@ -150,7 +136,7 @@ export function SignupFieldsEditor({ value, onChange, signupTotalLimit }: Signup
                         danger
                         icon={<DeleteOutlined />}
                         disabled={field.fixed}
-                        onClick={() => emit(removeSignupField(fields, field.key))}
+                        onClick={() => emit(removeSignupField(visible, field.key))}
                       />
                     </Tooltip>
                   </Space>
@@ -183,70 +169,6 @@ export function SignupFieldsEditor({ value, onChange, signupTotalLimit }: Signup
                     })}
                     <Button type="link" size="small" icon={<PlusOutlined />} className="signup-field-option-add is-inline" onClick={() => addOption(field)}>
                       添加选项
-                    </Button>
-                  </div>
-                ) : null}
-
-                {field.inputType === 'group' ? (
-                  <div className="signup-field-options signup-field-choices signup-field-groups">
-                    <Typography.Text className="signup-field-group-hint" type={groupSumMatched ? 'secondary' : 'danger'}>
-                      各组合计 {groupSum}（各组人数合计要等于报名总人数{total == null ? '' : total}）
-                    </Typography.Text>
-                    {(field.groups ?? []).map((group, groupIndex) => {
-                      const canRemove = (field.groups ?? []).length > 2;
-                      return (
-                        <Flex key={groupIndex} className="signup-field-option" align="center" gap={6}>
-                          <Checkbox disabled />
-                          <Input
-                            size="small"
-                            value={group.name}
-                            maxLength={20}
-                            placeholder={`分组 ${groupIndex + 1}`}
-                            onChange={(event) => {
-                              const groups = (field.groups ?? []).map((item, i) =>
-                                i === groupIndex ? { ...item, name: event.target.value } : item,
-                              );
-                              updateGroups(field, groups);
-                            }}
-                          />
-                          <InputNumber
-                            size="small"
-                            min={0}
-                            precision={0}
-                            value={group.limit}
-                            addonBefore="限"
-                            addonAfter="人"
-                            style={{ width: 128 }}
-                            onChange={(value) => {
-                              const groups = (field.groups ?? []).map((item, i) =>
-                                i === groupIndex ? { ...item, limit: typeof value === 'number' ? value : 0 } : item,
-                              );
-                              updateGroups(field, groups);
-                            }}
-                          />
-                          <Tooltip title={canRemove ? '删除分组' : '至少保留 2 个分组'}>
-                            <MinusCircleOutlined
-                              className={canRemove ? 'signup-field-option-remove' : 'signup-field-option-remove is-disabled'}
-                              onClick={() => {
-                                if (!canRemove) return;
-                                updateGroups(
-                                  field,
-                                  (field.groups ?? []).filter((_, i) => i !== groupIndex),
-                                );
-                              }}
-                            />
-                          </Tooltip>
-                        </Flex>
-                      );
-                    })}
-                    <Button
-                      type="link"
-                      size="small"
-                      icon={<PlusOutlined />}
-                      className="signup-field-option-add is-inline"
-                      onClick={() => updateGroups(field, [...(field.groups ?? []), { name: '', limit: 0 }])}
-                    >
-                      添加分组
                     </Button>
                   </div>
                 ) : null}
@@ -291,8 +213,8 @@ export function SignupFieldsEditor({ value, onChange, signupTotalLimit }: Signup
       <div className="signup-fields-palette">
         <Typography.Text strong>预设字段</Typography.Text>
         <div className="signup-fields-palette-grid">
-          {presetSignupFields.map((field) => {
-            const added = fields.some((item) => item.key === field.key);
+          {palettePresets.map((field) => {
+            const added = visible.some((item) => item.key === field.key);
             return (
               <Button
                 key={field.key}
@@ -300,7 +222,7 @@ export function SignupFieldsEditor({ value, onChange, signupTotalLimit }: Signup
                 type="dashed"
                 disabled={added}
                 icon={<PlusOutlined />}
-                onClick={() => emit(addSignupField(fields, field.key))}
+                onClick={() => emit(addSignupField(visible, field.key))}
               >
                 <span className="signup-fields-palette-label">{field.label}</span>
                 <Tag className="signup-fields-palette-tag">{signupFieldInputTypeLabels[field.inputType]}</Tag>
@@ -316,7 +238,7 @@ export function SignupFieldsEditor({ value, onChange, signupTotalLimit }: Signup
               block
               type="dashed"
               icon={<PlusOutlined />}
-              onClick={() => emit([...fields, createCustomSignupField(inputType, fields)])}
+              onClick={() => emit([...visible, createCustomSignupField(inputType, visible)])}
             >
               <span className="signup-fields-palette-label">{signupFieldInputTypeLabels[inputType]}</span>
             </Button>

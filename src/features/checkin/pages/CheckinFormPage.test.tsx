@@ -24,7 +24,10 @@ describe('CheckinFormPage', () => {
     expect(html).toContain('开始');
     expect(html).toContain('奖励规则');
     expect(html).toContain('添加规则');
-    expect(html).toContain('由抽奖活动反向关联后才会入账');
+    expect(html).toContain('规则 1');
+    expect(html).toContain('从已有选择');
+    expect(html).toContain('新建勋章');
+    expect(html).toContain('从勋章库选择');
   });
 
   it('locks ended theme editing', () => {
@@ -37,13 +40,41 @@ describe('CheckinFormPage', () => {
     expect(html).toContain('disabled');
   });
 
-  it('offers medal library and upload', () => {
+  it('offers 从已有选择 and 新建勋章', () => {
     const html = renderToStaticMarkup(
       <App>
         <CheckinFormPage mode="edit" recordId="1" onBack={noop} onSaved={noop} />
       </App>,
     );
-    expect(html).toContain('勋章库');
-    expect(html).toContain('上传');
+    expect(html).toContain('从已有选择');
+    expect(html).toContain('新建勋章');
+    expect(html).toContain('重新选择');
+    expect(html).toContain('满勤打卡');
+    expect(html).not.toContain('上传图片');
+  });
+
+  it('renders one rule card per stored rule', () => {
+    const culture = renderToStaticMarkup(
+      <App>
+        <CheckinFormPage mode="edit" recordId="1" onBack={noop} onSaved={noop} />
+      </App>,
+    );
+    expect(culture).toContain('规则 1');
+    expect(culture).not.toContain('规则 2');
+    expect(culture).toContain('连续满');
+    expect(culture).toContain('ant-select');
+    expect(culture).not.toContain('连续天数');
+    expect((culture.match(/>奖励</g) ?? []).length).toBe(1);
+
+    const skills = renderToStaticMarkup(
+      <App>
+        <CheckinFormPage mode="edit" recordId="2" onBack={noop} onSaved={noop} />
+      </App>,
+    );
+    expect(skills).toContain('规则 1');
+    expect(skills).not.toContain('规则 2');
+    expect((skills.match(/规则 1/g) ?? []).length).toBe(1);
+    expect(skills).toContain('积分');
+    expect(skills).not.toContain('抽奖次数');
   });
 });

@@ -84,7 +84,7 @@ describe('VoteDetailPage', () => {
   it('lists comments on the comments tab', () => {
     const html = render('2', 'comments');
     expect(html).toContain('评论内容');
-    expect(html).toContain('回复');
+    expect(html).not.toContain('>回复<');
     expect(html).toContain('评论人');
     expect(html).toContain('部门');
     expect(html).toContain('评论时间');

@@ -1,4 +1,10 @@
 import type { CSSProperties, MouseEvent, ReactNode } from 'react';
+import type { ActivityStatus } from '../../../activities/model/activity';
+import { EmployeeAvatar } from '../../activities/components/EmployeeAvatar';
+import { IconClock, IconPin, IconUser } from '../../activities/components/Icons';
+import { ActivityCoverOverlay, CategoryPill, SchedulePill, StatusPill } from '../../activities/components/StatusPill';
+import { decoActivityCardFields, decoGroupCardFields, type DecoActivityCardFields, type DecoGroupCardFields } from '../../../../shared/decoration/decoCardFields';
+import { comparePinSort } from '../../../interest-groups/model/pinSort';
 
 export const ICONS: Record<string, string> = {
   plus: 'M12 5v14M5 12h14',
@@ -65,7 +71,13 @@ export const CATS = {
 export type CatKey = keyof typeof CATS;
 export type ActType = 'once' | 'recurring' | 'series';
 export type ActTab = 'rec' | 'latest' | 'hot';
-export type ActStatus = 'upcoming' | 'ended' | 'cancelled';
+export type ActStatus = 'upcoming' | 'ongoing' | 'ended' | 'cancelled';
+export const ACT_STATUS_LABEL: Record<ActStatus, string> = {
+  upcoming: '未开始',
+  ongoing: '进行中',
+  ended: '已结束',
+  cancelled: '已终止',
+};
 export type JoinMode = 'free' | 'approve';
 
 export type ActSession = {
@@ -92,8 +104,15 @@ export type Group = {
   area: string;
   hot?: boolean;
   auditStatus?: '待审核' | '已通过' | '已驳回' | '无需审核';
+  publishStatus?: '未发布' | '已发布';
   createdByMe?: boolean;
+  pinned?: boolean;
+  sortIndex?: number;
 };
+
+export function groupIntroNeedsExpand(intro: string): boolean {
+  return Array.from(intro.trim()).length > 44;
+}
 
 export type Act = {
   id: string;
@@ -114,10 +133,14 @@ export type Act = {
   createdByMe?: boolean;
   recReason?: string;
   status: ActStatus;
+  signupClosed?: boolean;
   desc: string;
   tags: string[];
   sessions?: ActSession[];
   signupStatus?: '待审核' | '已通过' | '已驳回';
+  cover?: string;
+  pinned?: boolean;
+  sortIndex?: number;
 };
 
 export type Moment = {
@@ -138,6 +161,7 @@ export type IgScreenName =
   | 'myGroups'
   | 'allActs'
   | 'allGroups'
+  | 'search'
   | 'createGroup'
   | 'createAct'
   | 'activity'
@@ -152,6 +176,8 @@ export type IgRoute = {
     gid?: string;
     pickEnroll?: boolean;
     pickEnrollIntent?: 'cancel' | 'adjust';
+    q?: string;
+    tab?: 'acts' | 'members' | 'moments';
   };
 };
 
@@ -171,7 +197,7 @@ export const GROUPS: Group[] = [
   { id: 'g2', name: '周末徒步野行', cat: 'sport', lead: '苏曼', members: 96, acts: 18, join: 'free', joined: true, tags: ['周末出行', '装备互助', 'AA 拼车'], area: '近郊 · 多线路', intro: '逃离工位,走进山野。每月 2-3 条线路,从溪谷轻徒步到登顶看日出,领队持证、全程保障。' },
   { id: 'g3', name: '深夜读书会', cat: 'learning', lead: '周棠', members: 64, acts: 31, join: 'free', joined: false, tags: ['双周一次', '主题共读', '不打卡不焦虑'], area: '总部 · 三楼书吧', intro: '一本书、一杯茶、一群不催进度的人。每期共读一本,线下围读 + 自由发言,读得慢也没关系。' },
   { id: 'g4', name: '周五观影会', cat: 'movie', lead: '许墨', members: 73, acts: 17, join: 'free', joined: false, tags: ['每周放映', '影乐分享', '偶尔开麦'], area: '总部 · 多功能厅', intro: '下班留下来,一起看场电影、聊聊配乐。从经典老片到话题新作,也有同事的现场弹唱开放麦。' },
-  { id: 'g5', name: '桌游电竞局', cat: 'game', lead: '沈星', members: 142, acts: 40, join: 'free', joined: true, tags: ['每周开局', '新手教学', '五黑常驻'], area: '总部 · 休闲区', intro: '剧本杀、阿瓦隆、狼人杀、五黑上分,午休和下班后随时开局,菜也没关系,快乐第一。', hot: true },
+  { id: 'g5', name: '桌游电竞局', cat: 'game', lead: '沈星', members: 142, acts: 40, join: 'free', joined: true, tags: ['每周开局', '新手教学', '五黑常驻'], area: '总部 · 休闲区', intro: '桌游电竞局欢迎所有想玩的人来坐一坐。剧本杀、阿瓦隆、狼人杀、德式桌游、休闲卡牌和五黑排位都能开，午休半小时可以来一局快杀，下班后也能留下来打长本。新手有人带教学，老玩家也能找到同水平对手。场地在总部休闲区，零食饮料可自备或现场拼单。我们不卷段位、不嘲讽菜鸡，快乐第一、胜负其次。想开局就在群里喊一声，凑齐人立刻开始，错过这周还有下周固定局。欢迎带同事和朋友一起来，人多更好玩。随时都有空位，等你入座。', hot: true },
   { id: 'g6', name: '职场成长营', cat: 'career', lead: '何夕', members: 58, acts: 16, join: 'free', joined: false, tags: ['双周一次', '经验分享', '简历互助'], area: '总部 · 学习室', intro: '把同事的经验变成你的捷径。每期一个主题:汇报表达、向上沟通、项目复盘,老带新少走弯路。' },
   { id: 'g7', name: '暖心公益志愿队', cat: 'volunteer', lead: '顾乔', members: 110, acts: 29, join: 'free', joined: false, tags: ['月度活动', '工会支持', '人人可参与'], area: '城市 · 各公益点', intro: '用业余时间做点暖心的事。社区助老、山区捐书、公益义卖,工会提供保障,报名即可参与。' },
   { id: 'g8', name: '羽毛球俱乐部', cat: 'sport', lead: '叶蓁', members: 87, acts: 35, join: 'free', joined: false, tags: ['每周二四', '场地已包', '拍可借'], area: '总部 · 体育馆', intro: '已包下体育馆 4 片场地,周二周四晚常态开打。从娱乐双打到水平局,都能找到对手。' },
@@ -249,13 +275,13 @@ export const ACTS: Act[] = [
   },
 ];
 
-export const HINTS = ['职场成长的活动有什么', '适合新人的小组', '本月最热门的小组'] as const;
+export const HINTS = ['适合新人的小组', '推荐本周的活动', '热门活动有什么'] as const;
 
 export const SHORTCUTS = [
-  { key: 'createGroup', label: '创建小组', icon: 'plus' },
+  { key: 'createGroup', label: '创建兴趣圈', icon: 'plus' },
   { key: 'createAct', label: '创建活动', icon: 'plus' },
   { key: 'myActivities', label: '我的活动', icon: 'ticket' },
-  { key: 'myGroups', label: '我的小组', icon: 'star' },
+  { key: 'myGroups', label: '我的兴趣圈', icon: 'star' },
 ] as const;
 
 export const ACT_TABS: { key: ActTab; label: string }[] = [
@@ -288,7 +314,7 @@ export function enrollInfo(act: Act, group?: Group) {
   if (gs === 'pending') return { label: '立即报名', variant: 'primary' as const, icon: 'ticket', disabled: true };
   if (gs === 'none') return { label: '报名+入组', variant: 'primary' as const, icon: 'userPlus', disabled: false };
   if (act.joinedByMe) {
-    if (act.type === 'recurring' || act.type === 'series') return { label: '调整场次', variant: 'soft' as const, icon: 'ticket', disabled: false };
+    if (act.type === 'recurring' || act.type === 'series') return { label: '立即报名', variant: 'soft' as const, icon: 'ticket', disabled: false };
     return { label: '取消报名', variant: 'ghost' as const, icon: 'x', disabled: false };
   }
   return { label: act.type === 'recurring' ? '选场次报名' : '报名', variant: 'primary' as const, icon: 'ticket', disabled: false };
@@ -303,40 +329,97 @@ export function pickActs(tab: ActTab, acts: Act[], limit = 3) {
   return [...live].sort((a, b) => b.likes - a.likes || b.signed - a.signed).slice(0, limit);
 }
 
+export function pickEndedActs(acts: Act[], limit: number) {
+  return acts.filter((a) => a.status === 'ended').sort((a, b) => b.dateKey - a.dateKey).slice(0, limit);
+}
+
+export function compareClientPinSort<T extends { id: string; pinned?: boolean; sortIndex?: number }>(left: T, right: T) {
+  return comparePinSort(
+    { id: Number(left.id) || 0, pinned: Boolean(left.pinned), sortIndex: left.sortIndex ?? 0 },
+    { id: Number(right.id) || 0, pinned: Boolean(right.pinned), sortIndex: right.sortIndex ?? 0 },
+  );
+}
+
 export function filterActs(acts: Act[], groups: Group[], q: string) {
   const s = q.trim().toLowerCase();
-  if (!s) return acts;
-  return acts.filter((a) => {
-    const g = groups.find((x) => x.id === a.gid);
-    return [a.title, g?.name, ...(a.tags || [])].filter(Boolean).join(' ').toLowerCase().includes(s);
-  });
+  const matched = !s
+    ? acts
+    : acts.filter((a) => {
+        const g = groups.find((x) => x.id === a.gid);
+        return [a.title, g?.name, ...(a.tags || [])].filter(Boolean).join(' ').toLowerCase().includes(s);
+      });
+  return [...matched].sort(compareClientPinSort);
 }
 
 export function isCEndGroupDiscoverable(group: Group): boolean {
+  if (group.publishStatus === '未发布') return false;
   return group.auditStatus !== '待审核' && group.auditStatus !== '已驳回';
 }
 
 export function filterGroups(groups: Group[], q: string) {
   const visible = groups.filter(isCEndGroupDiscoverable);
   const s = q.trim().toLowerCase();
+  const matched = !s
+    ? visible
+    : visible.filter((g) => {
+        const cat = CATS[g.cat].label;
+        return [g.name, g.intro, g.lead, cat, ...g.tags].join(' ').toLowerCase().includes(s);
+      });
+  return [...matched].sort(compareClientPinSort);
+}
+
+export function searchActsByName(acts: Act[], q: string) {
+  const s = q.trim().toLowerCase();
+  if (!s) return acts;
+  return acts.filter((a) => a.title.toLowerCase().includes(s));
+}
+
+export function searchGroupsByName(groups: Group[], q: string) {
+  const s = q.trim().toLowerCase();
+  const visible = groups.filter(isCEndGroupDiscoverable);
   if (!s) return visible;
-  return visible.filter((g) => {
-    const cat = CATS[g.cat].label;
-    return [g.name, g.intro, g.lead, g.area, cat, ...g.tags].join(' ').toLowerCase().includes(s);
-  });
+  return visible.filter((g) => g.name.toLowerCase().includes(s));
+}
+
+export function canPublishIgMoment(status: ActStatus): boolean {
+  return status === 'ended' || status === 'ongoing';
 }
 
 export function momentEligibleActs(acts: Act[], gid?: string) {
-  return acts.filter((a) => a.status === 'ended' && a.joinedByMe && (!gid || a.gid === gid));
+  return acts.filter((a) => canPublishIgMoment(a.status) && a.joinedByMe && (!gid || a.gid === gid));
+}
+
+export function momentEligibleGroups(groups: Group[], acts: Act[]) {
+  const gids = new Set(momentEligibleActs(acts).map((a) => a.gid));
+  return groups.filter((g) => gids.has(g.id));
 }
 
 export function IgIcon({ name, size = 22, stroke = 2, fill = false, style }: { name: string; size?: number; stroke?: number; fill?: boolean; style?: CSSProperties }) {
+  if (name === 'apps') {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0, display: 'block', ...style }} aria-hidden>
+        {[4, 10, 16].flatMap((y) =>
+          [4, 10, 16].map((x) => <rect key={`${x}-${y}`} x={x} y={y} width="4.2" height="4.2" rx="1" />),
+        )}
+      </svg>
+    );
+  }
   if (name === 'cards') {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, display: 'block', ...style }} aria-hidden>
         {CARDS_LAYERS.map((layer) => (
           <path key={layer.d} d={layer.d} fill={layer.front ? 'var(--surface)' : 'none'} />
         ))}
+      </svg>
+    );
+  }
+  if (name === 'share') {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, display: 'block', ...style }} aria-hidden>
+        <circle cx="18" cy="5" r="3" />
+        <circle cx="6" cy="12" r="3" />
+        <circle cx="18" cy="19" r="3" />
+        <path d="M8.6 13.5 15.4 17.5M15.4 6.5 8.6 10.5" />
       </svg>
     );
   }
@@ -407,7 +490,7 @@ export function AvatarStack({ names, n, size, extra }: { names: string[]; n: num
   );
 }
 
-export function SectionHead({ title, sub, action, accent, onAction }: { title: string; sub?: string; action: string; accent: string; onAction: () => void }) {
+export function SectionHead({ title, sub, action, accent, onAction }: { title: string; sub?: string; action?: string; accent: string; onAction?: () => void }) {
   return (
     <div className="c-ig-sec-head">
       <div className="c-ig-sec-copy">
@@ -416,10 +499,12 @@ export function SectionHead({ title, sub, action, accent, onAction }: { title: s
         </h2>
         {sub ? <p className="c-ig-sec-sub">{sub}</p> : null}
       </div>
-      <button className="c-ig-more" type="button" onClick={onAction}>
-        {action}
-        <IgIcon name="chevR" size={15} />
-      </button>
+      {action && onAction ? (
+        <button className="c-ig-more" type="button" onClick={onAction}>
+          {action}
+          <IgIcon name="chevR" size={15} />
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -444,149 +529,397 @@ type ActivityCardProps = {
   act: Act;
   group?: Group;
   rec?: boolean;
+  layout?: string;
+  surface?: 'h5' | 'pc';
   peopleNames?: string[];
   onOpen: () => void;
-  onEnroll: (e: MouseEvent<HTMLButtonElement>) => void;
+  onEnroll?: (e: MouseEvent<HTMLButtonElement>) => void;
   onLike?: (e: MouseEvent<HTMLButtonElement>) => void;
+  fields?: Partial<DecoActivityCardFields>;
 };
 
-export function ActivityCard({ act, group, rec, peopleNames, onOpen, onEnroll, onLike }: ActivityCardProps) {
-  const cat = CATS[act.cat];
-  const type = TYPE_META[act.type];
-  const enroll = enrollInfo(act, group);
-  const left = act.cap - act.signed;
-  const pct = Math.min(100, Math.round((act.signed / act.cap) * 100));
-  const avatars = (peopleNames?.length ? peopleNames : NAMES).slice(0, 6);
-  return (
-    <article className="c-ig-act" onClick={onOpen} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') onOpen(); }}>
-      <div className="c-ig-cover">
-        <Photo seed={act.id + act.cat} icon={cat.icon} dim />
-        <div className="c-ig-cover-top">
-          <span className="c-ig-cat" style={{ background: cat.color }}>
-            <IgIcon name={cat.icon} size={13} stroke={2.4} />
-            {cat.label}
-          </span>
-        </div>
-        <div className="c-ig-cover-type">
-          <span className="c-ig-type">
-            <IgIcon name={type.icon} size={12.5} stroke={2.2} />
-            {type.label}
-          </span>
-        </div>
-        <button className="c-ig-like" type="button" onClick={(e) => { e.stopPropagation(); onLike?.(e); }}>
-          <IgIcon name="heart" size={15} fill={Boolean(act.liked)} />
-          {act.likes}
-        </button>
-        <div className="c-ig-cover-shade">
-          {rec && act.recReason ? (
-            <div className="c-ig-rec">
-              <Sparkles size={12} />
-              <span>{act.recReason}</span>
+function igHomeCta(act: Act): { label: string; enabled: boolean } {
+  if (act.status === 'ended' || act.status === 'cancelled' || act.signupClosed) {
+    return { label: '报名已结束', enabled: false };
+  }
+  if (act.joinedByMe) return { label: '已报名', enabled: false };
+  return { label: '立即报名', enabled: true };
+}
+
+function igActivityOverlay(act: Act) {
+  return {
+    id: Number(act.id) || 0,
+    title: act.title,
+    activityStatus: ACT_STATUS_LABEL[act.status] as ActivityStatus,
+    category: CATS[act.cat].label,
+    scheduleType: act.type,
+    pinned: Boolean(act.pinned),
+  };
+}
+
+function IgHomeQuota({
+  act,
+  peopleNames,
+  compact,
+  fields,
+}: {
+  act: Act;
+  peopleNames: string[];
+  compact: boolean;
+  fields?: Partial<DecoActivityCardFields>;
+}) {
+  const visible = decoActivityCardFields(fields);
+  if (!visible.showSignupProgress && !visible.showSignupButton) return null;
+  const remaining = Math.max(0, act.cap - act.signed);
+  const percent = act.cap ? Math.min(100, (act.signed / act.cap) * 100) : 0;
+  const cta = igHomeCta(act);
+  const action = visible.showSignupButton ? (
+    <span className={`c-card-action${cta.enabled ? '' : ' is-disabled'}${act.joinedByMe ? ' is-signed' : ''}`}>
+      {cta.label}
+    </span>
+  ) : null;
+  const bar = (
+    <div className="c-home-quota-bar" aria-hidden>
+      <span style={{ width: `${percent}%` }} />
+    </div>
+  );
+  const preview = compact ? [] : peopleNames.slice(0, 4);
+  if (compact) {
+    return (
+      <div className="c-home-quota is-side">
+        <div className="c-home-quota-inline">
+          {visible.showSignupProgress ? (
+            <div className="c-home-quota-progress">
+              <div className="c-home-quota-row">
+                <span>{`已报名${act.signed}/${act.cap}`}</span>
+                <span className="c-home-quota-left">{`余${remaining}位`}</span>
+              </div>
+              {bar}
             </div>
-          ) : group ? (
-            <div className="c-ig-gname">{group.name}</div>
           ) : null}
-          <div className={`c-ig-act-title has-like`}>{act.title}</div>
+          {action}
         </div>
       </div>
-      <div className="c-ig-body">
-        <div className="c-ig-meta">
-          <div className="c-ig-meta-row">
-            <span className="c-ig-meta-ico">
-              <IgIcon name="calendar" size={15} stroke={2} />
-            </span>
-            <span>
-              {act.when}
-              {act.daysBadge ? <span className="c-ig-days">{act.daysBadge}</span> : null}
-            </span>
+    );
+  }
+  return (
+    <div className="c-home-quota">
+      {visible.showSignupProgress ? (
+        <>
+          <div className="c-home-quota-row">
+            <span>{`已报名${act.signed}/${act.cap}`}</span>
+            <span className="c-home-quota-left">{`余${remaining}位`}</span>
           </div>
-          <div className="c-ig-meta-row">
-            <span className="c-ig-meta-ico">
-              <IgIcon name="pin" size={15} stroke={2} />
+          {bar}
+        </>
+      ) : null}
+      <div className="c-home-quota-foot">
+        {visible.showSignupProgress ? (
+          <div className="c-home-quota-people">
+          {preview.length > 0 ? (
+            <span className="c-home-quota-avatars" aria-hidden>
+              {preview.map((name) => (
+                <EmployeeAvatar key={name} name={name} />
+              ))}
             </span>
-            <span>{act.loc}</span>
-          </div>
+          ) : null}
+          <span className="c-home-quota-count">{act.signed}人</span>
         </div>
-        <div className="c-ig-quota">
-          <div style={{ flex: 1 }}>
-            <div className="c-ig-quota-row">
-              <span>已报名 {act.signed}/{act.cap}</span>
-              <span className={left <= 0 ? 'is-full' : undefined}>{left <= 0 ? '已满员' : `余 ${left} 位`}</span>
-            </div>
-            <div className="c-ig-bar" aria-hidden>
-              <span style={{ width: `${pct}%`, background: cat.color }} />
-            </div>
-          </div>
-        </div>
-        <div className="c-ig-foot">
-          <AvatarStack names={avatars} n={4} size={26} extra={Math.max(0, act.signed - 4)} />
-          <button
-            className={`c-ig-btn is-${enroll.variant}`}
-            type="button"
-            disabled={enroll.disabled}
-            onClick={(e) => { e.stopPropagation(); onEnroll(e); }}
-          >
-            <IgIcon name={enroll.icon} size={16} stroke={2.4} />
-            {enroll.label}
-          </button>
-        </div>
+        ) : (
+          <span />
+        )}
+        {action}
       </div>
-    </article>
+    </div>
+  );
+}
+
+export function ActivityCard({
+  act,
+  layout = 'large-image',
+  surface = 'h5',
+  peopleNames,
+  onOpen,
+  fields,
+}: ActivityCardProps) {
+  const cardLayout = layout === 'two-col' || layout === 'large-image' || layout === 'left-image' || layout === 'left-text' ? layout : 'large-image';
+  const visible = decoActivityCardFields(fields);
+  const side = cardLayout === 'left-image' || cardLayout === 'left-text';
+  const overlay = igActivityOverlay(act);
+  const names = peopleNames?.length ? peopleNames : NAMES;
+  const pc = surface === 'pc';
+  const sideCardStyle: CSSProperties | undefined = side
+    ? { display: 'flex', flexDirection: cardLayout === 'left-text' ? 'row-reverse' : 'row', alignItems: 'stretch' }
+    : undefined;
+  const sideCoverStyle: CSSProperties | undefined = side
+    ? { width: 108, flex: '0 0 108px', alignSelf: 'stretch', minHeight: 96, aspectRatio: 'auto' }
+    : undefined;
+  return (
+    <button
+      className={pc ? `c-pc-card c-card-btn is-${cardLayout}` : `c-list-card c-h5-card-button is-${cardLayout}`}
+      type="button"
+      onClick={onOpen}
+      style={sideCardStyle}
+    >
+      <div
+        className={`c-cover${side ? ' c-list-cover is-side is-contain' : pc ? '' : ' c-list-cover c-cover-16x9'}`}
+        style={sideCoverStyle}
+      >
+        <span className="c-cover-fallback" aria-hidden />
+        {act.cover ? <img src={act.cover} alt="" /> : null}
+        <ActivityCoverOverlay activity={overlay} variant="home" layout={cardLayout} likes={act.likes} fields={fields} />
+      </div>
+      <div className={pc ? 'c-pc-card-body' : 'c-list-copy'}>
+        {side ? (
+          <>
+            {visible.showTitle ? <div className="c-card-title">{act.title}</div> : null}
+            <div className="c-list-tags">
+              {visible.showStatusTag ? <StatusPill status={overlay.activityStatus} /> : null}
+              {visible.showCategoryTag ? <CategoryPill category={overlay.category} /> : null}
+              {visible.showHoldMode ? <SchedulePill scheduleType={overlay.scheduleType} /> : null}
+            </div>
+          </>
+        ) : null}
+        {(visible.showTime || (visible.showPlace && !side && act.loc.trim())) ? (
+          <div className="c-meta">
+            {visible.showTime ? (
+              <div className="c-meta-row">
+                <IconClock />
+                <span>{act.when}</span>
+              </div>
+            ) : null}
+            {visible.showPlace && !side && act.loc.trim() ? (
+              <div className="c-meta-row">
+                <IconPin />
+                <span>{act.loc}</span>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        <IgHomeQuota act={act} peopleNames={names} compact={side} fields={fields} />
+      </div>
+    </button>
   );
 }
 
 type GroupCardProps = {
   group: Group;
   wide?: boolean;
+  layout?: string;
+  surface?: 'h5' | 'pc';
+  fields?: Partial<DecoGroupCardFields>;
   onOpen: () => void;
   onJoin: (e: MouseEvent<HTMLButtonElement>) => void;
 };
 
-export function GroupCard({ group, wide, onOpen, onJoin }: GroupCardProps) {
-  const cat = CATS[group.cat];
+function GroupJoinAction({
+  group,
+  onJoin,
+}: {
+  group: Group;
+  onJoin: (e: MouseEvent<HTMLButtonElement>) => void;
+}) {
   const gs = groupMemberState(group);
+  const label = gs === 'member' ? '已加入' : gs === 'pending' ? '审核中' : '加入';
+  const cls = `c-card-action${gs === 'member' ? ' is-signed' : gs === 'pending' ? ' is-disabled' : ''}`;
+  if (gs === 'member' || gs === 'pending') {
+    return (
+      <button className={cls} type="button" disabled>
+        {label}
+      </button>
+    );
+  }
   return (
-    <article className={`c-ig-group${wide ? ' is-wide' : ''}`} onClick={onOpen} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') onOpen(); }}>
-      <div className="c-ig-group-cover">
-        <Photo seed={group.id + group.cat} icon={cat.icon} dim />
-        <span className="c-ig-cat" style={{ background: cat.color }}>
-          <IgIcon name={cat.icon} size={13} stroke={2.4} />
-          {cat.label}
-        </span>
+    <button
+      className={cls}
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onJoin(e);
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+export function GroupCard({ group, wide, layout, surface = 'h5', fields, onOpen, onJoin }: GroupCardProps) {
+  const visible = decoGroupCardFields(fields);
+  const cat = CATS[group.cat];
+  const pc = surface === 'pc';
+  const cardLayout = layout === 'two-col' || layout === 'large-image' || layout === 'left-image' || layout === 'left-text' ? layout : 'large-image';
+  const side = cardLayout === 'left-image' || cardLayout === 'left-text';
+  const sideCardStyle: CSSProperties | undefined = side
+    ? { display: 'flex', flexDirection: cardLayout === 'left-text' ? 'row-reverse' : 'row', alignItems: 'stretch' }
+    : undefined;
+  const sideCoverStyle: CSSProperties | undefined = side
+    ? { width: 108, flex: '0 0 108px', alignSelf: 'stretch', minHeight: 96, aspectRatio: 'auto' }
+    : undefined;
+  const catBadge = visible.showCategoryTag ? <CategoryPill category={cat.label} /> : null;
+  const people = NAMES.slice(2, 6);
+  const join = visible.showJoinButton ? <GroupJoinAction group={group} onJoin={onJoin} /> : null;
+  const intro = visible.showIntro ? group.intro.trim() : '';
+  const layoutClass = layout && layout !== 'scroll' ? ` is-${layout}` : '';
+  const quota = visible.showMembers || Boolean(join);
+  return (
+    <article
+      className={`c-ig-group${wide ? ' is-wide' : ''}${layoutClass}${pc ? ' c-pc-card' : ' c-h5-card-button'}`}
+      style={sideCardStyle}
+      onClick={onOpen}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter') onOpen(); }}
+    >
+      <div
+        className={`c-ig-group-cover c-cover c-list-cover${side ? ' is-side is-contain' : ' c-cover-16x9'}`}
+        style={sideCoverStyle}
+      >
+        <Photo seed={group.id + group.cat} icon={cat.icon} dim={!side} />
+        {side ? null : (
+          <>
+            <div className="c-cover-badges">
+              {group.pinned ? <span className="c-pill is-pin">置顶</span> : null}
+              {catBadge}
+            </div>
+            {visible.showTitle ? <div className="c-cover-title">{group.name}</div> : null}
+          </>
+        )}
       </div>
-      <div className="c-ig-group-body">
-        <div className="c-ig-group-name">{group.name}</div>
-        <p className="c-ig-group-desc">{group.intro}</p>
-        <div className="c-ig-group-foot">
-          <div className="c-ig-group-people">
-            <AvatarStack names={NAMES.slice(2, 8)} n={3} size={24} />
-            <span className="c-ig-gcount">{group.members} 人</span>
+      <div className={pc ? 'c-pc-card-body' : 'c-list-copy'}>
+        {side ? (
+          <>
+            {visible.showTitle ? <div className="c-card-title">{group.name}</div> : null}
+            {catBadge ? <div className="c-list-tags">{catBadge}</div> : null}
+            {group.pinned ? <span className="c-pill is-pin">置顶</span> : null}
+          </>
+        ) : null}
+        {intro ? (
+          <div className="c-meta">
+            <div className="c-meta-row">
+              <IconUser />
+              <span>{intro}</span>
+            </div>
           </div>
-          {gs === 'member' ? (
-            <button className="c-ig-btn is-ghost" type="button" disabled>
-              <IgIcon name="check" size={16} stroke={2.4} />
-              已加入
-            </button>
-          ) : gs === 'pending' ? (
-            <button className="c-ig-btn is-ghost" type="button" disabled>
-              <IgIcon name="clock" size={16} stroke={2.4} />
-              审核中
-            </button>
+        ) : null}
+        {quota ? (
+          side ? (
+            <div className="c-home-quota is-side">
+              <div className="c-home-quota-inline">
+                {visible.showMembers ? <span className="c-home-quota-count">{`${group.members}人 · 活动 ${group.acts}`}</span> : null}
+                {join}
+              </div>
+            </div>
           ) : (
-            <button className="c-ig-btn is-soft" type="button" onClick={(e) => { e.stopPropagation(); onJoin(e); }}>
-              <IgIcon name="plus" size={16} stroke={2.4} />
-              加入
-            </button>
-          )}
-        </div>
+            <div className="c-home-quota">
+              <div className="c-home-quota-foot">
+                {visible.showMembers ? (
+                  <div className="c-home-quota-people">
+                    <span className="c-home-quota-avatars" aria-hidden>
+                      {people.map((name) => (
+                        <EmployeeAvatar key={name} name={name} />
+                      ))}
+                    </span>
+                    <span className="c-home-quota-count">{`${group.members}人 · 活动 ${group.acts}`}</span>
+                  </div>
+                ) : null}
+                {join}
+              </div>
+            </div>
+          )
+        ) : null}
       </div>
     </article>
   );
 }
 
+function EndedActCover({ act, dim }: { act: Act; dim?: boolean }) {
+  const cat = CATS[act.cat];
+  if (act.cover) return <img className="c-ig-ended-cover" src={act.cover} alt="" />;
+  return <Photo seed={act.id + act.cat} icon={cat.icon} dim={dim} />;
+}
+
+export function EndedActCard({
+  act,
+  onOpen,
+  variant = 'rail',
+  layout,
+  fields,
+}: {
+  act: Act;
+  onOpen: () => void;
+  variant?: 'rail' | 'feed';
+  layout?: string;
+  fields?: Partial<DecoActivityCardFields>;
+}) {
+  const visible = decoActivityCardFields(fields);
+  const cat = CATS[act.cat];
+  const side = layout === 'left-image' || layout === 'left-text';
+  if (variant === 'feed') {
+    return (
+      <article
+        className="c-ig-act"
+        onClick={onOpen}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter') onOpen(); }}
+      >
+        <div className="c-ig-cover">
+          <EndedActCover act={act} dim />
+          <div className="c-ig-cover-top">
+            <CategoryPill category={cat.label} />
+          </div>
+          <div className="c-ig-cover-type">
+            <span className="c-ig-ended-badge">已结束</span>
+          </div>
+        </div>
+        <div className="c-ig-body">
+          <div className="c-ig-act-title is-ink">{act.title}</div>
+          <div className="c-ig-meta">
+            <div className="c-ig-meta-row">
+              <span className="c-ig-meta-ico">
+                <IgIcon name="calendar" size={15} stroke={2} />
+              </span>
+              <span>{act.when}</span>
+            </div>
+            <div className="c-ig-meta-row">
+              <span className="c-ig-meta-ico">
+                <IgIcon name="pin" size={15} stroke={2} />
+              </span>
+              <span>{act.loc}</span>
+            </div>
+          </div>
+        </div>
+      </article>
+    );
+  }
+  const cover = act.cover ? (
+    <img className="c-past-act-cover is-contain" src={act.cover} alt="" />
+  ) : (
+    <span className="c-cover-fallback" aria-hidden />
+  );
+  if (side) {
+    return (
+      <button className={`c-past-act is-${layout}`} type="button" aria-label={act.title} onClick={onOpen}>
+        <span className="c-past-act-media">{cover}</span>
+        <span className="c-past-act-copy">
+          <span className="c-past-act-title">{visible.showTitle ? act.title : ''}</span>
+          {visible.showStatusTag ? <span className="c-past-act-badge">已结束</span> : null}
+        </span>
+      </button>
+    );
+  }
+  return (
+    <button className="c-past-act" type="button" aria-label={act.title} onClick={onOpen}>
+      {cover}
+      <span className="c-past-act-shade" />
+      {visible.showStatusTag ? <span className="c-past-act-badge">已结束</span> : null}
+      {visible.showTitle ? <span className="c-past-act-title">{act.title}</span> : null}
+    </button>
+  );
+}
+
 export function ActivityRow({ act, onOpen }: { act: Act; onOpen: () => void }) {
   const cat = CATS[act.cat];
-  const type = TYPE_META[act.type];
   return (
     <button className="c-ig-row" type="button" onClick={onOpen}>
       <div className="c-ig-row-cover">
@@ -595,18 +928,35 @@ export function ActivityRow({ act, onOpen }: { act: Act; onOpen: () => void }) {
       <div className="c-ig-row-body">
         <div className="c-ig-row-title">{act.title}</div>
         <div className="c-ig-row-sub">
+          {act.status === 'ended' || act.status === 'cancelled' ? '已结束 · ' : ''}
           {act.when}
           {act.daysBadge ? ` · ${act.daysBadge}` : ''}
         </div>
         <div className="c-ig-row-tags">
-          <span className="c-ig-cat is-sm" style={{ background: cat.color }}>
-            <IgIcon name={cat.icon} size={11} stroke={2.4} />
-            {cat.label}
-          </span>
-          <span className="c-ig-type is-sm">
-            <IgIcon name={type.icon} size={11} stroke={2.2} />
-            {type.label}
-          </span>
+          <CategoryPill category={cat.label} />
+          <SchedulePill scheduleType={act.type} />
+          <StatusPill status={ACT_STATUS_LABEL[act.status] as ActivityStatus} />
+        </div>
+      </div>
+      <IgIcon name="chevR" size={18} style={{ color: 'var(--ink-3)' }} />
+    </button>
+  );
+}
+
+export function GroupRow({ group, onOpen }: { group: Group; onOpen: () => void }) {
+  const cat = CATS[group.cat];
+  return (
+    <button className="c-ig-row" type="button" onClick={onOpen}>
+      <div className="c-ig-row-cover">
+        <Photo seed={group.id + group.cat} icon={cat.icon} />
+      </div>
+      <div className="c-ig-row-body">
+        <div className="c-ig-row-title">{group.name}</div>
+        <div className="c-ig-row-sub">
+          {group.members} 人
+        </div>
+        <div className="c-ig-row-tags">
+          <CategoryPill category={cat.label} />
         </div>
       </div>
       <IgIcon name="chevR" size={18} style={{ color: 'var(--ink-3)' }} />

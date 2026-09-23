@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import type { InterestGroup } from '../../../interest-groups/model/interestGroup';
+import { isInterestGroupLead, type InterestGroup } from '../../../interest-groups/model/interestGroup';
 import type { InterestGroupActivity } from '../../../interest-groups/model/interestGroupActivity';
 import { formatInterestGroupActivityTime } from '../../../interest-groups/model/interestGroupActivity';
 import type { InterestGroupComment } from '../../../interest-groups/model/interestGroupComment';
@@ -7,6 +7,7 @@ import type { InterestGroupMember } from '../../../interest-groups/model/interes
 import type { InterestGroupMoment } from '../../../interest-groups/model/interestGroupMoment';
 import type { InterestGroupSignup } from '../../../interest-groups/model/interestGroupSignup';
 import { occupiesInterestGroupSignupSlot } from '../../../interest-groups/model/interestGroupSignup';
+import { comparePinSort } from '../../../interest-groups/model/pinSort';
 import { formatCEndDateTimeInText } from '../../formatDateTime';
 import {
   getInterestGroupActivities,
@@ -69,10 +70,7 @@ export function parseClientId(id: string): number {
 }
 
 export function isPublishedIgActivity(activity: InterestGroupActivity): boolean {
-  return (
-    activity.publishStatus === '已发布' &&
-    (activity.auditStatus === '已通过' || activity.auditStatus === '无需审核')
-  );
+  return activity.publishStatus === '已发布';
 }
 
 function memberMatches(member: InterestGroupMember, viewer: string): boolean {
@@ -81,15 +79,15 @@ function memberMatches(member: InterestGroupMember, viewer: string): boolean {
 
 function isClientVisibleGroup(group: InterestGroup, viewer: string, members: InterestGroupMember[]): boolean {
   if (group.auditStatus === '已驳回') return false;
-  if (group.auditStatus === '待审核') {
-    return group.leadName === viewer || members.some((item) => item.groupId === group.id && memberMatches(item, viewer));
-  }
+  const insider =
+    isInterestGroupLead(group, viewer) || members.some((item) => item.groupId === group.id && memberMatches(item, viewer));
+  if (group.auditStatus === '待审核' || group.publishStatus !== '已发布') return insider;
   return true;
 }
 
 function isClientVisibleActivity(activity: InterestGroupActivity, viewer: string): boolean {
   if (isPublishedIgActivity(activity)) return true;
-  return activity.hostName === viewer && activity.auditStatus !== '已驳回';
+  return activity.hostName === viewer;
 }
 
 function asCat(key: string): CatKey {
@@ -125,16 +123,23 @@ function toClientSessions(
   viewerSignups: InterestGroupSignup[],
 ): ActSession[] | undefined {
   if (!activity.sessions?.length) return undefined;
-  return activity.sessions.map((session) => ({
-    id: session.id,
-    date: formatChipDate(session.startAt),
-    time: formatChipTime(session.startAt, session.endAt),
-    cap: session.capacity,
-    signed: session.signedCount,
-    joinedByMe: viewerSignups.some(
-      (item) => item.sessionId === session.id && occupiesInterestGroupSignupSlot(item.status),
-    ),
-  }));
+  return activity.sessions
+    .filter((session) => {
+      const joined = viewerSignups.some(
+        (item) => item.sessionId === session.id && occupiesInterestGroupSignupSlot(item.status),
+      );
+      return session.status !== 'cancelled' || joined;
+    })
+    .map((session) => ({
+      id: session.id,
+      date: formatChipDate(session.startAt),
+      time: formatChipTime(session.startAt, session.endAt),
+      cap: session.capacity,
+      signed: session.signedCount,
+      joinedByMe: viewerSignups.some(
+        (item) => item.sessionId === session.id && occupiesInterestGroupSignupSlot(item.status),
+      ),
+    }));
 }
 
 function recReason(
@@ -143,7 +148,7 @@ function recReason(
   joinedGroup: boolean,
   viewer: string,
 ): string | undefined {
-  if (joinedGroup && group && group.leadName !== viewer && group.leadEmployeeId !== viewer) {
+  if (joinedGroup && group && !isInterestGroupLead(group, viewer)) {
     return `因为你常参加「${group.name}」`;
   }
   const first = activity.sessions?.[0];
@@ -152,6 +157,13 @@ function recReason(
     if (days > 1) return `跨 ${days} 天连营`;
   }
   return undefined;
+}
+
+function byAdminPinSort<T extends { id: string; pinned?: boolean; sortIndex?: number }>(left: T, right: T) {
+  return comparePinSort(
+    { id: Number(left.id) || 0, pinned: Boolean(left.pinned), sortIndex: left.sortIndex ?? 0 },
+    { id: Number(right.id) || 0, pinned: Boolean(right.pinned), sortIndex: right.sortIndex ?? 0 },
+  );
 }
 
 export function toClientGroup(
@@ -177,7 +189,10 @@ export function toClientGroup(
     area: group.area,
     hot: group.memberCount >= 100,
     auditStatus: group.auditStatus,
-    createdByMe: group.leadEmployeeId === viewer || group.leadName === viewer,
+    publishStatus: group.publishStatus,
+    createdByMe: isInterestGroupLead(group, viewer),
+    pinned: group.pinned,
+    sortIndex: group.sortIndex,
   };
 }
 
@@ -212,11 +227,15 @@ export function toClientAct(
     joinedByMe: occupying.length > 0,
     createdByMe: activity.hostName === viewer,
     recReason: recReason(activity, group, joinedGroup, viewer),
-    status: activity.status === 'cancelled' || activity.status === 'ended' ? activity.status : 'upcoming',
+    status: activity.status,
+    signupClosed: Boolean(activity.signupClosedAt),
     desc: htmlToText(activity.detailHtml),
     tags: group?.tags.slice(0, 3) ?? [],
     sessions,
     signupStatus: occupying[0]?.status === '已驳回' ? '已驳回' : occupying[0]?.status ? '已通过' : undefined,
+    cover: activity.coverUrl || undefined,
+    pinned: activity.pinned,
+    sortIndex: activity.sortIndex,
   };
 }
 
@@ -272,9 +291,16 @@ export function buildIgCatalog(
 
   const clientGroups = groups
     .filter((group) => isClientVisibleGroup(group, viewer, members))
-    .map((group) => toClientGroup(group, members, activities, viewer));
+    .map((group) => toClientGroup(group, members, activities, viewer))
+    .sort(byAdminPinSort);
 
-  const visibleActs = activities.filter((activity) => isClientVisibleActivity(activity, viewer));
+  const visibleActs = activities.filter((activity) => {
+    if (!isClientVisibleActivity(activity, viewer)) return false;
+    if (activity.groupId == null) return true;
+    const group = groups.find((item) => item.id === activity.groupId);
+    if (!group) return true;
+    return isClientVisibleGroup(group, viewer, members) || activity.hostName === viewer;
+  });
   const visibleActIds = new Set(visibleActs.map((item) => item.id));
   const clientActs = visibleActs.map((activity) => {
     const group = groups.find((item) => item.id === activity.groupId);
@@ -282,7 +308,7 @@ export function buildIgCatalog(
       (item) => item.groupId === activity.groupId && memberMatches(item, viewer) && item.status === '已通过',
     );
     return toClientAct(activity, group, signups, viewer, joinedGroup);
-  });
+  }).sort(byAdminPinSort);
 
   const clientMoments = moments.map((item) => toClientMoment(item, viewer)).filter((item): item is Moment => Boolean(item));
 

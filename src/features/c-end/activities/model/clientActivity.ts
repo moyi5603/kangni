@@ -1,12 +1,11 @@
 import { useSyncExternalStore } from 'react';
-import type { Activity } from '../../../activities/model/activity';
-import { momentCoverUrl, type MomentRecord } from '../../../activities/model/moment';
-import { weekdayLabel, hasOpenSessionSignup, needsSessionPick, parseSessionIds, listClientSignupSessions } from '../../../activities/model/activitySchedule';
-import { getRelatedList, subscribeRelated } from '../../../activities/model/related';
+import { formatActivityTime, isActivityClosed, type Activity } from '../../../activities/model/activity';
+import { coerceRepeatRules, formatRecurringWeekdays, hasOpenSessionSignup, needsSessionPick, parseSessionIds, listClientSignupSessions, sessionsHeldAfterTerminate } from '../../../activities/model/activitySchedule';
+import { getRelatedList, subscribeRelated, uniqueBySignupOccupant } from '../../../activities/model/related';
 import type { ClientSignup } from './signupStore';
 import { commentCount } from './activityComments';
 import { getFavoritedBy, getLikedBy, useEngagement } from './engagementStore';
-import { formatCEndDateTime, formatCEndDateTimeRange } from '../../formatDateTime';
+import { formatCEndDateTime, formatCEndDateTimeInText, formatCEndDateTimeRange } from '../../formatDateTime';
 
 export { formatCEndDateTime as formatPcDateTime, formatCEndDateTimeRange as formatPcDateTimeRange };
 
@@ -67,6 +66,8 @@ export function sortClientActivities(list: Activity[]): Activity[] {
   return list.slice().sort((left, right) => {
     const pin = Number(right.pinned) - Number(left.pinned);
     if (pin !== 0) return pin;
+    const sort = (left.sortIndex ?? 0) - (right.sortIndex ?? 0);
+    if (sort !== 0) return sort;
     const rightPublished = parseActivityDate(right.publishedAt);
     const leftPublished = parseActivityDate(left.publishedAt);
     const rightTime = Number.isFinite(rightPublished) ? rightPublished : Number.NEGATIVE_INFINITY;
@@ -84,14 +85,17 @@ export function clientVisibleActivities(list: Activity[]): Activity[] {
 }
 
 export function isSignupOpen(activity: Activity, now = Date.now()): boolean {
-  if (activity.publishStatus !== '已发布' || activity.activityStatus === '已结束') return false;
+  if (activity.publishStatus !== '已发布' || isActivityClosed(activity) || activity.signupClosedAt) return false;
   const start = parseActivityDate(activity.signupStartAt);
   const end = parseActivityDate(activity.signupEndAt);
   if (!Number.isFinite(start) || !Number.isFinite(end)) return false;
   if (now < start || now > end) return false;
   if (!needsSessionPick(activity.scheduleType)) return true;
+  const sessions = activity.terminatedAt
+    ? sessionsHeldAfterTerminate(activity.sessions ?? [], activity.terminatedAt)
+    : (activity.sessions ?? []);
   return hasOpenSessionSignup(
-    activity.sessions ?? [],
+    sessions,
     {
       signupStartAt: activity.signupStartAt,
       signupEndAt: activity.signupEndAt,
@@ -135,7 +139,8 @@ export function catalogActivities(list: Activity[], tab: ClientTabId, now = Date
 export function formatShortActivityDate(activity: Activity): string {
   if (activity.scheduleType === 'recurring') {
     const count = activity.sessions?.length ?? 0;
-    return `每${weekdayLabel(activity.repeatWeekday ?? 0)} · ${count}场`;
+    const days = formatRecurringWeekdays(coerceRepeatRules(activity));
+    return days ? `${days} · ${count}场` : `${count}场`;
   }
   if (activity.scheduleType === 'series') {
     const first = activity.sessions?.[0]?.startAt ?? activity.startAt;
@@ -145,6 +150,13 @@ export function formatShortActivityDate(activity: Activity): string {
   const start = formatCEndDateTime(activity.startAt.slice(0, 10)).replace(/-/g, '/');
   const end = formatCEndDateTime(activity.endAt.slice(0, 10)).replace(/-/g, '/');
   return start === end ? start : `${start} - ${end}`;
+}
+
+export function formatClientActivityTime(activity: Activity, now = new Date()): string {
+  if ((activity.scheduleType ?? 'once') === 'once') {
+    return formatCEndDateTimeRange(activity.startAt, activity.endAt, now);
+  }
+  return formatCEndDateTimeInText(formatActivityTime(activity), now);
 }
 
 export function getPublishedActivity(list: Activity[], id: number): Activity | undefined {
@@ -174,8 +186,10 @@ export function signupLimit(activity: Activity): number | undefined {
 const OCCUPIED_SIGNUP_STATUSES = new Set(['待审核', '已通过']);
 
 export function signupOccupiedCount(activityId: number): number {
-  return getRelatedList('signups').filter(
-    (item) => item.activityId === activityId && OCCUPIED_SIGNUP_STATUSES.has(item.status),
+  return uniqueBySignupOccupant(
+    getRelatedList('signups').filter(
+      (item) => item.activityId === activityId && OCCUPIED_SIGNUP_STATUSES.has(item.status),
+    ),
   ).length;
 }
 
@@ -188,12 +202,13 @@ export type ApprovedSignupPerson = {
 export const SIGNUP_PEOPLE_PREVIEW_LIMIT = 5;
 
 export function approvedSignupPeople(activityId: number, sessionId?: string): ApprovedSignupPerson[] {
-  return getRelatedList('signups')
+  const rows = getRelatedList('signups')
     .filter((item) => item.activityId === activityId && item.status === '已通过')
     .filter((item) => !sessionId || parseSessionIds(item.answers?.['场次']).includes(sessionId))
     .slice()
-    .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
-    .map((item) => ({ id: item.id, name: item.name, department: item.department }));
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+  const unique = sessionId ? rows : uniqueBySignupOccupant(rows);
+  return unique.map((item) => ({ id: item.id, name: item.name, department: item.department }));
 }
 
 export function sessionOccupiedCount(activityId: number, sessionId: string): number {
@@ -210,7 +225,7 @@ export function userSignedRecentSessionCount(
   phone: string,
   now = Date.now(),
 ): number {
-  const recent = new Set(listClientSignupSessions(activity.sessions ?? [], now).map((item) => item.id));
+  const recent = new Set(listClientSignupSessions(activity.sessions ?? [], now, undefined, activity.terminatedAt).map((item) => item.id));
   const picked = new Set(
     getRelatedList('signups')
       .filter(
@@ -241,6 +256,9 @@ export type ClientSignupView = {
   activity?: Activity;
 };
 
+export const H5_MY_SIGNUPS_LIST_STYLE = 'left-image' as const;
+export const PC_MY_SIGNUPS_LIST_STYLE = 'left-image' as const;
+
 export const SIGNUP_TABS = [
   { id: 'pending', label: '待审核', empty: '暂无待审核活动' },
   { id: 'waiting', label: '待参加', empty: '暂无待参加活动' },
@@ -268,22 +286,20 @@ export function groupClientSignups(
       signup,
       activity: activitiesById.get(signup.activityId),
     }))
+    .filter((item): item is ClientSignupView & { activity: Activity } => Boolean(item.activity))
     .sort((left, right) => right.signup.createdAt.localeCompare(left.signup.createdAt));
 
   const pending = grouped.filter(({ signup }) => signup.status === '待审核');
   const rejected = grouped.filter(({ signup }) => signup.status === '已驳回');
   const waiting = grouped.filter(
-    ({ activity, signup }) => signup.status === '已通过' && activity?.activityStatus === '未开始',
+    ({ activity, signup }) => signup.status === '已通过' && activity.activityStatus === '未开始',
   );
   const ongoing = grouped.filter(
-    ({ activity, signup }) => signup.status === '已通过' && activity?.activityStatus === '进行中',
+    ({ activity, signup }) => signup.status === '已通过' && activity.activityStatus === '进行中',
   );
-  const upcoming = grouped.filter(
-    ({ activity }) => activity && activity.activityStatus !== '已结束',
-  );
+  const upcoming = grouped.filter(({ activity }) => !isActivityClosed(activity));
   const ended = grouped.filter(
-    ({ activity, signup }) =>
-      signup.status === '已通过' && (!activity || activity.activityStatus === '已结束'),
+    ({ activity, signup }) => signup.status === '已通过' && isActivityClosed(activity),
   );
 
   return { pending, waiting, ongoing, upcoming, ended, rejected };
@@ -311,27 +327,28 @@ export function filterActivitiesByTitle(list: Activity[], query: string): Activi
   return list.filter((item) => item.title.toLowerCase().includes(needle));
 }
 
-export function pastHighlightMoments(
-  moments: MomentRecord[],
-  activities: Activity[],
-  limit = HOME_PAST_HIGHLIGHT_LIMIT,
-): MomentRecord[] {
-  return listPastHighlightMoments(moments, activities).slice(0, limit);
+export function shouldShowOrganizerCheckInQr(
+  activity: Pick<Activity, 'organizer'>,
+  viewerName: string,
+): boolean {
+  return activity.organizer.trim() === viewerName.trim();
 }
 
-export function listPastHighlightMoments(moments: MomentRecord[], activities: Activity[]): MomentRecord[] {
-  const endedIds = new Set(
-    clientVisibleActivities(activities)
-      .filter((item) => item.activityStatus === '已结束')
-      .map((item) => item.id),
-  );
-  return moments
-    .filter(
-      (item) =>
-        item.status === '已通过' && endedIds.has(item.activityId) && Boolean(momentCoverUrl(item)),
-    )
+export function pastHighlightActivities(list: Activity[], limit = HOME_PAST_HIGHLIGHT_LIMIT): Activity[] {
+  return listPastHighlightActivities(list).slice(0, limit);
+}
+
+export function listPastHighlightActivities(list: Activity[]): Activity[] {
+  return clientVisibleActivities(list)
+      .filter((item) => isActivityClosed(item))
     .slice()
-    .sort((left, right) => right.createdAt.localeCompare(left.createdAt) || right.id - left.id);
+    .sort((left, right) => {
+      const rightStart = parseActivityDate(right.startAt);
+      const leftStart = parseActivityDate(left.startAt);
+      const rightTime = Number.isFinite(rightStart) ? rightStart : Number.NEGATIVE_INFINITY;
+      const leftTime = Number.isFinite(leftStart) ? leftStart : Number.NEGATIVE_INFINITY;
+      return rightTime - leftTime || right.id - left.id;
+    });
 }
 
 export type SignupCta = { label: string; enabled: boolean; action?: 'signup' | 'cancel' | 'adjust' };
@@ -342,13 +359,13 @@ export function signupCta(
   now = Date.now(),
   options: { allowCancel?: boolean } = {},
 ): SignupCta {
-  if (activity.activityStatus === '已结束') return { label: '报名已结束', enabled: false };
+  if (isActivityClosed(activity)) return { label: '报名已结束', enabled: false };
   const start = parseActivityDate(activity.signupStartAt);
   if (Number.isFinite(start) && now < start) return { label: '报名未开始', enabled: false };
   const open = isSignupOpen(activity, now);
   if (signedUp) {
     if (options.allowCancel && open && needsSessionPick(activity.scheduleType)) {
-      return { label: '调整报名', enabled: true, action: 'adjust' };
+      return { label: '立即报名', enabled: true, action: 'adjust' };
     }
     if (options.allowCancel && open) return { label: '取消报名', enabled: true, action: 'cancel' };
     return { label: '已报名', enabled: false };

@@ -1,4 +1,4 @@
-import { goH5ExamPrep, toH5ExamRecordsHash, toH5ExamReviewHash } from '../../../../app/navigation';
+import { goH5Back, toH5ExamRecordsHash, toH5ExamReviewHash } from '../../../../app/navigation';
 import { H5ActivityShell } from '../../activities/h5/H5ActivityShell';
 import { formatExamDuration, getClientExamResult } from '../model/clientExamResult';
 
@@ -26,7 +26,7 @@ export function H5ExamResult({ id }: { id: number }) {
 
   if (!result) {
     return (
-      <H5ActivityShell className="is-exam is-result" title="考试结果" onBack={() => goH5ExamPrep(id)}>
+      <H5ActivityShell className="is-exam is-result" title="考试结果" onBack={goH5Back}>
         <p className="c-h5-exam-empty">暂无考试结果</p>
       </H5ActivityShell>
     );
@@ -46,7 +46,7 @@ export function H5ExamResult({ id }: { id: number }) {
     <H5ActivityShell
       className="is-exam is-result"
       title="考试结果"
-      onBack={() => goH5ExamPrep(id)}
+      onBack={goH5Back}
       footer={
         <div className="c-h5-exam-result-bar">
           <a className="c-h5-exam-start" href={toH5ExamRecordsHash(id)}>

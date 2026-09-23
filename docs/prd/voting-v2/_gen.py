@@ -1,0 +1,552 @@
+#!/usr/bin/env python3
+"""Generate html-to-prd voting v2 PRD. Run from this directory: python3 _gen.py"""
+from __future__ import annotations
+
+from datetime import date
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from _gen_prd import write_prd  # type: ignore
+
+
+def fig(path: str, caption: str, note: str | None = None) -> str:
+    text = note or f'对照「{caption}」实际渲染，证明该模块存在及默认样式。'
+    return f'''<figure>
+        <img src="screenshots/{path}" alt="{caption}截图">
+        <figcaption><span class="component-path">{caption}</span>：{text}</figcaption>
+      </figure>'''
+
+TODAY = date.today().isoformat()
+
+TOC = [
+    ('doc-note', '1. 文档说明'),
+    ('overview', '2. 功能概述与业务背景'),
+    ('roles', '3. 用户角色与权限'),
+    ('ia', '4. 页面结构 / 信息架构'),
+    ('implemented-features', '5. 功能清单与优先级'),
+    ('flows', '6. 用户流程'),
+    ('page-requirements', '7. 详细功能描述'),
+    ('exceptions', '8. 异常场景与边界条件'),
+    ('data-fields', '9. 数据字段与枚举'),
+    ('apis', '10. API / 数据接口清单'),
+    ('non-functional', '11. 非功能需求'),
+    ('analytics', '12. 埋点与指标建议'),
+    ('acceptance', '13. 验收标准'),
+]
+
+
+def body() -> str:
+    f = fig
+    return f'''
+  <section id="doc-note">
+    <h2>1. 文档说明</h2>
+    <ul>
+      <li>文档来源：基于康尼原型 React/TSX 反向分析（html-to-prd），截图取自本地运行页面 <code>http://localhost:5173</code></li>
+      <li>分析范围：现行应用「投票」(<code>voting-v2</code>)。后台：概览、投票管理（列表/新建/编辑/详情含结果与记录、选项管理）。侧栏「投票装修（仅演示）」为原型样式演示，<strong>生产不单独做装修</strong>。C 端 H5 与 PC：活动首页、选项详情、我的记录。旧应用「投票-废弃」(<code>voting</code>) 不在本文范围。</li>
+      <li>生成日期：{TODAY}</li>
+      <li>可信度：界面与交互以源码为准（<span class="status impl">代码已实现</span>）；数据模型有字段但表单未露出的标 <span class="status guess">根据页面推测需要</span>；无后端/RBAC 标 <span class="status todo">待确认</span></li>
+      <li>组件命名：一律 <code>页面-模块-组件名称</code></li>
+      <li>数据层：活动内存 store（<code>voteV2Store.ts</code>），刷新恢复种子；装修 persist localStorage <code>koni-vote-v2-decoration</code>。无 HTTP 接口。</li>
+    </ul>
+  </section>
+
+  <section id="overview">
+    <h2>2. 功能概述与业务背景</h2>
+    <p><strong>产品定位：</strong>企业内部评选投票。运营在后台看数据概览、配置活动规则/封面/选项；员工在 H5/PC 浏览、投票、看选项详情与个人记录。投票后台<strong>不单独做装修</strong>，若有装修需求通过现有<strong>微页面装修</strong>实现。</p>
+    <p><strong>目标用户：</strong>后台运营/HR；员工端投票人（原型固定演示用户「张悦」）。</p>
+    <p><strong>核心场景：</strong>看概览 KPI → 创建活动并发布 → 维护选项 → 分享 H5 链接/二维码 → 员工投票 → 详情页看结果与导出记录。发现页版面走微页面装修，不在投票应用内交付独立装修。</p>
+    <p><strong>主要价值：</strong>活动配置驱动投票页（后台预览、H5、PC 共用 <code>VoteV2PhonePreview</code>）。</p>
+  </section>
+
+  <section id="roles">
+    <h2>3. 用户角色与权限</h2>
+    <p>代码<strong>没有</strong>独立权限码或角色表。下列为界面表现 + 可见性规则，非真实 IAM。</p>
+    <table>
+      <thead><tr><th>角色</th><th>入口</th><th>可做</th><th>不可做 / 限制</th></tr></thead>
+      <tbody>
+        <tr><td>后台操作者（原型登录「陈产品」）</td><td><code>#/voting-v2/...</code></td><td>看概览 KPI 与进行中表；查列表、新增/编辑/详情（结果/记录/导出）；选项 CRUD、导入；分享弹窗；批量删除未开始活动。原型另有投票装修（仅演示）工作台，生产不交付</td><td>进行中/已结束活动删除按钮禁用；已结束活动整表只读；进行中锁定名称与投票时间、参与范围；无独立 RBAC；装修需求走微页面装修</td></tr>
+        <tr><td>员工投票人（原型 <code>DEMO_VOTE_USER</code>：张悦 / 前端组）</td><td><code>#/c/h5/votes-v2</code>、<code>#/c/pc/votes-v2</code></td><td>按状态 Tab 浏览可见活动、投票、看详情、PC 复制分享链接、看自己的投票记录</td><td><code>visibility=按部门</code> 且部门树不含其所在部门时首页显示「不在参与范围内」；锁定选项按钮 disabled；非进行中 <code>canCastVoteV2</code> 返回「活动未在投票期」；H5 活动页无分享按钮</td></tr>
+      </tbody>
+    </table>
+    <h4>活动状态对后台字段的锁</h4>
+    <table>
+      <thead><tr><th>状态条件</th><th>显示</th><th>可编辑字段</th><th>删除</th></tr></thead>
+      <tbody>
+        <tr><td>当前时间 &lt; startAt → 未开始</td><td>Tag default</td><td>全部表单字段</td><td>可删，二次确认</td></tr>
+        <tr><td>startAt ≤ now ≤ endAt → 进行中</td><td>Tag processing</td><td>可改：介绍、样式整块（封面/主题/称谓/页面设置等）、分组开关与分组名、周期/单多选/配额/最少最多/规则提示；锁定：名称、投票时间、参与范围</td><td>禁用 + Tooltip「进行中的活动不能删除」</td></tr>
+        <tr><td>now &gt; endAt → 已结束</td><td>Tag success</td><td>整页只读（与详情 mode=view 相同底栏，无保存）</td><td>禁用 + Tooltip「已结束的活动不能删除」</td></tr>
+      </tbody>
+    </table>
+    {f('投票管理-进行中删除禁用Tooltip.png', '投票管理-列表操作-进行中删除禁用Tooltip')}
+    <p>悬停「删除」时 Tooltip 展示拦截文案。批量删除会跳过不可删项并提示跳过数量。</p>
+  </section>
+
+  <section id="ia">
+    <h2>4. 页面结构 / 信息架构</h2>
+    <p>应用默认页：<code>vote-v2-overview</code>（侧栏第一项「概览」）。</p>
+    <p><strong>后台路由：</strong></p>
+    <ul>
+      <li><code>#/voting-v2/vote-v2-overview</code> 概览</li>
+      <li><code>#/voting-v2/vote-v2-list</code> 投票管理</li>
+      <li><code>#/voting-v2/vote-v2-create</code> 新建活动</li>
+      <li><code>#/voting-v2/vote-v2-edit/:id</code> 编辑活动</li>
+      <li><code>#/voting-v2/vote-v2-detail/:id</code> 活动详情 · 详情 Tab</li>
+      <li><code>#/voting-v2/vote-v2-detail/:id/results</code> 活动详情 · 投票结果</li>
+      <li><code>#/voting-v2/vote-v2-detail/:id/records</code> 活动详情 · 投票记录</li>
+      <li><code>#/voting-v2/vote-v2-players/:id</code> 选项管理（query 编码在 tab：关键词/分组/分页）</li>
+      <li><code>#/voting-v2/vote-v2-layout</code> 投票装修（仅演示）；生产不单独做装修，需求走微页面装修</li>
+      <li><code>#/voting-v2/vote-v2-layout-mobile</code> / <code>vote-v2-layout-pc</code> 原型分端工作台；侧栏高亮「投票装修（仅演示）」</li>
+    </ul>
+    <p><strong>C 端路由（h5|pc 对称）：</strong></p>
+    <ul>
+      <li><code>#/c/{{surface}}/votes-v2</code> 发现投票（读装修草稿布局）</li>
+      <li><code>#/c/{{surface}}/votes-v2/mine</code> 我的投票记录</li>
+      <li><code>#/c/{{surface}}/vote-v2-:id</code> 活动首页</li>
+      <li><code>#/c/{{surface}}/vote-v2-:id/option-:optionId</code> 选项详情</li>
+    </ul>
+    {f('投票应用-左侧菜单.png', '投票应用-侧栏-概览/投票管理/投票装修（仅演示）')}
+    <p>侧栏三项：概览、投票管理、投票装修（仅演示）。<strong>产品决策：投票后台不单独做装修功能</strong>；若有装修需求通过现有微页面装修实现。「仅演示」菜单仅对照卡片样式，生产不交付独立装修。</p>
+    {f('C端门户-投票入口.png', 'C端预览入口-门户-投票入口')}
+    <p>员工从 C 端预览门户进入 H5/PC 投票。后台分享 URL 固定拼 H5 hash。</p>
+    <p>跳转：KPI 卡 → 投票管理列表；概览进行中表「详情」→ 活动详情；列表名称/详情 → 详情页（默认详情 Tab）；编辑 → 编辑页；选项管理 → 选手列表；分享 → 弹窗不跳转。C 端卡片 → 首页；详情按钮 → 选项详情；状态 Tab 行「我的记录」→ 记录列表；记录卡片 → 对应活动首页。后台分享 URL 固定拼 H5 hash。</p>
+  </section>
+
+  <section id="implemented-features">
+    <h2>5. 功能清单与优先级</h2>
+    <p>优先级按「当前原型已实现且业务主路径必需」= P0；「已实现但可后置」= P1。</p>
+    <table>
+      <thead><tr><th>优先级</th><th>端</th><th>功能点</th><th>说明</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td>P0</td><td>后台</td><td>概览 KPI + 进行中表</td><td>日期范围过滤；点 KPI 进列表</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>P0</td><td>后台</td><td>活动列表查询/分页/状态</td><td>名称模糊、状态、时间重叠筛选</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>P0</td><td>后台</td><td>新增/编辑/详情三模式表单</td><td>基本/样式/功能 Tab，保存并发布</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>P0</td><td>后台</td><td>详情「投票结果 / 投票记录」</td><td>排名占比；记录导出 CSV</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>P0</td><td>后台</td><td>投票规则（周期、单多选、配额）</td><td>1～50 整数；多选最少≤最多</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>P0</td><td>后台</td><td>选项管理 CRUD + 抽屉</td><td>添加/编辑/详情/复制/删除</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>P1</td><td>后台</td><td>投票装修工作台（仅演示）</td><td>原型可拖搜索/轮播/投票块。生产不单独做装修，需求走微页面装修</td><td><span class="status impl">代码已实现</span>（演示）</td></tr>
+        <tr><td>P0</td><td>H5/PC</td><td>装修驱动发现列表</td><td>可选轮播/搜索、状态 Tab、StatusPill、整卡跳转</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>P0</td><td>H5/PC</td><td>按状态浏览并进入活动</td><td>无卡片 CTA；状态用 StatusPill；整卡进首页</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>P0</td><td>H5/PC</td><td>单选即时投票 + 成功弹窗</td><td><code>castVoteV2</code> + <code>voteV2CastUiFeedback</code>。后台表单 <code>selectMode</code> 隐藏且预览/保存写死「单选」</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>P2</td><td>H5/PC</td><td>多选勾选 + 底栏提交</td><td>模型与 <code>castVoteV2Many</code> 仍在；表单不露出单多选。当前种子活动全部单选</td><td><span class="status guess">根据页面推测需要</span>（配置入口已隐藏）</td></tr>
+        <tr><td>P0</td><td>H5/PC</td><td>选项详情与排名差票</td><td>单选直接投；多选与首页共享勾选；提交同样仅 1 项</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>P1</td><td>后台</td><td>分享弹窗（链接+二维码）</td><td>复制、下载 PNG</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>P1</td><td>后台</td><td>分组、列数、页面模块开关</td><td>控制 C 端展示</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>P1</td><td>后台</td><td>按部门可见范围</td><td>TreeSelect 多选部门</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>P1</td><td>后台</td><td>置顶 / 取消置顶</td><td>行「更多」菜单；置顶 Tag 显示在名称前</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>P1</td><td>后台</td><td>批量导入 Excel</td><td>上传 xlsx/xls，下载模板；无图片导入 Tab</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>P1</td><td>后台</td><td>进行中保存二次确认</td><td>改配额/单多选/样式/分组且已有票时 Modal</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>P1</td><td>H5/PC</td><td>活动首页搜索、分组 Tab</td><td>分享复制仅 PC 顶栏；H5 无分享按钮</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td>P1</td><td>H5/PC</td><td>我的投票记录</td><td>状态 Tab 行「我的记录」；卡片带封面</td><td><span class="status impl">代码已实现</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="flows">
+    <h2>6. 用户流程</h2>
+    <h3>后台发布</h3>
+    <ol>
+      <li>进入投票应用默认落在概览；可点 KPI 进投票管理。</li>
+      <li>投票管理 → 新增。填基本设置（名称≤50、时间必填且开始&lt;结束、介绍 RichText 按纯文本≤2000）→ 样式（封面必填 jpg/png、主题色、称谓）→ 功能（分组可选、范围、规则）→ 保存并发布。</li>
+      <li>新建成功后跳转编辑页；功能设置内「选项管理」卡片出现「去选项管理」。</li>
+      <li>选项管理添加选手 → 列表分享把 H5 链接给员工。</li>
+      <li>发现页装修：<strong>生产走微页面装修</strong>，投票后台不单独做装修。原型「投票装修（仅演示）」仅对照样式，拖拽写草稿、保存 toast「已保存，C端首页已更新」。</li>
+    </ol>
+    <h3>运营看结果</h3>
+    <ol>
+      <li>活动详情顶栏「去编辑 / 返回」；页签：详情 / 投票结果 / 投票记录（hash 同步）。</li>
+      <li>投票结果：按票数排名、占比；同票并列名次。</li>
+      <li>投票记录：姓名、部门、时间、内容；导出 CSV（多选按选项分列，选中格填选项名、未选空）。</li>
+    </ol>
+    <h3>员工投票（单选，现行唯一可配置方式）</h3>
+    <ol>
+      <li>打开 H5/PC 发现页（壳标题=装修 <code>pageTitle</code>，默认「投票」）→ Tab「进行中」→ 点整张卡片进首页。</li>
+      <li>点选项上投票按钮 → 校验配额/锁定/范围 → 成功弹窗「今日还可投{{remaining}}{{voteUnit}}」（无空格）→ 确定关闭。</li>
+    </ol>
+    <h3>多选（代码残留）</h3>
+    <p><span class="status guess">根据页面推测需要</span>：<code>VoteV2PhonePreview</code> / <code>castVoteV2Many</code> 仍支持多选勾选与「请选择1项」。后台「投票规则设置」把 <code>selectMode</code> 做成 hidden，预览强制 <code>selectMode="单选"</code>，保存写死单选。运营无法在表单里打开多选。</p>
+  </section>
+
+  <section id="page-requirements">
+    <h2>7. 详细功能描述</h2>
+
+    <article class="page-requirement">
+      <h3>7.1 概览</h3>
+      <h4>页面目标</h4>
+      <p>按日期范围看活动规模、进行中数量、参与人数、浏览量；下钻进行中活动详情。</p>
+      {f('投票概览-页面整体.png', '投票概览-页面-整体布局')}
+      {f('投票概览-KPI指标卡.png', '投票概览-KPI-四指标卡')}
+      <h4>字段 / 指标</h4>
+      <table>
+        <thead><tr><th>字段名称</th><th>组件路径</th><th>控件类型</th><th>是否必填</th><th>默认值</th><th>校验规则</th><th>选项值</th><th>业务含义</th></tr></thead>
+        <tbody>
+          <tr><td>日期范围</td><td>投票概览-页头-日期范围</td><td>OverviewDateRange</td><td>否</td><td>应用默认区间</td><td>活动投票期与区间重叠 <strong>或</strong> createdAt 落在区间内即计入</td><td>—</td><td>过滤 scopedCampaigns</td></tr>
+          <tr><td>投票总数</td><td>投票概览-KPI-投票总数</td><td>指标卡可点</td><td>—</td><td>范围内活动条数</td><td>—</td><td>—</td><td>点进投票管理</td></tr>
+          <tr><td>进行中投票</td><td>投票概览-KPI-进行中投票</td><td>指标卡可点</td><td>—</td><td>范围内 status=进行中</td><td>—</td><td>—</td><td>点进投票管理（不带状态筛选）</td></tr>
+          <tr><td>参与人数</td><td>投票概览-KPI-参与人数</td><td>指标卡可点</td><td>—</td><td>范围内 cast 去重 userId</td><td>—</td><td>—</td><td>点进列表</td></tr>
+          <tr><td>浏览量</td><td>投票概览-KPI-浏览量</td><td>指标卡可点</td><td>—</td><td>范围内 viewCount 求和</td><td>—</td><td>—</td><td>员工打开可见活动首页时 <code>incrementVoteV2ViewCount</code> +1</td></tr>
+        </tbody>
+      </table>
+      {f('投票概览-进行中表格.png', '投票概览-进行中表格-活动行')}
+      <h4>列</h4>
+      <table>
+        <thead><tr><th>列名</th><th>组件路径</th><th>数据含义</th><th>格式</th><th>是否可排序</th><th>是否可筛选</th><th>行操作</th></tr></thead>
+        <tbody>
+          <tr><td>活动名称</td><td>投票概览-进行中表格-名称</td><td>campaign.name</td><td>ellipsis</td><td>否</td><td>否</td><td>—</td></tr>
+          <tr><td>投票时间</td><td>投票概览-进行中表格-时间</td><td>start → end</td><td>字符串</td><td>否</td><td>否</td><td>—</td></tr>
+          <tr><td>选项数</td><td>投票概览-进行中表格-选项数</td><td>选手条数</td><td>数字</td><td>否</td><td>否</td><td>—</td></tr>
+          <tr><td>投票数</td><td>投票概览-进行中表格-投票数</td><td>选手 voteCount 求和</td><td>数字</td><td>否</td><td>否</td><td>—</td></tr>
+          <tr><td>浏览量</td><td>投票概览-进行中表格-浏览量</td><td>campaign.viewCount</td><td>数字</td><td>否</td><td>否</td><td>—</td></tr>
+          <tr><td>操作</td><td>投票概览-进行中表格-详情</td><td>—</td><td>link</td><td>—</td><td>—</td><td>进活动详情</td></tr>
+        </tbody>
+      </table>
+      <h4>交互规则</h4>
+      <p>空表 Empty「当前没有进行中的投票」。分页用 B2B 标准 pageSize。四张 KPI 均无筛选参数直达列表。</p>
+    </article>
+
+    <article class="page-requirement">
+      <h3>7.2 投票装修（仅演示）</h3>
+      <p class="note">产品说明：<strong>投票后台不单独做装修功能</strong>。若有装修需求，通过现有<strong>微页面装修</strong>实现。本页仅为原型样式演示，不作为生产装修入口。</p>
+      <h4>页面目标</h4>
+      <p>原型用于对照 C 端发现页卡片样式（页面标题、组件顺序、投票列表样式与数量上限）。移动端与 PC 两套配置，路由 <code>vote-v2-layout</code> / <code>vote-v2-layout-pc</code>。页内「移动端/PC端」切换<strong>不改 hash</strong>。</p>
+      {f('投票装修-移动端工作台.png', '投票装修-移动端-工作台整体')}
+      {f('投票装修-组件面板.png', '投票装修-组件面板-搜索轮播投票')}
+      {f('投票装修-PC工作台.png', '投票装修-PC-工作台整体')}
+      <h4>组件</h4>
+      <table>
+        <thead><tr><th>组件路径</th><th>组件类型</th><th>默认状态</th><th>显示/隐藏逻辑</th><th>启用/禁用逻辑</th><th>数据来源</th><th>状态变化</th><th>空/错/加载状态</th><th>权限/条件控制</th></tr></thead>
+        <tbody>
+          <tr><td>投票装修-组件面板-搜索</td><td>palette 块</td><td>默认页不含搜索</td><td>拖入后 C 端出搜索框</td><td>—</td><td>placeholder 默认「搜索投票名称」</td><td>拖拽/改配置即时 save 草稿</td><td>—</td><td>无</td></tr>
+          <tr><td>投票装修-组件面板-轮播图</td><td>banner</td><td>默认<strong>不含</strong>；拖入才有</td><td>C 端 HomeBanner</td><td>链接用 VoteBannerLinkPicker</td><td>slides</td><td>即时草稿；点保存 publish</td><td>—</td><td>无</td></tr>
+          <tr><td>投票装修-组件面板-投票</td><td>vote 列表块</td><td>默认唯一块；标题「发现投票」；样式 left-image；latestCount=20；showTitle/Status/Time 默认开</td><td>C 端卡片列表</td><td>移动端样式含 large-image / two-col / left-image / left-text / scroll；PC 仅 large-image / left-image / left-text，可配列数</td><td>活动 store + 状态 Tab</td><td>截断 latestCount；字段开关控卡片标题/状态/时间</td><td>暂无活动</td><td>仍按 canSeeVoteV2</td></tr>
+        </tbody>
+      </table>
+      <h4>操作</h4>
+      <p>工作台仅一主按钮「保存」：调用 <code>publishVoteV2Decoration</code>，toast「已保存，C端首页已更新」。拖拽/改块时 <code>saveVoteV2Decoration</code> 写草稿到 localStorage <code>koni-vote-v2-decoration</code>。<strong>无独立「发布」按钮</strong>。页面标题 max 20。投票块可开关「标题 / 状态 / 投票时间」。预览 chrome 含状态 Tab「进行中/未开始/已结束」与「我的记录」。默认页仅 vote 块（无轮播/搜索）。</p>
+      <p><span class="status guess">根据页面推测需要</span>：C 端列表 <code>useVoteV2Decoration</code> 读<strong>草稿</strong>；拖拽后未点保存也可能立刻出现在员工端（与「保存」文案不一致）。侧栏标注「仅演示」。</p>
+    </article>
+
+    <article class="page-requirement">
+      <h3>7.3 投票管理（后台列表）</h3>
+      <h4>页面目标</h4>
+      <p>检索、进入配置、分享、按状态限制删除。</p>
+      {f('投票管理-页面整体.png', '投票管理-页面-整体布局')}
+      {f('投票管理-查询筛选区.png', '投票管理-查询筛选-名称/状态/投票时间')}
+      <h4>字段说明</h4>
+      <table>
+        <thead><tr><th>字段名称</th><th>组件路径</th><th>控件类型</th><th>是否必填</th><th>默认值</th><th>校验规则</th><th>选项值</th><th>业务含义</th></tr></thead>
+        <tbody>
+          <tr><td>名称</td><td>投票管理-查询筛选-名称输入</td><td>Input allowClear</td><td>否</td><td>空</td><td>trim 后 includes</td><td>—</td><td>草稿查询，点查询才生效</td></tr>
+          <tr><td>状态</td><td>投票管理-查询筛选-状态选择</td><td>Select allowClear</td><td>否</td><td>全部</td><td>—</td><td>未开始/进行中/已结束</td><td>由 startAt/endAt 与当前时间推导</td></tr>
+          <tr><td>投票时间</td><td>投票管理-查询筛选-时间范围</td><td>RangePicker showTime</td><td>否</td><td>空</td><td>活动区间与筛选区间重叠</td><td>—</td><td>结束早于筛选起 或 开始晚于筛选止 则排除</td></tr>
+        </tbody>
+      </table>
+      {f('投票管理-列表表格.png', '投票管理-列表表格-活动行与操作')}
+      <h4>列</h4>
+      <table>
+        <thead><tr><th>列名</th><th>组件路径</th><th>数据含义</th><th>格式</th><th>是否可排序</th><th>是否可筛选</th><th>行操作</th></tr></thead>
+        <tbody>
+          <tr><td>名称</td><td>投票管理-列表表格-名称链接</td><td>campaign.name；置顶时前缀 Tag「置顶」</td><td>ellipsis</td><td>否</td><td>查询区</td><td>进详情</td></tr>
+          <tr><td>状态</td><td>投票管理-列表表格-状态标签</td><td>resolveVoteV2Status</td><td>Tag</td><td>否</td><td>查询区</td><td>—</td></tr>
+          <tr><td>选项数</td><td>投票管理-列表表格-选项数</td><td>选手条数</td><td>数字</td><td>否</td><td>否</td><td>—</td></tr>
+          <tr><td>投票数</td><td>投票管理-列表表格-投票数</td><td>选手 voteCount 求和</td><td>数字</td><td>否</td><td>否</td><td>—</td></tr>
+          <tr><td>浏览量</td><td>投票管理-列表表格-浏览量</td><td>viewCount</td><td>数字</td><td>否</td><td>否</td><td>可见首页打开 +1（内存 store）</td></tr>
+          <tr><td>创建时间</td><td>投票管理-列表表格-创建时间</td><td>createdAt</td><td>YYYY-MM-DD HH:mm:ss</td><td>否</td><td>否</td><td>—</td></tr>
+          <tr><td>投票时间</td><td>投票管理-列表表格-投票时间</td><td>start ～ end</td><td>字符串</td><td>否</td><td>查询区</td><td>—</td></tr>
+          <tr><td>操作</td><td>投票管理-列表表格-操作列</td><td>—</td><td>link + 更多菜单</td><td>—</td><td>—</td><td>可见：详情/编辑/选项管理；更多：置顶或取消置顶、分享、删除</td></tr>
+        </tbody>
+      </table>
+      <h4>操作说明</h4>
+      <table>
+        <thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用逻辑</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead>
+        <tbody>
+          <tr><td>查询</td><td>投票管理-查询筛选-查询按钮</td><td>SearchPanel 查询</td><td>无</td><td>始终可用</td><td>点击</td><td>draft→query，清选择</td><td>表格刷新</td><td>message.success 查询完成</td><td>无匹配 Empty「没有符合条件的活动」</td><td>本地 filter</td></tr>
+          <tr><td>重置</td><td>投票管理-查询筛选-重置</td><td>重置</td><td>无</td><td>始终可用</td><td>点击</td><td>清空 draft+query</td><td>全量列表</td><td>无 toast</td><td>—</td><td>本地</td></tr>
+          <tr><td>新增</td><td>投票管理-工具栏-新增</td><td>主按钮「新增」</td><td>无</td><td>始终可用</td><td>点击</td><td>—</td><td>—</td><td>—</td><td>—</td><td>#/voting-v2/vote-v2-create</td></tr>
+          <tr><td>分享</td><td>投票管理-列表操作-分享</td><td>更多 → 分享</td><td>行存在</td><td>始终可用</td><td>点更多再点分享</td><td>打开 VoteV2ShareModal</td><td>弹窗 open</td><td>复制成功「链接已复制」；二维码成功「二维码已下载」（文件 <code>{{活动名}}-二维码.png</code>）</td><td>clipboard 失败「复制失败，请手动复制链接」；二维码失败「二维码下载失败，请稍后重试」</td><td>无接口；URL=origin+pathname+#/c/h5/vote-v2-id</td></tr>
+          <tr><td>置顶</td><td>投票管理-列表操作-置顶</td><td>更多 → 置顶/取消置顶</td><td>行存在</td><td>始终可用</td><td>点击</td><td><code>upsertVoteV2</code> 写 pinned</td><td>名称前 Tag</td><td>无独立 toast（以列表变化为准）</td><td>—</td><td>内存</td></tr>
+          <tr><td>删除</td><td>投票管理-列表操作-删除</td><td>更多 → 删除</td><td>未开始</td><td>进行中/已结束 disabled</td><td>点击</td><td>confirm 确认删除活动「name」？删除后不可恢复</td><td>行消失</td><td>已删除活动</td><td>拦截时 message.info 原因</td><td>removeVoteV2 内存</td></tr>
+          <tr><td>批量删除</td><td>投票管理-批量操作条-批量删除</td><td>批量删除</td><td>勾选≥1</td><td>有选择才出现条</td><td>点击</td><td>只删 canDelete；skipped 写入 content</td><td>清选择</td><td>已删除 N 项（可能跳过 M）</td><td>全不可删：「所选活动均不可删除，仅未开始的活动可删」</td><td>内存</td></tr>
+        </tbody>
+      </table>
+      {f('投票管理-工具栏新增.png', '投票管理-工具栏-新增按钮')}
+      {f('投票管理-分享弹窗.png', '投票管理-分享弹窗-二维码与链接')}
+      {f('投票管理-删除确认弹窗.png', '投票管理-删除确认弹窗-危险主按钮')}
+      {f('投票管理-批量操作条.png', '投票管理-批量操作条-已选择与批量删除')}
+      <h4>组件显示逻辑</h4>
+      <table>
+        <thead><tr><th>组件路径</th><th>组件类型</th><th>默认状态</th><th>显示/隐藏逻辑</th><th>启用/禁用逻辑</th><th>数据来源</th><th>状态变化</th><th>空/错/加载状态</th><th>权限/条件控制</th></tr></thead>
+        <tbody>
+          <tr><td>投票管理-列表表格</td><td>Table</td><td>展示种子 7 条</td><td>filtered.length&gt;0</td><td>—</td><td>useVoteV2Campaigns</td><td>查询后变化</td><td>无数据 Empty；有筛选「没有符合条件的活动」；无筛选空表带新增</td><td>无 RBAC</td></tr>
+          <tr><td>投票管理-批量操作条</td><td>Flex</td><td>隐藏</td><td>selectedRowKeys.length&gt;0</td><td>—</td><td>选择 keys</td><td>勾选出现</td><td>—</td><td>—</td></tr>
+          <tr><td>投票管理-分享弹窗</td><td>Modal</td><td>关闭</td><td>shareRecord 非空</td><td>复制依赖 clipboard</td><td>currentVoteV2ShareUrl</td><td>关闭清空</td><td>—</td><td>—</td></tr>
+        </tbody>
+      </table>
+      <h4>交互规则</h4>
+      <p>查询按钮不随输入即时过滤。分页 pageSize=10，无改页大小。名称列与「详情」都进详情页。空列表无筛选时 Empty 内再放「新增」。</p>
+    </article>
+
+    <article class="page-requirement">
+      <h3>7.4 新建 / 编辑 / 详情活动</h3>
+      <p>同一 <code>VoteV2FormPage</code>：create / edit / view。标题分别为新建活动、编辑活动、活动详情。已结束时即便 hash 是 edit 也 <code>readonly</code>。</p>
+      {f('新建活动-页面整体.png', '新建活动-页面-左预览右表单')}
+      {f('新建活动-手机预览.png', '新建活动-左侧-手机预览')}
+      {f('新建活动-基本设置.png', '新建活动-基本设置-名称时间介绍')}
+      {f('新建活动-底部操作.png', '新建活动-底部操作-保存并发布/下一步/取消')}
+      <h4>底部按钮</h4>
+      <table>
+        <thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用逻辑</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead>
+        <tbody>
+          <tr><td>保存并发布</td><td>新建活动-底部操作-保存并发布</td><td>主按钮</td><td>非只读</td><td>saving 时 loading；只读模式不渲染</td><td>点击</td><td>validateFields + 时间顺序 + 配额/选择范围 + 按部门必选部门</td><td>upsert 内存</td><td>已保存并发布</td><td>校验红字或 message.error（请选择投票时间/开始时间须早于结束时间/票数范围/请选择部门）</td><td>create→edit/:id；edit→返回列表</td></tr>
+          <tr><td>下一步</td><td>新建活动-底部操作-下一步</td><td>次按钮</td><td>非只读</td><td>saving 时禁用</td><td>点击</td><td>Tab 向后一格，末项停在功能设置</td><td>仅切 Tab</td><td>无</td><td>不校验</td><td>无</td></tr>
+          <tr><td>取消</td><td>新建活动-底部操作-取消</td><td>次按钮</td><td>非只读</td><td>saving 禁用</td><td>点击</td><td>dirty 则确认离开弹窗</td><td>—</td><td>—</td><td>取消停留</td><td>onBack 列表</td></tr>
+          <tr><td>去编辑</td><td>活动详情-页头-去编辑</td><td>主按钮</td><td>mode=view</td><td>详情页始终显示（已结束进编辑仍整页只读）</td><td>点击</td><td>—</td><td>—</td><td>—</td><td>—</td><td>vote-v2-edit</td></tr>
+          <tr><td>返回</td><td>活动详情-页头-返回</td><td>次按钮</td><td>mode=view</td><td>始终可用</td><td>点击</td><td>—</td><td>—</td><td>—</td><td>—</td><td>onBack 列表</td></tr>
+        </tbody>
+      </table>
+      {f('新建活动-校验失败.png', '新建活动-基本设置-必填校验红字')}
+      <p>空表点保存：活动名称「请输入活动名称」（max 50，showCount）；投票时间「请选择投票时间」。封面在样式 Tab 隐藏字段 required「请上传封面图」。校验失败时自动切到首个报错字段所属 Tab（<code>firstVoteV2FormErrorTab</code>），再滚动定位；封面缺省时切样式 Tab、滚到 <code>#vote-v2-cover-upload</code> 并 toast「请上传封面图」。业务校验失败同样切 Tab：时间问题→基本；配额/多选范围/按部门未选→功能。</p>
+      {f('新建活动-样式设置.png', '新建活动-样式设置-封面主题称谓列数页面模块')}
+      <h4>样式字段（摘录）</h4>
+      <table>
+        <thead><tr><th>字段名称</th><th>组件路径</th><th>控件类型</th><th>是否必填</th><th>默认值</th><th>校验规则</th><th>选项值</th><th>业务含义</th></tr></thead>
+        <tbody>
+          <tr><td>上传封面</td><td>新建活动-样式设置-封面上传</td><td>Upload picture-card</td><td>是（coverUrl hidden required）</td><td>空</td><td>accept image/*；文案 jpg/png</td><td>—</td><td>C 端头图；本地 FileReader dataURL</td></tr>
+          <tr><td>背景图开关</td><td>新建活动-样式设置-背景图开关</td><td>Switch</td><td>否</td><td>关</td><td>开启后出现上传</td><td>开启/关闭</td><td>手机高度等比铺满</td></tr>
+          <tr><td>主题颜色</td><td>新建活动-样式设置-主题颜色</td><td>色板+ColorPicker</td><td>否</td><td>#5282F0 蓝</td><td>预设 8 色</td><td>蓝青红橙黄绿紫粉</td><td>按钮与强调色</td></tr>
+          <tr><td>选项称谓</td><td>新建活动-样式设置-选项称谓</td><td>预设或自定义</td><td>是</td><td>选手</td><td>max 4</td><td>选手、作品</td><td>文案替换「选手」</td></tr>
+          <tr><td>按钮名称</td><td>新建活动-样式设置-按钮名称</td><td>预设或自定义</td><td>是</td><td>投票</td><td>max 2</td><td>投票、点赞、加油</td><td>CTA 文案</td></tr>
+          <tr><td>单位设置</td><td>新建活动-样式设置-单位</td><td>预设或自定义</td><td>是</td><td>票</td><td>max 1</td><td>票、赞</td><td>票数单位</td></tr>
+          <tr><td>显示列数</td><td>新建活动-样式设置-显示列数</td><td>Radio</td><td>是</td><td>2</td><td>clamp 1|2|3</td><td>一列/二列/三列</td><td>首页网格</td></tr>
+          <tr><td>页面设置</td><td>新建活动-样式设置-页面设置勾选</td><td>Checkbox.Group</td><td>否</td><td>全开</td><td>—</td><td>活动名称、活动数据、总票数、活动倒计时、投票时间、投票规则、活动介绍、选手搜索、选手分组、选手编号、选手封面、选手名称、选手副标题、选手票数、投票按钮、详情按钮</td><td>关则 C 端不渲染该块</td></tr>
+        </tbody>
+      </table>
+      {f('新建活动-功能设置-分组.png', '新建活动-功能设置-投票分组开关')}
+      {f('新建活动-功能设置-参与范围.png', '新建活动-功能设置-参与范围全员')}
+      {f('新建活动-按部门选择.png', '新建活动-功能设置-按部门TreeSelect')}
+      {f('新建活动-功能设置-投票规则.png', '新建活动-功能设置-周期单多选配额')}
+      <p>分组开启后：显示全部分组开关；分组名 max 20；上下移/删除分组；添加分组。表单<strong>无「分组列数」控件</strong>（模型有 <code>groupColumns</code>，保存时回写旧值）。空名保存时被 filter 掉。参与范围「按部门」必须至少选一个部门否则 message.error「请选择部门」。</p>
+      <p>单选显示「每人可投」「可为同一选项投」，后者不得大于前者，范围 1～50。<code>selectMode</code> / <code>minSelect</code> / <code>maxSelect</code> 为 hidden，保存写死单选。规则提示随周期自动重写，除非用户改过。</p>
+      <p>未保存新建时功能区「选项管理」为 Alert「保存发布后可添加选项」。已持久化显示「去选项管理」。</p>
+      {f('编辑活动-进行中名称锁定.png', '编辑活动-进行中-活动名称禁用')}
+      {f('编辑活动-进行中页面.png', '编辑活动-进行中-可改规则字段')}
+      {f('活动详情-页面整体.png', '活动详情-只读表单-页头去编辑')}
+      {f('活动详情-去编辑返回.png', '活动详情-页头-去编辑与返回')}
+      {f('活动详情-页签.png', '活动详情-页签-详情投票结果投票记录')}
+      {f('编辑活动-已结束只读.png', '编辑活动-已结束-仅返回')}
+      <h4>详情页签</h4>
+      <p>仅 <code>mode=view</code> 渲染外层 Tabs。非当前 Tab 不挂载子树（切到结果时无 <code>vote-v2-create</code> 表单）。hash：<code>/results</code>、<code>/records</code>。</p>
+      {f('活动详情-投票结果Tab.png', '活动详情-投票结果-页签选中')}
+      {f('活动详情-投票结果表格.png', '活动详情-投票结果-名次选项票数占比')}
+      <p>结果列：名次、选项（编号+名称+缩略图）、票数、占比（总票为 0 时「—」；占比四舍五入到整数）。表上「共 N {{voteUnit}}」（中间有空格）。同票并列同一名次。未开始且无数据 Empty「尚未开始，暂无投票」；否则「暂无投票」。</p>
+      {f('活动详情-投票记录Tab.png', '活动详情-投票记录-页签选中')}
+      {f('活动详情-投票记录导出.png', '活动详情-投票记录-导出按钮')}
+      <p>记录按 userId+at 聚合一次提交；列：姓名（userId）、部门（组织树 <code>personDepartment</code>，缺省「—」）、投票时间、投票内容（多选用顿号拼接选项名）。工具栏「共 N 条」+「导出」。无数据点导出：message.warning「暂无投票可导出」。成功：已导出 N 条投票记录；文件 <code>{{活动名}}-投票记录.csv</code> BOM。单选四列；多选在时间后按选项编号展开列，选中填选项名、未选空。</p>
+      <h4>状态显示条件</h4>
+      <ul>
+        <li>进行中：名称 Input disabled；时间 RangePicker 两端 disabled；参与范围 Radio/Tree disabled；样式整块与分组、规则区仍可改（样式用 <code>styleLocked=readonly</code>，不走 <code>canEditVoteV2Field</code>）。</li>
+        <li>进行中保存：若改到配额/单多选/样式/分组且该活动已有 cast，弹出 <code>voteV2LiveSaveImpact</code> 确认（标题「确认保存「…」的进行中修改？」；说明不重算票数、按新规则拦截继续投等）→「确认保存」才写入。</li>
+        <li>已结束：所有控件 disabled；编辑页底栏无保存，仅返回。</li>
+        <li>详情 view：页头「去编辑」+「返回」；详情 Tab 为只读表单，无底栏保存条。</li>
+      </ul>
+    </article>
+
+    <article class="page-requirement">
+      <h3>7.5 选项管理</h3>
+      {f('选项管理-页面整体.png', '选项管理-页面-列表与工具')}
+      {f('选项管理-查询筛选.png', '选项管理-查询筛选-关键词与分组')}
+      {f('选项管理-列表表格.png', '选项管理-列表表格-编号封面标题操作')}
+      {f('选项管理-工具栏.png', '选项管理-工具栏-批量删除改组导入添加')}
+      <h4>字段</h4>
+      <table>
+        <thead><tr><th>字段名称</th><th>组件路径</th><th>控件类型</th><th>是否必填</th><th>默认值</th><th>校验规则</th><th>选项值</th><th>业务含义</th></tr></thead>
+        <tbody>
+          <tr><td>关键词</td><td>选项管理-查询筛选-关键词</td><td>Input</td><td>否</td><td>空</td><td>匹配标题/副标题/编号/id</td><td>—</td><td>点查询写入 hash tab</td></tr>
+          <tr><td>分组</td><td>选项管理-查询筛选-分组</td><td>Select</td><td>否</td><td>全部分组</td><td>—</td><td>全部/未分组/各 group.name</td><td>groupKey</td></tr>
+          <tr><td>选项编号</td><td>选项管理-添加选项抽屉-选项编号</td><td>InputNumber min1 整数</td><td>是</td><td>nextOptionNo</td><td>必填</td><td>—</td><td>展示用编号，不保证唯一</td></tr>
+          <tr><td>选项标题</td><td>选项管理-添加选项抽屉-选项标题</td><td>Input</td><td>是 去空白</td><td>空</td><td>无 maxlength</td><td>—</td><td>卡片主标题</td></tr>
+          <tr><td>选项副标题</td><td>选项管理-添加选项抽屉-副标题</td><td>Input</td><td>否</td><td>空</td><td>无</td><td>—</td><td>卡片副文案</td></tr>
+          <tr><td>分组</td><td>选项管理-添加选项抽屉-分组</td><td>Select allowClear</td><td>否</td><td>未分组</td><td>仅 groupingEnabled 显示</td><td>活动 groups</td><td>C 端分组 Tab</td></tr>
+          <tr><td>封面图</td><td>选项管理-添加选项抽屉-封面图</td><td>Upload 1 张 image/*</td><td>否</td><td>空</td><td>beforeUpload false 本地预览</td><td>—</td><td>卡片图</td></tr>
+          <tr><td>描述</td><td>选项管理-添加选项抽屉-描述</td><td>富文本</td><td>否</td><td>空</td><td>无字数上限（活动介绍才 2000）</td><td>—</td><td>详情页正文 HTML</td></tr>
+        </tbody>
+      </table>
+      {f('选项管理-添加选项抽屉.png', '选项管理-添加选项抽屉-表单')}
+      {f('选项管理-选项详情抽屉.png', '选项管理-选项详情抽屉-只读+编辑')}
+      {f('选项管理-编辑选项抽屉.png', '选项管理-编辑选项抽屉-可改字段与保存')}
+      <p>详情抽屉 extra「编辑」切到编辑态；footer 关闭。编辑/添加 footer：取消、保存；保存成功 message「已保存」关抽屉。复制：立即 insert 新行 voteCount=0 locked=false，并打开编辑抽屉。</p>
+      {f('选项管理-删除确认弹窗.png', '选项管理-删除确认弹窗-不可恢复')}
+      <p>单行/批量删除同一 confirm。批量删除、批量改组：无勾选时按钮 disabled。批量改组弹窗 Select 可清空=未分组。</p>
+      {f('选项管理-批量导入弹窗.png', '选项管理-批量导入弹窗-Excel上传')}
+      {f('选项管理-批量导入表格.png', '选项管理-批量导入弹窗-模板与导入')}
+      <p>仅 Excel：<code>accept=.xlsx,.xls</code>；「下载导入模板」；表头须为：<code>序号、选项标题、选项副标题、分组、描述</code>（<code>VOTE_V2_PLAYER_IMPORT_HEADERS</code>）。序号与选项标题必填；分组须为已配置分组名。无图片导入 Tab。</p>
+      {f('选项管理-空状态.png', '选项管理-空状态-无选项')}
+      <p>活动不存在：Empty「活动不存在」+ 返回列表。筛选无命中：「没有符合条件的选项」。</p>
+    </article>
+
+    <article class="page-requirement">
+      <h3>7.6 H5 发现投票 / 我的记录</h3>
+      {f('H5投票列表-进行中.png', 'H5投票列表-进行中-整卡跳转与StatusPill')}
+      {f('H5投票列表-顶栏.png', 'H5投票列表-顶栏-返回门户')}
+      {f('H5投票列表-轮播.png', 'H5投票列表-轮播-仅当装修含banner')}
+      {f('H5投票列表-状态Tab.png', 'H5投票列表-状态Tab-进行中未开始已结束与我的记录')}
+      {f('H5投票列表-卡片.png', 'H5投票列表-活动卡片-封面标题时间状态')}
+      {f('H5投票列表-未开始.png', 'H5投票列表-未开始Tab')}
+      {f('H5投票列表-已结束.png', 'H5投票列表-已结束Tab')}
+      <p>壳标题 = 装修 <code>pageTitle</code>（默认「投票」）。默认装修<strong>无轮播、无搜索</strong>，仅 vote 块。默认 Tab「进行中」。过滤：状态匹配且 <code>canSeeVoteV2</code>；有搜索块时按名称 includes；再 <code>slice(0, latestCount)</code>。空：「暂无活动」。卡片<strong>无 CTA 文案</strong>：整卡链接进首页；状态用 <code>StatusPill</code>（受 <code>showStatus</code>）；标题/时间受 <code>showTitle</code>/<code>showTime</code>。布局含 large-image / two-col / left-image / left-text / scroll。「我的记录」在状态 Tab 同行。H5 在 <code>titleBar=false</code> 时不渲染区块标题。</p>
+      {f('H5我的记录-列表.png', 'H5我的记录-列表-查看入口')}
+      <p>壳标题「我的投票记录」（Tab 链文案仍是「我的记录」）。记录来自该用户全部 cast 聚合；卡片带封面；无记录「暂无投票记录」。CTA「查看」回活动首页。</p>
+    </article>
+
+    <article class="page-requirement">
+      <h3>7.7 H5 活动首页与投票</h3>
+      {f('H5投票首页-单选进行中.png', 'H5投票首页-单选-投票按钮')}
+      {f('H5投票首页-选手卡片.png', 'H5投票首页-选手卡片-编号票数详情')}
+      <p>单选：按钮文案=<code>voteButtonNoun</code>（默认「投票」）。点击 <code>castVoteV2</code>。成功经 <code>voteV2CastUiFeedback</code> 打开弹窗。</p>
+      {f('H5投票成功弹窗.png', 'H5投票首页-投票成功弹窗-剩余票数')}
+      <p>弹窗标题「投票成功」，正文 <code>今日还可投{{remaining}}{{voteUnit}}</code>（无空格，如「今日还可投2票」），确定钮主题色=<code>themeColor</code>。失败 toast：活动未在投票期 / 该选项已锁定 / 不在参与范围内 / 已达投票上限 / 该选项已达可投次数。</p>
+      {f('H5投票首页-多选进行中.png', 'H5投票首页-进行中-车间安全之星（种子为单选）')}
+      <p>种子活动「车间安全之星」为单选、每人 3 票。后台无法把活动改成多选。下列底栏截图为同页全页备份，不代表多选勾选态。</p>
+      {f('H5投票首页-多选已选底栏.png', 'H5投票首页-进行中-车间安全之星全页')}
+      <p>打开可见首页 <code>incrementVoteV2ViewCount</code> +1；页面设置开「活动数据」时首页统计展示浏览量。</p>
+      {f('H5投票首页-未开始.png', 'H5投票首页-未开始-倒计时向开始时间')}
+      {f('H5投票首页-已结束.png', 'H5投票首页-已结束-作品称谓点赞')}
+      {f('H5投票首页-不在范围内.png', 'H5投票首页-按部门不可见空态')}
+      {f('H5投票首页-页面显示关闭.png', 'H5投票首页-页面设置关闭后的静默布局')}
+      <p>不在范围或活动缺失：壳标题「评选活动」，文案「不在参与范围内」或「活动不存在」。倒计时：未开始对准 startAt，进行中对准 endAt。</p>
+    </article>
+
+    <article class="page-requirement">
+      <h3>7.8 H5 / PC 选项详情</h3>
+      {f('H5选项详情-页面整体.png', 'H5选项详情-头图排名描述')}
+      {f('H5选项详情-底部投票.png', 'H5选项详情-底部固定投票CTA')}
+      <p>布局：顶栏活动封面（<code>coverUrl</code>）→ 编号/名称/副标题 → 统计「排名 / 票数 / 距上一名」（值如「第1名」「当前128票」「差32票」）→ 选手大图 → 描述 HTML。H5 底栏 CTA；PC 侧栏 CTA。locked 时按钮 disabled。</p>
+      <p>单选：CTA=<code>voteButtonNoun</code>，点按 <code>castVoteV2</code>，成功弹窗。H5：底栏 CTA，<strong>无分享按钮</strong>；PC：侧栏 CTA，顶栏可分享（禁止分享时隐藏）。多选勾选路径仍在选项详情组件中，现行后台配不出多选活动。</p>
+      {f('PC选项详情-侧栏投票.png', 'PC选项详情-页面-主栏加侧栏')}
+      {f('PC选项详情-侧栏.png', 'PC选项详情-侧栏-名称与投票按钮')}
+    </article>
+
+    <article class="page-requirement">
+      <h3>7.9 PC 发现与首页</h3>
+      {f('PC投票列表-页面整体.png', 'PC投票列表-宽屏壳-装修标题')}
+      {f('PC投票列表-轮播.png', 'PC投票列表-轮播-装修banner')}
+      {f('PC投票列表-状态Tab.png', 'PC投票列表-状态Tab与我的记录')}
+      {f('PC投票列表-卡片网格.png', 'PC投票列表-卡片网格')}
+      {f('PC投票首页-进行中.png', 'PC投票首页-舞台预览')}
+      {f('PC我的记录-列表.png', 'PC我的记录-列表')}
+      <p>PC 复用 <code>H5VoteV2List surface=pc</code>：宽屏壳标题=装修 pageTitle；vote 块 titleBar 默认开时用块 title，关时硬编码「发现投票」；「我的记录」在状态 Tab 行右侧。默认无轮播。卡片无 CTA、StatusPill + 整卡跳转。列数跟装修 columnCount。首页/详情分享仅 PC；投票规则与 H5 相同。</p>
+    </article>
+  </section>
+
+  <section id="exceptions">
+    <h2>8. 异常场景与边界条件</h2>
+    <table>
+      <thead><tr><th>场景</th><th>用户操作</th><th>系统行为（代码）</th></tr></thead>
+      <tbody>
+        <tr><td>空名称保存</td><td>保存并发布</td><td>请输入活动名称</td></tr>
+        <tr><td>未选时间</td><td>保存</td><td>请选择投票时间；另有「开始时间须早于结束时间」</td></tr>
+        <tr><td>介绍超 2000 纯文本</td><td>失焦/保存</td><td>不超过 2000 个字（RichText 按纯文本计）</td></tr>
+        <tr><td>无封面</td><td>保存</td><td>请上传封面图（字段在样式 Tab）</td></tr>
+        <tr><td>按部门未选部门</td><td>保存</td><td>message.error 请选择部门</td></tr>
+        <tr><td>配额非 1～50 或同一选项票&gt;每人票</td><td>保存</td><td>对应 error 文案</td></tr>
+        <tr><td>最少选择&gt;最多</td><td>保存多选</td><td>最少选择不能大于最多选择</td></tr>
+        <tr><td>未保存离开</td><td>取消/面包屑</td><td>确认离开？未保存的修改将丢失</td></tr>
+        <tr><td>删进行中活动</td><td>点删除</td><td>按钮禁用 + Tooltip；若调用 deleteVoteV2BlockReason</td></tr>
+        <tr><td>投票超额</td><td>再点投票</td><td>toast 已达投票上限</td></tr>
+        <tr><td>活动未开始/已结束投票</td><td>点投票</td><td>toast 活动未在投票期</td></tr>
+        <tr><td>部门外打开直链</td><td>打开 vote-v2-5</td><td>不在参与范围内</td></tr>
+        <tr><td>错误 option id</td><td>改 hash</td><td>选项不存在</td></tr>
+        <tr><td>CSV 无标题行</td><td>导入</td><td>跳过并 warning；全失败 error</td></tr>
+        <tr><td>图片文件名无 stem</td><td>导入</td><td>无法识别选项标题</td></tr>
+        <tr><td>多选提交非恰好 1 项</td><td>底栏确认</td><td>toast「请选择1项」（即便 UI 允许勾选多项）</td></tr>
+        <tr><td>进行中改规则有票</td><td>保存并发布</td><td>二次确认 Modal；取消则不写</td></tr>
+        <tr><td>复制链接无 clipboard 权限</td><td>分享</td><td>复制失败，请手动复制链接</td></tr>
+        <tr><td>刷新浏览器</td><td>—</td><td>活动 store 重置种子，刚投的票与选中态丢失；装修若已 persist 则保留</td></tr>
+        <tr><td>记录 Tab 无数据导出</td><td>点导出</td><td>暂无投票可导出</td></tr>
+        <tr><td>概览无进行中</td><td>打开概览</td><td>Empty「当前没有进行中的投票」</td></tr>
+        <tr><td>装修 latestCount=1</td><td>打开发现页</td><td>每 Tab 最多 1 张卡片（截断）</td></tr>
+        <tr><td>装修拖拽未点保存</td><td>打开 C 端列表</td><td>仍可能见草稿变更（C 端读 draft）</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="data-fields">
+    <h2>9. 数据字段与枚举</h2>
+    <p>活动状态：未开始、进行中、已结束。周期：每天、总共。选择：单选、多选。可见性：全员、按部门。封面种类模型：图片、视频、链接（表单实际只上传图片，coverKind 默认图片且隐藏）。报名次数模型：不限、一次。字段展示：必填、选填、隐藏。分享模式：微信分享、禁止分享、自定义分享。内部校验：邀请码、导入名单。浮动特效模型：无、花瓣、气球、雪花、红包（保存时写死「无」）。</p>
+    <p>详情页签：详情、投票结果、投票记录。</p>
+    <p>装修块类型：search、banner、vote。投票列表样式：移动端 large-image / two-col / left-image / left-text / scroll；PC large-image / left-image / left-text。字段开关：showTitle / showStatus / showTime。latestCount 1～20。pageTitle max 20。表面：mobile / pc。</p>
+    <p>常量：名称 50；介绍 2000；配额 1～50；称谓 4；按钮名 2；单位 1；分组名 20；首页列 1/2/3；分组列 1～4。</p>
+  </section>
+
+  <section id="apis">
+    <h2>10. API / 数据接口清单</h2>
+    <p>代码中<strong>无</strong> fetch/axios。全部本地函数。</p>
+    <table>
+      <thead><tr><th>接口用途</th><th>方法</th><th>路径</th><th>触发场景</th><th>请求参数</th><th>响应字段</th><th>是否真实接口</th><th>备注</th></tr></thead>
+      <tbody>
+        <tr><td>活动 CRUD</td><td>—</td><td>—</td><td>保存/删除</td><td>VoteV2Campaign</td><td>内存数组</td><td>否</td><td>upsertVoteV2 / removeVoteV2</td></tr>
+        <tr><td>投票</td><td>—</td><td>—</td><td>CTA</td><td>campaignId, contestantIds, userId, now</td><td>ok / reason / remaining</td><td>否</td><td>castVoteV2Many：仅 length===1 成功；UI 反馈 voteV2CastUiFeedback</td></tr>
+        <tr><td>浏览量 +1</td><td>—</td><td>—</td><td>打开可见活动首页</td><td>campaignId</td><td>viewCount</td><td>否</td><td>incrementVoteV2ViewCount</td></tr>
+        <tr><td>多选选中态</td><td>—</td><td>—</td><td>首页/详情勾选</td><td>campaignId, contestantId, max</td><td>ids / blocked</td><td>否</td><td>voteV2SelectionStore；刷新清空</td></tr>
+        <tr><td>结果汇总</td><td>—</td><td>—</td><td>详情结果 Tab</td><td>contestants</td><td>rank/percent</td><td>否</td><td>tallyVoteV2Results</td></tr>
+        <tr><td>记录导出</td><td>—</td><td>—</td><td>详情记录导出</td><td>selectMode, rows</td><td>CSV 下载</td><td>否</td><td>downloadVoteV2RecordExport</td></tr>
+        <tr><td>装修草稿/发布</td><td>—</td><td>localStorage</td><td>拖拽 save；按钮「保存」publish</td><td>DecoPage × surface</td><td>draft / published</td><td>否</td><td>C 端列表读 draft</td></tr>
+      </tbody>
+    </table>
+    <p><strong>建议接口 / 待确认：</strong>活动分页查询、发布、选项导入、投票幂等、防刷、报名审核、分享短链、浏览量上报。</p>
+  </section>
+
+  <section id="non-functional">
+    <h2>11. 非功能需求</h2>
+    <ul>
+      <li>后台桌面宽表 scroll.x=1280；H5 390 竖屏；PC 宽屏壳。</li>
+      <li>无障碍：部分按钮有 aria-label（分享/删除/详情）。</li>
+      <li>安全：描述与介绍 <code>dangerouslySetInnerHTML</code>，原型未消毒 <span class="status todo">待确认生产 XSS</span>。</li>
+      <li>性能：倒计时每秒 tick；预览 8 条示例选手（无真实 contestants 时）。</li>
+      <li>兼容：clipboard、下载二维码依赖浏览器。</li>
+    </ul>
+  </section>
+
+  <section id="analytics">
+    <h2>12. 埋点与指标建议</h2>
+    <p><span class="status">建议补充</span> 代码无埋点。</p>
+    <table>
+      <thead><tr><th>事件名称</th><th>触发动作</th><th>关键属性</th><th>业务目的</th></tr></thead>
+      <tbody>
+        <tr><td>vote_cast_success</td><td>投票成功</td><td>campaignId, mode, remaining</td><td>参与率</td></tr>
+        <tr><td>vote_cast_fail</td><td>toast 失败原因</td><td>reason</td><td>配额/范围问题</td></tr>
+        <tr><td>vote_share_copy</td><td>复制链接</td><td>surface admin/h5/pc</td><td>传播</td></tr>
+        <tr><td>vote_option_detail_view</td><td>进详情</td><td>optionId</td><td>详情转化</td></tr>
+        <tr><td>vote_admin_export</td><td>导出记录</td><td>campaignId, rowCount</td><td>运营审计</td></tr>
+        <tr><td>vote_deco_publish</td><td>装修发布</td><td>surface</td><td>配置上线</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="acceptance">
+    <h2>13. 验收标准</h2>
+    <ul>
+      <li>Given 概览 When 点「投票总数」Then 进入投票管理列表；进行中表「详情」进对应活动详情。</li>
+      <li>Given 未开始活动 When 点删除 Then 确认后列表消失；进行中删除按钮禁用且 Tooltip 正确。</li>
+      <li>Given 空新建表且当前在功能 Tab When 保存 Then 切到基本或样式首个报错 Tab；缺封面时切样式并 toast「请上传封面图」。</li>
+      <li>Given 进行中活动 When 改名称 Then 输入框禁用；改每人可投票 Then 可保存。</li>
+      <li>Given 已结束 When 打开 edit Then 无保存按钮；打开详情 Then 仍有「去编辑」（进只读编辑页）。</li>
+      <li>Given 详情 When 切「投票结果」Then hash 含 /results，表含名次/票数/占比。</li>
+      <li>Given 有记录活动 When 切「投票记录」并导出 Then 下载 CSV 且 toast 已导出 N 条；无记录点导出 Then 暂无投票可导出。</li>
+      <li>Given 投票装修拖入搜索并点保存 When toast Then「已保存，C端首页已更新」；打开 H5 发现页 Then 出现搜索框且壳标题=pageTitle。</li>
+      <li>Given 发现页进行中卡片 When 看卡片 Then 无「查看详情/去投票」CTA，有 StatusPill，点整卡进首页。</li>
+      <li>Given 默认装修 When 打开发现页 Then 无轮播；拖入 banner 保存后才有轮播。</li>
+      <li>Given 单选进行中 H5 When 投票 Then 弹窗「今日还可投N票」；再投 Then 已达投票上限。</li>
+      <li>Given 多选 When 勾 2 项提交 Then 现行后台无法配置多选活动，本条对生产以表单隐藏为准；代码 <code>castVoteV2Many</code> 仍校验恰好 1 项。</li>
+      <li>Given 进行中活动已有票 When 改配额并保存 Then 出现确认保存影响 Modal。</li>
+      <li>Given H5 活动首页 When 看顶栏 Then 无分享按钮；PC 有分享（非禁止模式）。</li>
+      <li>Given 可见活动首页 When 首次进入 Then viewCount +1；不在范围页 Then 不增。</li>
+      <li>Given 按部门活动且用户不在部门 When 打开首页 Then 不在参与范围内。</li>
+      <li>Given PC 选项详情 When 布局 Then CTA 在侧栏且无 H5 底栏。</li>
+    </ul>
+  </section>
+'''
+
+
+if __name__ == '__main__':
+    write_prd('voting-v2', '投票应用-PRD.html', '投票应用（管理后台 / PC / H5）产品需求文档', TOC, body())

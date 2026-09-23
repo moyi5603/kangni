@@ -11,8 +11,9 @@ import { ActivitySocialTabs } from '../components/ActivitySocialTabs';
 import { ActivityRatingBlock } from '../components/ActivityRatingBlock';
 import { ApprovedSignupPeople } from '../components/ApprovedSignupPeople';
 import { DetailEngageBar } from '../components/DetailEngageBar';
+import { OrganizerCheckInQr } from '../components/OrganizerCheckInQr';
 import { RecentSessionsStrip } from '../components/RecentSessionsStrip';
-import { ShareContactsPanel } from '../components/ShareContactsPanel';
+import { SignupAuditHint } from '../components/SignupAuditHint';
 import { MomentFeed } from '../components/MomentFeed';
 import { shouldShowMomentsTab } from '../model/activitySocialTabs';
 import { ActivityCoverOverlay } from '../components/StatusPill';
@@ -26,9 +27,15 @@ import {
 import { needsSessionPick } from '../../../activities/model/activitySchedule';
 import { needsSignupForm, prefillSignupAnswers } from '../../../activities/model/signupFields';
 import { getPublishedActivity, signupCta, signupLimit, signupTypes } from '../model/clientActivity';
-import { shareConfirmMessage } from '../model/activityShare';
 import { toggleFavorite, toggleLike, useActivityEngagement } from '../model/engagementStore';
-import { cancelSignup, DEMO_SIGNUP_USER, getUserSignupAnswers, saveClientSignup, useHasSignedUp } from '../model/signupStore';
+import {
+  cancelSignup,
+  cancelSignupToast,
+  DEMO_SIGNUP_USER,
+  getUserSignupAnswers,
+  saveClientSignup,
+  useHasSignedUp,
+} from '../model/signupStore';
 import { PcActivityShell } from './PcActivityShell';
 import { CancelSignupDialog } from '../components/CancelSignupDialog';
 import { PcMomentModal } from './PcMomentModal';
@@ -60,7 +67,6 @@ export function PcActivityDetail({
   const [signupOpen, setSignupOpen] = useState(initialSignupOpen);
   const [composer, setComposer] = useState<MomentRecord | 'create'>();
   const [socialTab, setSocialTab] = useState<'comments' | 'moments'>('comments');
-  const [shareOpen, setShareOpen] = useState(false);
   const momentItems = useClientMoments(id);
   const approvedSignup = useApprovedSignup(id);
   void relatedComments;
@@ -79,7 +85,9 @@ export function PcActivityDetail({
     );
   }
 
-  const cta = signupCta(activity, signedUp, Date.now(), { allowCancel: true });
+  const cta = signupCta(activity, signedUp, Date.now(), {
+    allowCancel: true,
+  });
   const types = signupTypes(activity);
   const threads = listActivityCommentThreads(id);
   const detailHtml = withoutLeadingIntroductionHeading(activity.detailHtml);
@@ -91,7 +99,13 @@ export function PcActivityDetail({
   const confirm = (type: string, answers: Record<string, string>) => {
     const result = saveClientSignup(activity.id, type, answers);
     toast.show(
-      result === 'ok' ? (signedUp ? '已更新报名' : '报名成功') : result === 'cancelled' ? '已取消报名' : '已报名',
+      result === 'ok'
+        ? signedUp
+          ? '已更新报名'
+          : '报名成功'
+        : result === 'cancelled'
+          ? '已取消报名'
+          : '已报名',
     );
   };
 
@@ -101,7 +115,9 @@ export function PcActivityDetail({
   };
 
   const submitSignupForm = (type: string, answers: Record<string, string>) => {
-    const freshCta = signupCta(activity, signedUp, Date.now(), { allowCancel: true });
+    const freshCta = signupCta(activity, signedUp, Date.now(), {
+      allowCancel: true,
+    });
     if (!freshCta.enabled || freshCta.action === 'cancel') {
       toast.show(freshCta.label);
       closeSignup();
@@ -180,6 +196,7 @@ export function PcActivityDetail({
         <aside className="c-pc-side">
           <h2 className="c-detail-name">{activity.title}</h2>
           <ActivityQuotaLine activity={activity} />
+          <OrganizerCheckInQr activity={activity} />
           <RecentSessionsStrip activity={activity} />
           <ApprovedSignupPeople activity={activity} activityId={id} surface="pc" />
           <DetailEngageBar
@@ -197,15 +214,17 @@ export function PcActivityDetail({
                 document.getElementById('activity-comment-box')?.focus();
               });
             }}
-            onShare={() => setShareOpen(true)}
           />
+          <SignupAuditHint activity={activity} />
           <button
             className="c-cta"
             type="button"
             disabled={!cta.enabled}
             onClick={() => {
               if (!cta.enabled) return;
-              if (cta.action === 'cancel') setCancelOpen(true);
+              if (cta.action === 'cancel') {
+                setCancelOpen(true);
+              }
               else openSignup();
             }}
           >
@@ -220,6 +239,7 @@ export function PcActivityDetail({
           fields={activity.signupFields}
           scheduleType={activity.scheduleType}
           sessions={activity.sessions}
+          terminatedAt={activity.terminatedAt}
           signupStartAt={activity.signupStartAt}
           signupEndAt={activity.signupEndAt}
           signupHoursBefore={activity.signupHoursBefore}
@@ -237,7 +257,7 @@ export function PcActivityDetail({
           onConfirm={() => {
             const result = cancelSignup(activity.id);
             setCancelOpen(false);
-            toast.show(result === 'ok' ? '已取消报名' : result === 'closed' ? '报名已截止，无法取消' : '取消失败');
+            toast.show(cancelSignupToast(result));
           }}
         />
       ) : null}
@@ -252,15 +272,6 @@ export function PcActivityDetail({
           }}
         />
       ) : null}
-      <ShareContactsPanel
-        open={shareOpen}
-        surface="pc"
-        onClose={() => setShareOpen(false)}
-        onConfirm={(count) => {
-          setShareOpen(false);
-          toast.show(shareConfirmMessage(count));
-        }}
-      />
     </PcActivityShell>
   );
 }

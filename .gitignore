@@ -1,5 +1,11 @@
 node_modules
 dist
+dist-single
+dist-app-incentive
+dist-app-medal
+dist-app-forum
+dist-app-mailbox
+dist-app-care
 .DS_Store
 *.local
 *.tsbuildinfo

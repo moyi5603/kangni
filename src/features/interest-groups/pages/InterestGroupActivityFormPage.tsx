@@ -5,11 +5,10 @@ import {
   Breadcrumb,
   Button,
   Card,
+  Checkbox,
   Col,
-  Collapse,
   DatePicker,
   Empty,
-  Flex,
   Form,
   Input,
   InputNumber,
@@ -19,26 +18,13 @@ import {
   Space,
   Switch,
   TimePicker,
-  TreeSelect,
   Typography,
   Upload,
 } from 'antd';
 import type { UploadFile } from 'antd';
+import { COVER_IMAGE_UPLOAD_HINT, IMAGE_UPLOAD_ACCEPT } from '../../../shared/ui/imageUploadHint';
 import dayjs, { type Dayjs } from 'dayjs';
 import { RichTextField } from '../../activities/components/RichTextField';
-import { SignupFieldsEditor } from '../../activities/components/SignupFieldsEditor';
-import {
-  orgDepartmentTree,
-  orgPeoplePickerTree,
-  type Visibility,
-} from '../../activities/model/activity';
-import { defaultSignupFields, validateSignupFields, type SignupField } from '../../activities/model/signupFields';
-import {
-  defaultActivityPointValues,
-  normalizeActivityPointRules,
-  validateActivityPointValues,
-} from '../../activities/model/activityPointRules';
-import { getInterestGroupPointRules, useInterestGroupPointRules } from '../model/interestGroupPointRulesStore';
 import {
   formatDateTimeRange,
   toDateTimeRange,
@@ -47,11 +33,17 @@ import {
 } from '../../activities/model/activityForm';
 import {
   WEEKDAYS,
+  applyRepeatWeekdaySelection,
+  coerceRepeatRules,
+  generateRecurringSessions,
   needsSessionPick,
+  repeatWeekdayValues,
+  sessionFullyWithinWindow,
   signupQuotaLabel,
   signupQuotaPlaceholder,
   SIGNUP_HOURS_PLACEHOLDER,
   syncSignupEndAt,
+  weekdayLabel,
 } from '../../activities/model/activitySchedule';
 import {
   generateInterestGroupActivityIntro,
@@ -60,7 +52,9 @@ import {
   validateInterestGroupActivityForm,
   type InterestGroupActivityFormValues,
   type InterestGroupActivityType,
+  type InterestGroupNotifyAudience,
 } from '../model/interestGroupActivity';
+import { defaultCheckInSettings } from '../../activities/model/activityCheckIn';
 import { InterestGroupActivityAiModal } from '../components/InterestGroupActivityAiModal';
 import { takePendingAiActivityDraft } from '../model/interestGroupActivityPlan';
 import { buildInterestGroupCategoryOptions } from '../model/interestGroupCategory';
@@ -81,62 +75,54 @@ type FormShape = {
   signupRange?: DateTimeRange;
   signupStartAt?: Dayjs;
   signupHoursBefore?: number;
-  repeatWeekday?: number;
-  sessionTimeStart?: Dayjs;
-  sessionTimeEnd?: Dayjs;
-  cycleRange?: DateTimeRange;
+  repeatRules?: Array<{ weekday: number; timeStart?: Dayjs; timeEnd?: Dayjs }>;
   sessionList?: Array<{ range?: DateTimeRange }>;
   location?: string;
   capacity?: number;
   detailHtml?: string;
-  visibility: Visibility;
-  departments: string[];
-  customPeople: string[];
-  importFileName: string;
   notifyOnPublish: boolean;
-  signupFields: SignupField[];
-  signupPoints: number;
-  signupPointsEnabled: boolean;
+  notifyAudience: InterestGroupNotifyAudience;
+  checkInEnabled: boolean;
+  checkInOpenMinutesBefore: number;
+  checkInDynamicQr: boolean;
 };
-
-function optionsOf(values: readonly string[]) {
-  return values.map((value) => ({ value, label: value }));
-}
-
-function downloadCrowdImportTemplate() {
-  const lines = ['工号,姓名,部门', 'E1001,张悦,前端组', 'E1002,李明,前端组', 'E1003,陈产品,华东大区'];
-  const blob = new Blob([`\uFEFF${lines.join('\n')}\n`], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = '活动可见人群导入模板.csv';
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
 
 function toFileList(coverUrl: string): UploadFile[] {
   if (!coverUrl) return [];
   return [{ uid: '-1', name: '活动封面', status: 'done', url: coverUrl, thumbUrl: coverUrl }];
 }
 
+function RepeatRulesHolder(_props: { value?: FormShape['repeatRules'] }) {
+  return null;
+}
+
 function timeOf(value?: string) {
   return value ? dayjs(`2000-01-01 ${value}`) : undefined;
 }
 
-function toPayload(values: FormShape, importedPeople: string[]): InterestGroupActivityFormValues {
+function toPayload(values: FormShape): InterestGroupActivityFormValues {
   const align = igActivityAlignDefaults();
   const type = values.type;
   const activityTime =
     values.activityRange?.[0] && values.activityRange[1] ? formatDateTimeRange(values.activityRange) : { startAt: '', endAt: '' };
   const signupTime =
     values.signupRange?.[0] && values.signupRange[1] ? formatDateTimeRange(values.signupRange) : { startAt: '', endAt: '' };
-  const sessions = (values.sessionList ?? []).flatMap((item) => {
-    if (!item.range?.[0] || !item.range[1]) return [];
-    const range = formatDateTimeRange(item.range);
-    return [{ startAt: range.startAt, endAt: range.endAt }];
-  });
+  const sessions =
+    type === 'recurring'
+      ? generateRecurringSessions({
+          rules: (values.repeatRules ?? []).map((item) => ({
+            weekday: Number(item.weekday),
+            timeStart: item.timeStart?.format('HH:mm') ?? '',
+            timeEnd: item.timeEnd?.format('HH:mm') ?? '',
+          })),
+          windowStart: activityTime.startAt,
+          windowEnd: activityTime.endAt,
+        }).map(({ startAt, endAt }) => ({ startAt, endAt }))
+      : (values.sessionList ?? []).flatMap((item) => {
+          if (!item.range?.[0] || !item.range[1]) return [];
+          const range = formatDateTimeRange(item.range);
+          return [{ startAt: range.startAt, endAt: range.endAt }];
+        });
   const signupStartAt = needsSessionPick(type)
     ? (values.signupStartAt?.format('YYYY-MM-DD HH:mm') ?? '')
     : signupTime.startAt;
@@ -155,11 +141,14 @@ function toPayload(values: FormShape, importedPeople: string[]): InterestGroupAc
     type,
     startAt: activityTime.startAt || undefined,
     endAt: activityTime.endAt || undefined,
-    repeatWeekday: values.repeatWeekday,
-    timeStart: values.sessionTimeStart?.format('HH:mm'),
-    timeEnd: values.sessionTimeEnd?.format('HH:mm'),
-    cycleStart: values.cycleRange?.[0]?.format('YYYY-MM-DD'),
-    cycleEnd: values.cycleRange?.[1]?.format('YYYY-MM-DD'),
+    repeatRules:
+      type === 'recurring'
+        ? (values.repeatRules ?? []).map((item) => ({
+            weekday: Number(item.weekday),
+            timeStart: item.timeStart?.format('HH:mm') ?? '',
+            timeEnd: item.timeEnd?.format('HH:mm') ?? '',
+          }))
+        : undefined,
     sessions,
     signupStartAt: signupStartAt || align.signupStartAt,
     signupEndAt: signupEndAt || align.signupEndAt,
@@ -167,18 +156,23 @@ function toPayload(values: FormShape, importedPeople: string[]): InterestGroupAc
     location: values.location ?? '',
     capacity: values.capacity ?? 0,
     detailHtml: values.detailHtml ?? '',
-    visibility: values.visibility,
-    departments: values.departments ?? [],
-    customPeople: values.customPeople ?? [],
-    importFileName: values.importFileName ?? '',
-    importedPeople,
+    visibility: '全员',
+    departments: [],
+    customPeople: [],
+    importFileName: '',
+    importedPeople: [],
     notifyOnPublish: values.notifyOnPublish,
+    notifyAudience: 'members',
+    ...defaultCheckInSettings(),
+    checkInEnabled: values.checkInEnabled,
+    checkInOpenMinutesBefore: values.checkInOpenMinutesBefore,
+    checkInDynamicQr: values.checkInDynamicQr,
     needAudit: false,
     minSeniorityYears: undefined,
     signupApprovalNodes: [],
-    signupFields: values.signupFields ?? defaultSignupFields(),
-    signupPoints: values.signupPoints,
-    signupPointsEnabled: values.signupPointsEnabled,
+    signupFields: [],
+    signupPoints: align.signupPoints,
+    signupPointsEnabled: true,
   };
 }
 
@@ -203,25 +197,22 @@ function draftToFormShape(draft: InterestGroupActivityFormValues): FormShape {
     signupRange: draft.signupStartAt && draft.signupEndAt ? toDateTimeRange(draft.signupStartAt, draft.signupEndAt) : undefined,
     signupStartAt: draft.signupStartAt ? dayjs(draft.signupStartAt) : undefined,
     signupHoursBefore: draft.signupHoursBefore,
-    repeatWeekday: draft.repeatWeekday,
-    sessionTimeStart: timeOf(draft.timeStart),
-    sessionTimeEnd: timeOf(draft.timeEnd),
-    cycleRange:
-      draft.cycleStart && draft.cycleEnd ? toDateTimeRange(`${draft.cycleStart} 00:00`, `${draft.cycleEnd} 00:00`) : undefined,
+    repeatRules: coerceRepeatRules(draft).map((rule) => ({
+      weekday: rule.weekday,
+      timeStart: timeOf(rule.timeStart),
+      timeEnd: timeOf(rule.timeEnd),
+    })),
     sessionList: (draft.sessions ?? []).map((session) => ({
       range: session.startAt && session.endAt ? toDateTimeRange(session.startAt, session.endAt) : undefined,
     })),
     location: draft.location,
     capacity: draft.capacity,
     detailHtml: draft.detailHtml,
-    visibility: draft.visibility,
-    departments: draft.departments,
-    customPeople: draft.customPeople,
-    importFileName: draft.importFileName,
     notifyOnPublish: draft.notifyOnPublish,
-    signupFields: draft.signupFields?.length ? draft.signupFields : defaultSignupFields(),
-    signupPoints: draft.signupPoints,
-    signupPointsEnabled: draft.signupPointsEnabled,
+    notifyAudience: 'members',
+    checkInEnabled: Boolean(draft.checkInEnabled),
+    checkInOpenMinutesBefore: draft.checkInOpenMinutesBefore ?? 30,
+    checkInDynamicQr: Boolean(draft.checkInDynamicQr),
   };
 }
 
@@ -248,10 +239,6 @@ export function InterestGroupActivityFormPage({
   const aiMode = presentation === 'ai' || resolvedDraft != null;
   const sourceCover = aiMode ? '' : (resolvedDraft?.coverUrl ?? editing?.coverUrl ?? copySource?.coverUrl ?? '');
   const [coverList, setCoverList] = useState<UploadFile[]>(() => toFileList(sourceCover));
-  const sourceImport = editing?.importFileName ?? copySource?.importFileName ?? resolvedDraft?.importFileName ?? '';
-  const [importList, setImportList] = useState<UploadFile[]>(() =>
-    sourceImport ? [{ uid: '-2', name: sourceImport, status: 'done' }] : [],
-  );
   const [writing, setWriting] = useState(false);
   const presetGroup = presetGroupId ? groups.find((item) => item.id === presetGroupId) : undefined;
   const categoryOptions = buildInterestGroupCategoryOptions(categories, {
@@ -260,7 +247,6 @@ export function InterestGroupActivityFormPage({
     keepKey: editing?.categoryKey ?? copySource?.categoryKey,
   });
   const pageTitle = aiMode ? 'AI 活动策划' : mode === 'create' ? '新建活动' : '编辑活动';
-  const pointRules = normalizeActivityPointRules(useInterestGroupPointRules());
 
   const initialValues = useMemo<FormShape>(
     () =>
@@ -279,27 +265,23 @@ export function InterestGroupActivityFormPage({
                 sessionList: [{ range: undefined }, { range: undefined }],
                 location: '',
                 detailHtml: '',
-                visibility: '全员',
-                departments: [],
-                customPeople: [],
-                importFileName: '',
                 notifyOnPublish: false,
-                signupFields: defaultSignupFields(),
-                signupPoints: defaultActivityPointValues(getInterestGroupPointRules()).signupPoints,
-                signupPointsEnabled: false,
+                notifyAudience: 'members',
+                checkInEnabled: false,
+                checkInOpenMinutesBefore: 30,
+                checkInDynamicQr: false,
               },
     [resolvedDraft, editing, copySource, presetGroup],
   );
 
   useEffect(() => {
     setCoverList(toFileList(sourceCover));
-    setImportList(sourceImport ? [{ uid: '-2', name: sourceImport, status: 'done' }] : []);
-  }, [sourceCover, sourceImport]);
+  }, [sourceCover]);
 
   const type = Form.useWatch('type', form) ?? initialValues.type;
-  const visibility = Form.useWatch('visibility', form);
-  const signupPointsEnabled = Form.useWatch('signupPointsEnabled', form);
-  const capacity = Form.useWatch('capacity', form);
+  const checkInEnabled = Form.useWatch('checkInEnabled', form);
+  const repeatRules = Form.useWatch('repeatRules', { form, preserve: true }) ?? initialValues.repeatRules ?? [];
+  const activityRange = Form.useWatch('activityRange', form);
 
   const writeIntro = () => {
     if (writing) return;
@@ -341,36 +323,14 @@ export function InterestGroupActivityFormPage({
 
   const save = async () => {
     const values = await form.validateFields();
-    const groupSumHint = validateSignupFields(values.signupFields ?? [], { signupTotalLimit: values.capacity });
-    if (groupSumHint?.startsWith('各组人数合计要等于报名总人数')) return;
-    const pointRulesForSave = getInterestGroupPointRules();
-    const pointError = validateActivityPointValues(
-      {
-        signupPointsEnabled: Boolean(values.signupPointsEnabled),
-        firstCommentPointsEnabled: false,
-        ratingPointsEnabled: false,
-        firstMomentPointsEnabled: false,
-        signupPoints: values.signupPoints,
-        firstCommentPoints: pointRulesForSave.firstCommentPointsMax,
-        ratingPoints: pointRulesForSave.ratingPointsMax,
-        firstMomentPoints: pointRulesForSave.firstMomentPointsMax,
-      },
-      pointRulesForSave,
-    );
-    if (pointError) {
-      message.error(pointError);
-      return;
-    }
-    const importedPeople =
-      values.visibility === '导入人群' ? (editing?.importedPeople ?? copySource?.importedPeople ?? []) : [];
-    const payload = toPayload(values, importedPeople);
+    const payload = toPayload(values);
     const error = validateInterestGroupActivityForm(payload, mode === 'create');
     if (error) {
       message.warning(error);
       return;
     }
     const saved = upsertInterestGroupActivity(payload, editing?.id);
-    message.success(aiMode ? 'AI 活动已保存，请提交审批后发布' : mode === 'edit' ? '活动已更新' : '活动已保存');
+    message.success(aiMode ? 'AI 活动已保存，可直接发布' : mode === 'edit' ? '活动已更新' : '活动已保存');
     onSaved(saved.id);
   };
 
@@ -391,7 +351,7 @@ export function InterestGroupActivityFormPage({
       <Breadcrumb
         separator=">"
         items={[
-          { title: '兴趣小组' },
+          { title: '兴趣圈' },
           { title: <Button type="link" className="breadcrumb-link" onClick={leave}>活动管理</Button> },
           { title: pageTitle },
         ]}
@@ -402,8 +362,8 @@ export function InterestGroupActivityFormPage({
         </Typography.Title>
         <Typography.Text type="secondary">
           {aiMode
-            ? '方案已生成，下面每一项都可以直接修改后保存，再提交审批并发布'
-            : '填写活动信息、报名规则和高级设置。封面与详情仅保存在本地演示数据中。'}
+            ? '方案已生成，下面每一项都可以直接修改后保存，再发布'
+            : '填写活动信息和报名规则。封面与详情仅保存在本地演示数据中。'}
         </Typography.Text>
       </div>
       <Form
@@ -418,9 +378,9 @@ export function InterestGroupActivityFormPage({
         key={`activity-form-${formEpoch}-${resolvedDraft?.title ?? 'blank'}`}
       >
         <Card title="活动信息">
-          <Form.Item label="封面图片" extra="支持 jpg / png" required>
+          <Form.Item label="封面图片" extra={COVER_IMAGE_UPLOAD_HINT} required>
             <Upload
-              accept="image/*"
+              accept={IMAGE_UPLOAD_ACCEPT}
               listType="picture-card"
               maxCount={1}
               fileList={coverList}
@@ -478,9 +438,9 @@ export function InterestGroupActivityFormPage({
               </Form.Item>
             </Col>
             <Col xs={24} lg={12}>
-              <Form.Item name="groupId" label="所属小组" rules={[{ required: true, message: '请选择所属小组' }]}>
+              <Form.Item name="groupId" label="所属兴趣圈" rules={[{ required: true, message: '请选择所属兴趣圈' }]}>
                 <Select
-                  placeholder="请选择小组"
+                  placeholder="请选择兴趣圈"
                   options={groups.map((item) => ({ value: item.id, label: item.name }))}
                   onChange={(value) => {
                     const group = groups.find((item) => item.id === value);
@@ -492,6 +452,34 @@ export function InterestGroupActivityFormPage({
               </Form.Item>
             </Col>
           </Row>
+          <Row gutter={16} className="form-2col">
+            <Col xs={24} lg={12} className="activity-time-field">
+              <Form.Item
+                name="activityRange"
+                label="活动时间"
+                required
+                rules={[
+                  {
+                    validator: async (_, value) =>
+                      validateDateTimeRange(value, {
+                        required: '请选择活动时间',
+                        order: '结束时间不得早于开始时间',
+                      }),
+                  },
+                ]}
+              >
+                <DatePicker.RangePicker
+                  showTime={{ format: 'HH:mm' }}
+                  format="YYYY-MM-DD HH:mm"
+                  style={{ width: '100%' }}
+                  placeholder={['开始时间', '结束时间']}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item name="repeatRules" hidden>
+            <RepeatRulesHolder />
+          </Form.Item>
           <Form.Item name="type" label="举办方式" rules={[{ required: true, message: '请选择举办方式' }]}>
             <Radio.Group disabled={mode === 'edit'} optionType="button">
               {(['once', 'recurring', 'series'] as const).map((item) => (
@@ -503,29 +491,6 @@ export function InterestGroupActivityFormPage({
           </Form.Item>
           {type === 'once' || !type ? (
             <Row gutter={16} className="form-2col">
-              <Col xs={24} lg={12}>
-                <Form.Item
-                  name="activityRange"
-                  label="活动时间"
-                  required
-                  rules={[
-                    {
-                      validator: async (_, value) =>
-                        validateDateTimeRange(value, {
-                          required: '请选择活动时间',
-                          order: '结束时间不得早于开始时间',
-                        }),
-                    },
-                  ]}
-                >
-                  <DatePicker.RangePicker
-                    showTime={{ format: 'HH:mm' }}
-                    format="YYYY-MM-DD HH:mm"
-                    style={{ width: '100%' }}
-                    placeholder={['开始时间', '结束时间']}
-                  />
-                </Form.Item>
-              </Col>
               <Col xs={24} lg={12}>
                 <Form.Item
                   name="signupRange"
@@ -567,41 +532,90 @@ export function InterestGroupActivityFormPage({
           ) : null}
           {type === 'recurring' ? (
             <>
-              <Form.Item name="repeatWeekday" label="重复周几" rules={[{ required: true, message: '请选择周几' }]}>
-                <Radio.Group disabled={mode === 'edit'} options={WEEKDAYS.map((item) => ({ value: item.value, label: item.label }))} />
+              <Form.Item
+                label="重复周几"
+                required
+                rules={[
+                  {
+                    validator: async () => {
+                      if (!repeatWeekdayValues(form.getFieldValue('repeatRules') ?? []).length) {
+                        throw new Error('请选择重复的周几');
+                      }
+                    },
+                  },
+                ]}
+              >
+                <div className="repeat-weekday-checks">
+                  {WEEKDAYS.map((item) => {
+                    const selected = repeatWeekdayValues(repeatRules).includes(item.value);
+                    return (
+                      <Checkbox
+                        key={item.value}
+                        disabled={mode === 'edit'}
+                        checked={selected}
+                        onChange={(event) => {
+                          const current = form.getFieldValue('repeatRules') ?? [];
+                          const picked = new Set(repeatWeekdayValues(current));
+                          if (event.target.checked) picked.add(item.value);
+                          else picked.delete(item.value);
+                          form.setFieldValue(
+                            'repeatRules',
+                            applyRepeatWeekdaySelection(current, [...picked]).map((rule) => ({
+                              weekday: Number(rule.weekday),
+                              timeStart:
+                                'timeStart' in rule && rule.timeStart
+                                  ? rule.timeStart
+                                  : timeOf('19:30'),
+                              timeEnd:
+                                'timeEnd' in rule && rule.timeEnd ? rule.timeEnd : timeOf('21:00'),
+                            })),
+                          );
+                        }}
+                      >
+                        {item.label}
+                      </Checkbox>
+                    );
+                  })}
+                </div>
               </Form.Item>
-              <Row gutter={16} className="form-2col">
-                <Col xs={24} lg={12}>
-                  <Form.Item label="每日时段" required>
-                    <div className="time-range">
-                      <Form.Item name="sessionTimeStart" noStyle rules={[{ required: true, message: '请选择开始时段' }]}>
-                        <TimePicker format="HH:mm" style={{ width: '100%' }} />
-                      </Form.Item>
-                      <span>—</span>
-                      <Form.Item name="sessionTimeEnd" noStyle rules={[{ required: true, message: '请选择结束时段' }]}>
-                        <TimePicker format="HH:mm" style={{ width: '100%' }} />
-                      </Form.Item>
-                    </div>
-                  </Form.Item>
-                </Col>
-                <Col xs={24} lg={12}>
-                  <Form.Item
-                    name="cycleRange"
-                    label="周期起止"
-                    required
-                    rules={[
-                      {
-                        validator: async (_, value) =>
-                          validateDateTimeRange(value, {
-                            required: '请选择周期起止日期',
-                            order: '结束日期不得早于开始日期',
-                          }),
-                      },
-                    ]}
-                  >
-                    <DatePicker.RangePicker format="YYYY-MM-DD" style={{ width: '100%' }} placeholder={['开始日期', '结束日期']} />
-                  </Form.Item>
-                </Col>
+              <Row gutter={16} className="form-2col repeat-session-grid">
+                {repeatRules.map((rule, index) => (
+                  <Col span={12} key={Number(rule.weekday)}>
+                    <Form.Item label={`${weekdayLabel(Number(rule.weekday))}时段`} required>
+                      <div className="time-range">
+                        <TimePicker
+                          format="HH:mm"
+                          needConfirm={false}
+                          disabled={mode === 'edit'}
+                          style={{ width: '100%' }}
+                          value={rule.timeStart}
+                          onChange={(timeStart) => {
+                            const current = form.getFieldValue('repeatRules') ?? [];
+                            form.setFieldValue(
+                              'repeatRules',
+                              current.map((item, itemIndex) => (itemIndex === index ? { ...item, timeStart } : item)),
+                            );
+                          }}
+                        />
+                        <span>—</span>
+                        <TimePicker
+                          format="HH:mm"
+                          needConfirm={false}
+                          disabled={mode === 'edit'}
+                          style={{ width: '100%' }}
+                          value={rule.timeEnd}
+                          onChange={(timeEnd) => {
+                            const current = form.getFieldValue('repeatRules') ?? [];
+                            form.setFieldValue(
+                              'repeatRules',
+                              current.map((item, itemIndex) => (itemIndex === index ? { ...item, timeEnd } : item)),
+                            );
+                          }}
+                        />
+                      </div>
+                    </Form.Item>
+                  </Col>
+                ))}
               </Row>
             </>
           ) : null}
@@ -618,11 +632,18 @@ export function InterestGroupActivityFormPage({
                           name={[field.name, 'range']}
                           rules={[
                             {
-                              validator: async (_, value) =>
-                                validateDateTimeRange(value, {
+                              validator: async (_, value) => {
+                                await validateDateTimeRange(value, {
                                   required: '请选择场次时间',
                                   order: '结束时间不得早于开始时间',
-                                }),
+                                });
+                                const window = activityRange?.[0] && activityRange[1] ? formatDateTimeRange(activityRange) : undefined;
+                                if (!value?.[0] || !value[1] || !window) return;
+                                const range = formatDateTimeRange(value);
+                                if (!sessionFullyWithinWindow(range, window.startAt, window.endAt)) {
+                                  throw new Error(`第 ${index + 1} 场必须完全落在活动时间内`);
+                                }
+                              },
                             },
                           ]}
                         >
@@ -707,146 +728,45 @@ export function InterestGroupActivityFormPage({
           </Form.Item>
         </Card>
 
-        <Card title="可见范围" className="activity-settings-card">
-          <Form.Item name="visibility" label="可见范围" rules={[{ required: true, message: '请选择可见范围' }]}>
-            <Radio.Group options={optionsOf(['全员', '按部门', '自定义人群', '导入人群'])} />
-          </Form.Item>
-          {visibility === '按部门' ? (
-            <Form.Item name="departments" label="选择部门" rules={[{ required: true, message: '请选择部门' }]}>
-              <TreeSelect
-                treeData={orgDepartmentTree}
-                treeCheckable
-                treeDefaultExpandAll
-                showCheckedStrategy={TreeSelect.SHOW_PARENT}
-                showSearch={{ treeNodeFilterProp: 'title' }}
-                allowClear
-                placeholder="请选择部门"
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-          ) : null}
-          {visibility === '自定义人群' ? (
-            <Form.Item name="customPeople" label="选择人员" rules={[{ required: true, message: '请选择人员' }]}>
-              <TreeSelect
-                treeData={orgPeoplePickerTree}
-                treeCheckable
-                treeDefaultExpandAll
-                showCheckedStrategy={TreeSelect.SHOW_CHILD}
-                showSearch={{ treeNodeFilterProp: 'title' }}
-                allowClear
-                placeholder="请按组织架构选择人员"
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-          ) : null}
-          {visibility === '导入人群' ? (
-            <>
-              <Form.Item name="importFileName" hidden rules={[{ required: true, message: '请导入人群文件' }]}>
-                <Input />
-              </Form.Item>
-              <Form.Item label="导入人群" extra="支持 csv / xlsx。请按模板填写工号、姓名、部门。" required>
-                <Space>
-                  <Upload
-                    accept=".csv,.xlsx"
-                    maxCount={1}
-                    fileList={importList}
-                    beforeUpload={() => false}
-                    onChange={({ fileList }) => {
-                      setImportList(fileList.slice(-1));
-                      form.setFieldValue('importFileName', fileList[0]?.name ?? '');
-                    }}
-                  >
-                    <Button>上传文件</Button>
-                  </Upload>
-                  <Button type="link" style={{ paddingInline: 0 }} onClick={downloadCrowdImportTemplate}>
-                    下载导入模板
-                  </Button>
-                </Space>
-              </Form.Item>
-            </>
-          ) : null}
-          <Form.Item name="notifyOnPublish" label="发送消息通知" valuePropName="checked" extra="活动发布后自动发送消息通知">
+        <Card title="消息通知" className="activity-settings-card">
+          <Form.Item
+            name="notifyOnPublish"
+            label="发送消息通知"
+            valuePropName="checked"
+            extra="活动发布后仅通知兴趣圈成员"
+          >
             <Switch checkedChildren="开启" unCheckedChildren="关闭" />
           </Form.Item>
         </Card>
 
-        <Card styles={{ body: { paddingBlock: 0 } }} className="advanced-settings-card">
-          <Collapse
-            ghost
-            className="advanced-settings-collapse"
-            defaultActiveKey={[]}
-            items={[
-              {
-                key: 'advanced',
-                label: '高级设置',
-                forceRender: true,
-                children: (
-                  <Space direction="vertical" size="middle" style={{ width: '100%', paddingBottom: 16 }}>
-                    <Card title="活动设置" size="small" className="activity-settings-card">
-                      <Form.Item
-                        label="活动积分"
-                        extra={signupPointsEnabled ? `规则范围 ${pointRules.signupPointsMin}～${pointRules.signupPointsMax}` : undefined}
-                      >
-                        <Flex align="center" gap={12} className="activity-signup-points">
-                          <Form.Item name="signupPointsEnabled" valuePropName="checked" noStyle>
-                            <Switch checkedChildren="开启" unCheckedChildren="关闭" />
-                          </Form.Item>
-                          <Space.Compact>
-                            <Form.Item
-                              name="signupPoints"
-                              noStyle
-                              rules={
-                                signupPointsEnabled
-                                  ? [
-                                      { required: true, message: '请输入报名积分' },
-                                      {
-                                        type: 'integer',
-                                        min: pointRules.signupPointsMin,
-                                        max: pointRules.signupPointsMax,
-                                        message: `须在 ${pointRules.signupPointsMin}～${pointRules.signupPointsMax} 之间`,
-                                      },
-                                    ]
-                                  : []
-                              }
-                            >
-                              <InputNumber
-                                disabled={!signupPointsEnabled}
-                                min={pointRules.signupPointsMin}
-                                max={pointRules.signupPointsMax}
-                                precision={0}
-                                placeholder="请输入"
-                              />
-                            </Form.Item>
-                            <Button disabled>积分</Button>
-                          </Space.Compact>
-                        </Flex>
-                      </Form.Item>
-                    </Card>
-                    <Card title="报名信息收集" size="small">
-                      <Form.Item
-                        name="signupFields"
-                        label="填写项"
-                        dependencies={['capacity']}
-                        rules={[
-                          {
-                            validator: async (_, value: SignupField[]) => {
-                              const error = validateSignupFields(value ?? [], {
-                                signupTotalLimit: form.getFieldValue('capacity'),
-                              });
-                              if (!error || error.startsWith('各组人数合计要等于报名总人数')) return;
-                              throw new Error(error);
-                            },
-                          },
-                        ]}
-                      >
-                        <SignupFieldsEditor signupTotalLimit={typeof capacity === 'number' ? capacity : undefined} />
-                      </Form.Item>
-                    </Card>
-                  </Space>
-                ),
-              },
-            ]}
-          />
+        <Card title="扫码签到" className="activity-settings-card">
+          <Form.Item name="checkInEnabled" label="扫码签到" valuePropName="checked">
+            <Switch checkedChildren="开启" unCheckedChildren="关闭" />
+          </Form.Item>
+          {checkInEnabled ? (
+            <>
+              <Form.Item label="活动开始前可扫" required extra="签到从开始前该分钟数开放，至该场结束关闭">
+                <Space.Compact className="activity-unit-compact">
+                  <Form.Item
+                    name="checkInOpenMinutesBefore"
+                    noStyle
+                    rules={[{ required: true, message: '请输入可扫分钟数' }]}
+                  >
+                    <InputNumber min={0} precision={0} placeholder="请输入" />
+                  </Form.Item>
+                  <Button disabled>分钟</Button>
+                </Space.Compact>
+              </Form.Item>
+              <Form.Item
+                name="checkInDynamicQr"
+                label="动态二维码"
+                valuePropName="checked"
+                extra="每 5 分钟刷新一次，适合现场投屏，不适合打印"
+              >
+                <Switch checkedChildren="开启" unCheckedChildren="关闭" />
+              </Form.Item>
+            </>
+          ) : null}
         </Card>
 
         <div className="sticky-form-actions">

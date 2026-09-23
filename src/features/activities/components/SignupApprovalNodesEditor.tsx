@@ -3,7 +3,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import { App, Button, Form, Modal, Radio, Space, TreeSelect, Typography } from 'antd';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import { orgPeoplePickerTree } from '../model/activity';
-import { createApprovalNode, formatApprovalNodeSummary, type ApprovalNode, type AssigneeMode, assigneeModeLabels } from '../model/rules';
+import { createApprovalNode, formatApprovalNodeSummary, type ApprovalNode, type AssigneeMode, assigneeModeHints, assigneeModeLabels } from '../model/rules';
 
 type NodeModalValues = {
   assigneeMode: AssigneeMode;
@@ -147,8 +147,8 @@ export function SignupApprovalNodesEditor({ value, onChange }: SignupApprovalNod
             <Form.Item label=" " colon={false}>
               <Typography.Text type="secondary">
                 {assigneeMode === 'sameLevelLeader'
-                  ? '按报名人所属部门，由本级部门负责人审核。'
-                  : '按报名人所属部门，由上级部门负责人审核。'}
+                  ? assigneeModeHints.sameLevelLeader
+                  : assigneeModeHints.parentLevelLeader}
               </Typography.Text>
             </Form.Item>
           )}

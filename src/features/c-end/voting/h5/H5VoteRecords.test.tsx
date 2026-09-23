@@ -12,6 +12,11 @@ describe('H5 vote records', () => {
   it('lists own responses as links to the intro page with 开始投票', () => {
     const html = renderToStaticMarkup(<H5VoteRecords />);
     expect(html).toContain('<h1 class="c-h5-title">我的投票记录</h1>');
+    expect(html).toContain('c-h5-list is-left-image');
+    expect(html).toContain('c-h5-vote-card is-left-image');
+    expect(html).toContain('c-h5-vote-cover is-side');
+    expect(html).not.toContain('is-large-image');
+    expect(html).not.toContain('is-left-text');
     expect(html).toContain('部门团建目的地');
     expect(html).toContain('href="#/c/h5/vote-2"');
     expect(html).not.toContain('href="#/c/h5/vote-2/take"');

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import dayjs from 'dayjs';
-import { goVoteDetail, toVoteTakingHash, type CEndSurface } from '../../../../app/navigation';
+import { goH5Back, toVoteTakingHash, type CEndSurface } from '../../../../app/navigation';
 import { getVote, getVoteAnswers, getVoteQuestions, getVoteResponses, useVotes } from '../../../voting/model/voteStore';
 import {
   averageQuestionScore,
@@ -41,7 +41,7 @@ export function H5VoteResults({ id, surface = 'h5' }: { id: number; surface?: CE
     answers.filter((item) => item.responseId === latestMine.id).forEach((item) => item.choiceIds.forEach((choiceId) => ids.add(choiceId)));
     return ids;
   }, [answers, latestMine]);
-  const back = () => goVoteDetail(surface, id);
+  const back = goH5Back;
 
   if (gate === 'missing' || gate === 'forbidden') {
     return (

@@ -90,8 +90,8 @@ export function InterestGroupCategoryListPage() {
     const usage = countInterestGroupCategoryUsage(record.key, groups, activities);
     const content =
       usage.groupCount > 0 || usage.activityCount > 0
-        ? `将有 ${usage.groupCount} 个小组、${usage.activityCount} 个活动变为未分类，删除后不可恢复。`
-        : '删除后不可恢复。当前无关联小组/活动。';
+        ? `将有 ${usage.groupCount} 个兴趣圈、${usage.activityCount} 个活动变为未分类，删除后不可恢复。`
+        : '删除后不可恢复。当前无关联兴趣圈/活动。';
     modal.confirm({
       title: `确认删除分类「${record.label}」？`,
       content,
@@ -127,7 +127,7 @@ export function InterestGroupCategoryListPage() {
     { title: '分类名称', dataIndex: 'label' },
     { title: '排序', dataIndex: 'order', width: 88 },
     {
-      title: '小组数',
+      title: '兴趣圈数',
       key: 'groups',
       width: 88,
       align: 'right',
@@ -178,7 +178,7 @@ export function InterestGroupCategoryListPage() {
 
   return (
     <div className="page-stack">
-      <ListPageHeading paths={['兴趣小组', '分类管理']} title="分类管理" subtitle="维护小组与活动共用的分类，禁用后新建不可再选。" />
+      <ListPageHeading paths={['兴趣圈', '分类管理']} title="分类管理" subtitle="维护兴趣圈与活动共用的分类，禁用后新建不可再选。" />
       <SearchPanel
         onSearch={() => setQuery(draft)}
         onReset={() => {

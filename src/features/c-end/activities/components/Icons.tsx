@@ -107,3 +107,12 @@ export function IconChevronRight() {
     </SvgIcon>
   );
 }
+
+export function IconSearch() {
+  return (
+    <SvgIcon>
+      <circle cx="11" cy="11" r="7" />
+      <path d="M20.5 20.5 16.2 16.2" />
+    </SvgIcon>
+  );
+}

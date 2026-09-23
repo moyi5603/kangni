@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   AuditOutlined,
   CalendarOutlined,
@@ -6,24 +6,25 @@ import {
   TeamOutlined,
   UserAddOutlined,
 } from '@ant-design/icons';
-import { Button, Card, Col, Empty, Progress, Row, Statistic, Table, Tag } from 'antd';
+import { Button, Card, Col, Empty, Progress, Row, Table, Tag } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { ListPageHeading } from '../../../shared/ui/ListPage';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import {
   activityStatusSegments,
-  OverviewGauge,
+  categorySegments,
   OverviewKpiCard,
-  OverviewSegmentBar,
-  signupStatusSegments,
+  OverviewPie,
 } from '../components/ActivityOverviewVisuals';
+import { defaultOverviewDateRange, OverviewDateRange } from '../components/OverviewDateRange';
 import { useActivities } from '../model/activityStore';
 import {
+  activityInDateRange,
   buildAttentionRows,
-  buildSignupOpenRows,
+  buildInProgressActivityRows,
   computeActivityOverviewStats,
   type ActivityAttentionRow,
-  type SignupOpenActivityRow,
+  type InProgressActivityRow,
 } from '../model/activityOverviewStats';
 import { useAllMoments } from '../model/momentStore';
 import { useAllRelated } from '../model/related';
@@ -45,32 +46,35 @@ export function ActivityOverviewPage({ onNavigate }: ActivityOverviewPageProps) 
   const comments = useAllRelated('comments');
   const surveys = useAllRelated('surveys');
   const moments = useAllMoments();
+  const [dateRange, setDateRange] = useState(defaultOverviewDateRange);
+
+  const scopedActivities = useMemo(
+    () => activities.filter((item) => activityInDateRange(item, dateRange[0], dateRange[1])),
+    [activities, dateRange],
+  );
+  const scopedIds = useMemo(() => new Set(scopedActivities.map((item) => item.id)), [scopedActivities]);
+  const scopedSignups = useMemo(() => signups.filter((item) => scopedIds.has(item.activityId)), [signups, scopedIds]);
+  const scopedComments = useMemo(() => comments.filter((item) => scopedIds.has(item.activityId)), [comments, scopedIds]);
+  const scopedSurveys = useMemo(() => surveys.filter((item) => scopedIds.has(item.activityId)), [surveys, scopedIds]);
+  const scopedMoments = useMemo(() => moments.filter((item) => scopedIds.has(item.activityId)), [moments, scopedIds]);
 
   const stats = useMemo(
     () =>
       computeActivityOverviewStats({
-        activities,
-        signups,
-        comments,
-        moments,
-        surveys,
+        activities: scopedActivities,
+        signups: scopedSignups,
+        comments: scopedComments,
+        moments: scopedMoments,
+        surveys: scopedSurveys,
       }),
-    [activities, signups, comments, moments, surveys],
+    [scopedActivities, scopedSignups, scopedComments, scopedMoments, scopedSurveys],
   );
 
-  const attentionRows = useMemo(() => buildAttentionRows(activities, signups), [activities, signups]);
-  const signupOpenRows = useMemo(
-    () => buildSignupOpenRows(activities, signups, comments, moments, surveys),
-    [activities, signups, comments, moments, surveys],
+  const attentionRows = useMemo(() => buildAttentionRows(scopedActivities, scopedSignups), [scopedActivities, scopedSignups]);
+  const inProgressRows = useMemo(
+    () => buildInProgressActivityRows(scopedActivities, scopedSignups, scopedComments, scopedMoments, scopedSurveys),
+    [scopedActivities, scopedSignups, scopedComments, scopedMoments, scopedSurveys],
   );
-
-  const secondaryStatItems = [
-    { title: '活动总数', value: stats.totalCount },
-    { title: '未发布', value: stats.unpublishedCount },
-    { title: '待提交审批', value: stats.pendingSubmitActivityCount },
-    { title: '评论数', value: stats.commentCount },
-    { title: '精彩瞬间', value: stats.momentCount },
-  ];
 
   const attentionColumns: TableColumnsType<ActivityAttentionRow> = [
     { title: '活动名称', dataIndex: 'title', ellipsis: true },
@@ -108,7 +112,7 @@ export function ActivityOverviewPage({ onNavigate }: ActivityOverviewPageProps) 
     },
   ];
 
-  const signupOpenColumns: TableColumnsType<SignupOpenActivityRow> = [
+  const inProgressColumns: TableColumnsType<InProgressActivityRow> = [
     { title: '活动名称', dataIndex: 'title', ellipsis: true },
     {
       title: '分类',
@@ -116,7 +120,12 @@ export function ActivityOverviewPage({ onNavigate }: ActivityOverviewPageProps) 
       width: 100,
       render: (value: string) => <Tag color={activityCategoryColor[value] ?? 'default'}>{value}</Tag>,
     },
-    { title: '报名截止', dataIndex: 'signupEndAt', width: 170 },
+    {
+      title: '活动时间',
+      key: 'time',
+      width: 220,
+      render: (_, record) => `${record.startAt} → ${record.endAt}`,
+    },
     { title: '报名人数', dataIndex: 'signupCount', width: 100, align: 'right' },
     { title: '待审核报名', dataIndex: 'pendingSignupCount', width: 110, align: 'right' },
     {
@@ -140,7 +149,12 @@ export function ActivityOverviewPage({ onNavigate }: ActivityOverviewPageProps) 
 
   return (
     <div className="page-stack overview-page">
-      <ListPageHeading paths={['活动', '概览']} title="概览" subtitle="活动运营数据总览与待办关注" />
+      <ListPageHeading
+        paths={['活动', '概览']}
+        title="概览"
+        subtitle="活动运营数据总览与待办关注"
+        extra={<OverviewDateRange value={dateRange} onChange={setDateRange} />}
+      />
 
       <div className="overview-dashboard">
         <div className="overview-kpi-grid">
@@ -159,8 +173,8 @@ export function ActivityOverviewPage({ onNavigate }: ActivityOverviewPageProps) 
             onClick={() => onNavigate('activity-list')}
           />
           <OverviewKpiCard
-            title="报名中活动"
-            value={stats.signupOpenCount}
+            title="进行中活动"
+            value={stats.inProgressActivityCount}
             icon={<CalendarOutlined />}
             tone="primary"
             onClick={() => onNavigate('activity-list')}
@@ -182,42 +196,17 @@ export function ActivityOverviewPage({ onNavigate }: ActivityOverviewPageProps) 
         </div>
 
         <Row gutter={[16, 16]} className="overview-chart-row">
-          <Col xs={24} lg={8} className="overview-chart-col">
+          <Col xs={24} lg={12} className="overview-chart-col">
             <Card className="overview-chart-card" title="活动状态分布">
-              <OverviewSegmentBar segments={activityStatusSegments(stats.activityStatusCounts)} />
+              <OverviewPie segments={activityStatusSegments(stats.activityStatusCounts)} />
             </Card>
           </Col>
-          <Col xs={24} lg={8} className="overview-chart-col">
-            <Card className="overview-chart-card" title="报名状态构成">
-              <OverviewSegmentBar
-                segments={signupStatusSegments({
-                  approved: stats.approvedSignupCount,
-                  pending: stats.pendingSignupCount,
-                  rejected: stats.rejectedSignupCount,
-                  cancelled: stats.cancelledSignupCount,
-                })}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} lg={8} className="overview-chart-col">
-            <Card className="overview-chart-card" title="发布与名额">
-              <div className="overview-gauge-panel">
-                <OverviewGauge title="发布率" percent={stats.publishRate} />
-                <OverviewGauge title="全局名额使用率" percent={stats.globalQuotaUsage} mode="line" />
-              </div>
+          <Col xs={24} lg={12} className="overview-chart-col">
+            <Card className="overview-chart-card" title="活动分类分布">
+              <OverviewPie segments={categorySegments(stats.categoryCounts)} />
             </Card>
           </Col>
         </Row>
-
-        <Card className="overview-secondary-card" title="其他指标" variant="borderless">
-          <div className="overview-secondary-stats">
-            {secondaryStatItems.map((item) => (
-              <div key={item.title} className="overview-secondary-item">
-                <Statistic title={item.title} value={item.value} className="overview-secondary-stat" />
-              </div>
-            ))}
-          </div>
-        </Card>
       </div>
 
       <Card title="待办关注">
@@ -235,13 +224,13 @@ export function ActivityOverviewPage({ onNavigate }: ActivityOverviewPageProps) 
         )}
       </Card>
 
-      <Card title="报名中的活动">
-        {signupOpenRows.length ? (
+      <Card title="进行中的活动">
+        {inProgressRows.length ? (
           <Table
             rowKey="activityId"
             size="middle"
-            dataSource={signupOpenRows}
-            columns={signupOpenColumns}
+            dataSource={inProgressRows}
+            columns={inProgressColumns}
             scroll={{ x: 960 }}
             pagination={{
               pageSize: b2bStandards.table.pageSize,
@@ -251,7 +240,7 @@ export function ActivityOverviewPage({ onNavigate }: ActivityOverviewPageProps) 
             }}
           />
         ) : (
-          <Empty description="当前没有处于报名期的已发布活动" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          <Empty description="当前没有进行中的活动" image={Empty.PRESENTED_IMAGE_SIMPLE} />
         )}
       </Card>
     </div>

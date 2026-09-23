@@ -1,0 +1,1479 @@
+.c-h5-shell.is-incentive {
+  --ig-bg: #f4f6fa;
+  --ig-card: #ffffff;
+  --ig-muted-bg: #eef1f6;
+  --ig-line: #e6e9ef;
+  --ig-text: #171a1d;
+  --ig-sub: #6b7280;
+  --ig-primary: #2a56de;
+  --ig-primary-soft: #eef2fb;
+  display: flex;
+  justify-content: center;
+  background: #e8ecf2;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.c-h5-shell.is-incentive .c-h5-frame {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 430px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--ig-bg);
+}
+
+.c-h5-shell.is-incentive .c-h5-top {
+  background: var(--ig-card);
+  border-bottom-color: var(--ig-line);
+}
+
+.c-h5-shell.is-incentive .c-h5-top {
+  flex-shrink: 0;
+  z-index: 20;
+}
+
+.c-h5-shell.is-incentive .c-h5-main {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.c-incentive-h5 {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  position: relative;
+  font-family: "PingFang SC", -apple-system, "Helvetica Neue", sans-serif;
+  color: var(--ig-text);
+  background: var(--ig-bg);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.c-incentive-h5 *,
+.c-incentive-h5 *::before,
+.c-incentive-h5 *::after {
+  box-sizing: border-box;
+}
+
+.c-incentive-h5 .mobile-app {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  position: relative;
+  padding: 0 !important;
+  overflow: hidden;
+  background: var(--ig-bg);
+}
+
+.c-incentive-h5 .mobile-page-scroll {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 12px 16px calc(92px + env(safe-area-inset-bottom));
+  scrollbar-width: none;
+}
+
+.c-incentive-h5 .mobile-page-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.c-incentive-h5 .phone-shell,
+.c-incentive-h5 .phone-status,
+.c-incentive-h5 .phone-shell:before {
+  display: none;
+}
+
+.c-incentive-h5 .mobile-profile-root-backbar {
+  display: none;
+}
+
+.c-incentive-h5 .mobile-two-page-app:has(.mobile-form-backbar) > .mobile-primary-nav {
+  display: grid;
+}
+
+.c-incentive-h5 .mobile-page-scroll:has(.mobile-form-backbar) .mobile-form-backbar,
+.c-incentive-h5 .mobile-page-scroll:has(.mobile-ranking-backbar) .mobile-ranking-backbar {
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 4px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  position: sticky;
+  top: 0;
+  z-index: 6;
+}
+
+.c-incentive-h5 .mobile-form-backbar,
+.c-incentive-h5 .mobile-ranking-backbar {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  min-height: 44px;
+}
+
+.c-incentive-h5 .mobile-form-backbar > strong,
+.c-incentive-h5 .mobile-ranking-backbar > strong {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.c-incentive-h5 .mobile-form-backbar .ant-btn,
+.c-incentive-h5 .mobile-ranking-backbar button {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  padding: 0;
+}
+
+.c-incentive-h5 .mobile-primary-nav {
+  grid-template-columns: repeat(3, 1fr) !important;
+  height: calc(58px + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--ig-card);
+  border-top: 1px solid var(--ig-line);
+  box-shadow: none;
+}
+
+.c-incentive-h5 .mobile-primary-nav button {
+  min-height: 44px;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.c-incentive-h5 .mobile-primary-nav button > .anticon {
+  font-size: 20px;
+}
+
+.c-incentive-h5 .mobile-primary-nav button {
+  color: var(--ig-sub);
+}
+
+.c-incentive-h5 .mobile-primary-nav button.active {
+  color: var(--ig-primary);
+  font-weight: 700;
+}
+
+.c-incentive-h5 .mobile-home-floating-issue {
+  width: 52px;
+  height: 52px;
+  bottom: calc(72px + env(safe-area-inset-bottom));
+  right: 16px;
+  z-index: 12;
+  background: var(--ig-primary);
+  box-shadow: 0 8px 20px rgb(42 86 222 / 32%);
+}
+
+.c-incentive-h5 .mobile-home-page {
+  background: transparent;
+  padding: 4px 0 12px;
+}
+
+.c-incentive-h5 .mobile-home-ranking-hero {
+  background: transparent !important;
+  margin-bottom: 12px;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.c-incentive-h5 .mobile-home-ranking-card,
+.c-incentive-h5 .mobile-home-ranking-hero .mobile-home-ranking-card {
+  color: var(--ig-text) !important;
+  background: var(--ig-card) !important;
+  border: 1px solid var(--ig-line) !important;
+  border-radius: 16px !important;
+  padding: 14px 16px 0 !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+}
+
+.c-incentive-h5 .mobile-home-ranking-hero .mobile-home-ranking-card > header h3,
+.c-incentive-h5 .mobile-home-feed > header h3 {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ig-text) !important;
+}
+
+.c-incentive-h5 .mobile-home-hot-medals,
+.c-incentive-h5 .mobile-home-ranking-hero .mobile-home-hot-medals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  background: transparent !important;
+  border-radius: 0;
+  padding: 12px 0 8px;
+}
+
+.c-incentive-h5 .mobile-home-hot-medals > button,
+.c-incentive-h5 .mobile-home-ranking-hero .mobile-home-hot-medals > button {
+  color: var(--ig-text);
+  min-height: 44px;
+}
+
+.c-incentive-h5 .mobile-home-hot-medals .badge-artwork-shell,
+.c-incentive-h5 .mobile-home-ranking-hero .mobile-home-hot-medals .badge-artwork-shell {
+  width: 72px;
+  height: 72px;
+}
+
+.c-incentive-h5 .mobile-home-ranking-hero .mobile-home-hot-medals > button > strong {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.c-incentive-h5 .mobile-home-ranking-hero .mobile-home-hot-medals > button > span {
+  margin-top: 2px;
+  color: var(--ig-sub) !important;
+  font-size: 11px !important;
+}
+
+.c-incentive-h5 .mobile-home-ranking-card > footer.mobile-home-badge-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: transparent !important;
+  border-top: 1px solid var(--ig-line);
+  border-radius: 0;
+  margin: 4px -16px 0;
+  padding: 12px 16px;
+}
+
+.c-incentive-h5 .mobile-home-ranking-card > footer.mobile-home-badge-summary > span {
+  font-size: 12px !important;
+  color: var(--ig-sub);
+}
+
+.c-incentive-h5 .mobile-home-ranking-card > footer.mobile-home-badge-summary > span b {
+  font-size: 16px !important;
+  color: var(--ig-text);
+}
+
+.c-incentive-h5 .mobile-home-ranking-card > footer.mobile-home-badge-summary > button {
+  min-height: 36px;
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ig-primary);
+  background: none;
+  border: 0;
+}
+
+.c-incentive-h5 .mobile-home-feed > header {
+  margin: 16px 0 10px;
+}
+
+.c-incentive-h5 .mobile-home-feed .recognition-story-card,
+.c-incentive-h5 .mobile-home-feed .feed-card {
+  background: var(--ig-card) !important;
+  border: 1px solid var(--ig-line) !important;
+  border-radius: 16px;
+  margin-bottom: 10px;
+  padding: 14px 16px;
+  box-shadow: none !important;
+}
+
+.c-incentive-h5 .mobile-home-feed .feed-recipient > .employee-photo {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--ig-line);
+  box-shadow: none;
+}
+
+.c-incentive-h5 .mobile-home-feed .feed-recipient-name strong,
+.c-incentive-h5 .mobile-tab-content .feed-recipient .feed-meta strong {
+  font-size: 16px !important;
+  line-height: 1.3;
+  color: var(--ig-text);
+}
+
+.c-incentive-h5 .mobile-home-feed .feed-recipient-name em,
+.c-incentive-h5 .mobile-tab-content .feed-recipient-name em {
+  font-size: 13px !important;
+  color: var(--ig-sub);
+}
+
+.c-incentive-h5 .mobile-home-feed .feed-recipient .feed-meta > .feed-recipient-honor,
+.c-incentive-h5 .mobile-tab-content .feed-recipient .feed-meta span.feed-recipient-honor {
+  margin-top: 4px;
+  font-size: 14px !important;
+  line-height: 1.4;
+  color: var(--ig-text);
+}
+
+.c-incentive-h5 .mobile-home-feed .feed-card-time {
+  font-size: 12px;
+  color: var(--ig-sub);
+}
+
+.c-incentive-h5 .feed-recipient-person-link > .anticon {
+  font-size: 12px;
+}
+
+.c-incentive-h5 .feed-recognition-body,
+.c-incentive-h5 .mobile-home-feed .feed-recognition-body {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 10px;
+  align-items: start;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--ig-primary-soft) !important;
+  border: 0 !important;
+}
+
+.c-incentive-h5 .feed-award-medal,
+.c-incentive-h5 .feed-recognition-body > .badge-artwork-shell {
+  width: 52px;
+  height: 52px;
+}
+
+.c-incentive-h5 .feed-recognition-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.c-incentive-h5 .feed-recognition-title span {
+  font-size: 12px;
+  color: #8b9098;
+}
+
+.c-incentive-h5 .feed-recognition-title strong {
+  font-size: 15px;
+}
+
+.c-incentive-h5 .feed-recognition-title em {
+  font-size: 13px;
+  font-style: normal;
+  color: var(--ig-primary);
+  font-weight: 700;
+}
+
+.c-incentive-h5 .feed-recognition-reason small {
+  font-size: 11px;
+  color: #8b9098;
+}
+
+.c-incentive-h5 .feed-recognition-reason p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #2b3038;
+}
+
+.c-incentive-h5 .mobile-medal-filter-panel {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.c-incentive-h5 .mobile-medal-filter-panel > label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.c-incentive-h5 .mobile-medal-filter-panel > label > span {
+  font-size: 12px;
+  color: #6d737c;
+}
+
+.c-incentive-h5 .mobile-medal-filter-panel .ant-select {
+  width: 100%;
+}
+
+.c-incentive-h5 .c-incentive-filters {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  margin: 0 0 12px;
+  padding: 8px 0 2px;
+  background: var(--ig-bg);
+}
+
+.c-incentive-h5 .c-incentive-scope-scroll,
+.c-incentive-h5 .c-incentive-cat-scroll {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.c-incentive-h5 .c-incentive-scope-scroll::-webkit-scrollbar,
+.c-incentive-h5 .c-incentive-cat-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.c-incentive-h5 .c-incentive-scope-scroll > button,
+.c-incentive-h5 .c-incentive-cat-scroll > button {
+  flex: none;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid #d8e2eb;
+  border-radius: 999px;
+  background: #fff;
+  color: #52657a;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.c-incentive-h5 .c-incentive-scope-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.c-incentive-h5 .c-incentive-scope-row .c-incentive-scope-scroll {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 10px;
+}
+
+.c-incentive-h5 .c-incentive-period-trigger {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  margin: 0 0 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0f766e;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.c-incentive-h5 .c-incentive-period-trigger .anticon {
+  font-size: 10px;
+}
+
+.c-incentive-h5 .c-incentive-scope-scroll {
+  gap: 22px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #e6ebf0;
+}
+
+.c-incentive-h5 .c-incentive-scope-scroll > button {
+  position: relative;
+  min-height: 40px;
+  padding: 0 2px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #8b95a3;
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.c-incentive-h5 .c-incentive-scope-scroll > button.is-active {
+  border: 0;
+  background: transparent;
+  color: #16324f;
+}
+
+.c-incentive-h5 .c-incentive-scope-scroll > button.is-active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: #0f766e;
+}
+
+.c-incentive-h5 .c-incentive-cat-scroll {
+  margin-bottom: 2px;
+}
+
+.c-incentive-h5 .c-incentive-cat-scroll > button {
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid #e3e8ee;
+  background: #fff;
+  color: #5c6b7a;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.c-incentive-h5 .c-incentive-cat-scroll > button.is-active {
+  border-color: #0f766e;
+  background: #0f766e;
+  color: #fff;
+}
+
+.c-incentive-h5 .mobile-medal-tab-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 4px 0 12px;
+}
+
+.c-incentive-h5 .mobile-medal-tab-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.c-incentive-h5 .mobile-medal-tab-strip > button {
+  flex: none;
+  min-width: 108px;
+  width: 108px;
+  min-height: 108px;
+  padding: 12px 8px 10px;
+  gap: 8px;
+}
+
+.c-incentive-h5 .mobile-medal-tab-strip .badge-artwork-shell {
+  width: 60px;
+  height: 60px;
+}
+
+.c-incentive-h5 .mobile-medal-tab-strip > button > span {
+  white-space: normal;
+  font-size: 13px !important;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.c-incentive-h5 .mobile-medal-recipient-heading strong {
+  font-size: 20px !important;
+  font-weight: 800;
+  color: var(--ig-text);
+}
+
+.c-incentive-h5 .mobile-medal-recipient-heading span {
+  font-size: 13px !important;
+  color: var(--ig-sub);
+}
+
+.c-incentive-h5 .mobile-medal-recipient-heading > b {
+  font-size: 14px !important;
+  font-weight: 700;
+  color: var(--ig-primary);
+}
+
+.c-incentive-h5 .mobile-ranking-page .mobile-medal-recipient-list {
+  margin: 0 -16px;
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  box-shadow: none;
+}
+
+.c-incentive-h5 .mobile-medal-recipient-row,
+.c-incentive-h5 .mobile-medal-recipient-list > button.mobile-medal-recipient-row {
+  min-height: 64px;
+  padding: 12px 16px;
+  grid-template-columns: 22px 40px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  background: var(--ig-card);
+  border-bottom: 1px solid var(--ig-line);
+}
+
+.c-incentive-h5 .mobile-medal-recipient-list > button.mobile-medal-recipient-row > b {
+  font-size: 15px !important;
+  font-weight: 700;
+  color: var(--ig-sub);
+}
+
+.c-incentive-h5 .mobile-medal-recipient-id,
+.c-incentive-h5 .mobile-medal-recipient-list > button.mobile-medal-recipient-row > .mobile-medal-recipient-id {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.c-incentive-h5 .mobile-medal-recipient-list strong {
+  flex: none;
+  font-size: 16px !important;
+  line-height: 1.3;
+  color: var(--ig-text);
+}
+
+.c-incentive-h5 .mobile-medal-recipient-list small {
+  min-width: 0;
+  margin-top: 0 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px !important;
+  color: var(--ig-sub);
+}
+
+.c-incentive-h5 .mobile-medal-recipient-list em,
+.c-incentive-h5 .mobile-medal-recipient-list > button.mobile-medal-recipient-row em {
+  display: grid;
+  grid-template-columns: max-content 1em;
+  align-items: baseline;
+  justify-self: end;
+  column-gap: 2px;
+  font-size: 13px !important;
+  font-style: normal;
+  font-weight: 700;
+  color: var(--ig-primary);
+  white-space: nowrap;
+}
+
+.c-incentive-h5 .mobile-medal-recipient-list em > i {
+  font-style: normal;
+  font-weight: 700;
+  text-align: right;
+}
+
+.c-incentive-h5 .mobile-profile-featured-track {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 4px 0 8px;
+}
+
+.c-incentive-h5 .mobile-profile-featured-track::-webkit-scrollbar {
+  display: none;
+}
+
+.c-incentive-h5 .mobile-profile-featured-badge {
+  flex: none;
+  width: 148px;
+  min-height: 44px;
+}
+
+.c-incentive-h5 .mobile-profile-scope-tabs button,
+.c-incentive-h5 .my-badges-pill-entry {
+  min-height: 40px;
+}
+
+.c-incentive-h5 .mobile-badge-detail-link,
+.c-incentive-h5 .mobile-target-picker {
+  min-height: 44px;
+}
+
+.c-incentive-h5 .mobile-confirm-actions {
+  position: sticky;
+  bottom: 0;
+  padding: 12px 0 calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(transparent, var(--ig-bg) 28%);
+}
+
+.c-incentive-h5 .mobile-confirm-actions .ant-btn {
+  min-height: 44px;
+  width: 100%;
+}
+
+.c-incentive-h5 .recognition-im-award-card {
+  min-height: 44px;
+}
+
+.c-incentive-h5 .ant-drawer {
+  position: absolute;
+}
+
+.c-incentive-h5 .mobile-two-page-app:not(:has(.mobile-primary-nav)) .mobile-page-scroll {
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+}
+
+.c-incentive-h5 .mobile-two-page-app:has(.recognition-award-view.mobile) .mobile-page-scroll {
+  padding: 0;
+  overflow: hidden;
+}
+
+.c-incentive-h5 .recognition-award-view.mobile {
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
+.c-incentive-h5 .ant-select-dropdown {
+  z-index: 30;
+}
+
+.c-incentive-h5 .mobile-all-badge-panel,
+.c-incentive-h5 .mobile-issue-form-panel,
+.c-incentive-h5 .mobile-earned-section,
+.c-incentive-h5 .mobile-medal-filter-panel,
+.c-incentive-h5 .mobile-ranking-page .mobile-all-badge-panel {
+  background: var(--ig-card) !important;
+  border: 1px solid var(--ig-line) !important;
+  box-shadow: none !important;
+}
+
+.c-incentive-h5 .monthly-issue-quota,
+.c-incentive-h5 .mobile-monthly-issue-quota {
+  background: var(--ig-primary-soft) !important;
+  border: 1px solid #d9e2f8 !important;
+}
+
+.c-incentive-h5 .monthly-issue-quota strong {
+  color: var(--ig-primary) !important;
+}
+
+.c-incentive-h5 .mobile-recognition-page {
+  font-size: 15px;
+}
+
+.c-incentive-h5 .mobile-monthly-issue-quota > div:first-child span {
+  font-size: 14px !important;
+}
+
+.c-incentive-h5 .mobile-monthly-issue-quota > div:first-child strong {
+  font-size: 26px !important;
+}
+
+.c-incentive-h5 .mobile-monthly-issue-quota dt {
+  font-size: 13px !important;
+}
+
+.c-incentive-h5 .mobile-monthly-issue-quota dd {
+  font-size: 15px !important;
+}
+
+.c-incentive-h5 .mobile-badge-category-group h3 {
+  font-size: 16px !important;
+}
+
+.c-incentive-h5 .mobile-badge-category-group > header span {
+  font-size: 14px !important;
+}
+
+.c-incentive-h5 .mobile-badge-detail-drawer .ant-drawer-header {
+  display: none !important;
+}
+
+.c-incentive-h5 .mobile-all-badges {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-flow: row;
+  grid-auto-columns: unset;
+  overflow: visible;
+  align-items: stretch;
+  gap: 12px 8px;
+}
+
+.c-incentive-h5 .mobile-all-badges .mobile-badge-choice {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 220px;
+}
+
+.c-incentive-h5 .mobile-all-badges .mobile-badge-issue-trigger {
+  flex: 1 1 auto;
+  min-height: 0;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 10px 6px 8px;
+}
+
+.c-incentive-h5 .mobile-all-badges .mobile-badge-issue-trigger > .mobile-badge-icon {
+  flex: none;
+  width: 70px;
+  height: 70px;
+}
+
+.c-incentive-h5 .mobile-all-badges .mobile-badge-issue-trigger > span:nth-child(2) {
+  flex: 1 1 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 0;
+}
+
+.c-incentive-h5 .mobile-all-badges .mobile-badge-issue-trigger b {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  width: 100%;
+  height: 36px;
+  font-size: 14px !important;
+  line-height: 18px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.c-incentive-h5 .mobile-all-badges .mobile-badge-issue-trigger small {
+  flex: none;
+  margin-top: auto;
+  padding-top: 4px;
+  height: 20px;
+  font-size: 14px !important;
+  line-height: 20px;
+}
+
+.c-incentive-h5 .mobile-all-badges .mobile-badge-detail-link {
+  flex: none;
+  height: 36px;
+  min-height: 36px;
+  font-size: 13px !important;
+  line-height: 36px;
+  padding: 0 4px;
+}
+
+.c-incentive-h5 .selected-medal-mobile small {
+  font-size: 13px !important;
+}
+
+.c-incentive-h5 .selected-medal-mobile strong {
+  font-size: 17px !important;
+}
+
+.c-incentive-h5 .recognition-points-inline b {
+  font-size: 16px !important;
+}
+
+.c-incentive-h5 .recognition-points-inline small {
+  font-size: 13px !important;
+}
+
+.c-incentive-h5 .field-block > label,
+.c-incentive-h5 .mobile-reason-heading {
+  font-size: 15px !important;
+}
+
+.c-incentive-h5 .mobile-reason-heading .ant-btn,
+.c-incentive-h5 .mobile-reason-heading > small,
+.c-incentive-h5 .field-block label small,
+.c-incentive-h5 .multi-target-summary,
+.c-incentive-h5 .mobile-attachment-field small {
+  font-size: 14px !important;
+}
+
+.c-incentive-h5 .mobile-target-picker {
+  font-size: 15px !important;
+}
+
+.c-incentive-h5 .mobile-badge-detail-drawer .badge-detail-kicker {
+  font-size: 13px !important;
+}
+
+.c-incentive-h5 .mobile-badge-detail-drawer .badge-detail-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  margin-top: 8px;
+}
+
+.c-incentive-h5 .mobile-badge-detail-drawer .badge-detail-title-row h2 {
+  margin: 0;
+  font-size: 22px !important;
+}
+
+.c-incentive-h5 .mobile-badge-detail-drawer .badge-detail-title-row > strong {
+  flex: none;
+  color: var(--ig-primary);
+  background: var(--ig-primary-soft);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 14px !important;
+  font-weight: 700;
+}
+
+.c-incentive-h5 .mobile-badge-detail-drawer .badge-detail-status {
+  display: block;
+  width: fit-content;
+  margin: 10px auto 0;
+}
+
+.c-incentive-h5 .mobile-badge-detail-drawer .badge-detail-summary {
+  white-space: pre-wrap;
+  margin-top: 20px;
+  max-width: none;
+  width: 100%;
+  text-align: left;
+  font-size: 15px !important;
+  line-height: 1.7;
+}
+
+.c-incentive-h5 .mobile-badge-detail-drawer .badge-detail-definition {
+  display: none;
+}
+
+.c-incentive-h5 .mobile-issue-tabs {
+  background: var(--ig-muted-bg);
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.c-incentive-h5 .mobile-issue-tabs button.active {
+  background: var(--ig-card);
+  color: var(--ig-primary);
+  box-shadow: none;
+}
+
+.c-incentive-h5 .c-mobile-topbar:has(+ .mobile-profile-page:not(.mobile-my-badges-page)),
+.c-incentive-h5 .mobile-profile-achievement-hero,
+.c-incentive-h5 .mobile-my-badges-hero,
+.c-incentive-h5 .mobile-my-badges-page > .mobile-my-badges-hero,
+.c-incentive-h5 body .mobile-my-badges-page > .mobile-my-badges-hero {
+  color: var(--ig-text) !important;
+  background: var(--ig-card) !important;
+  margin: 0 0 12px !important;
+  padding: 14px 16px !important;
+  border: 1px solid var(--ig-line);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.c-incentive-h5 .mobile-profile-achievement-hero:after,
+.c-incentive-h5 .mobile-my-badges-page > .mobile-my-badges-hero:after {
+  display: none;
+}
+
+.c-incentive-h5 .mobile-profile-achievement-hero > header span,
+.c-incentive-h5 .mobile-profile-achievement-hero > header strong,
+.c-incentive-h5 .mobile-profile-achievement-hero > header .ant-btn,
+.c-incentive-h5 .c-mobile-topbar:has(+ .mobile-profile-page:not(.mobile-my-badges-page)) .ant-btn,
+.c-incentive-h5 .mobile-my-badges-hero h2,
+.c-incentive-h5 .mobile-my-badges-hero p,
+.c-incentive-h5 .mobile-my-badges-hero .my-badges-identity h2,
+.c-incentive-h5 .mobile-my-badges-hero .my-badges-identity p {
+  color: var(--ig-text) !important;
+  opacity: 1;
+}
+
+.c-incentive-h5 .mobile-profile-achievement-hero > header span,
+.c-incentive-h5 .mobile-my-badges-hero p {
+  color: var(--ig-sub) !important;
+}
+
+.c-incentive-h5 .mobile-profile-featured-track {
+  padding: 4px 0 8px;
+}
+
+.c-incentive-h5 .mobile-profile-featured-badge {
+  color: var(--ig-text) !important;
+  width: 132px;
+  background: var(--ig-primary-soft);
+  border-radius: 14px;
+  padding: 10px 8px;
+}
+
+.c-incentive-h5 .mobile-profile-featured-badge h2,
+.c-incentive-h5 .mobile-profile-featured-badge > div,
+.c-incentive-h5 .mobile-profile-featured-badge > div i {
+  color: var(--ig-text) !important;
+  border-color: var(--ig-line);
+}
+
+.c-incentive-h5 .mobile-profile-featured-badge.mobile-recent-badge-more {
+  background: var(--ig-muted-bg);
+}
+
+.c-incentive-h5 .mobile-profile-featured-badge.mobile-recent-badge-more > span {
+  background: var(--ig-card) !important;
+  color: var(--ig-primary) !important;
+}
+
+.c-incentive-h5 .mobile-profile-scope-tabs {
+  background: var(--ig-card) !important;
+  border: 1px solid var(--ig-line);
+  border-radius: 12px;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 4px;
+  position: sticky;
+  top: 0;
+}
+
+.c-incentive-h5 .mobile-profile-scope-tabs button.active {
+  color: var(--ig-primary) !important;
+  border-bottom-color: var(--ig-primary) !important;
+  background: transparent !important;
+}
+
+.c-incentive-h5 .mobile-all-profile-badges {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+}
+
+.c-incentive-h5 .mobile-profile-badge-grid > button {
+  background: var(--ig-card);
+  border: 1px solid var(--ig-line);
+  border-radius: 14px;
+}
+
+.c-incentive-h5 .badge-swipe-hint {
+  color: var(--ig-sub);
+}
+
+.c-incentive-h5 .mobile-my-badges-hero > span {
+  border-color: var(--ig-line) !important;
+  color: var(--ig-primary) !important;
+  background: var(--ig-primary-soft) !important;
+}
+
+.c-incentive-h5 .recognition-im-chat-header,
+.c-incentive-h5 .recognition-im-app-icon {
+  background: var(--ig-card) !important;
+  color: var(--ig-text) !important;
+}
+
+.c-incentive-h5 .recognition-im-chat-body {
+  background: var(--ig-bg) !important;
+}
+
+.c-incentive-h5 .recognition-im-award-card {
+  background: var(--ig-card) !important;
+  border: 1px solid var(--ig-line);
+  box-shadow: none;
+}
+
+.c-incentive-h5 .recognition-im-award-card:before {
+  background: var(--ig-primary) !important;
+}
+
+.c-incentive-h5 .recognition-award-view,
+.c-incentive-h5 .recognition-award-view.mobile {
+  background: var(--ig-bg) !important;
+}
+
+.c-incentive-h5 .recognition-award-view.mobile .recognition-award-celebration,
+.c-incentive-h5 .recognition-award-view.mobile .recognition-award-detail-card {
+  background: var(--ig-card) !important;
+  border: 1px solid var(--ig-line);
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+.c-incentive-h5 .recognition-award-view.mobile .recognition-award-celebration:before,
+.c-incentive-h5 .recognition-award-view.mobile .recognition-award-celebration:after {
+  display: none;
+}
+
+.c-incentive-h5 .company-honor-story-hero {
+  color: var(--ig-text) !important;
+  background: var(--ig-card) !important;
+  border-bottom: 1px solid var(--ig-line);
+}
+
+.c-incentive-h5 .company-honor-story-hero:after {
+  display: none;
+}
+
+.c-incentive-h5 .company-honor-story-kicker {
+  color: var(--ig-primary) !important;
+  letter-spacing: 0.08em;
+}
+
+.c-incentive-h5 .company-honor-story-identity h1,
+.c-incentive-h5 .company-honor-story-identity strong,
+.c-incentive-h5 .company-honor-story-identity p,
+.c-incentive-h5 .company-honor-story-identity small {
+  color: var(--ig-text) !important;
+}
+
+.c-incentive-h5 .company-honor-story-identity small,
+.c-incentive-h5 .company-honor-story-identity p {
+  color: var(--ig-sub) !important;
+}
+
+.c-incentive-h5 .company-honor-story-content,
+.c-incentive-h5 .company-honor-story-main,
+.c-incentive-h5 .company-honor-story-note {
+  background: var(--ig-card) !important;
+  border-color: var(--ig-line);
+}
+
+.c-incentive-h5 .ant-btn-primary {
+  background: var(--ig-primary) !important;
+  border-color: var(--ig-primary) !important;
+}
+
+.c-incentive-h5 .employee-honor-wall-hero > div > span {
+  font-size: 13px !important;
+}
+
+.c-incentive-h5 .employee-honor-wall-hero h1 {
+  font-size: 22px !important;
+  line-height: 1.25;
+}
+
+.c-incentive-h5 .employee-honor-wall-hero p {
+  font-size: 14px !important;
+}
+
+.c-incentive-h5 .employee-honor-wall-hero dt {
+  font-size: 22px !important;
+}
+
+.c-incentive-h5 .employee-honor-wall-hero dd {
+  font-size: 13px !important;
+}
+
+.c-incentive-h5 .employee-honor-wall-heading h2 {
+  font-size: 18px !important;
+}
+
+.c-incentive-h5 .employee-honor-wall-heading p,
+.c-incentive-h5 .employee-honor-wall-heading .ant-tag {
+  font-size: 13px !important;
+}
+
+.c-incentive-h5 .employee-honor-month > header strong {
+  font-size: 15px !important;
+}
+
+.c-incentive-h5 .employee-honor-month > header span {
+  font-size: 13px !important;
+}
+
+.c-incentive-h5 .employee-honor-record-main > header {
+  align-items: center;
+}
+
+.c-incentive-h5 .employee-honor-record-main h3 {
+  font-size: 16px !important;
+  white-space: normal;
+}
+
+.c-incentive-h5 .employee-honor-record-main > header span {
+  font-size: 13px !important;
+}
+
+.c-incentive-h5 .employee-honor-record-main > header > strong {
+  font-size: 14px !important;
+}
+
+.c-incentive-h5 .employee-honor-record-main > p {
+  font-size: 14px !important;
+  line-height: 1.55;
+}
+
+.c-incentive-h5 .employee-honor-record-main > footer,
+.c-incentive-h5 .employee-honor-record-main time {
+  font-size: 13px !important;
+  line-height: 1.4;
+}
+
+.c-incentive-h5 .honor-badge-collection {
+  padding: 4px 18px 24px;
+}
+
+.c-incentive-h5 .honor-badge-tabs {
+  display: flex;
+  gap: 26px;
+  margin: 0 2px 4px;
+  border-bottom: 1px solid #efe7d6;
+}
+
+.c-incentive-h5 .honor-badge-tabs > button {
+  position: relative;
+  padding: 0 0 10px;
+  border: 0;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: #9a8f78;
+}
+
+.c-incentive-h5 .honor-badge-tabs > button.is-active {
+  font-weight: 600;
+  color: #9a6e1f;
+}
+
+.c-incentive-h5 .honor-badge-tabs > button.is-active::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -1px;
+  width: 26px;
+  height: 2.5px;
+  border-radius: 2px;
+  background: #b8862f;
+  transform: translateX(-50%);
+}
+
+.c-incentive-h5 .honor-badge-carousel-clip {
+  overflow: hidden;
+  height: 156px;
+}
+
+.c-incentive-h5 .honor-badge-carousel {
+  display: flex;
+  align-items: center;
+  height: 156px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: calc(50% - 70px);
+  -webkit-overflow-scrolling: touch;
+  padding: 8px calc(50% - 70px) 0;
+  scrollbar-width: none;
+}
+
+.c-incentive-h5 .honor-badge-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.c-incentive-h5 .honor-badge-slide {
+  flex: none;
+  width: 140px;
+  min-width: 140px;
+  height: 140px;
+  margin-right: 50px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.62;
+  filter: grayscale(0.2) brightness(0.95);
+  transition: opacity 0.3s, filter 0.3s;
+}
+
+.c-incentive-h5 .honor-badge-slide:last-child {
+  margin-right: 0;
+}
+
+.c-incentive-h5 .honor-badge-slide.is-active {
+  opacity: 1;
+  filter: none;
+}
+
+.c-incentive-h5 .honor-badge-slide-ring {
+  width: 140px;
+  height: 140px;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.c-incentive-h5 .honor-badge-slide-medal {
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: scale(0.86);
+  transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+  border: 3px solid rgb(255 255 255 / 55%);
+  box-shadow: 0 6px 16px -8px rgb(140 94 26 / 25%);
+  overflow: hidden;
+  background: #f7f1e4;
+}
+
+.c-incentive-h5 .honor-badge-slide.is-active .honor-badge-slide-medal {
+  transform: scale(1);
+  border-color: #b8862f;
+  box-shadow: 0 12px 28px -12px rgb(140 94 26 / 55%);
+}
+
+.c-incentive-h5 .honor-badge-slide-medal .badge-artwork-shell,
+.c-incentive-h5 .honor-badge-slide-medal .badge-artwork-shell img {
+  width: 128px;
+  height: 128px;
+}
+
+.c-incentive-h5 .honor-badge-caption {
+  text-align: center;
+  padding: 14px 0 6px;
+  min-height: 72px;
+  box-sizing: border-box;
+}
+
+.c-incentive-h5 .honor-badge-caption strong {
+  display: block;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: 0.3px;
+  color: #1f1b16;
+}
+
+.c-incentive-h5 .honor-badge-caption span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 5px;
+  font-size: 12px;
+  line-height: 16px;
+  color: #9a8048;
+}
+
+.c-incentive-h5 .honor-badge-caption em {
+  font-style: normal;
+  font-weight: 600;
+  color: #c9603d;
+}
+
+.c-incentive-h5 .honor-badge-divider {
+  height: 1px;
+  margin-bottom: 14px;
+  background: linear-gradient(90deg, transparent, #efe7d6, transparent);
+}
+
+.c-incentive-h5 .honor-badge-all-title {
+  margin-bottom: 10px;
+  padding-left: 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f1b16;
+}
+
+.c-incentive-h5 .honor-badge-category {
+  margin-bottom: 18px;
+}
+
+.c-incentive-h5 .honor-badge-category-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.c-incentive-h5 .honor-badge-category > h3,
+.c-incentive-h5 .honor-badge-category-head > h3 {
+  margin: 0;
+  padding-left: 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #9a8f78;
+}
+
+.c-incentive-h5 .honor-badge-category-toggle {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #9a8f78;
+  font-size: 12px;
+  display: grid;
+  place-items: center;
+}
+
+.c-incentive-h5 .honor-badge-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px 12px;
+  justify-items: stretch;
+}
+
+.c-incentive-h5 .honor-badge-grid > button {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 6px 4px 8px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  text-align: center;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.c-incentive-h5 .honor-badge-grid > button.is-active {
+  background: rgb(244 213 138 / 22%);
+}
+
+.c-incentive-h5 .honor-badge-grid-medal {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  flex: none;
+  box-sizing: border-box;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #f7f1e4;
+  border: 2px solid rgb(255 255 255 / 60%);
+  box-shadow: 0 5px 12px -4px rgb(140 94 26 / 50%);
+}
+
+.c-incentive-h5 .honor-badge-grid > button.is-active .honor-badge-grid-medal {
+  border-color: #b8862f;
+  box-shadow: 0 6px 16px -4px rgb(140 94 26 / 55%);
+}
+
+.c-incentive-h5 .honor-badge-grid-medal .badge-artwork-shell,
+.c-incentive-h5 .honor-badge-grid-medal .badge-artwork-shell img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.c-incentive-h5 .honor-badge-grid b {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #1f1b16;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.c-incentive-h5 .honor-badge-grid > button.is-active b {
+  color: #9a6e1f;
+}
+
+.c-incentive-h5 .honor-badge-count-tag.ant-tag {
+  margin: 4px 0 0;
+  padding: 0 6px;
+  height: 18px;
+  line-height: 18px;
+  border: 0;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #9a6e1f;
+  background: rgb(244 213 138 / 45%);
+}
+
+.c-incentive-h5 .honor-badge-grid > button.is-locked b,
+.c-incentive-h5 .honor-badge-grid > button.is-locked small {
+  color: #9a8f78;
+}
+
+.c-incentive-h5 .honor-badge-grid > button.is-locked .badge-artwork-shell {
+  filter: grayscale(1);
+}
+
+.c-incentive-h5 .honor-badge-lock-mask {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgb(47 45 41 / 48%);
+}

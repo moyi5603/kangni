@@ -22,6 +22,109 @@
   text-decoration: none;
 }
 
+.c-h5-shell.is-vote .c-h5-vote-card.is-left-image,
+.c-pc-shell.is-vote .c-h5-vote-card.is-left-image,
+.c-h5-shell.is-vote .c-h5-vote-card.is-left-text,
+.c-pc-shell.is-vote .c-h5-vote-card.is-left-text {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  padding: 0;
+  overflow: hidden;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-card.is-left-text,
+.c-pc-shell.is-vote .c-h5-vote-card.is-left-text {
+  flex-direction: row-reverse;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-card.is-large-image,
+.c-pc-shell.is-vote .c-h5-vote-card.is-large-image,
+.c-h5-shell.is-vote .c-h5-vote-card.is-two-col,
+.c-pc-shell.is-vote .c-h5-vote-card.is-two-col,
+.c-h5-shell.is-vote .c-h5-vote-card.is-scroll,
+.c-pc-shell.is-vote .c-h5-vote-card.is-scroll {
+  display: block;
+  padding: 0;
+  overflow: hidden;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-card.is-large-image .c-h5-vote-cover,
+.c-pc-shell.is-vote .c-h5-vote-card.is-large-image .c-h5-vote-cover,
+.c-h5-shell.is-vote .c-h5-vote-card.is-two-col .c-h5-vote-cover,
+.c-pc-shell.is-vote .c-h5-vote-card.is-two-col .c-h5-vote-cover,
+.c-h5-shell.is-vote .c-h5-vote-card.is-scroll .c-h5-vote-cover,
+.c-pc-shell.is-vote .c-h5-vote-card.is-scroll .c-h5-vote-cover {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #eef1f4;
+  overflow: hidden;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-card.is-large-image .c-h5-vote-cover img,
+.c-pc-shell.is-vote .c-h5-vote-card.is-large-image .c-h5-vote-cover img,
+.c-h5-shell.is-vote .c-h5-vote-card.is-two-col .c-h5-vote-cover img,
+.c-pc-shell.is-vote .c-h5-vote-card.is-two-col .c-h5-vote-cover img,
+.c-h5-shell.is-vote .c-h5-vote-card.is-scroll .c-h5-vote-cover img,
+.c-pc-shell.is-vote .c-h5-vote-card.is-scroll .c-h5-vote-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-cover.is-side,
+.c-pc-shell.is-vote .c-h5-vote-cover.is-side {
+  position: relative;
+  width: 108px;
+  flex: 0 0 108px;
+  align-self: stretch;
+  min-height: 96px;
+  background: #eef1f4;
+  overflow: hidden;
+}
+
+.c-pc-shell.is-vote .c-h5-vote-cover.is-side {
+  width: 168px;
+  flex: 0 0 168px;
+  min-height: 120px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-cover.is-side img,
+.c-pc-shell.is-vote .c-h5-vote-cover.is-side img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-cover-fallback,
+.c-pc-shell.is-vote .c-h5-vote-cover-fallback {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #e8edf3, #d5dde6);
+}
+
+.c-h5-shell.is-vote .c-h5-vote-copy,
+.c-pc-shell.is-vote .c-h5-vote-copy {
+  min-width: 0;
+  flex: 1;
+  padding: 12px 14px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-card.is-left-image .c-h5-vote-copy,
+.c-pc-shell.is-vote .c-h5-vote-card.is-left-image .c-h5-vote-copy,
+.c-h5-shell.is-vote .c-h5-vote-card.is-left-text .c-h5-vote-copy,
+.c-pc-shell.is-vote .c-h5-vote-card.is-left-text .c-h5-vote-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 12px;
+}
+
 .c-h5-shell.is-vote .c-h5-vote-title , .c-pc-shell.is-vote .c-h5-vote-title {
   margin: 0 0 8px;
   font-size: 16px;
@@ -29,10 +132,55 @@
   line-height: 1.35;
 }
 
+.c-h5-shell.is-vote .c-h5-vote-status,
+.c-pc-shell.is-vote .c-h5-vote-status {
+  display: flex;
+  margin: 0 0 8px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-title + .c-h5-vote-status,
+.c-pc-shell.is-vote .c-h5-vote-title + .c-h5-vote-status {
+  margin-top: -4px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-card.is-left-image .c-h5-vote-title,
+.c-pc-shell.is-vote .c-h5-vote-card.is-left-image .c-h5-vote-title,
+.c-h5-shell.is-vote .c-h5-vote-card.is-left-text .c-h5-vote-title,
+.c-pc-shell.is-vote .c-h5-vote-card.is-left-text .c-h5-vote-title {
+  margin: 0;
+  line-height: 1.3;
+}
+
 .c-h5-shell.is-vote .c-h5-vote-time , .c-pc-shell.is-vote .c-h5-vote-time {
   margin: 0 0 10px;
   color: var(--c-muted);
   font-size: 13px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-card.is-left-image .c-h5-vote-time,
+.c-pc-shell.is-vote .c-h5-vote-card.is-left-image .c-h5-vote-time,
+.c-h5-shell.is-vote .c-h5-vote-card.is-left-text .c-h5-vote-time,
+.c-pc-shell.is-vote .c-h5-vote-card.is-left-text .c-h5-vote-time {
+  margin: 0;
+  line-height: 1.3;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-card.is-left-image .c-h5-vote-time,
+.c-h5-shell.is-vote .c-h5-vote-card.is-left-text .c-h5-vote-time {
+  white-space: nowrap;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-card.is-two-col .c-h5-vote-title,
+.c-h5-shell.is-vote .c-h5-vote-card.is-scroll .c-h5-vote-title,
+.c-pc-shell.is-vote .c-h5-vote-card.is-two-col .c-h5-vote-title,
+.c-pc-shell.is-vote .c-h5-vote-card.is-scroll .c-h5-vote-title {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.c-h5-shell.is-vote .c-h5-vote-card.is-two-col .c-h5-vote-time,
+.c-h5-shell.is-vote .c-h5-vote-card.is-scroll .c-h5-vote-time {
+  margin: 0 0 6px;
 }
 
 .c-h5-shell.is-vote .c-h5-vote-cta , .c-pc-shell.is-vote .c-h5-vote-cta {
@@ -433,7 +581,22 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 0;
+}
+
+.c-h5-shell.is-vote .c-vote-records,
+.c-pc-shell.is-vote .c-vote-records {
+  flex-shrink: 0;
+  color: var(--c-text);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.c-pc-shell.is-vote .c-vote-records {
+  color: var(--c-orange);
+  font-size: 14px;
 }
 
 .c-pc-shell.is-vote .c-pc-vote-grid {
@@ -444,6 +607,17 @@
   padding: 0;
   list-style: none;
 }
+
+.c-pc-shell.is-vote .c-pc-vote-grid.is-left-image,
+.c-pc-shell.is-vote .c-pc-vote-grid.is-left-text {
+  grid-template-columns: 1fr;
+}
+
+.c-pc-shell.is-vote .c-pc-vote-grid.is-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+.c-pc-shell.is-vote .c-pc-vote-grid.is-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.c-pc-shell.is-vote .c-pc-vote-grid.is-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.c-pc-shell.is-vote .c-pc-vote-grid.is-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.c-pc-shell.is-vote .c-pc-vote-grid.is-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 
 .c-pc-shell.is-vote .c-pc-vote-mine {
   color: var(--c-orange);

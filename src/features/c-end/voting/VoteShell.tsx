@@ -58,7 +58,14 @@ export function VoteShell({
     );
   }
   return (
-    <H5ActivityShell className={shellClass} title={title ?? '投票'} onBack={onBack} detail={detail} footer={footer}>
+    <H5ActivityShell
+      className={shellClass}
+      title={title ?? '投票'}
+      onBack={onBack}
+      actions={actions}
+      detail={detail}
+      footer={footer}
+    >
       {children}
     </H5ActivityShell>
   );

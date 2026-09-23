@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { goCEndPortal, toH5CourseDetailHash } from '../../../../app/navigation';
+import { goH5Back, toH5CourseDetailHash } from '../../../../app/navigation';
 import { useCourseCategoryTree } from '../../../training/model/trainingStore';
 import { H5ActivityShell } from '../../activities/h5/H5ActivityShell';
 import {
@@ -46,7 +46,7 @@ export function H5CourseMall() {
   };
 
   return (
-    <H5ActivityShell className="is-course is-mall" title="课程列表" onBack={goCEndPortal}>
+    <H5ActivityShell className="is-course is-mall" title="课程列表" onBack={goH5Back}>
       <div className="c-h5-course-mall">
         <div className="c-h5-course-mall-head">
           <form

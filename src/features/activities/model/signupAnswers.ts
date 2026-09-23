@@ -1,5 +1,5 @@
 import type { ActivitySession } from './activitySchedule';
-import { formatPickedSessionsLabel } from './activitySchedule';
+import { formatPickedSessionIndexLabel, formatPickedSessionTimeLabel } from './activitySchedule';
 import type { SignupRecord } from './related';
 import { parseCompanionPeople, type SignupField } from './signupFields';
 
@@ -62,15 +62,16 @@ export function downloadSignupExport(
 ) {
   const includeSessions = sessions.length > 0;
   const baseHeaders = includeSessions
-    ? ['姓名', '手机号', '部门', '场次', '状态', '报名时间']
+    ? ['姓名', '手机号', '部门', '场次', '场次时间', '状态', '报名时间']
     : ['姓名', '手机号', '部门', '状态', '报名时间'];
   const fieldHeaders = fields.map((field) => field.label);
   const headerLine = [...baseHeaders, ...fieldHeaders].map(csvCell).join(',');
   const lines = records.map((record) => {
     const answers = resolveSignupRecordAnswers(record);
-    const sessionCell = includeSessions ? formatPickedSessionsLabel(sessions, answers['场次']) || '—' : '';
+    const sessionCell = includeSessions ? formatPickedSessionIndexLabel(sessions, answers['场次']) || '—' : '';
+    const sessionTimeCell = includeSessions ? formatPickedSessionTimeLabel(sessions, answers['场次']) || '—' : '';
     const base = includeSessions
-      ? [record.name, record.phone, record.department, sessionCell, record.status, record.createdAt]
+      ? [record.name, record.phone, record.department, sessionCell, sessionTimeCell, record.status, record.createdAt]
       : [record.name, record.phone, record.department, record.status, record.createdAt];
     const extras = fields.map((field) => formatSignupAnswerValue(field, answers[field.key]));
     return [...base, ...extras].map(csvCell).join(',');

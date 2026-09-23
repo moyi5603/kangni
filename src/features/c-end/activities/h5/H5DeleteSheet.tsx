@@ -1,9 +1,13 @@
 import { ActivityDeleteConfirm } from '../components/ActivityDeleteConfirm';
 
 export function H5DeleteSheet({
+  title = '删除评论',
+  description,
   onCancel,
   onConfirm,
 }: {
+  title?: string;
+  description?: string;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -13,10 +17,10 @@ export function H5DeleteSheet({
         className="c-sheet"
         role="dialog"
         aria-modal="true"
-        aria-label="删除评论"
+        aria-label={title}
         onClick={(event) => event.stopPropagation()}
       >
-        <ActivityDeleteConfirm onCancel={onCancel} onConfirm={onConfirm} />
+        <ActivityDeleteConfirm title={title} description={description} onCancel={onCancel} onConfirm={onConfirm} />
       </div>
     </div>
   );

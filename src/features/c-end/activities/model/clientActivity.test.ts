@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { initialActivities, type Activity } from '../../../activities/model/activity';
-import type { MomentRecord } from '../../../activities/model/moment';
 import { patchRelated, restoreRelatedComments, restoreRelatedSignups } from '../../../activities/model/related';
 import {
   approvedSignupPeople,
@@ -14,12 +13,14 @@ import {
   HOME_PAST_HIGHLIGHT_LIMIT,
   PC_ACTIVITY_PREVIEW_LIMIT,
   PC_PAST_HIGHLIGHT_LIMIT,
-  listPastHighlightMoments,
-  pastHighlightMoments,
+  listPastHighlightActivities,
+  pastHighlightActivities,
+  shouldShowOrganizerCheckInQr,
   filterSignupsByTitle,
   formatPcDateTime,
   formatPcDateTimeRange,
   formatShortActivityDate,
+  formatClientActivityTime,
   isSignupOpen,
   groupClientSignups,
   hasHomeFavoritesPane,
@@ -97,10 +98,12 @@ describe('client activity signup model', () => {
       { id: 6, name: '张悦', department: '前端组' },
       { id: 9, name: '周工', department: '总装车间' },
       { id: 12, name: '赵人事', department: '人力资源' },
-      { id: 4, name: '陈产品', department: '职能中心' },
+      { id: 4, name: '陈产品', department: '华东大区' },
     ]);
     expect(people[4]).toEqual({ id: 2000, name: '学员01', department: '研发中心' });
-    expect(approvedSignupPeople(21)).toEqual([]);
+    expect(approvedSignupPeople(21)).toEqual([
+      expect.objectContaining({ name: '陈产品', department: '华东大区' }),
+    ]);
   });
 
   it('filters approved people by name or department', () => {
@@ -113,17 +116,24 @@ describe('client activity signup model', () => {
   });
 
   it('filters approved people by picked session', () => {
-    expect(approvedSignupPeople(26).map((item) => item.name)).toEqual(['陈产品']);
-    expect(approvedSignupPeople(26, 's-0-202608271400').map((item) => item.name)).toEqual(['陈产品']);
-    expect(approvedSignupPeople(26, 's-1-202609031400')).toEqual([]);
+    expect(approvedSignupPeople(26).map((item) => item.name)).toEqual(['张悦', '陈产品']);
+    expect(approvedSignupPeople(26, 's-0-202608271400').map((item) => item.name)).toEqual(['张悦', '陈产品']);
+    expect(approvedSignupPeople(26, 's-1-202609031400').map((item) => item.name)).toEqual(['张悦']);
   });
 
   it('counts occupied seats and the current user signed unfinished sessions per session', () => {
     const basketball = initialActivities.find((item) => item.id === 26)!;
     const now = Date.parse('2026-08-27T11:00:00');
-    expect(sessionOccupiedCount(26, 's-0-202608271400')).toBe(1);
-    expect(sessionOccupiedCount(26, 's-1-202609031400')).toBe(0);
+    expect(sessionOccupiedCount(26, 's-0-202608271400')).toBe(2);
+    expect(sessionOccupiedCount(26, 's-1-202609031400')).toBe(1);
     expect(userSignedRecentSessionCount(basketball, DEMO_SIGNUP_USER.phone, now)).toBe(1);
+  });
+
+  it('enables 报名分组 on 周四篮球夜 demo data', () => {
+    const basketball = initialActivities.find((item) => item.title === '周四篮球夜')!;
+    const groups = basketball.signupFields.find((field) => field.inputType === 'group')?.groups ?? [];
+    expect(groups.map((item) => item.name)).toEqual(['红队', '蓝队']);
+    expect(groups.reduce((sum, item) => sum + item.limit, 0)).toBe(50);
   });
 
   it('groups signups by activity status and sorts newest first', () => {
@@ -174,12 +184,8 @@ describe('client activity signup model', () => {
       '2026-08-02 09:00',
     ]);
     expect(grouped.upcoming.every(({ activity }) => activity === upcomingActivity)).toBe(true);
-    expect(grouped.ended.map(({ signup }) => signup.createdAt)).toEqual([
-      '2026-08-04 09:00',
-      '2026-08-01 09:00',
-    ]);
-    expect(grouped.ended[0].activity).toBeUndefined();
-    expect(grouped.ended[1].activity).toBe(baseActivity);
+    expect(grouped.ended.map(({ signup }) => signup.createdAt)).toEqual(['2026-08-01 09:00']);
+    expect(grouped.ended[0].activity).toBe(baseActivity);
     expect(grouped.waiting).toEqual([]);
     expect(grouped.ongoing.map(({ signup }) => signup.createdAt)).toEqual([
       '2026-08-03 09:00',
@@ -261,8 +267,8 @@ describe('client activity signup model', () => {
       pendingLiveActivity,
     ]);
 
-    expect(grouped.pending.map(({ signup }) => signup.activityId)).toEqual([9, 3]);
-    expect(grouped.pending[1].activity).toBeUndefined();
+    expect(grouped.pending.map(({ signup }) => signup.activityId)).toEqual([9]);
+    expect(grouped.pending[0].activity).toBe(pendingLiveActivity);
     expect(grouped.waiting.map(({ signup }) => signup.activityId)).toEqual([6]);
     expect(grouped.ongoing.map(({ signup }) => signup.activityId)).toEqual([2]);
     expect(grouped.ended).toEqual([]);
@@ -318,6 +324,12 @@ describe('client activity signup model', () => {
     expect(filterSignupsByTitle([party], 'PARTY')).toEqual([]);
   });
 
+  it('shows check-in QR only when the viewer is the organizer', () => {
+    expect(shouldShowOrganizerCheckInQr(baseActivity, DEMO_SIGNUP_USER.name)).toBe(true);
+    expect(shouldShowOrganizerCheckInQr({ ...baseActivity, organizer: '张悦' }, DEMO_SIGNUP_USER.name)).toBe(false);
+    expect(shouldShowOrganizerCheckInQr(baseActivity, '张悦')).toBe(false);
+  });
+
   it('filters activities by title', () => {
     const openDay = { ...baseActivity, title: '春季员工开放日' };
     const camp = { ...baseActivity, id: 2, title: '新员工入职训练营' };
@@ -333,50 +345,28 @@ describe('client activity signup model', () => {
     expect(PC_ACTIVITY_PREVIEW_LIMIT).toBe(6);
   });
 
-  it('takes three newest approved moments on H5 and five on PC', () => {
-    const ended = { ...baseActivity, id: 1, activityStatus: '已结束' as const };
-    const live = { ...baseActivity, id: 2, activityStatus: '进行中' as const };
-    const stamp = (day: string): MomentRecord => ({
-      id: Number(day),
-      activityId: 1,
-      author: 'a',
-      content: `m${day}`,
-      type: '图文类型',
-      imageUrls: [`/${day}.jpg`],
-      status: '已通过',
-      createdAt: `2026-01-${day} 12:00:00`,
-      updatedAt: `2026-01-${day} 12:00:00`,
-      likedBy: [],
-      comments: [],
-    });
-
-    expect(HOME_PAST_HIGHLIGHT_LIMIT).toBe(3);
-    expect(PC_PAST_HIGHLIGHT_LIMIT).toBe(5);
-    const pool = [
-      stamp('01'),
-      { ...stamp('04'), id: 4 },
-      { ...stamp('05'), id: 5, status: '待审核' as const },
-      { ...stamp('03'), id: 3 },
-      { ...stamp('09'), id: 9, activityId: 2 },
-      { ...stamp('02'), id: 2, imageUrls: [] },
-      { ...stamp('02'), id: 7, createdAt: '2026-01-02 18:00:00', imageUrls: ['/7.jpg'] },
-      { ...stamp('08'), id: 8, createdAt: '2026-01-01 18:00:00', imageUrls: ['/8.jpg'] },
-      { ...stamp('06'), id: 6, activityId: 9 },
-    ];
+  it('lists published ended activities by start date, three on H5 and five on PC', () => {
+    const live = { ...baseActivity, id: 2, activityStatus: '进行中' as const, startAt: '2026-08-18 09:00' };
     const unpublishedEnded = {
       ...baseActivity,
       id: 9,
       publishStatus: '未发布' as const,
       activityStatus: '已结束' as const,
+      startAt: '2026-07-30 09:00',
     };
+    const older = { ...baseActivity, id: 1, activityStatus: '已结束' as const, startAt: '2026-04-12 09:00' };
+    const mid = { ...baseActivity, id: 16, title: '供应链协同攻关', activityStatus: '已结束' as const, startAt: '2026-07-22 09:00' };
+    const newest = { ...baseActivity, id: 25, title: '家庭日郊游', activityStatus: '已结束' as const, startAt: '2026-07-19 09:00' };
+    const fourth = { ...baseActivity, id: 20, title: '高管体检预约', activityStatus: '已结束' as const, startAt: '2026-07-18 08:00' };
+    const fifth = { ...baseActivity, id: 14, title: '质量改进项目启动', activityStatus: '已结束' as const, startAt: '2026-07-10 09:00' };
+    const sixth = { ...baseActivity, id: 11, title: '司庆展览周', activityStatus: '已结束' as const, startAt: '2026-07-08 09:00' };
+    const pool = [older, live, unpublishedEnded, mid, newest, fourth, fifth, sixth];
 
-    expect(pastHighlightMoments(pool, [ended, live, unpublishedEnded]).map((item) => item.id)).toEqual([4, 3, 7]);
-    expect(pastHighlightMoments(pool, [ended, live, unpublishedEnded], PC_PAST_HIGHLIGHT_LIMIT).map((item) => item.id)).toEqual([
-      4, 3, 7, 8, 1,
-    ]);
-    expect(listPastHighlightMoments(pool, [ended, live, unpublishedEnded]).map((item) => item.id)).toEqual([
-      4, 3, 7, 8, 1,
-    ]);
+    expect(HOME_PAST_HIGHLIGHT_LIMIT).toBe(3);
+    expect(PC_PAST_HIGHLIGHT_LIMIT).toBe(5);
+    expect(pastHighlightActivities(pool).map((item) => item.id)).toEqual([16, 25, 20]);
+    expect(pastHighlightActivities(pool, PC_PAST_HIGHLIGHT_LIMIT).map((item) => item.id)).toEqual([16, 25, 20, 14, 11]);
+    expect(listPastHighlightActivities(pool).map((item) => item.id)).toEqual([16, 25, 20, 14, 11, 1]);
   });
 });
 
@@ -427,7 +417,7 @@ describe('signupCta cancel window', () => {
       ],
     };
     expect(signupCta(series, true, now, { allowCancel: true })).toEqual({
-      label: '调整报名',
+      label: '立即报名',
       enabled: true,
       action: 'adjust',
     });
@@ -525,6 +515,12 @@ describe('PC datetime display', () => {
 describe('short activity date', () => {
   it('keeps month/day for once activities', () => {
     expect(formatShortActivityDate(baseActivity)).toBe('04/12');
+  });
+
+  it('shows full start and end time for C-end cards', () => {
+    expect(formatClientActivityTime(baseActivity, new Date('2026-09-01T12:00:00'))).toBe(
+      '04-12 09:00 ~ 04-12 17:00',
+    );
   });
 
   it('summarizes recurring and series', () => {

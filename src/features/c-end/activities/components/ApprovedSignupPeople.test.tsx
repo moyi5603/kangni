@@ -38,11 +38,12 @@ describe('Approved signup people', () => {
     expect(html).not.toContain('王芳');
   });
 
-  it('opens the full approved list in a panel', () => {
+  it('opens the full approved list in a panel', async () => {
     const html = renderToStaticMarkup(<ApprovedSignupPeople activityId={2} open />);
     expect(html).toContain('role="dialog"');
     expect(html).toContain('c-signup-people-body');
-    expect(html).toContain('c-signup-people-list is-cols-4');
+    expect(html).toContain('c-signup-people-list is-cols-2');
+    expect(html).toContain('c-signup-person-copy');
     expect(html).toContain('张悦');
     expect(html).toContain('前端组');
     expect(html).toContain('陈产品');
@@ -53,13 +54,22 @@ describe('Approved signup people', () => {
     expect(html).toContain('人力资源');
     expect(html).not.toContain('王芳');
     expect(html).not.toContain('吴检');
+    const { readFileSync } = await import('node:fs');
+    const { dirname, join } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../styles.css'), 'utf8');
+    const cols = css.indexOf('.c-signup-people-list.is-cols-2');
+    expect(cols).toBeGreaterThan(-1);
+    expect(css.slice(css.indexOf('{', cols), css.indexOf('}', css.indexOf('{', cols)))).toContain(
+      'grid-template-columns: repeat(2, minmax(0, 1fr))',
+    );
   });
 
   it('shows leftover count on the avatar stack when many people are approved', () => {
     seedApprovedPeople(21, 8);
     const html = renderToStaticMarkup(<ApprovedSignupPeople activityId={21} />);
-    expect(html).toContain('已报名人员（8）');
-    expect(html).toContain('+3');
+    expect(html).toContain('已报名人员（9）');
+    expect(html).toContain('+4');
     expect(html).toContain('查看名单');
   });
 
@@ -87,7 +97,7 @@ describe('Approved signup people', () => {
       <ApprovedSignupPeople activity={basketball} activityId={26} open now={now} peopleTab="s-1-202609031400" />,
     );
     const dialog = later.slice(later.indexOf('role="dialog"'));
-    expect(dialog).toContain('没有匹配的报名人员');
+    expect(dialog).toContain('张悦');
     expect(dialog).not.toContain('陈产品');
   });
 });

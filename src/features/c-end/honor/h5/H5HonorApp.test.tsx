@@ -40,14 +40,14 @@ describe('H5 honor employee home', () => {
     expect(html).toContain('class="c-h5-shell is-honor');
   });
 
-  it('uses the standard H5 header and a home FAB', () => {
+  it('uses the standard H5 header without a home FAB', () => {
     const html = renderToStaticMarkup(<H5HonorApp />);
 
     expect(html).toContain('class="c-h5-top"');
     expect(html).toContain('class="c-h5-title"');
     expect(html).toContain('aria-label="返回"');
-    expect(html).toContain('class="c-h5-detail-fab is-home"');
-    expect(html).toContain('回主页');
+    expect(html).not.toContain('c-h5-detail-fab');
+    expect(html).not.toContain('回主页');
     expect(html).not.toContain('返回上一页');
     expect(html).not.toContain('切管理视角');
     expect(html).not.toContain('切员工视角');
@@ -58,7 +58,7 @@ describe('H5 honor employee home', () => {
     const html = renderToStaticMarkup(<CEndApp surface="h5" h5Page="honor-admin" />);
 
     expect(html).toContain('发起评优');
-    expect(html).toContain('回主页');
+    expect(html).not.toContain('回主页');
     expect(html).toContain('管理视角');
     expect(html).toContain('class="c-h5-top"');
     expect(html).toContain('荣誉 Agent');
@@ -105,7 +105,8 @@ describe('H5 honor manager home', () => {
     const html = renderToStaticMarkup(<H5HonorApp initialRole="hr" />);
 
     expect(html).toContain('class="c-h5-title"');
-    expect(html).toContain('class="c-h5-detail-fab is-home"');
+    expect(html).not.toContain('c-h5-detail-fab');
+    expect(html).not.toContain('回主页');
     expect(html).not.toContain('返回上一页');
   });
 });

@@ -1,4 +1,4 @@
-import { goH5VoteRecords } from '../../../../app/navigation';
+import { goH5Back } from '../../../../app/navigation';
 import { H5ActivityShell } from '../../activities/h5/H5ActivityShell';
 import { employeeAvatarColor, employeeAvatarLetter } from '../../../activities/model/employeeAvatar';
 import {
@@ -117,7 +117,7 @@ export function H5VoteRecord({ id }: { id: number }) {
 
   if (!response || !campaign || !own) {
     return (
-      <H5ActivityShell className="is-vote is-detail is-snapshot" title="投票记录" onBack={goH5VoteRecords}>
+      <H5ActivityShell className="is-vote is-detail is-snapshot" title="投票记录" onBack={goH5Back}>
         <p className="c-empty">记录不存在</p>
       </H5ActivityShell>
     );
@@ -127,7 +127,7 @@ export function H5VoteRecord({ id }: { id: number }) {
   const answers = getVoteResponseAnswers(response.id);
 
   return (
-    <H5ActivityShell className="is-vote is-detail is-snapshot" title={campaign.name} onBack={goH5VoteRecords} detail>
+    <H5ActivityShell className="is-vote is-detail is-snapshot" title={campaign.name} onBack={goH5Back} detail>
       <div className="c-h5-vote-detail">
         <p className="c-h5-vote-time">{formatVoteCardTime(response.submittedAt)}</p>
         {questions.map((question, index) => {

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { goH5ExamPrep, goH5ExamResult } from '../../../../app/navigation';
+import { goH5Back, goH5ExamResult } from '../../../../app/navigation';
 import { useCEndToast } from '../../activities/components/CEndToast';
 import { H5ActivityShell } from '../../activities/h5/H5ActivityShell';
 import { submitClientExam } from '../model/clientExamResult';
@@ -42,7 +42,7 @@ export function H5ExamTaking({ id, initialIndex }: { id: number; initialIndex?: 
 
   if (!paper || !question) {
     return (
-      <H5ActivityShell className="is-exam is-taking" title="考试过程" onBack={() => goH5ExamPrep(id)}>
+      <H5ActivityShell className="is-exam is-taking" title="考试过程" onBack={goH5Back}>
         <p className="c-h5-exam-empty">考试不存在或未发布</p>
       </H5ActivityShell>
     );
@@ -66,7 +66,7 @@ export function H5ExamTaking({ id, initialIndex }: { id: number; initialIndex?: 
     <H5ActivityShell
       className="is-exam is-taking"
       title="考试过程"
-      onBack={() => goH5ExamPrep(id)}
+      onBack={goH5Back}
       footer={
         <div className="c-h5-exam-taking-bar">
           <button

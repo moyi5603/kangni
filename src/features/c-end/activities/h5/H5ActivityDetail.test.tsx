@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CEndApp } from '../../../../app/CEndApp';
+import { getActivity } from '../../../activities/model/activityStore';
 import { restoreRelatedComments } from '../../../activities/model/related';
 import { submitActivityComment } from '../model/activityComments';
 import { resetEngagement } from '../model/engagementStore';
@@ -23,7 +24,7 @@ describe('H5 activity detail engage', () => {
     expect(like).toBeGreaterThan(-1);
     expect(fav).toBeGreaterThan(like);
     expect(comment).toBeGreaterThan(fav);
-    expect(bar).toContain('aria-label="分享"');
+    expect(bar).not.toContain('aria-label="分享"');
     expect(cta).toBeGreaterThan(comment);
     expect(html).toContain('id="activity-social"');
     expect(html).toContain('评论 26');
@@ -58,16 +59,17 @@ describe('H5 activity detail engage', () => {
     expect(cover).toContain('c-cover-title');
     expect(cover).toContain('c-pill is-category');
     expect(cover).toContain('c-pill is-format');
-    expect(card).toContain('活动时间：首场 08-18 09:30 ~ 08-18 17:30 · 共 3 场');
+    expect(card).toContain('活动时间：08-31 09:30 ~ 09-02 17:30 · 共 3 场');
     expect(card).toContain('报名时间：08-01 09:00 起，每场开场时截止');
     expect(card).toContain('每场名额：60 人');
     expect(card).not.toContain('已报名 54 人');
     expect(card).not.toContain('联系电话');
     expect(card).not.toContain('href="tel:');
-    expect(html).not.toContain('活动评分');
-    expect(html).toContain('aria-label="分享"');
+    expect(html).toContain('活动评分');
+    expect(html).toContain('确认评分');
+    expect(html).not.toContain('aria-label="分享"');
     const start = html.indexOf('c-detail-info-card');
-    const infoCard = html.slice(start, html.indexOf('</section>', start));
+    const infoCard = html.slice(start, html.indexOf('h5-activity-intro'));
     expect(infoCard).not.toContain('c-quota-card');
     expect(infoCard).toContain('每场名额：60 人');
     expect(infoCard).toContain('c-signup-people');
@@ -79,12 +81,27 @@ describe('H5 activity detail engage', () => {
     const basketball = renderToStaticMarkup(<H5ActivityDetail id={26} />);
     const card = basketball.slice(basketball.indexOf('c-detail-info-card'), basketball.indexOf('h5-activity-intro'));
     expect(card).toContain('最近场次');
-    expect(card).toContain('已报1场');
+    expect(card).toContain('已报0场');
     expect(card.indexOf('每场名额')).toBeLessThan(card.indexOf('最近场次'));
     expect(card.indexOf('最近场次')).toBeLessThan(card.indexOf('c-signup-people'));
 
     const once = renderToStaticMarkup(<H5ActivityDetail id={1} />);
     expect(once.slice(once.indexOf('c-detail-info-card'), once.indexOf('h5-activity-intro'))).not.toContain('最近场次');
+  });
+
+  it('shows audit hint for a pending signup and hides it otherwise', () => {
+    const pending = renderToStaticMarkup(<H5ActivityDetail id={28} />);
+    expect(pending).toContain('报名审核中（第 1/2 节点） · 当前审核：张悦、李明');
+    const card = pending.slice(pending.indexOf('c-detail-info-card'), pending.indexOf('h5-activity-intro'));
+    expect(card).not.toContain('is-audit-pending');
+    expect(card).not.toContain('当前审核');
+    const barIdx = pending.indexOf('c-signup-audit-bar');
+    expect(barIdx).toBeGreaterThan(-1);
+    expect(barIdx).toBeLessThan(pending.indexOf('c-h5-cta-bar'));
+
+    const approved = renderToStaticMarkup(<H5ActivityDetail id={2} />);
+    expect(approved).not.toContain('c-signup-audit-bar');
+    expect(approved).not.toContain('当前审核');
   });
 
   it('lists all open-day threads on detail without view-all', () => {
@@ -123,6 +140,7 @@ describe('H5 activity detail engage', () => {
   });
 
   it('lets a signed-up user cancel a one-off activity before the deadline', () => {
+    expect(getActivity(9)?.organizer).toBe('陈产品');
     const html = renderToStaticMarkup(<H5ActivityDetail id={9} />);
     expect(html).toContain('取消报名');
     expect(html).not.toMatch(/class="c-cta"[^>]*>已报名</);
@@ -130,18 +148,26 @@ describe('H5 activity detail engage', () => {
 
   it('lets a signed-up user adjust remaining sessions instead of cancel', () => {
     const html = renderToStaticMarkup(<H5ActivityDetail id={26} />);
-    expect(html).toContain('调整报名');
+    expect(html).toContain('立即报名');
     expect(html).not.toContain('取消报名');
+  });
+
+  it('lets a multi-session organizer adjust sessions too', () => {
+    const html = renderToStaticMarkup(<H5ActivityDetail id={27} />);
+    expect(html).toMatch(/class="c-cta"[^>]*>立即报名</);
   });
 
   it('opens the session list to add or remove remaining sessions', () => {
     const html = renderToStaticMarkup(<CEndApp surface="h5" activityId={26} h5Page="signup" />);
-    expect(html).toContain('调整报名');
+    expect(html).toContain('立即报名');
+    expect(html).not.toContain('调整报名');
     expect(html).toContain('参加场次');
-    expect(html).toContain('保存场次');
+    expect(html).toContain('展开全部场次');
+    expect(html).toContain('确认报名');
     expect(html).toContain('余49位');
-    expect(html).toContain('余50位');
-    expect(html).toMatch(/value="s-0-202608271400"[^>]*checked|checked[^>]*value="s-0-202608271400"/);
+    const upcoming = (getActivity(26)?.sessions ?? []).filter((s) => Date.parse(s.startAt.replace(' ', 'T')) > Date.now());
+    expect(upcoming.length).toBeGreaterThan(0);
+    expect(html).toContain(`value="${upcoming[0].id}"`);
   });
 
   it('shows full comments when CEndApp opens an activity', () => {
@@ -149,11 +175,23 @@ describe('H5 activity detail engage', () => {
     expect(html).toContain('纪念品柜台要排队。');
   });
 
-  it('shows floating back and home buttons', () => {
+  it('shows the check-in QR when the viewer is the organizer', () => {
+    const mine = renderToStaticMarkup(<H5ActivityDetail id={1} />);
+    const card = mine.slice(mine.indexOf('c-detail-info-card'), mine.indexOf('h5-activity-intro'));
+    expect(card).toContain('签到二维码');
+    expect(card).toContain('c-org-qr');
+    expect(card).toContain('checkin');
+
+    const other = renderToStaticMarkup(<H5ActivityDetail id={26} />);
+    expect(other).not.toContain('签到二维码');
+    expect(other).not.toContain('c-org-qr');
+  });
+
+  it('does not show floating back and home buttons', () => {
     const html = renderToStaticMarkup(<H5ActivityDetail id={1} />);
-    expect(html).toContain('c-h5-detail-fab');
-    expect(html).toContain('返回上一页');
-    expect(html).toContain('回主页');
+    expect(html).not.toContain('c-h5-detail-fab');
+    expect(html).not.toContain('返回上一页');
+    expect(html).not.toContain('回主页');
   });
 
   it('summarizes approved signup people instead of tiling them', () => {

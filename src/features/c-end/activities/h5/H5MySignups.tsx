@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useActivities } from '../../../activities/model/activityStore';
-import { goCEnd } from '../../../../app/navigation';
-import { ActivityMeta } from '../components/ActivityMeta';
-import { IconChevronRight, IconTicket } from '../components/Icons';
+import { goH5Back, goCEnd } from '../../../../app/navigation';
+import { IconTicket } from '../components/Icons';
 import { SignupStatusRow } from '../components/SignupStatusRow';
 import {
+  H5_MY_SIGNUPS_LIST_STYLE,
   SIGNUP_TABS,
   clientVisibleActivities,
   filterSignupsByTitle,
@@ -14,24 +14,8 @@ import {
   type SignupTabId,
 } from '../model/clientActivity';
 import { useUserSignups } from '../model/signupStore';
+import { H5ActivityListCard } from './H5ActivityCards';
 import { H5ActivityShell } from './H5ActivityShell';
-
-function SignupThumb({ coverUrl }: { coverUrl: string }) {
-  return (
-    <span className="c-signup-thumb" aria-hidden>
-      <span className="c-cover-fallback" />
-      {coverUrl ? (
-        <img
-          src={coverUrl}
-          alt=""
-          onError={(event) => {
-            event.currentTarget.hidden = true;
-          }}
-        />
-      ) : null}
-    </span>
-  );
-}
 
 function SignupDetails({ item }: { item: ClientSignupView }) {
   return <p className="c-h5-signup-type">报名类型：{item.signup.type}</p>;
@@ -52,26 +36,13 @@ function SignupCard({ item }: { item: ClientSignupView }) {
     );
   }
 
-  const openActivity = () => goCEnd('h5', activity.id);
-
   return (
-    <button
-      className="c-h5-signup-card c-h5-card-button"
-      type="button"
-      onClick={openActivity}
-    >
-      <SignupThumb coverUrl={activity.coverUrl} />
-      <div className="c-h5-signup-card-body">
-        <h3 className="c-h5-signup-title">{activity.title}</h3>
-        <SignupStatusRow
-          activityStatus={activity.activityStatus}
-          auditStatus={item.signup.status}
-        />
-        <SignupDetails item={item} />
-        <ActivityMeta activity={activity} compact />
-      </div>
-      <IconChevronRight />
-    </button>
+    <H5ActivityListCard
+      activity={activity}
+      signedUp
+      layout={H5_MY_SIGNUPS_LIST_STYLE}
+      onOpen={() => goCEnd('h5', activity.id)}
+    />
   );
 }
 
@@ -85,7 +56,7 @@ export function SignupGroup({
   if (items.length === 0) return null;
 
   return (
-    <ul className="c-h5-list" aria-label={`${title}报名`}>
+    <ul className={`c-h5-list is-${H5_MY_SIGNUPS_LIST_STYLE}`} aria-label={`${title}报名`}>
       {items.map((item) => (
         <li key={`${item.signup.activityId}-${item.signup.createdAt}`}>
           <SignupCard item={item} />
@@ -116,7 +87,7 @@ export function H5MySignups({
   const emptyCopy = query.trim() ? '未找到相关活动' : activeTab.empty;
 
   return (
-    <H5ActivityShell title="我的报名" onBack={goHome}>
+    <H5ActivityShell title="我的活动" onBack={goH5Back}>
       {signups.length === 0 ? (
         <div className="c-h5-signup-empty">
           <IconTicket />

@@ -22,6 +22,7 @@ import {
   Upload,
 } from 'antd';
 import type { TableColumnsType, UploadFile } from 'antd';
+import { COVER_IMAGE_UPLOAD_HINT, IMAGE_UPLOAD_ACCEPT } from '../../../shared/ui/imageUploadHint';
 import dayjs from 'dayjs';
 import { RichTextField } from '../../activities/components/RichTextField';
 import { CourseCommentConfigFields } from '../components/CourseCommentConfigFields';
@@ -444,9 +445,9 @@ export function CourseFormPage({ mode, recordId, onBack, onViewDetail }: CourseF
             <Radio.Group optionType="button" buttonStyle="solid" options={optionsOf(courseTypes)} />
           </Form.Item>
 
-          <Form.Item label="课程封面图" required extra="支持 jpg / png">
+          <Form.Item label="课程封面图" required extra={COVER_IMAGE_UPLOAD_HINT}>
             <Upload
-              accept="image/*"
+              accept={IMAGE_UPLOAD_ACCEPT}
               listType="picture-card"
               maxCount={1}
               fileList={coverList}

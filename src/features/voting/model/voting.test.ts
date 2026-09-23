@@ -21,6 +21,7 @@ import {
   voteChoiceAvatarName,
   voteVisualSubtitleMax,
   voteVisualTitleMax,
+  voteNameMax,
   voteVisibilities,
   voteQuotaModes,
   voteQuotaFieldLabel,
@@ -259,6 +260,12 @@ describe('parseVoteCrowdCsv', () => {
     expect(parseVoteCrowdCsv(csv)).toEqual({ names: ['张悦', '李明'] });
     expect(parseVoteCrowdCsv('').error).toBe('文件为空');
     expect(parseVoteCrowdCsv('工号,部门\nE1001,前端组').error).toBe('缺少姓名列');
+  });
+});
+
+describe('vote name limit', () => {
+  it('caps campaign names at 20 characters', () => {
+    expect(voteNameMax).toBe(20);
   });
 });
 

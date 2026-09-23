@@ -15,13 +15,14 @@ import {
   reviewInterestGroup,
   upsertInterestGroupActivity,
   createEmployeeInterestGroupActivity,
-  submitInterestGroupActivities,
-  reviewInterestGroupActivity,
-  publishInterestGroupActivities,
   deleteInterestGroupActivity,
   deleteInterestGroupCategory,
   getInterestGroupCategories,
   getInterestGroups,
+  moveInterestGroup,
+  moveInterestGroupActivity,
+  toggleInterestGroupPin,
+  toggleInterestGroupActivityPin,
   moveInterestGroupCategory,
   setInterestGroupCategoryStatus,
   upsertInterestGroupCategory,
@@ -31,6 +32,7 @@ import {
   deleteInterestGroupMomentComment,
   getInterestGroupMoments,
   getInterestGroupComments,
+  addEmployeeInterestGroupMoment,
   removeInterestGroupComments,
   addInterestGroupMembers,
   removeInterestGroupMembers,
@@ -38,6 +40,9 @@ import {
   setInterestGroupMemberStatus,
 } from './interestGroupStore';
 import { igActivityAlignDefaults } from './interestGroupActivity';
+import { comparePinSort } from './pinSort';
+import { defaultInterestGroupSettings } from './interestGroupSettings';
+import { saveInterestGroupSettings } from './interestGroupSettingsStore';
 
 describe('interestGroupStore delete rules', () => {
   beforeEach(() => {
@@ -58,7 +63,12 @@ describe('interestGroupStore delete rules', () => {
     expect(getInterestGroupActivities().find((item) => item.id === 301)?.groupId).toBeNull();
   });
 
-  it('blocks terminate on ongoing activity', () => {
+  it('terminates ongoing activity and cancels unheld sessions', () => {
+    expect(terminateInterestGroupActivity(201)).toEqual({ ok: true });
+    const activity = getInterestGroupActivity(201);
+    expect(activity?.status).toBe('cancelled');
+    expect(activity?.terminatedAt).toBeTruthy();
+    expect(activity?.sessions?.map((session) => session.status)).toEqual(['ongoing', 'cancelled']);
     expect(terminateInterestGroupActivity(201)).toEqual({ ok: false, reason: 'not-allowed' });
   });
 
@@ -79,19 +89,18 @@ describe('interestGroupStore delete rules', () => {
       detailHtml: '<p>ok</p>',
     });
     expect(created.status).toBe('upcoming');
-    expect(created.auditStatus).toBe('待提交');
-    expect(created.publishStatus).toBe('未发布');
+    expect(created.auditStatus).toBe('无需审核');
+    expect(created.publishStatus).toBe('已发布');
     expect(created.signedCount).toBe(0);
-    expect(submitInterestGroupActivities([created.id])).toBe(1);
-    expect(reviewInterestGroupActivity(created.id, true, '')).toBe(true);
-    expect(publishInterestGroupActivities([created.id])).toBe(1);
+    expect(created.publishedAt).toBeTruthy();
+    expect(created.creator).toBe('陈产品');
     expect(deleteInterestGroupActivity(created.id)).toEqual({ ok: true });
     expect(deleteInterestGroupActivity(101)).toEqual({ ok: false, reason: 'has-signups' });
   });
 
   it('deletes category and unassigns groups and activities', () => {
     const result = deleteInterestGroupCategory('sport');
-    expect(result).toEqual({ ok: true, groupCount: 4, activityCount: 4 });
+    expect(result).toEqual({ ok: true, groupCount: 4, activityCount: 5 });
     expect(getInterestGroupCategories().some((item) => item.key === 'sport')).toBe(false);
     expect(getInterestGroups().filter((item) => item.categoryKey === 'sport')).toHaveLength(0);
     expect(getInterestGroupActivities().filter((item) => item.categoryKey === 'sport')).toHaveLength(0);
@@ -160,7 +169,7 @@ describe('interestGroupStore delete rules', () => {
     expect(added.added).toBe(1);
     expect(added.skipped.length).toBeGreaterThan(0);
     expect(getInterestGroup(1)?.memberCount).toBe(129);
-    expect(removeInterestGroupMembers(1, ['张悦'])).toEqual({ removed: 0, skipped: ['张悦是小组负责人'] });
+    expect(removeInterestGroupMembers(1, ['张悦'])).toEqual({ removed: 0, skipped: ['张悦是兴趣圈负责人'] });
     expect(removeInterestGroupMembers(1, ['赵人事']).removed).toBe(1);
     expect(getInterestGroup(1)?.memberCount).toBe(128);
     expect(getInterestGroupMembers().find((item) => item.employeeId === '李明' && item.groupId === 1)?.status).toBe('已通过');
@@ -184,10 +193,8 @@ describe('interestGroupStore delete rules', () => {
       {
         name: group!.name,
         categoryKey: group!.categoryKey,
-        leadEmployeeId: group!.leadEmployeeId,
+        leadEmployeeIds: group!.leadEmployeeIds,
         joinMode: 'free',
-        area: group!.area,
-        tags: group!.tags,
         intro: group!.intro,
         coverUrl: group!.coverUrl,
       },
@@ -196,23 +203,52 @@ describe('interestGroupStore delete rules', () => {
     expect(getInterestGroupMembers().find((item) => item.employeeId === '林销' && item.groupId === 2)?.status).toBe('已通过');
   });
 
-  it('creates group with one member', () => {
+  it('creates group with selected leads as members', () => {
     const created = upsertInterestGroup({
-      name: '测试小组',
+      name: '测试兴趣圈',
       categoryKey: 'sport',
-      leadEmployeeId: '赵人事',
+      leadEmployeeIds: ['赵人事', '张悦'],
       joinMode: 'approve',
-      area: '总部',
-      tags: ['新人友好'],
       intro: '简介',
       coverUrl: '/activities/share.jpg',
     });
-    expect(created.memberCount).toBe(1);
+    expect(created.leadEmployeeIds).toEqual(['赵人事', '张悦']);
+    expect(created.leadName).toBe('赵人事、张悦');
+    expect(created.memberCount).toBe(2);
+    expect(created.area).toBe('');
+    expect(created.tags).toEqual([]);
+    expect(
+      getInterestGroupMembers()
+        .filter((item) => item.groupId === created.id && item.role === 'lead')
+        .map((item) => item.employeeId)
+        .sort(),
+    ).toEqual(['张悦', '赵人事']);
     expect(created.activityCount).toBe(0);
     expect(created.joinMode).toBe('free');
     expect(created.auditStatus).toBe('无需审核');
+    expect(created.publishStatus).toBe('未发布');
     expect(created.source).toBe('admin');
-    expect(getInterestGroup(created.id)?.name).toBe('测试小组');
+    expect(getInterestGroup(created.id)?.name).toBe('测试兴趣圈');
+  });
+
+  it('auto-publishes employee-created groups when no audit is needed', () => {
+    saveInterestGroupSettings({ ...defaultInterestGroupSettings, employeeCreateGroupNeedAudit: false });
+    const created = upsertInterestGroup(
+      {
+        name: '员工免审建圈',
+        categoryKey: 'sport',
+        leadEmployeeIds: ['林浅'],
+        joinMode: 'free',
+        intro: '员工创建',
+        coverUrl: '/activities/share.jpg',
+      },
+      undefined,
+      { source: 'employee' },
+    );
+    expect(created.auditStatus).toBe('无需审核');
+    expect(created.publishStatus).toBe('已发布');
+    expect(getInterestGroup(created.id)?.publishStatus).toBe('已发布');
+    saveInterestGroupSettings(defaultInterestGroupSettings);
   });
 
   it('puts employee-created groups into 待审核 when settings require audit', () => {
@@ -220,12 +256,10 @@ describe('interestGroupStore delete rules', () => {
     expect(getInterestGroup(5)?.source).toBe('employee');
     const created = upsertInterestGroup(
       {
-        name: 'C端新建小组',
+        name: 'C端新建兴趣圈',
         categoryKey: 'sport',
-        leadEmployeeId: '赵人事',
+        leadEmployeeIds: ['赵人事'],
         joinMode: 'free',
-        area: '总部',
-        tags: [],
         intro: '员工创建',
         coverUrl: '/activities/share.jpg',
       },
@@ -233,6 +267,7 @@ describe('interestGroupStore delete rules', () => {
       { source: 'employee' },
     );
     expect(created.auditStatus).toBe('待审核');
+    expect(created.publishStatus).toBe('未发布');
     expect(created.source).toBe('employee');
     expect(reviewInterestGroup(created.id, true, '')).toBe(true);
     expect(getInterestGroup(created.id)?.auditStatus).toBe('已通过');
@@ -262,8 +297,90 @@ describe('interestGroupStore delete rules', () => {
     expect(created?.type).toBe('once');
     expect(created?.startAt).toBe('2026-09-04 19:30');
     expect(created?.capacity).toBe(12);
-    expect(created?.auditStatus).toBe('待审核');
-    expect(created?.publishStatus).toBe('未发布');
+    expect(created?.auditStatus).toBe('无需审核');
+    expect(created?.publishStatus).toBe('已发布');
     expect(created?.hostName).toBe('林浅');
+  });
+
+  it('requires a matching group activity when publishing a moment', () => {
+    expect(
+      addEmployeeInterestGroupMoment({
+        groupId: 1,
+        author: '林浅',
+        content: '无活动',
+        imageUrls: ['/a.jpg'],
+      }),
+    ).toBeNull();
+    expect(
+      addEmployeeInterestGroupMoment({
+        groupId: 1,
+        activityId: 201,
+        author: '林浅',
+        content: '跨圈',
+        imageUrls: ['/a.jpg'],
+      }),
+    ).toBeNull();
+    const created = addEmployeeInterestGroupMoment({
+      groupId: 1,
+      activityId: 102,
+      author: '林浅',
+      content: '夜跑收工',
+      imageUrls: ['/a.jpg'],
+    });
+    expect(created?.groupId).toBe(1);
+    expect(created?.activityId).toBe(102);
+  });
+
+  it('pins groups to the top and inserts new groups after the pin zone', () => {
+    expect(toggleInterestGroupPin(2)).toBe(true);
+    expect(getInterestGroup(2)?.pinned).toBe(true);
+    const created = upsertInterestGroup({
+      name: '新圈排序',
+      categoryKey: 'sport',
+      leadEmployeeIds: ['张悦'],
+      joinMode: 'free',
+      intro: '排序',
+      coverUrl: '/activities/share.jpg',
+    });
+    const ordered = [...getInterestGroups()].sort(comparePinSort);
+    expect(ordered.filter((item) => item.pinned).map((item) => item.id)[0]).toBe(2);
+    expect(ordered.find((item) => !item.pinned)?.id).toBe(created.id);
+  });
+
+  it('moves unpinned groups immediately and skips pinned rows', () => {
+    const visible = [...getInterestGroups()].sort(comparePinSort);
+    const unpinned = visible.filter((item) => !item.pinned);
+    expect(moveInterestGroup(unpinned[0].id, 'up', visible)).toBe(false);
+    expect(moveInterestGroup(visible[0].id, 'down', visible)).toBe(false);
+    expect(moveInterestGroup(unpinned[1].id, 'up', visible)).toBe(true);
+    const next = [...getInterestGroups()].sort(comparePinSort).filter((item) => !item.pinned);
+    expect(next[0].id).toBe(unpinned[1].id);
+    expect(next[1].id).toBe(unpinned[0].id);
+  });
+
+  it('pins activities and inserts new activities after the pin zone', () => {
+    expect(toggleInterestGroupActivityPin(102)).toBe(true);
+    expect(getInterestGroupActivity(102)?.pinned).toBe(true);
+    const created = upsertInterestGroupActivity({
+      ...igActivityAlignDefaults(),
+      coverUrl: '/activities/share.jpg',
+      title: '排序插入活动',
+      groupId: 1,
+      categoryKey: 'sport',
+      type: 'once',
+      startAt: '2026-10-01 19:00',
+      endAt: '2026-10-01 21:00',
+      signupStartAt: '2026-09-01 09:00',
+      signupEndAt: '2026-10-01 18:00',
+      location: '总部',
+      capacity: 12,
+      detailHtml: '<p>排序</p>',
+    });
+    const ordered = [...getInterestGroupActivities()].sort(comparePinSort);
+    expect(ordered[0].pinned).toBe(true);
+    expect(ordered.find((item) => !item.pinned)?.id).toBe(created.id);
+    const visible = ordered;
+    const unpinned = visible.filter((item) => !item.pinned);
+    expect(moveInterestGroupActivity(unpinned[1].id, 'up', visible)).toBe(true);
   });
 });

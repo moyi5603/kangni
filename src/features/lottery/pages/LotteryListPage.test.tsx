@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { LotteryListPage } from './LotteryListPage';
 import { LotteryFormPage } from './LotteryFormPage';
 import { LotteryDetailPage } from './LotteryDetailPage';
-import { __resetLotteryStoreForTests } from '../model/lotteryStore';
+import { __resetLotteryStoreForTests, getLotteries, saveLottery } from '../model/lotteryStore';
 
 const noop = () => {};
 
@@ -31,6 +31,8 @@ describe('LotteryListPage', () => {
     expect(html).toContain('每日次数');
     expect(html).toContain('奖品种数');
     expect(html).toContain('参与人数');
+    expect(html).toContain('组织内 · 全员');
+    expect(html).toContain('组织内 · 按部门（生产中心）');
     expect(html).toContain('详情');
     expect(html).toContain('编辑');
     expect(html).toContain('删除');
@@ -58,11 +60,18 @@ describe('LotteryFormPage', () => {
     expect(html).toContain('每人初始');
     expect(html).toContain('每日登录');
     expect(html).toContain('打卡');
+    expect(html).toContain('每次打卡可得');
     expect(html).toContain('消耗上限');
     expect(html).toContain('每人每天次数');
     expect(html).toContain('奖品设置');
     expect(html).toContain('添加奖品');
-    expect(html).toContain('开启可见范围');
+    expect(html).toContain('参与范围');
+    expect(html).toContain('组织内成员');
+    expect(html).toContain('公开');
+    expect(html).toContain('组织范围');
+    expect(html).not.toContain('开启可见范围');
+    expect(html).not.toContain('下载导入模板');
+    expect(html).not.toContain('员工工号列');
     expect(html).toContain('每人最多中奖');
     expect(html).toContain('未中奖文案');
   });
@@ -75,6 +84,23 @@ describe('LotteryFormPage', () => {
     );
     expect(html).toContain('活动进行中，奖品名称、数量与概率不可修改。');
     expect(html).toContain('disabled');
+  });
+
+  it('shows 每次打卡可得 when checkin source is enabled', () => {
+    const [first] = getLotteries();
+    saveLottery({
+      ...first,
+      gainCheckinEnabled: true,
+      gainCheckinCount: 3,
+      gainCheckinThemeIds: [1],
+    });
+    const html = renderToStaticMarkup(
+      <App>
+        <LotteryFormPage mode="edit" recordId={String(first.id)} onBack={noop} onSaved={noop} />
+      </App>,
+    );
+    expect(html).toContain('每次打卡可得');
+    expect(html).toContain('关联主题');
   });
 });
 
@@ -90,10 +116,12 @@ describe('LotteryDetailPage', () => {
       </App>,
     );
     expect(html).toContain('年会幸运大奖');
+    expect(html).toContain('组织内 · 全员');
     expect(html).toContain('奖品');
     expect(html).toContain('中奖记录');
     expect(html).toContain('参与记录');
     expect(html).toContain('蓝牙耳机');
+    expect(html).toContain('组织内 · 全员');
     expect(html).not.toContain('待发放');
     expect(html).not.toContain('已发放');
   });

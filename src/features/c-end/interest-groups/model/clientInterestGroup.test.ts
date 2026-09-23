@@ -4,6 +4,8 @@ import {
   getInterestGroupMembers,
   getInterestGroupMoments,
   joinInterestGroupAsEmployee,
+  toggleInterestGroupActivityPin,
+  toggleInterestGroupPin,
   unpublishInterestGroupActivities,
   upsertInterestGroup,
   __resetInterestGroupStoreForTest,
@@ -43,15 +45,27 @@ describe('C-end interest group catalog from admin store', () => {
     expect(catalog.groups.find((g) => g.id === toClientGroupId(1))?.lead).toBe('张悦');
     expect(catalog.groups.find((g) => g.id === toClientGroupId(1))?.joined).toBe(false);
     expect(catalog.groups.find((g) => g.id === toClientGroupId(1))?.createdByMe).toBe(false);
+    expect(catalog.groups.find((g) => g.id === toClientGroupId(1))).toMatchObject({ pinned: true, sortIndex: 0 });
+    expect(catalog.acts.find((a) => a.id === toClientActId(201))).toMatchObject({ pinned: true, sortIndex: 0 });
+    expect(catalog.acts.find((a) => a.id === toClientActId(101))?.pinned).toBe(false);
 
     expect(catalog.acts.filter((a) => a.createdByMe).map((a) => a.title).sort()).toEqual(
-      ['午间拉伸十分钟', '周末胶片冲洗局'].sort(),
+      ['午间拉伸十分钟', '午间拉伸跟练三期', '周末胶片冲洗局'].sort(),
     );
     expect(catalog.acts.filter((a) => a.joinedByMe && !a.createdByMe).map((a) => a.title).sort()).toEqual(
       ['初夏城市漫步', '周末连营徒步'].sort(),
     );
     expect(catalog.acts.map((a) => a.title).sort()).toEqual(
-      ['初夏城市漫步', '午间拉伸十分钟', '周末连营徒步', '周末胶片冲洗局', '滨江 8K 夜跑 · 江风配速团'].sort(),
+      [
+        '初夏城市漫步',
+        '午间拉伸十分钟',
+        '午间拉伸跟练三期',
+        '周五开黑体验局',
+        '夏季共读三期',
+        '周末连营徒步',
+        '周末胶片冲洗局',
+        '滨江 8K 夜跑 · 江风配速团',
+      ].sort(),
     );
     expect(catalog.acts.some((a) => a.title === '周一晚共读 · 固定围读局')).toBe(false);
     expect(catalog.acts.find((a) => a.id === toClientActId(101))?.gid).toBe(toClientGroupId(1));
@@ -79,9 +93,9 @@ describe('C-end interest group catalog from admin store', () => {
     ]);
   });
 
-  it('treats only published+approved activities as client-visible', () => {
+  it('treats only published activities as client-visible', () => {
     const published = getInterestGroupActivities().filter(isPublishedIgActivity);
-    expect(published.map((item) => item.id).sort()).toEqual([101, 102, 201, 601, 602]);
+    expect(published.map((item) => item.id).sort()).toEqual([101, 102, 201, 501, 601, 602, 603, 604]);
   });
 
   it('shows an admin rename on the C-end catalog', () => {
@@ -91,16 +105,22 @@ describe('C-end interest group catalog from admin store', () => {
       {
         name: '城市夜跑团改名',
         categoryKey: 'sport',
-        leadEmployeeId: '张悦',
+        leadEmployeeIds: ['张悦'],
         joinMode: 'free',
-        area: '总部 · 滨江园区',
-        tags: ['每周三场', '零基础友好'],
         intro: '下班后甩开屏幕，用脚步丈量城市。我们按配速分组，从 6′30″ 到 5′00″ 都有搭子。',
         coverUrl: '/activities/basketball.jpg',
       },
       1,
     );
     expect(buildIgCatalog(ME).groups.find((g) => g.id === toClientGroupId(1))?.name).toBe('城市夜跑团改名');
+  });
+
+  it('mirrors admin pin toggles onto the C-end catalog', () => {
+    toggleInterestGroupPin(3);
+    toggleInterestGroupActivityPin(101);
+    const catalog = buildIgCatalog(ME);
+    expect(catalog.groups.find((item) => item.id === toClientGroupId(3))).toMatchObject({ pinned: true });
+    expect(catalog.acts.find((item) => item.id === toClientActId(101))).toMatchObject({ pinned: true });
   });
 
   it('drops an unpublished activity from the C-end catalog', () => {

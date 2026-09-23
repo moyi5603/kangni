@@ -1,4 +1,4 @@
-import { useMemo, useState, type Key, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { DownloadOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import {
   App,
@@ -6,7 +6,6 @@ import {
   Card,
   DatePicker,
   Empty,
-  Flex,
   Form,
   Input,
   Modal,
@@ -23,17 +22,14 @@ import type { TableColumnsType } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { SearchField, SearchPanel } from '../../../shared/ui/ListPage';
-import { useRejectReasonPrompt } from '../../../shared/ui/RejectReasonModal';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import {
   departmentOptions,
-  orgPeopleByName,
   orgPeoplePickerTree,
   withDisabledPeople,
 } from '../../activities/model/activity';
 import {
   interestGroupMemberRoleLabels,
-  interestGroupMemberStatuses,
   listInterestGroupMembers,
   type InterestGroupMember,
 } from '../model/interestGroupMember';
@@ -42,20 +38,9 @@ import {
   downloadInterestGroupMemberImportTemplate,
   parseInterestGroupMemberImportCsv,
   resolveInterestGroupMemberImport,
+  INTEREST_GROUP_MEMBER_IMPORT_HINT,
 } from '../model/interestGroupMemberIo';
-import {
-  addInterestGroupMembers,
-  getInterestGroup,
-  removeInterestGroupMembers,
-  setInterestGroupMemberStatus,
-  useInterestGroupMembers,
-} from '../model/interestGroupStore';
-
-const statusColor: Record<string, string> = {
-  待审核: 'warning',
-  已通过: 'success',
-  已驳回: 'error',
-};
+import { addInterestGroupMembers, getInterestGroup, useInterestGroupMembers } from '../model/interestGroupStore';
 
 type DateRange = [Dayjs | null, Dayjs | null] | null;
 
@@ -81,8 +66,7 @@ function modalFooter(_: ReactNode, extra: { OkBtn: React.FC; CancelBtn: React.FC
 }
 
 export function InterestGroupMemberListPage({ groupId }: { groupId: number }) {
-  const { message, modal } = App.useApp();
-  const { promptReject, rejectReasonModal } = useRejectReasonPrompt();
+  const { message } = App.useApp();
   const all = useInterestGroupMembers();
   const data = useMemo(() => listInterestGroupMembers(groupId, all), [all, groupId]);
   const memberNames = useMemo(() => new Set(data.map((item) => item.employeeId)), [data]);
@@ -91,11 +75,9 @@ export function InterestGroupMemberListPage({ groupId }: { groupId: number }) {
     name: string;
     department?: string;
     role?: InterestGroupMember['role'];
-    status?: InterestGroupMember['status'];
     joinedAt: DateRange;
   }>({ name: '', joinedAt: null });
   const [query, setQuery] = useState(draft);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importList, setImportList] = useState<UploadFile[]>([]);
@@ -107,71 +89,11 @@ export function InterestGroupMemberListPage({ groupId }: { groupId: number }) {
           (!query.name || item.name.includes(query.name)) &&
           (!query.department || item.department === query.department) &&
           (!query.role || item.role === query.role) &&
-          (!query.status || item.status === query.status) &&
           inDayRange(item.joinedAt, query.joinedAt),
       ),
     [data, query],
   );
-  const hasFilter = Boolean(query.name || query.department || query.role || query.status || query.joinedAt);
-  const selected = data.filter((item) => selectedRowKeys.includes(item.employeeId));
-
-  const deleteOne = (record: InterestGroupMember) => {
-    modal.confirm({
-      title: `确认将「${record.name}」移出小组？`,
-      content: '移出后该人员不再出现在本组成员名单中。',
-      okText: '确认',
-      cancelText: '取消',
-      footer: modalFooter,
-      onOk: () => {
-        const result = removeInterestGroupMembers(groupId, [record.employeeId]);
-        if (!result.removed) {
-          message.warning(result.skipped[0] ?? '无法移出');
-          return;
-        }
-        setSelectedRowKeys((keys) => keys.filter((key) => key !== record.employeeId));
-        message.success(`已移出「${record.name}」`);
-      },
-    });
-  };
-
-  const setStatus = (records: InterestGroupMember[], status: '已通过' | '已驳回', label: string, reason?: string) => {
-    const targets = records.filter((item) => item.role !== 'lead' && item.status === '待审核');
-    if (!targets.length) {
-      message.info('已选成员均不是待审核状态');
-      return;
-    }
-    const result = setInterestGroupMemberStatus(
-      groupId,
-      targets.map((item) => item.employeeId),
-      status,
-      reason,
-    );
-    message.success(`已${label} ${result.done} 人`);
-    setSelectedRowKeys(selected.filter((item) => item.status !== '待审核').map((item) => item.employeeId));
-  };
-
-  const rejectOne = (record: InterestGroupMember) => {
-    promptReject({
-      title: `确认驳回「${record.name}」的入组申请？`,
-      description: '驳回后该人员将无法加入本小组。',
-      onConfirm: (reason) => {
-        const result = setInterestGroupMemberStatus(groupId, [record.employeeId], '已驳回', reason);
-        if (!result.done) {
-          message.info('仅待审核成员可驳回');
-          return;
-        }
-        message.success(`已驳回「${record.name}」`);
-      },
-    });
-  };
-
-  const deleteSelected = () => {
-    const ids = selected.map((item) => item.employeeId);
-    const result = removeInterestGroupMembers(groupId, ids);
-    if (result.removed) message.success(`已移出 ${result.removed} 人`);
-    if (result.skipped.length) message.warning(result.skipped.join('；'));
-    setSelectedRowKeys([]);
-  };
+  const hasFilter = Boolean(query.name || query.department || query.role || query.joinedAt);
 
   const saveAddedPeople = async () => {
     const values = await addForm.validateFields();
@@ -219,12 +141,6 @@ export function InterestGroupMemberListPage({ groupId }: { groupId: number }) {
 
   const columns: TableColumnsType<InterestGroupMember> = [
     { title: '姓名', dataIndex: 'name', width: 110 },
-    {
-      title: '手机号',
-      key: 'phone',
-      width: 130,
-      render: (_, record) => orgPeopleByName[record.employeeId]?.phone ?? '—',
-    },
     { title: '部门', dataIndex: 'department', width: 120 },
     {
       title: '角色',
@@ -234,46 +150,7 @@ export function InterestGroupMemberListPage({ groupId }: { groupId: number }) {
         <Tag color={value === 'lead' ? 'gold' : 'default'}>{interestGroupMemberRoleLabels[value]}</Tag>
       ),
     },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      width: 110,
-      render: (value: string) => <Tag color={statusColor[value]}>{value}</Tag>,
-    },
     { title: '加入时间', dataIndex: 'joinedAt', width: 180 },
-    {
-      title: '操作',
-      key: 'action',
-      fixed: 'right',
-      width: 180,
-      render: (_, record) =>
-        record.role === 'lead' ? (
-          <Typography.Text type="secondary">—</Typography.Text>
-        ) : (
-          <Space>
-            <Button
-              type="link"
-              aria-label={`通过 ${record.name}`}
-              onClick={() => {
-                const result = setInterestGroupMemberStatus(groupId, [record.employeeId], '已通过');
-                if (!result.done) {
-                  message.info('仅待审核成员可通过');
-                  return;
-                }
-                message.success(`已通过「${record.name}」`);
-              }}
-            >
-              通过
-            </Button>
-            <Button type="link" aria-label={`驳回 ${record.name}`} onClick={() => rejectOne(record)}>
-              驳回
-            </Button>
-            <Button type="link" aria-label={`删除 ${record.name}`} onClick={() => deleteOne(record)}>
-              删除
-            </Button>
-          </Space>
-        ),
-    },
   ];
 
   return (
@@ -281,14 +158,12 @@ export function InterestGroupMemberListPage({ groupId }: { groupId: number }) {
       <SearchPanel
         onSearch={() => {
           setQuery(draft);
-          setSelectedRowKeys([]);
           message.success('查询完成');
         }}
         onReset={() => {
           const empty = { name: '', joinedAt: null as DateRange };
           setDraft(empty);
           setQuery(empty);
-          setSelectedRowKeys([]);
         }}
       >
         <SearchField label="姓名">
@@ -320,15 +195,6 @@ export function InterestGroupMemberListPage({ groupId }: { groupId: number }) {
             ]}
           />
         </SearchField>
-        <SearchField label="状态">
-          <Select
-            allowClear
-            placeholder="全部状态"
-            value={draft.status}
-            onChange={(value) => setDraft((current) => ({ ...current, status: value }))}
-            options={optionsOf(interestGroupMemberStatuses)}
-          />
-        </SearchField>
         <SearchField label="加入时间">
           <DatePicker.RangePicker
             style={{ width: '100%' }}
@@ -339,6 +205,7 @@ export function InterestGroupMemberListPage({ groupId }: { groupId: number }) {
       </SearchPanel>
       <Card>
         <div className="table-toolbar">
+          <Typography.Text>共 {filtered.length} 人</Typography.Text>
           <Space>
             <Button
               type="primary"
@@ -363,7 +230,7 @@ export function InterestGroupMemberListPage({ groupId }: { groupId: number }) {
               icon={<DownloadOutlined />}
               onClick={() => {
                 const group = getInterestGroup(groupId);
-                downloadInterestGroupMemberExport(group?.name ?? '小组', filtered);
+                downloadInterestGroupMemberExport(group?.name ?? '兴趣圈', filtered);
                 message.success(`已导出 ${filtered.length} 人`);
               }}
             >
@@ -371,62 +238,12 @@ export function InterestGroupMemberListPage({ groupId }: { groupId: number }) {
             </Button>
           </Space>
         </div>
-        {selectedRowKeys.length ? (
-          <Flex className="batch-toolbar" justify="space-between" align="center">
-            <Typography.Text>
-              已选择 <strong>{selectedRowKeys.length}</strong> 项
-            </Typography.Text>
-            <Space>
-              <Button
-                onClick={() =>
-                  modal.confirm({
-                    title: `确认通过已选 ${selectedRowKeys.length} 人？`,
-                    content: '仅待审核记录会被通过。',
-                    okText: '确认',
-                    cancelText: '取消',
-                    footer: modalFooter,
-                    onOk: () => setStatus(selected, '已通过', '通过'),
-                  })
-                }
-              >
-                批量通过
-              </Button>
-              <Button
-                onClick={() =>
-                  promptReject({
-                    title: `确认驳回已选 ${selectedRowKeys.length} 人？`,
-                    description: '仅待审核记录会被驳回。',
-                    onConfirm: (reason) => setStatus(selected, '已驳回', '驳回', reason),
-                  })
-                }
-              >
-                批量驳回
-              </Button>
-              <Button
-                onClick={() =>
-                  modal.confirm({
-                    title: `确认移出已选 ${selectedRowKeys.length} 人？`,
-                    content: '小组负责人不会被移出。',
-                    okText: '确认',
-                    cancelText: '取消',
-                    footer: modalFooter,
-                    onOk: deleteSelected,
-                  })
-                }
-              >
-                批量删除
-              </Button>
-              <Button onClick={() => setSelectedRowKeys([])}>取消选择</Button>
-            </Space>
-          </Flex>
-        ) : null}
         <Table
           rowKey="employeeId"
           sticky
-          rowSelection={{ selectedRowKeys, preserveSelectedRowKeys: true, onChange: setSelectedRowKeys }}
           columns={columns}
           dataSource={filtered}
-          scroll={{ x: 1040 }}
+          scroll={{ x: 720 }}
           pagination={{
             pageSize: b2bStandards.table.pageSize,
             pageSizeOptions: [...b2bStandards.table.pageSizeOptions],
@@ -477,7 +294,7 @@ export function InterestGroupMemberListPage({ groupId }: { groupId: number }) {
         destroyOnHidden
       >
         <Form layout="horizontal" className="edit-form" requiredMark labelWrap={false}>
-          <Form.Item label="导入文件" extra="支持 csv。请按模板填写姓名、手机号、部门。须为组织内人员。" required>
+          <Form.Item label="导入文件" extra={INTEREST_GROUP_MEMBER_IMPORT_HINT} required>
             <Space>
               <Upload
                 accept=".csv,.xlsx"
@@ -495,7 +312,6 @@ export function InterestGroupMemberListPage({ groupId }: { groupId: number }) {
           </Form.Item>
         </Form>
       </Modal>
-      {rejectReasonModal}
     </div>
   );
 }

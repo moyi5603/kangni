@@ -1,4 +1,4 @@
-import { useMemo, useState, type Key, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type Key, type ReactNode } from 'react';
 import { PlusOutlined } from '@ant-design/icons';
 import {
   App,
@@ -21,19 +21,32 @@ import type { TableColumnsType } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { ListPageHeading, SearchField, SearchPanel } from '../../../shared/ui/ListPage';
+import { ListViewSegmented } from '../../../shared/ui/ListViewSegmented';
+import { MediaEntityCardGrid } from '../../../shared/ui/MediaEntityCardGrid';
 import { TableEllipsisText } from '../../../shared/ui/TableEllipsisText';
 import { TableRowActions, type TableRowAction } from '../../../shared/ui/TableRowActions';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import {
+  ACTIVITY_APP_LIST_VIEW_KEY,
+  readListViewMode,
+  writeListViewMode,
+  type ListViewMode,
+} from '../../../shared/ui/listViewMode';
+import {
   auditStatuses,
-  formatActivityTime,
-  formatPublishedAt,
   getActivityLifecycleStatus,
   lifecycleStatusColor,
   lifecycleStatuses,
+  formatActivityTime,
+  applyReopenActivitySignup,
+  applyTerminateActivity,
+  canReopenActivitySignup,
   canPublishActivity,
-  canReviewActivity,
-  canSubmitApproval,
+  canRevokeActivity,
+  revokeActivityBlockReason,
+  canTerminateActivity,
+  canEditActivity,
+  editActivityBlockReason,
   type Activity,
   type AuditStatus,
   type LifecycleStatus,
@@ -43,10 +56,9 @@ import {
   activityScheduleTypes,
   type ActivityScheduleType,
 } from '../model/activitySchedule';
-import { ActivityReviewModal } from '../components/ActivityReviewModal';
-import { patchActivities, submitActivitiesForApproval, useActivities } from '../model/activityStore';
+import { patchActivities, useActivities } from '../model/activityStore';
+import { applyPinToggle, movePinSortItem, nextCustomSortIndex, pinSortMoveState } from '../../interest-groups/model/pinSort';
 import { useCategories } from '../model/categoryStore';
-import { ActivityQrCheckInPage } from './ActivityQrCheckInPage';
 
 type DateRange = [Dayjs | null, Dayjs | null] | null;
 
@@ -66,14 +78,6 @@ const emptyQuery: ActivityQuery = {
   activityTime: null,
   createdAt: null,
   publishedAt: null,
-};
-
-const auditColor: Record<AuditStatus, string> = {
-  待提交: 'default',
-  待审核: 'warning',
-  已通过: 'success',
-  已驳回: 'error',
-  无需审核: 'default',
 };
 
 function optionsOf(values: readonly string[]) {
@@ -121,10 +125,11 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
     .map((item) => ({ value: item.name, label: item.name }));
   const [draft, setDraft] = useState<ActivityQuery>(emptyQuery);
   const [query, setQuery] = useState<ActivityQuery>(emptyQuery);
+  const [view, setView] = useState<ListViewMode>(() => readListViewMode(ACTIVITY_APP_LIST_VIEW_KEY));
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(b2bStandards.table.pageSize);
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
-  const [reviewing, setReviewing] = useState<Activity>();
-  const [qrActivity, setQrActivity] = useState<Activity>();
   const [categoryForm] = Form.useForm<{ category: string }>();
   const filtered = useMemo(() => {
     const rows = data.filter(
@@ -138,8 +143,19 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
         inDayRange(item.createdAt, query.createdAt) &&
         inDayRange(item.publishedAt, query.publishedAt),
     );
-    return [...rows].sort((left, right) => Number(right.pinned) - Number(left.pinned));
+    return [...rows].sort((left, right) =>
+      Number(right.pinned) - Number(left.pinned) || (left.sortIndex ?? 0) - (right.sortIndex ?? 0) || left.id - right.id,
+    );
   }, [data, query]);
+  const setListView = (next: ListViewMode) => {
+    setView(next);
+    writeListViewMode(ACTIVITY_APP_LIST_VIEW_KEY, next);
+    if (next === 'card') setSelectedRowKeys([]);
+  };
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filtered.length / pageSize) || 1);
+    if (page > maxPage) setPage(maxPage);
+  }, [filtered.length, page, pageSize]);
   const hasActiveQuery = Boolean(
     query.title ||
       query.category ||
@@ -152,8 +168,16 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
   );
 
   const openEditor = (record?: Activity) => {
-    if (record) onNavigate('activity-edit', String(record.id));
-    else onNavigate('activity-create');
+    if (record) {
+      const blocked = editActivityBlockReason(record);
+      if (blocked) {
+        message.info(blocked);
+        return;
+      }
+      onNavigate('activity-edit', String(record.id));
+      return;
+    }
+    onNavigate('activity-create');
   };
 
   const openDetail = (record: Activity) => onNavigate('activity-detail', String(record.id));
@@ -185,14 +209,14 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
   };
 
   const batchRevoke = () => {
-    const targets = selectedActivities.filter((item) => item.publishStatus === '已发布');
+    const targets = selectedActivities.filter(canRevokeActivity);
     if (!targets.length) {
-      message.info('已选活动均未发布，无需撤销');
+      message.info('已选活动均不可撤销。进行中请终止，已结束或已终止不能撤销');
       return;
     }
     const targetIds = new Set(targets.map((item) => item.id));
     patchActivities((list) =>
-      list.map((item) => (targetIds.has(item.id) ? { ...item, publishStatus: '未发布', publishedAt: '' } : item)),
+      list.map((item) => (targetIds.has(item.id) ? { ...item, publishStatus: '未发布' as const } : item)),
     );
     const skipped = selectedActivities.length - targets.length;
     message.success(skipped ? `已撤销 ${targets.length} 个活动，${skipped} 个本为未发布` : `已撤销 ${targets.length} 个活动`);
@@ -210,40 +234,62 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
   };
 
   const togglePin = (record: Activity) => {
-    patchActivities((list) => list.map((item) => (item.id === record.id ? { ...item, pinned: !item.pinned } : item)));
+    patchActivities((list) => applyPinToggle(list, record.id));
     message.success(record.pinned ? `已取消置顶「${record.title}」` : `已置顶「${record.title}」`);
   };
 
-  const submitOne = (record: Activity) => {
-    if (!canSubmitApproval(record)) {
-      message.info(`「${record.title}」当前不可提交审批`);
-      return;
-    }
+  const moveOne = (record: Activity, direction: 'up' | 'down') => {
+    patchActivities((list) => movePinSortItem(list, filtered, record.id, direction) ?? list);
+    message.success(direction === 'up' ? '已上移' : '已下移');
+  };
+
+  const reopenSignupOne = (record: Activity) => {
     modal.confirm({
-      title: `确认提交「${record.title}」审批？`,
-      content: '提交后审核状态变为待审核。',
+      title: `确认恢复「${record.title}」报名？`,
+      content: '将按原报名规则重新开放。单次恢复原报名结束时间；周期/系列恢复为最后一场的场次截止。',
       okText: '确认',
       cancelText: '取消',
       footer: confirmFooter,
       onOk: () => {
-        submitActivitiesForApproval([record.id], nowText());
-        message.success(`已提交「${record.title}」审批`);
+        patchActivities((list) =>
+          list.map((item) => (item.id === record.id ? applyReopenActivitySignup(item) : item)),
+        );
+        message.success(`已恢复「${record.title}」报名`);
       },
     });
   };
 
-  const batchSubmit = () => {
-    const targets = selectedActivities.filter(canSubmitApproval);
-    if (!targets.length) {
-      message.info('已选活动均不可提交审批');
-      return;
-    }
-    submitActivitiesForApproval(
-      targets.map((item) => item.id),
-      nowText(),
-    );
-    message.success(`已提交 ${targets.length} 个活动审批`);
-    setSelectedRowKeys(selectedRowKeys.filter((key) => !targets.some((item) => item.id === key)));
+  const terminateOne = (record: Activity) => {
+    modal.confirm({
+      title: `确认终止「${record.title}」？`,
+      content: '未举办场次不再进行，且不可恢复为进行中。',
+      okText: '确认',
+      cancelText: '取消',
+      footer: confirmFooter,
+      okButtonProps: { danger: true },
+      onOk: () => {
+        patchActivities((list) =>
+          list.map((item) => (item.id === record.id ? applyTerminateActivity(item) : item)),
+        );
+        message.success(`已终止「${record.title}」`);
+      },
+    });
+  };
+
+  const deleteOne = (record: Activity) => {
+    modal.confirm({
+      title: `确认删除「${record.title}」？`,
+      content: '删除后不可恢复。',
+      okText: '确认',
+      cancelText: '取消',
+      footer: confirmFooter,
+      okButtonProps: { danger: true },
+      onOk: () => {
+        patchActivities((list) => list.filter((item) => item.id !== record.id));
+        setSelectedRowKeys((keys) => keys.filter((key) => key !== record.id));
+        message.success(`已删除「${record.title}」`);
+      },
+    });
   };
 
   const publishOne = (record: Activity) => {
@@ -251,32 +297,132 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
       message.info(`「${record.title}」已发布`);
       return;
     }
-    if (!canPublishActivity(record)) {
-      message.info(`「${record.title}」未审批通过或无需审核，无法发布`);
-      return;
-    }
     patchActivities((list) =>
       list.map((item) =>
-        item.id === record.id ? { ...item, publishStatus: '已发布', publishedAt: item.publishedAt || nowText() } : item,
+        item.id === record.id
+          ? {
+              ...item,
+              publishStatus: '已发布' as const,
+              publishedAt: item.publishedAt || nowText(),
+              auditStatus: item.auditStatus === '已通过' || item.auditStatus === '无需审核' ? item.auditStatus : '无需审核',
+            }
+          : item,
       ),
     );
     message.success(`已发布「${record.title}」`);
   };
 
   const revokeOne = (record: Activity) => {
+    const blocked = revokeActivityBlockReason(record);
+    if (blocked) {
+      message.info(blocked);
+      return;
+    }
     modal.confirm({
       title: `确认撤销「${record.title}」的发布？`,
-      content: '撤销后活动不再对员工可见。',
+      content: '撤销后活动不再对员工可见。发布时间保留。',
       okText: '确认',
       cancelText: '取消',
       footer: confirmFooter,
       onOk: () => {
         patchActivities((list) =>
-          list.map((item) => (item.id === record.id ? { ...item, publishStatus: '未发布', publishedAt: '' } : item)),
+          list.map((item) => (item.id === record.id ? { ...item, publishStatus: '未发布' as const } : item)),
         );
         message.success(`已撤销「${record.title}」`);
       },
     });
+  };
+
+  const activityRowActions = (record: Activity): TableRowAction[] => {
+    const statusAction: TableRowAction =
+      record.publishStatus === '已发布'
+        ? {
+            key: 'revoke',
+            label: '撤销',
+            ariaLabel: `撤销 ${record.title}`,
+            onClick: () => revokeOne(record),
+            disabled: !canRevokeActivity(record),
+            tooltip: revokeActivityBlockReason(record),
+          }
+        : {
+            key: 'publish',
+            label: '发布',
+            ariaLabel: `发布 ${record.title}`,
+            onClick: () => publishOne(record),
+          };
+    const actions: TableRowAction[] = [
+      {
+        key: 'detail',
+        label: '详情',
+        ariaLabel: `详情 ${record.title}`,
+        onClick: () => openDetail(record),
+      },
+      {
+        key: 'edit',
+        label: '编辑',
+        ariaLabel: `编辑 ${record.title}`,
+        onClick: () => openEditor(record),
+        disabled: !canEditActivity(record),
+        tooltip: editActivityBlockReason(record),
+      },
+      {
+        key: 'copy',
+        label: '复制',
+        ariaLabel: `复制 ${record.title}`,
+        onClick: () => copyOne(record),
+      },
+      statusAction,
+      {
+        key: 'pin',
+        label: record.pinned ? '取消置顶' : '置顶',
+        ariaLabel: record.pinned ? `取消置顶 ${record.title}` : `置顶 ${record.title}`,
+        onClick: () => togglePin(record),
+      },
+    ];
+    const move = pinSortMoveState(filtered, record.id);
+    if (move.canMove) {
+      actions.push(
+        {
+          key: 'up',
+          label: '上移',
+          ariaLabel: `上移 ${record.title}`,
+          disabled: move.upDisabled,
+          onClick: () => moveOne(record, 'up'),
+        },
+        {
+          key: 'down',
+          label: '下移',
+          ariaLabel: `下移 ${record.title}`,
+          disabled: move.downDisabled,
+          onClick: () => moveOne(record, 'down'),
+        },
+      );
+    }
+    if (canReopenActivitySignup(record)) {
+      actions.push({
+        key: 'reopen-signup',
+        label: '恢复报名',
+        ariaLabel: `恢复报名 ${record.title}`,
+        onClick: () => reopenSignupOne(record),
+      });
+    }
+    if (canTerminateActivity(record)) {
+      actions.push({
+        key: 'terminate',
+        label: '终止活动',
+        ariaLabel: `终止活动 ${record.title}`,
+        onClick: () => terminateOne(record),
+        danger: true,
+      });
+    }
+    actions.push({
+      key: 'delete',
+      label: '删除',
+      ariaLabel: `删除 ${record.title}`,
+      onClick: () => deleteOne(record),
+      danger: true,
+    });
+    return actions;
   };
 
   const columns: TableColumnsType<Activity> = [
@@ -310,12 +456,6 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
       render: (_, record) => <TableEllipsisText text={formatActivityTime(record)} />,
     },
     {
-      title: '审核状态',
-      dataIndex: 'auditStatus',
-      width: 110,
-      render: (value: AuditStatus) => <Tag color={auditColor[value]}>{value}</Tag>,
-    },
-    {
       title: '状态',
       key: 'lifecycleStatus',
       width: 110,
@@ -324,107 +464,33 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
         return <Tag color={lifecycleStatusColor[status]}>{status}</Tag>;
       },
     },
-    { title: '创建时间', dataIndex: 'createdAt', width: 170 },
-    {
-      title: '发布时间',
-      dataIndex: 'publishedAt',
-      width: 170,
-      render: (value: string) => formatPublishedAt(value),
-    },
+    { title: '创建人', dataIndex: 'creator', width: 100, render: (value: string) => <TableEllipsisText text={value} /> },
     {
       title: '操作',
       key: 'action',
       fixed: 'right',
       align: 'right',
       width: 220,
-      render: (_, record) => {
-        const statusAction: TableRowAction = canSubmitApproval(record)
-          ? {
-              key: 'submit',
-              label: '提交审批',
-              ariaLabel: `提交审批 ${record.title}`,
-              onClick: () => submitOne(record),
-            }
-          : canReviewActivity(record)
-            ? {
-                key: 'review',
-                label: '审核',
-                ariaLabel: `审核 ${record.title}`,
-                onClick: () => setReviewing(record),
-              }
-            : record.publishStatus === '已发布'
-              ? {
-                  key: 'revoke',
-                  label: '撤销',
-                  ariaLabel: `撤销 ${record.title}`,
-                  onClick: () => revokeOne(record),
-                }
-              : {
-                  key: 'publish',
-                  label: '发布',
-                  ariaLabel: `发布 ${record.title}`,
-                  onClick: () => publishOne(record),
-                  disabled: !canPublishActivity(record),
-                  tooltip: canPublishActivity(record) ? undefined : '仅审批通过或无需审核的活动可以发布',
-                };
-        return (
-          <TableRowActions
-            moreAriaLabel={`更多操作 ${record.title}`}
-            actions={[
-              {
-                key: 'detail',
-                label: '详情',
-                ariaLabel: `详情 ${record.title}`,
-                onClick: () => openDetail(record),
-              },
-              ...(record.checkInEnabled
-                ? [
-                    {
-                      key: 'checkin-qr',
-                      label: '签到码',
-                      ariaLabel: `签到码 ${record.title}`,
-                      onClick: () => setQrActivity(record),
-                    },
-                  ]
-                : []),
-              {
-                key: 'edit',
-                label: '编辑',
-                ariaLabel: `编辑 ${record.title}`,
-                onClick: () => openEditor(record),
-              },
-              {
-                key: 'copy',
-                label: '复制',
-                ariaLabel: `复制 ${record.title}`,
-                onClick: () => copyOne(record),
-              },
-              statusAction,
-              {
-                key: 'pin',
-                label: record.pinned ? '取消置顶' : '置顶',
-                ariaLabel: record.pinned ? `取消置顶 ${record.title}` : `置顶 ${record.title}`,
-                onClick: () => togglePin(record),
-              },
-            ]}
-          />
-        );
-      },
+      render: (_, record) => (
+        <TableRowActions moreAriaLabel={`更多操作 ${record.title}`} actions={activityRowActions(record)} />
+      ),
     },
   ];
 
   return (
     <div className="page-stack">
       <ListPageHeading paths={['活动', '活动管理']} title="活动管理" subtitle="查询并维护活动基础信息、审核、发布与状态。" />
-      {/* 收起态前三项：活动标题、审核状态、状态；分类、举办方式、时间等展开后可见 */}
+      {/* 收起态前两项：活动标题、状态；分类、举办方式、时间等展开后可见 */}
       <SearchPanel
         onSearch={() => {
           setQuery(draft);
+          setPage(1);
           message.success('查询完成');
         }}
         onReset={() => {
           setDraft(emptyQuery);
           setQuery(emptyQuery);
+          setPage(1);
         }}
       >
         <SearchField label="活动标题">
@@ -433,15 +499,6 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
             placeholder="请输入活动标题"
             value={draft.title}
             onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
-          />
-        </SearchField>
-        <SearchField label="审核状态">
-          <Select
-            allowClear
-            placeholder="全部状态"
-            value={draft.auditStatus}
-            onChange={(value) => setDraft((current) => ({ ...current, auditStatus: value }))}
-            options={optionsOf(auditStatuses)}
           />
         </SearchField>
         <SearchField label="状态">
@@ -498,23 +555,24 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
         <div className="table-toolbar">
           <Typography.Text>共 {filtered.length} 条</Typography.Text>
           <Space>
+            <ListViewSegmented value={view} onChange={setListView} />
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>
               新建活动
             </Button>
           </Space>
         </div>
-        {selectedRowKeys.length > 0 ? (
+        {view === 'list' && selectedRowKeys.length > 0 ? (
           <Flex className="batch-toolbar" justify="space-between" align="center">
             <Typography.Text>
               已选择 <strong>{selectedRowKeys.length}</strong> 项
             </Typography.Text>
             <Space>
               <Popconfirm
-                title={`确认提交已选 ${selectedRowKeys.length} 个活动审批？`}
-                description="仅待提交或已驳回的活动会被提交，审核状态变为待审核。"
-                onConfirm={batchSubmit}
+                title={`确认撤销已选 ${selectedRowKeys.length} 个活动的发布？`}
+                description="撤销后活动不再对员工可见。仅已发布活动会被撤销。"
+                onConfirm={batchRevoke}
               >
-                <Button>批量提交审批</Button>
+                <Button>撤销</Button>
               </Popconfirm>
               <Popconfirm
                 title={`确认发布已选 ${selectedRowKeys.length} 个活动？`}
@@ -522,13 +580,6 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
                 onConfirm={batchPublish}
               >
                 <Button>批量发布</Button>
-              </Popconfirm>
-              <Popconfirm
-                title={`确认撤销已选 ${selectedRowKeys.length} 个活动的发布？`}
-                description="撤销后活动不再对员工可见。仅已发布活动会被撤销。"
-                onConfirm={batchRevoke}
-              >
-                <Button>撤销</Button>
               </Popconfirm>
               <Button
                 onClick={() => {
@@ -542,25 +593,62 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
             </Space>
           </Flex>
         ) : null}
-        <Table
-          rowKey="id"
-          sticky
-          rowSelection={{
-            selectedRowKeys,
-            preserveSelectedRowKeys: true,
-            onChange: setSelectedRowKeys,
-          }}
-          columns={columns}
-          dataSource={filtered}
-          scroll={{ x: 1780 }}
-          pagination={{
-            pageSize: b2bStandards.table.pageSize,
-            pageSizeOptions: [...b2bStandards.table.pageSizeOptions],
-            showSizeChanger: b2bStandards.table.showSizeChanger,
-            showTotal: (total) => `共 ${total} 条`,
-          }}
-          locale={{ emptyText: <Empty description={hasActiveQuery ? '没有符合条件的活动' : b2bStandards.table.emptyText} /> }}
-        />
+        {view === 'list' ? (
+          <Table
+            rowKey="id"
+            sticky
+            rowSelection={{
+              selectedRowKeys,
+              preserveSelectedRowKeys: true,
+              onChange: setSelectedRowKeys,
+            }}
+            columns={columns}
+            dataSource={filtered}
+            scroll={{ x: 1280 }}
+            pagination={{
+              current: page,
+              pageSize,
+              pageSizeOptions: [...b2bStandards.table.pageSizeOptions],
+              showSizeChanger: b2bStandards.table.showSizeChanger,
+              showTotal: (total) => `共 ${total} 条`,
+              onChange: (nextPage, nextSize) => {
+                setPage(nextPage);
+                setPageSize(nextSize);
+              },
+            }}
+            locale={{ emptyText: <Empty description={hasActiveQuery ? '没有符合条件的活动' : b2bStandards.table.emptyText} /> }}
+          />
+        ) : (
+          <MediaEntityCardGrid
+            emptyDescription={hasActiveQuery ? '没有符合条件的活动' : b2bStandards.table.emptyText}
+            page={page}
+            pageSize={pageSize}
+            total={filtered.length}
+            onPageChange={(nextPage, nextSize) => {
+              setPage(nextPage);
+              setPageSize(nextSize);
+            }}
+            items={filtered.slice((page - 1) * pageSize, page * pageSize).map((record) => {
+              const life = getActivityLifecycleStatus(record);
+              return {
+                key: record.id,
+                coverUrl: record.coverUrl,
+                title: record.title,
+                summary: formatActivityTime(record),
+                statusLabel: life,
+                statusColor: lifecycleStatusColor[life],
+                extra: (
+                  <>
+                    {record.pinned ? <Tag color="blue">置顶</Tag> : null}
+                    <span>创建人 {record.creator}</span>
+                  </>
+                ),
+                actions: activityRowActions(record),
+                onOpen: () => openDetail(record),
+              };
+            })}
+          />
+        )}
       </Card>
       <Modal
         title={`设置分类 · 已选 ${selectedRowKeys.length} 项`}
@@ -584,17 +672,6 @@ export function ActivityListPage({ onNavigate }: { onNavigate: (page: string, re
           </Form.Item>
         </Form>
       </Modal>
-      <Modal
-        title={qrActivity ? `「${qrActivity.title}」签到码` : '签到码'}
-        open={Boolean(qrActivity)}
-        onCancel={() => setQrActivity(undefined)}
-        footer={<Button onClick={() => setQrActivity(undefined)}>关闭</Button>}
-        width={720}
-        destroyOnHidden
-      >
-        {qrActivity ? <ActivityQrCheckInPage activity={qrActivity} /> : null}
-      </Modal>
-      <ActivityReviewModal activity={reviewing} open={Boolean(reviewing)} onClose={() => setReviewing(undefined)} />
     </div>
   );
 }

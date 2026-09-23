@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import { Button, Drawer, Form, Input, InputNumber, Radio, Space, TreeSelect, Upload } from 'antd';
 import type { UploadFile } from 'antd';
+import { COVER_IMAGE_UPLOAD_HINT, IMAGE_UPLOAD_ACCEPT } from '../../../shared/ui/imageUploadHint';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import type { CategoryNode } from '../../../shared/category-tree/categoryTree';
 import { coursewareTypes, type CoursewareRecord, type CoursewareType } from '../model/training';
@@ -146,9 +147,9 @@ export function CoursewareFormDrawer({
           <Radio.Group options={optionsOf(coursewareTypes)} />
         </Form.Item>
 
-        <Form.Item label="封面图片" required extra="支持 jpg / png，建议比例 16:9">
+        <Form.Item label="封面图片" required extra={COVER_IMAGE_UPLOAD_HINT}>
           <Upload
-            accept="image/*"
+            accept={IMAGE_UPLOAD_ACCEPT}
             listType="picture-card"
             maxCount={1}
             fileList={coverList}

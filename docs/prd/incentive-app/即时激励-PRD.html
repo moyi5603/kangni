@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>即时激励应用 产品需求文档</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; line-height: 1.65; color: #1f2937; margin: 0; background: #f8fafc; }
+    .layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: 100vh; }
+    .layout.toc-collapsed { grid-template-columns: 0 minmax(0, 1fr); }
+    .toc { position: sticky; top: 0; height: 100vh; overflow: auto; border-right: 1px solid #d1d5db; background: #fff; padding: 16px; }
+    .layout.toc-collapsed .toc { transform: translateX(-100%); padding: 0; border: 0; }
+    .toc-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+    .toc-title { margin: 0; font-size: 15px; font-weight: 700; }
+    .icon-button { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; cursor: pointer; }
+    .icon-button svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .toc ol { list-style: none; padding: 0; margin: 0; }
+    .toc li { margin: 4px 0; }
+    .toc a { display: block; color: #374151; text-decoration: none; padding: 6px 8px; border-radius: 6px; font-size: 14px; }
+    .toc a:hover { background: #f3f4f6; color: #0f766e; }
+    .toc .sub a { padding-left: 18px; font-size: 13px; color: #6b7280; }
+    .content-wrap { min-width: 0; }
+    .floating-toc-toggle { position: fixed; left: 12px; top: 12px; z-index: 20; box-shadow: 0 4px 12px rgba(15,23,42,.12); }
+    main { max-width: 1180px; margin: 0 auto; padding: 32px 24px 64px; background: #fff; }
+    h1,h2,h3,h4 { color: #111827; line-height: 1.3; }
+    h2 { margin-top: 40px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 13px; }
+    th, td { border: 1px solid #d1d5db; padding: 8px 10px; vertical-align: top; }
+    th { background: #f3f4f6; text-align: left; }
+    figure { margin: 16px 0 24px; border: 1px solid #d1d5db; background: #f9fafb; padding: 12px; }
+    figure img { max-width: 100%; height: auto; display: block; border: 1px solid #e5e7eb; background: #fff; }
+    figcaption { margin-top: 8px; color: #4b5563; font-size: 13px; }
+    .component-path { font-weight: 600; color: #0f766e; }
+    .status { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #e0f2fe; color: #075985; font-size: 12px; margin-right: 4px; }
+    .status.impl { background: #dcfce7; color: #166534; }
+    .status.todo { background: #fee2e2; color: #991b1b; }
+    .status.guess { background: #fef3c7; color: #92400e; }
+    code { background: #f3f4f6; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+    @media (max-width: 860px) {
+      .layout { display: block; }
+      .toc { position: fixed; z-index: 15; width: 280px; box-shadow: 0 12px 30px rgba(15,23,42,.18); }
+      .layout.toc-collapsed .toc { transform: translateX(-100%); }
+      main { padding-top: 56px; }
+    }
+
+    .status.p0 { background:#fee2e2; color:#991b1b; }
+    .status.p1 { background:#fef3c7; color:#92400e; }
+    .status.p2 { background:#e0e7ff; color:#3730a3; }
+    .note { background:#f8fafc; border-left:3px solid #0f766e; padding:8px 12px; margin:12px 0; }
+</style>
+</head>
+<body>
+<div class="layout" id="prdLayout">
+<aside class="toc" aria-label="PRD目录">
+  <div class="toc-header">
+    <p class="toc-title">目录</p>
+    <button class="icon-button toc-toggle" type="button" data-toggle-toc aria-label="隐藏目录" title="隐藏目录">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+    </button>
+  </div>
+  <nav><ol><li><a href="#doc-note">1. 文档说明</a></li>
+<li><a href="#overview">2. 产品概述</a></li>
+<li><a href="#roles">3. 用户角色与权限</a></li>
+<li><a href="#ia">4. 页面结构 / 信息架构</a></li>
+<li><a href="#features">5. 已实现功能清单</a></li>
+<li><a href="#flows">6. 用户流程</a></li>
+<li><a href="#page-admin">7. 后台页面需求</a></li>
+<li><a href="#page-h5">8. H5 页面需求</a></li>
+<li><a href="#page-pc">9. PC 页面需求</a></li>
+<li><a href="#data-fields">10. 数据字段与枚举</a></li>
+<li><a href="#apis">11. API / 数据接口清单</a></li>
+<li><a href="#non-functional">12. 非功能需求</a></li>
+<li><a href="#analytics">13. 埋点与指标建议</a></li>
+<li><a href="#acceptance">14. 验收标准</a></li>
+<li><a href="#risks">15. 风险与待确认问题</a></li></ol></nav>
+</aside>
+<div class="content-wrap">
+<button class="icon-button floating-toc-toggle" type="button" data-toggle-toc aria-label="显示目录" title="显示目录">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+</button>
+<main>
+  <h1>即时激励应用 产品需求文档</h1>
+  <section id="doc-note"><h2>1. 文档说明</h2><ul>
+<li>文档来源：基于康尼即时激励 React/TSX 原型反向分析（html-to-prd）。截图 2026-09-21 全量 + 2026-09-22 对照增量重拍。</li>
+<li>分析范围：管理后台 <code>#/incentive/*</code>；员工 H5 <code>#/c/h5/incentive/*</code>；员工 PC <code>#/c/pc/incentive/*</code>。不含勋章应用本体、积分商城、首页装修。</li>
+<li>生成日期：2026-09-22</li>
+<li>2026-09-22 增量：① 发放记录列表列名「表彰理由 / 认可理由」（概览表仍「事实描述」）；详情按类型显示认可理由/表彰理由，有附件则展示可下载链接并写入 <code>Recognition.attachments</code>。② 热门勋章 H5/PC 增加类型（全部/公司表彰/同事认可）、分类、时间范围（近一个月/三个月/半年）；公司表彰名单可进光荣事迹。③ PC 首页热门同样带类型/分类/时间筛选。H5 首页热门仍为同事认可本年 Top3。</li>
+<li>可信度：文案、校验、状态机以源码为准。数据为内存 mock（<code>incentiveStore</code> / <code>incentiveH5Data</code>），无 HTTP。接口列为建议而非已实现。</li>
+<li>标记：<span class="status impl">代码已实现</span> <span class="status guess">根据页面推测需要</span> <span class="status todo">待确认</span></li>
+<li>优先级：<span class="status p0">P0</span> 主路径；<span class="status p1">P1</span> 运营完整度；<span class="status p2">P2</span> 可延后。</li>
+<li>组件一律使用 <code>页面-模块-组件名称</code>。</li></ul></section>
+<section id="overview"><h2>2. 产品概述</h2>
+<p><strong>产品定位：</strong>康尼「员工与组织」下的即时激励应用。后台配置勋章、额度、审核与风控；员工在 H5/PC 发放同事认可、浏览热门勋章与动态、查看个人勋章墙并接收勋章消息。当前为可交互原型（内存 mock），用于评审交互而非生产账本。</p>
+<p><strong>目标用户：</strong>① 运营/HR（后台配置与公司表彰、审核队列）；② 普通员工（C 端发放与被认可）。原型无登录，后台演示用户顶栏为「陈产品」，审核权限常量 <code>DEMO_CURRENT_USER=陈佳</code>，C 端当前用户 <code>ME_ID</code> 对应林晓云。</p>
+<p><strong>核心场景：</strong>① 配置归属/分类/勋章与月度积分额度；② 员工选勋章、多人、原因、附件提交同事认可；③ 审核员通过并发放或驳回；④ 管理员发布公司表彰直接入账；⑤ 员工看动态、热门排行、个人中心与消息。</p>
+<p><strong>主要价值：</strong>把口头表扬收成可追溯的勋章+积分发放，并用审核/风控提示约束互刷，不在提交时硬拦截。</p></section>
+<section id="roles"><h2>3. 用户角色与权限</h2>
+<p>原型<strong>无</strong>登录鉴权、菜单 ACL、集团/单位管理员切换（设计稿曾提角色 Select，当前概览页无该控件）。下表为产品语义 + 代码条件。</p>
+<table><thead><tr><th>角色</th><th>入口</th><th>代码证据</th><th>可做</th><th>限制</th></tr></thead><tbody><tr><td>后台运营</td><td>#/incentive/*</td><td>无 permission 判断</td><td>勋章 CRUD、归属分类、额度、填写/风控、发布公司表彰、导出发放记录（toast）</td><td>打开后台即可全部菜单</td></tr><tr><td>审核员</td><td>发放记录 / 概览待办</td><td>canReviewPeerRecords：personalReviewEnabled 且 reviewerIds 含 DEMO_CURRENT_USER=陈佳</td><td>待审核行显示「审核」；详情抽屉「驳回」「通过并发放」</td><td>非审核员点审核 toast「当前账号不是审核员，无审核权限」</td></tr><tr><td>C 端当前员工</td><td>#/c/h5|pc/incentive</td><td>ME_ID / 林晓云；组织树排除自己</td><td>发同事认可、看动态/排行/个人中心/消息</td><td>不可给自己发；公司表彰仅后台</td></tr><tr><td>被指定审核员</td><td>规则设置-审核员 TreeSelect</td><td>INCENTIVE_PEOPLE_TREE 叶子为人名</td><td>被勾选后拥有发放记录审核能力</td><td>关闭审核后新提交直接发放</td></tr></tbody></table>
+<p class="note">C 端额度展示写死「本月额度 200 / 已发 50 / 可用 150」。与后台配额表未打通。{todo}</p></section>
+<section id="ia"><h2>4. 页面结构 / 信息架构</h2>
+<table><thead><tr><th>端</th><th>页面</th><th>Hash</th><th>组件</th></tr></thead><tbody><tr><td>后台</td><td>概览</td><td>#/incentive/incentive-dashboard</td><td>IncentiveDashboardPage</td></tr><tr><td>后台</td><td>勋章管理</td><td>#/incentive/incentive-badges?treeId=</td><td>IncentiveBadgeListPage；treeId 同步当前归属 Tab</td></tr><tr><td>后台</td><td>新建/编辑勋章</td><td>#/incentive/incentive-badge-create | incentive-badge-edit/{id}</td><td>IncentiveBadgeFormPage</td></tr><tr><td>后台</td><td>发放记录</td><td>#/incentive/incentive-records</td><td>IncentiveRecordListPage</td></tr><tr><td>后台</td><td>规则设置</td><td>#/incentive/incentive-settings?tab=points|content|risk</td><td>IncentiveSettingsPage</td></tr><tr><td>H5/PC</td><td>首页</td><td>#/c/{surface}/incentive</td><td>IncentiveHome；PC 另渲染 IncentivePcAside</td></tr><tr><td>H5/PC</td><td>发放勋章</td><td>.../issue</td><td>IncentiveIssue 两步：选勋章 → 填对象/原因/附件</td></tr><tr><td>H5/PC</td><td>热门勋章</td><td>.../ranking[/{badgeId}]</td><td>IncentiveRanking；筛选全部/公司表彰/同事认可 + 分类 + 近一个月/三个月/半年</td></tr><tr><td>H5/PC</td><td>个人中心</td><td>.../profile</td><td>IncentiveProfile</td></tr><tr><td>H5/PC</td><td>消息 / 勋章获得页</td><td>.../messages | /award</td><td>IncentiveMessages / IncentiveAwardView</td></tr><tr><td>H5/PC</td><td>个人勋章墙</td><td>.../person/{id}</td><td>IncentivePersonHonor</td></tr><tr><td>H5/PC</td><td>公司表彰事迹</td><td>.../company/{id}</td><td>IncentiveCompanyStory；排行选公司表彰后点获得人进入</td></tr></tbody></table>
+<figure><img src="screenshots/即时激励-左侧菜单.png" alt="后台-导航-左侧菜单截图"><figcaption><span class="component-path">后台-导航-左侧菜单</span>：一级菜单：概览、勋章管理、发放记录、规则设置。</figcaption></figure>
+</section>
+<section id="features"><h2>5. 已实现功能清单</h2>
+<table><thead><tr><th>模块</th><th>功能点</th><th>说明</th><th>端</th><th>优先级</th><th>状态</th></tr></thead><tbody><tr><td>概览</td><td>KPI/饼图/待办/近期发放</td><td>默认近 30 天；KPI 点击进发放记录或勋章管理，不带筛参</td><td>后台</td><td><span class="status p1">P1</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>勋章</td><td>归属 Tab + 分类分组卡片</td><td>空分类不展示；编辑/删除勋章</td><td>后台</td><td><span class="status p0">P0</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>勋章</td><td>归属与分类管理抽屉</td><td>增删改、上下移；勋章占用不可删；至少保留 1 个归属</td><td>后台</td><td><span class="status p0">P0</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>勋章</td><td>新建/编辑表单</td><td>图标、归属、分类、名称 max20 同归属不重复、组织、积分≥1、启用、四段描述</td><td>后台</td><td><span class="status p0">P0</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>发放</td><td>查询/导出/详情</td><td>列表代码列名「表彰理由 / 认可理由」但当前宽度 0 看不见；详情按类型改 label 且可下附件；导出仅 toast</td><td>后台</td><td><span class="status p0">P0</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>发放</td><td>审核通过/驳回/撤回</td><td>驳回必填意见；通过确认弹窗；撤回扣积分文案、保留日志</td><td>后台</td><td><span class="status p0">P0</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>表彰</td><td>发布公司表彰抽屉</td><td>多人、公司勋章、月份、事由字数、证明材料转 DataURL 写入 attachments；免审核直接发放</td><td>后台</td><td><span class="status p0">P0</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>规则</td><td>积分额度</td><td>按组织/人；新增/调整/批量；月度总额=人数×单人额度；已用 Progress</td><td>后台</td><td><span class="status p0">P0</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>规则</td><td>填写设置</td><td>最少字数≥1、placeholder；同事认可与表彰共用</td><td>后台</td><td><span class="status p0">P0</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>规则</td><td>审核+风控</td><td>同事认可审核开关与审核员；重复/频率/互认仅提示不拦截</td><td>后台</td><td><span class="status p0">P0</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>发现</td><td>热门勋章+认可动态</td><td>H5 首页 Top3（本年同事认可）+查看全部；PC 首页可筛类型/分类/时间；点接收人进勋章墙</td><td>H5/PC</td><td><span class="status p0">P0</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>发放C</td><td>两步发放</td><td>额度条、分类选勋章、详情、对象树、原因、附件、额度校验</td><td>H5/PC</td><td><span class="status p0">P0</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>排行</td><td>热门筛选+获得名单</td><td>类型/分类横向滚动（H5 group）或 Tabs（PC）；时间 Dropdown；同事认可进个人墙，公司表彰进光荣事迹</td><td>H5/PC</td><td><span class="status p0">P0</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>我的</td><td>个人中心勋章墙</td><td>公司表彰/同事认可 Tab；H5 轮播+分类折叠；PC 网格+累计积分</td><td>H5/PC</td><td><span class="status p0">P0</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>消息</td><td>助手会话+获得页</td><td>未读红点；分享按钮无实现</td><td>H5/PC</td><td><span class="status p1">P1</span></td><td><span class="status impl">代码已实现</span></td></tr><tr><td>侧栏</td><td>PC 与我相关</td><td>勋章/可用积分/本月已发、发放按钮、最近获得 3 条</td><td>PC</td><td><span class="status p1">P1</span></td><td><span class="status impl">代码已实现</span></td></tr></tbody></table>
+</section>
+<section id="flows"><h2>6. 用户流程</h2>
+<h3>6.1 同事认可（主路径）</h3>
+<p>入口：H5 首页 FAB「发放勋章」或 PC 侧栏「发放勋章」→ 选同事认可勋章 → 选 ≥1 人（组织树，排除自己）→ 填原因（≥ minimumReasonLength，默认 10）→ 上传 1～5 个附件（单文件 ≤20MB）→ 确认发放。系统 toast「已提交 N 条认可记录」，重置到选勋章步。若后台开启审核则记录为待审核，否则 {todo} C 端提交不写后台 store，仅为 message.success。</p>
+<h3>6.2 审核发放</h3>
+<p>审核员在发放记录点编号/详情/审核 → 抽屉「认可详情」→ 通过并发放（二次确认：向对象发放勋章及积分）或驳回（Modal 必填审核意见）。成功 toast「已通过并发放」/「已驳回」，关抽屉。</p>
+<h3>6.3 公司表彰</h3>
+<p>发放记录「发布公司表彰」→ 选人、公司勋章、月份、事由、证明材料 → 确认发放。证明材料经 FileReader 转 DataURL 写入每条记录 attachments。Alert 写明免审核。每人一条记录。发布范围「指定部门」时必选部门 TreeSelect。</p>
+<h3>6.4 员工浏览</h3>
+<p>首页热门 → 排行（可选类型/分类/近一个月等）→ 同事认可点人进个人勋章墙，公司表彰点人进光荣事迹。动态卡片点接收人进墙。消息卡片进获得页。个人中心看已获得/未获得（locked）。</p></section>
+<section id="page-admin"><h2>7. 后台页面需求</h2>
+<article id="admin-overview"><h3>7.1 概览</h3>
+<p><strong>页面目标：</strong>按统计周期掌握待审、已发、积分、异常、启用勋章，并处理待办。</p>
+<figure><img src="screenshots/后台-概览-页面整体.png" alt="概览-页面-整体布局截图"><figcaption><span class="component-path">概览-页面-整体布局</span>：标题行含统计周期；下为 KPI、双饼图、待办关注、近期发放。</figcaption></figure>
+<figure><img src="screenshots/后台-概览-KPI指标卡.png" alt="概览-KPI模块-指标卡截图"><figcaption><span class="component-path">概览-KPI模块-指标卡</span>：待审核/已发放/累计发放积分/异常记录/启用勋章。前四张点击 onNavigate(incentive-records)，启用勋章进 incentive-badges。</figcaption></figure>
+<figure><img src="screenshots/后台-概览-发放状态分布.png" alt="概览-图表模块-发放状态分布截图"><figcaption><span class="component-path">概览-图表模块-发放状态分布</span>：饼图分段：已发放绿、待审核黄、已驳回红、已撤回灰。数据=周期内 recognitions 按 status 计数。</figcaption></figure>
+<figure><img src="screenshots/后台-概览-勋章分布.png" alt="概览-图表模块-勋章分布截图"><figcaption><span class="component-path">概览-图表模块-勋章分布</span>：仅统计状态=已发放的 badgeName 计数。</figcaption></figure>
+<figure><img src="screenshots/后台-概览-待办关注.png" alt="概览-待办模块-待审核表截图"><figcaption><span class="component-path">概览-待办模块-待审核表</span>：过滤 status=待审核；空态「暂无待审核记录」。列与发放记录共用组件但 reasonLabelByType 默认 false，理由列标题仍为「事实描述」；操作列仅详情。</figcaption></figure>
+<figure><img src="screenshots/后台-概览-近期发放.png" alt="概览-近期模块-已发放表截图"><figcaption><span class="component-path">概览-近期模块-已发放表</span>：已发放按 time 降序；分页走 b2bStandards.table。空态「周期内暂无已发放记录」。</figcaption></figure>
+<figure><img src="screenshots/后台-概览-认可详情抽屉.png" alt="概览-待办模块-认可详情抽屉截图"><figcaption><span class="component-path">概览-待办模块-认可详情抽屉</span>：与发放记录共用 RecognitionDetailDrawer；待审核且当前用户是审核员时底栏有驳回/通过并发放。</figcaption></figure>
+<h4>组件显示逻辑</h4>
+<table><thead><tr><th>组件路径</th><th>组件类型</th><th>默认状态</th><th>显示/隐藏逻辑</th><th>启用/禁用逻辑</th><th>数据来源</th><th>状态变化</th><th>空/错/加载状态</th><th>权限/条件控制</th></tr></thead><tbody><tr><td>概览-标题行-统计周期</td><td>RangePicker</td><td>近 29 天～今天</td><td>始终显示</td><td>可改</td><td>defaultOverviewDateRange</td><td>改范围重算 KPI/表</td><td>日期非法则 inRange 视为命中</td><td>无</td></tr><tr><td>概览-KPI模块-待审核卡</td><td>OverviewKpiCard</td><td>数字</td><td>始终</td><td>可点</td><td>computeIncentiveOverviewStats.pendingCount</td><td>点进发放记录</td><td>0 仍展示</td><td>无</td></tr><tr><td>概览-待办模块-表格</td><td>Table</td><td>有数据则表</td><td>attentionRows.length</td><td>行内详情</td><td>scoped 中待审核</td><td>开抽屉</td><td>Empty 暂无待审核记录</td><td>审核按钮不在此表 extraActions</td></tr></tbody></table>
+<h4>操作说明</h4>
+<table><thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用逻辑</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead><tbody><tr><td>进入发放记录</td><td>概览-KPI模块-指标卡</td><td>KPI 卡片</td><td>无</td><td>始终可点</td><td>点击</td><td>onNavigate incentive-records</td><td>离开本页</td><td>无 toast</td><td>无</td><td>hash 切换，无查询参数</td></tr><tr><td>打开详情</td><td>概览-待办模块-编号链接</td><td>编号 Button link</td><td>有记录</td><td>始终</td><td>点击</td><td>setActiveId</td><td>开抽屉</td><td>无</td><td>关联记录不存在时 warning</td><td>内存</td></tr></tbody></table>
+</article>
+<article id="admin-badges"><h3>7.2 勋章管理</h3>
+<figure><img src="screenshots/后台-勋章管理-页面整体.png" alt="勋章管理-页面-整体布局截图"><figcaption><span class="component-path">勋章管理-页面-整体布局</span>：Tabs 为归属（公司表彰 / 同事认可）；右上「归属与分类管理」「新增勋章」。</figcaption></figure>
+<figure><img src="screenshots/后台-勋章管理-归属Tabs.png" alt="勋章管理-归属模块-Tabs截图"><figcaption><span class="component-path">勋章管理-归属模块-Tabs</span>：activeKey=scopeId，写入 hash treeId。分类下无勋章的分组不渲染。</figcaption></figure>
+<figure><img src="screenshots/后台-勋章管理-勋章目录.png" alt="勋章管理-目录模块-勋章卡片截图"><figcaption><span class="component-path">勋章管理-目录模块-勋章卡片</span>：卡片含图标、名称、定义摘要、积分、已启用/停用、编辑、删除。</figcaption></figure>
+<figure><img src="screenshots/后台-勋章管理-分类抽屉.png" alt="勋章管理-分类模块-归属与分类管理截图"><figcaption><span class="component-path">勋章管理-分类模块-归属与分类管理</span>：右侧 Drawer 760px。统计归属/分类数；每归属可上移下移编辑删除、新增分类；分类同样排序与删除。</figcaption></figure>
+<h4>字段说明</h4>
+<table><thead><tr><th>字段名称</th><th>组件路径</th><th>控件类型</th><th>是否必填</th><th>默认值</th><th>校验规则</th><th>选项值</th><th>业务含义</th></tr></thead><tbody><tr><td>名称</td><td>勋章管理-分类模块-新增/编辑弹窗</td><td>Input</td><td>是</td><td>空/原名</td><td>trim 非空</td><td>—</td><td>归属或分类显示名</td></tr></tbody></table>
+<h4>操作说明</h4>
+<table><thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用逻辑</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead><tbody><tr><td>新增勋章</td><td>勋章管理-标题操作-新增勋章</td><td>primary Button</td><td>无</td><td>始终</td><td>点击</td><td>onNavigate incentive-badge-create</td><td>进表单</td><td>无</td><td>无</td><td>hash</td></tr><tr><td>编辑勋章</td><td>勋章管理-目录模块-编辑</td><td>编辑</td><td>卡片存在</td><td>始终</td><td>点击</td><td>incentive-badge-edit/{id}</td><td>进表单</td><td>无</td><td>无</td><td>hash</td></tr><tr><td>删除勋章</td><td>勋章管理-目录模块-删除</td><td>删除</td><td>无</td><td>始终</td><td>确认弹窗</td><td>deleteBadge</td><td>卡片消失</td><td>勋章“x”已模拟删除</td><td>取消关闭</td><td>内存；历史认可保留</td></tr><tr><td>删除归属</td><td>勋章管理-分类模块-删除</td><td>删除</td><td>无勋章占用</td><td>有勋章则先 warning 不弹确认；至少留 1 个归属</td><td>确认删除</td><td>deleteScope</td><td>Tab 消失</td><td>已删除</td><td>仍被使用 / 至少保留一个归属</td><td>内存</td></tr><tr><td>上移/下移</td><td>勋章管理-分类模块-排序</td><td>箭头</td><td>非首/末</td><td>首禁用上、末禁用下</td><td>点击</td><td>交换 sort</td><td>列表重排</td><td>已上移/已下移</td><td>无</td><td>内存</td></tr></tbody></table>
+</article>
+<article id="admin-badge-form"><h3>7.3 新建 / 编辑勋章</h3>
+<figure><img src="screenshots/后台-新建勋章-表单页.png" alt="新建勋章-表单模块-整页截图"><figcaption><span class="component-path">新建勋章-表单模块-整页</span>：横向表单 label 112px。未保存离开走 modal「确认离开？」。</figcaption></figure>
+<figure><img src="screenshots/后台-新建勋章-图标上传.png" alt="新建勋章-表单模块-勋章图标截图"><figcaption><span class="component-path">新建勋章-表单模块-勋章图标</span>：picture-card，maxCount=1，beforeUpload 拦真传，读 DataURL。新建必填「请上传勋章图标」。</figcaption></figure>
+<figure><img src="screenshots/后台-新建勋章-底栏操作.png" alt="新建勋章-底栏模块-取消保存截图"><figcaption><span class="component-path">新建勋章-底栏模块-取消保存</span>：取消 leave；保存 validateFields 后 saveBadge。</figcaption></figure>
+<figure><img src="screenshots/后台-编辑勋章-表单页.png" alt="编辑勋章-表单模块-整页截图"><figcaption><span class="component-path">编辑勋章-表单模块-整页</span>：预填 b1 主动补位。编辑模式图标非必填。勋章不存在则 Empty「勋章不存在或已删除」。</figcaption></figure>
+<h4>字段说明</h4>
+<table><thead><tr><th>字段名称</th><th>组件路径</th><th>控件类型</th><th>是否必填</th><th>默认值</th><th>校验规则</th><th>选项值</th><th>业务含义</th></tr></thead><tbody><tr><td>勋章图标</td><td>新建勋章-表单模块-勋章图标</td><td>Upload</td><td>新建是/编辑否</td><td>编辑已有 url</td><td>新建 required</td><td>图片</td><td>展示用 DataURL</td></tr><tr><td>勋章归属</td><td>新建勋章-表单模块-勋章归属</td><td>Select</td><td>是</td><td>hash tree 或首个 scope</td><td>required</td><td>scopes</td><td>公司表彰则 riskLabel=直接发放，否则低风险</td></tr><tr><td>分类</td><td>新建勋章-表单模块-分类</td><td>Select</td><td>是</td><td>tree 分类或空</td><td>required；随归属过滤</td><td>该归属 categories</td><td>卡片分组</td></tr><tr><td>勋章名称</td><td>新建勋章-表单模块-勋章名称</td><td>Input</td><td>是</td><td>空</td><td>非空 trim；max 20；同归属名称不重复</td><td>—</td><td>发放展示名</td></tr><tr><td>适用组织</td><td>新建勋章-表单模块-适用组织</td><td>TreeSelect 多选</td><td>是</td><td>康尼集团</td><td>数组 min 1</td><td>BADGE_ORG_TREE</td><td>C 端过滤 {todo} 未接</td></tr><tr><td>积分</td><td>新建勋章-表单模块-积分</td><td>InputNumber</td><td>是</td><td>1</td><td>min 1 整数</td><td>—</td><td>单次发放扣额/入账</td></tr><tr><td>启用状态</td><td>新建勋章-表单模块-启用状态</td><td>Switch</td><td>否</td><td>启用</td><td>—</td><td>启用/停用</td><td>计入概览启用勋章</td></tr><tr><td>描述</td><td>新建勋章-表单模块-描述</td><td>TextArea 12 行</td><td>是</td><td>四段标题模板</td><td>validateBadgeDescription 须含【行为定义】【积分认定标准】【典型场景说明】【不计分情形】</td><td>—</td><td>认定口径</td></tr></tbody></table>
+<h4>操作说明</h4>
+<table><thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用逻辑</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead><tbody><tr><td>保存</td><td>新建勋章-底栏模块-保存</td><td>primary 保存</td><td>校验通过</td><td>loading=submitting</td><td>点击</td><td>saveBadge 内存</td><td>dirty=false 回列表</td><td>已创建勋章/已保存勋章</td><td>校验失败滚到首错</td><td>无 HTTP</td></tr><tr><td>取消</td><td>新建勋章-底栏模块-取消</td><td>取消</td><td>无</td><td>始终</td><td>点击</td><td>dirty 则确认离开</td><td>回列表或留页</td><td>无</td><td>点取消留页</td><td>onBack</td></tr></tbody></table>
+</article>
+<article id="admin-records"><h3>7.4 发放记录</h3>
+<figure><img src="screenshots/后台-发放记录-页面整体.png" alt="发放记录-页面-整体布局截图"><figcaption><span class="component-path">发放记录-页面-整体布局</span>：查询区 + 共 N 条 + 导出 + 发布公司表彰 + 表格。</figcaption></figure>
+<figure><img src="screenshots/后台-发放记录-查询筛选.png" alt="发放记录-查询模块-默认筛选项截图"><figcaption><span class="component-path">发放记录-查询模块-默认筛选项</span>：默认三字段：认可编号、认可对象、发起人 + 查询/重置/展开。</figcaption></figure>
+<figure><img src="screenshots/后台-发放记录-查询筛选展开.png" alt="发放记录-查询模块-展开筛选项截图"><figcaption><span class="component-path">发放记录-查询模块-展开筛选项</span>：展开后增加认可类型、所属部门、发起时间、状态、异常标识。点查询才写入 query。</figcaption></figure>
+<figure><img src="screenshots/后台-发放记录-列表表格.png" alt="发放记录-列表模块-表格截图"><figcaption><span class="component-path">发放记录-列表模块-表格</span>：可见列：编号、类型、发起人、认可对象、部门、勋章、积分、状态、异常、时间、操作。代码第 8 列为「表彰理由 / 认可理由」，无 width 且 scroll.x=1280 时该列宽度为 0，表内看不到文案。</figcaption></figure>
+<figure><img src="screenshots/后台-发放记录-表头.png" alt="发放记录-列表模块-表头截图"><figcaption><span class="component-path">发放记录-列表模块-表头</span>：DOM 含「表彰理由 / 认可理由」，截图中积分与状态相邻，与 0 宽列一致。理由全文在详情抽屉。</figcaption></figure>
+<figure><img src="screenshots/后台-发放记录-发布表彰抽屉.png" alt="发放记录-表彰模块-发布公司表彰截图"><figcaption><span class="component-path">发放记录-表彰模块-发布公司表彰</span>：Alert「公司表彰免审核」。表彰对象 TreeSelect、公司勋章、月份、事由、证明材料、发布范围。确认发放在对象/勋章/附件皆有值时才启用。</figcaption></figure>
+<figure><img src="screenshots/后台-发放记录-认可详情.png" alt="发放记录-详情模块-同事认可详情截图"><figcaption><span class="component-path">发放记录-详情模块-同事认可详情</span>：同事认可：理由字段为「认可理由」；有附件时 Descriptions 增加「附件」下载链（RecognitionMaterials，download=文件名）。已发放底栏关闭+撤回认可。</figcaption></figure>
+<figure><img src="screenshots/后台-发放记录-详情附件.png" alt="发放记录-详情模块-附件行截图"><figcaption><span class="component-path">发放记录-详情模块-附件行</span>：RK20260826004 附件「现场照片.jpg」，aria-label「下载 现场照片.jpg」。不渲染图片缩略，仅链接。</figcaption></figure>
+<figure><img src="screenshots/后台-发放记录-表彰详情.png" alt="发放记录-详情模块-公司表彰详情截图"><figcaption><span class="component-path">发放记录-详情模块-公司表彰详情</span>：公司表彰：理由字段为「表彰理由」；附件可多条（客户感谢信.png、交付确认函.pdf）。处理线：发布公司表彰 → 授权管理员直接发放 → 积分已发放。</figcaption></figure>
+<figure><img src="screenshots/后台-发放记录-撤回确认.png" alt="发放记录-列表模块-撤回确认截图"><figcaption><span class="component-path">发放记录-列表模块-撤回确认</span>：「确认撤回该发放？将扣回对象已入账积分，并保留发放日志。」确认撤回 danger。</figcaption></figure>
+<h4>字段说明</h4>
+<table><thead><tr><th>字段名称</th><th>组件路径</th><th>控件类型</th><th>是否必填</th><th>默认值</th><th>校验规则</th><th>选项值</th><th>业务含义</th></tr></thead><tbody><tr><td>认可编号</td><td>发放记录-查询模块-认可编号</td><td>Input</td><td>否</td><td>空</td><td>trim 包含匹配</td><td>—</td><td>记录 id</td></tr><tr><td>认可对象</td><td>发放记录-查询模块-认可对象</td><td>Input</td><td>否</td><td>空</td><td>姓名或工号包含</td><td>—</td><td>receiver</td></tr><tr><td>发起人</td><td>发放记录-查询模块-发起人</td><td>Input</td><td>否</td><td>空</td><td>包含</td><td>—</td><td>giver；公司表彰为「系统」</td></tr><tr><td>认可类型</td><td>发放记录-查询模块-认可类型</td><td>Select</td><td>否</td><td>全部</td><td>—</td><td>全部/同事认可/公司表彰</td><td>type</td></tr><tr><td>所属部门</td><td>发放记录-查询模块-所属部门</td><td>TreeSelect</td><td>否</td><td>空</td><td>康尼集团不过滤</td><td>ORG_TREE</td><td>department includes</td></tr><tr><td>发起时间</td><td>发放记录-查询模块-发起时间</td><td>RangePicker</td><td>否</td><td>空</td><td>日界</td><td>—</td><td>time inRange</td></tr><tr><td>状态</td><td>发放记录-查询模块-状态</td><td>Select</td><td>否</td><td>全部</td><td>用 displayRecognitionStatus</td><td>已发放/待审核/已驳回/已撤回</td><td>展示态</td></tr><tr><td>异常标识</td><td>发放记录-查询模块-异常标识</td><td>Select</td><td>否</td><td>全部</td><td>recognitionMatchesRiskFlag</td><td>全部/异常/正常</td><td>仅统计已开启规则的 hits</td></tr><tr><td>表彰对象</td><td>发放记录-表彰模块-表彰对象</td><td>TreeSelect 多选</td><td>是</td><td>[]</td><td>至少 1 人</td><td>INCENTIVE_PEOPLE_TREE</td><td>每人一条</td></tr><tr><td>公司勋章</td><td>发放记录-表彰模块-公司勋章</td><td>Select</td><td>是</td><td>空</td><td>required</td><td>归属=公司表彰的徽章</td><td>badgeId</td></tr><tr><td>表彰月份</td><td>发放记录-表彰模块-表彰月份</td><td>MonthPicker</td><td>是</td><td>当天月份</td><td>required</td><td>—</td><td>页面字段；issueCommendation 是否写入 {todo}</td></tr><tr><td>表彰事由</td><td>发放记录-表彰模块-表彰事由</td><td>TextArea</td><td>是</td><td>空</td><td>≥ minimumReasonLength</td><td>placeholder 来自填写设置</td><td>description</td></tr><tr><td>证明材料</td><td>发放记录-表彰模块-证明材料</td><td>Upload.Dragger</td><td>是</td><td>[]</td><td>1～5；单文件 ≤20MB；jpg/png/pdf/doc/xls</td><td>—</td><td>提交时 proofFilesToAttachments 转 DataURL，kind 按扩展名 image|file</td></tr><tr><td>发布范围</td><td>发放记录-表彰模块-发布范围</td><td>Radio</td><td>否</td><td>all</td><td>org 时 orgIds 必填</td><td>全员可见/指定部门</td><td>C 端可见 {todo} 未接</td></tr><tr><td>审核意见</td><td>发放记录-驳回模块-审核意见</td><td>TextArea</td><td>驳回时是</td><td>空</td><td>trim 非空否则 warning</td><td>—</td><td>写入处理记录</td></tr><tr><td>认可理由/表彰理由</td><td>发放记录-详情模块-理由</td><td>文本</td><td>否</td><td>record.description</td><td>recognitionReasonLabel(type)</td><td>同事认可→认可理由；公司表彰→表彰理由</td><td>详情展示；列表共用一列标题</td></tr><tr><td>附件</td><td>发放记录-详情模块-附件</td><td>下载链接列表</td><td>有 attachments 才显示</td><td>种子记录含证明文件</td><td>空则整行不渲染</td><td>name/url/kind</td><td>点击 a[download] 本地下载 DataURL</td></tr></tbody></table>
+<h4>操作说明</h4>
+<table><thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用逻辑</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead><tbody><tr><td>查询/重置</td><td>发放记录-查询模块-查询</td><td>查询/重置</td><td>无</td><td>始终</td><td>点击</td><td>写入/清空 query</td><td>表格过滤</td><td>无</td><td>无</td><td>前端 filter</td></tr><tr><td>导出</td><td>发放记录-工具栏-导出</td><td>导出</td><td>无</td><td>始终</td><td>点击</td><td>message.success</td><td>无文件</td><td>已导出发放记录</td><td>无</td><td>无 blob</td></tr><tr><td>发布公司表彰</td><td>发放记录-工具栏-发布公司表彰</td><td>primary</td><td>无</td><td>始终可开抽屉；确认发放需人+勋章+附件</td><td>填表提交</td><td>issueCommendation 含 attachments</td><td>关抽屉刷新表</td><td>已生成 N 条公司表彰记录</td><td>字数/对象/勋章/附件 warning；转码失败则请上传证明材料</td><td>内存</td></tr><tr><td>下载附件</td><td>发放记录-详情模块-附件链接</td><td>文件名 a</td><td>record.attachments 非空</td><td>始终</td><td>点击</td><td>浏览器 download</td><td>无状态变</td><td>无 toast</td><td>url 空则提交时已跳过该文件</td><td>无 HTTP</td></tr><tr><td>审核</td><td>发放记录-列表模块-审核</td><td>审核</td><td>展示态待审核且 canReview</td><td>非审核员仍可能点到，warning</td><td>点击=开详情</td><td>同详情</td><td>开抽屉</td><td>无</td><td>当前账号不是审核员</td><td>内存</td></tr><tr><td>通过并发放</td><td>发放记录-详情模块-通过并发放</td><td>primary</td><td>待审核且可审</td><td>显示 showPendingReview</td><td>二次确认</td><td>approveRecognition</td><td>已发放，关抽屉</td><td>已通过并发放</td><td>取消</td><td>内存</td></tr><tr><td>驳回</td><td>发放记录-详情模块-驳回</td><td>danger</td><td>同上</td><td>同上</td><td>开 Modal 填意见</td><td>rejectRecognition</td><td>已驳回</td><td>已驳回</td><td>驳回须填写审核意见</td><td>内存</td></tr><tr><td>撤回</td><td>发放记录-列表模块-撤回</td><td>danger 撤回</td><td>展示态已发放</td><td>始终对该态</td><td>确认</td><td>withdrawRecognition</td><td>已撤回</td><td>已撤回</td><td>取消</td><td>内存</td></tr></tbody></table>
+</article>
+<article id="admin-settings"><h3>7.5 规则设置</h3>
+<figure><img src="screenshots/后台-规则设置-积分设置.png" alt="规则设置-积分模块-额度列表截图"><figcaption><span class="component-path">规则设置-积分模块-额度列表</span>：Tab 积分设置。月份选择器目前只进 draft，过滤实际只按关键词（月份未参与 filter）{todo}。</figcaption></figure>
+<figure><img src="screenshots/后台-规则设置-查询筛选.png" alt="规则设置-积分模块-查询筛选截图"><figcaption><span class="component-path">规则设置-积分模块-查询筛选</span>：统计月份 DatePicker month allowClear=false 默认 2026-08；关键词对象名称。</figcaption></figure>
+<figure><img src="screenshots/后台-规则设置-额度表格.png" alt="规则设置-积分模块-额度表格截图"><figcaption><span class="component-path">规则设置-积分模块-额度表格</span>：对象、人数、单人月度积分额度、月度积分总额度、已用额度 Progress、调整额度。可勾选，未选时批量调整禁用。</figcaption></figure>
+<figure><img src="screenshots/后台-规则设置-新增额度弹窗.png" alt="规则设置-积分模块-新增弹窗截图"><figcaption><span class="component-path">规则设置-积分模块-新增弹窗</span>：对象 TreeSelect（组织或人）、单人月度积分额度必填、原因选填。重复对象 error「该对象已存在额度，请直接调整」。</figcaption></figure>
+<figure><img src="screenshots/后台-规则设置-填写设置.png" alt="规则设置-填写模块-表单截图"><figcaption><span class="component-path">规则设置-填写模块-表单</span>：最少字数 InputNumber min=1；输入框填写提示 TextArea；保存写 settings。副文案：同事认可原因与公司表彰事由共用。</figcaption></figure>
+<figure><img src="screenshots/后台-规则设置-风控设置.png" alt="规则设置-风控模块-整页 Tab截图"><figcaption><span class="component-path">规则设置-风控模块-整页 Tab</span>：审核设置 + 异常监控设置。</figcaption></figure>
+<figure><img src="screenshots/后台-规则设置-审核设置.png" alt="规则设置-风控模块-审核设置截图"><figcaption><span class="component-path">规则设置-风控模块-审核设置</span>：同事认可审核 Switch 默认开；审核员 TreeSelect 默认陈佳。关审核二次确认「关闭后新提交的同事认可将直接发放」。开且审核员空 warning。</figcaption></figure>
+<figure><img src="screenshots/后台-规则设置-异常监控.png" alt="规则设置-风控模块-异常监控设置截图"><figcaption><span class="component-path">规则设置-风控模块-异常监控设置</span>：文案：仅提醒不禁止。三项 Switch+阈值：相似度默认 85%；频率 3 次/30天；互认 3 次/30天。改开关立即 setIncentiveSettings。</figcaption></figure>
+<h4>操作说明</h4>
+<table><thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用逻辑</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead><tbody><tr><td>保存填写</td><td>规则设置-填写模块-保存</td><td>保存</td><td>minLength≥1</td><td>始终</td><td>点击</td><td>setIncentiveSettings</td><td>内存设置更新</td><td>已保存填写设置</td><td>最少字数须大于等于 1</td><td>无 HTTP</td></tr><tr><td>批量调整</td><td>规则设置-积分模块-批量调整</td><td>批量调整</td><td>已勾选</td><td>无勾选禁用；点时若未选 warning</td><td>填统一额度</td><td>applyQuotaBudgetsByKeys</td><td>清空勾选</td><td>已批量调整 N 条</td><td>请先勾选要调整的对象</td><td>内存</td></tr><tr><td>调整额度</td><td>规则设置-积分模块-调整额度</td><td>行操作</td><td>有行</td><td>始终</td><td>弹窗对象 disabled</td><td>updateQuota</td><td>预算更新</td><td>已调整额度</td><td>校验失败</td><td>内存</td></tr><tr><td>切换风控规则</td><td>规则设置-风控模块-异常监控</td><td>Switch</td><td>无</td><td>始终</td><td>切换</td><td>立即写入 rules</td><td>详情异常标识随之变</td><td>无 toast</td><td>无</td><td>内存</td></tr></tbody></table>
+</article></section>
+<section id="page-h5"><h2>8. H5 页面需求</h2>
+<article><h3>8.1 首页</h3>
+<figure><img src="screenshots/H5-首页-页面整体.png" alt="H5首页-页面-整体布局截图"><figcaption><span class="component-path">H5首页-页面-整体布局</span>：热门勋章 Top3 + 累计获得数 + 查看全部；认可动态 Feed；底栏；右下 FAB。</figcaption></figure>
+<figure><img src="screenshots/H5-首页-热门勋章.png" alt="H5首页-热门模块-热门勋章截图"><figcaption><span class="component-path">H5首页-热门模块-热门勋章</span>：hotBadges(本年,同事认可) 前 3，无类型/分类筛。点勋章 goH5Incentive(ranking, badgeId)。</figcaption></figure>
+<figure><img src="screenshots/H5-首页-认可动态.png" alt="H5首页-动态模块-认可动态截图"><figcaption><span class="component-path">H5首页-动态模块-认可动态</span>：status=已发放 的记录卡片。点卡片/接收人进 person 墙。空态「暂无认可动态」。</figcaption></figure>
+<figure><img src="screenshots/H5-首页-底栏导航.png" alt="H5首页-导航模块-底栏截图"><figcaption><span class="component-path">H5首页-导航模块-底栏</span>：首页/消息/个人中心。消息未读 class has-unread。仅 home/messages/profile 显示底栏。</figcaption></figure>
+<figure><img src="screenshots/H5-首页-发放FAB.png" alt="H5首页-发放模块-悬浮按钮截图"><figcaption><span class="component-path">H5首页-发放模块-悬浮按钮</span>：仅 home 显示；aria 发放勋章；进 issue。</figcaption></figure>
+</article>
+<article><h3>8.2 发放勋章</h3>
+<figure><img src="screenshots/H5-发放勋章-选勋章.png" alt="H5发放勋章-选勋章模块-分类列表截图"><figcaption><span class="component-path">H5发放勋章-选勋章模块-分类列表</span>：仅同事认可勋章按 category 分组。</figcaption></figure>
+<figure><img src="screenshots/H5-发放勋章-月度额度.png" alt="H5发放勋章-额度模块-本月可发放截图"><figcaption><span class="component-path">H5发放勋章-额度模块-本月可发放</span>：硬编码：可发放 150、额度 200、已发放 50。</figcaption></figure>
+<figure><img src="screenshots/H5-发放勋章-勋章详情抽屉.png" alt="H5发放勋章-详情模块-勋章详情截图"><figcaption><span class="component-path">H5发放勋章-详情模块-勋章详情</span>：定义/积分；底「发放勋章」进入填写步。</figcaption></figure>
+<figure><img src="screenshots/H5-发放勋章-填写表单.png" alt="H5发放勋章-填写模块-表单截图"><figcaption><span class="component-path">H5发放勋章-填写模块-表单</span>：已选勋章、认可对象、原因（字数+认可规则）、附件必填。</figcaption></figure>
+<figure><img src="screenshots/H5-发放勋章-认可对象.png" alt="H5发放勋章-填写模块-认可对象截图"><figcaption><span class="component-path">H5发放勋章-填写模块-认可对象</span>：可多选；空态「请选择认可对象」；有值显示姓名顿号与人数。</figcaption></figure>
+<figure><img src="screenshots/H5-发放勋章-对象选择树.png" alt="H5发放勋章-对象模块-组织树截图"><figcaption><span class="component-path">H5发放勋章-对象模块-组织树</span>：底部 Drawer。仅可选 E 开头员工节点。确认选择（N）无选人禁用。</figcaption></figure>
+<figure><img src="screenshots/H5-发放勋章-确认发放.png" alt="H5发放勋章-底栏模块-确认发放截图"><figcaption><span class="component-path">H5发放勋章-底栏模块-确认发放</span>：校验：勋章、≥1 人、原因字数、≥1 附件、cost≤150。成功 toast 已提交 N 条并重置 step=0。</figcaption></figure>
+<h4>操作说明</h4>
+<table><thead><tr><th>操作名称</th><th>组件路径</th><th>触发元素</th><th>前置条件</th><th>启用/禁用逻辑</th><th>用户动作</th><th>系统响应</th><th>状态变化</th><th>成功反馈</th><th>失败反馈</th><th>跳转/接口</th></tr></thead><tbody><tr><td>选勋章</td><td>H5发放勋章-选勋章模块-勋章卡片</td><td>勋章按钮</td><td>step=0</td><td>始终</td><td>点击</td><td>setBadge+step=1</td><td>进表单</td><td>无</td><td>无</td><td>本地 state</td></tr><tr><td>确认发放</td><td>H5发放勋章-底栏模块-确认发放</td><td>确认发放</td><td>step>0</td><td>始终可点，内部校验</td><td>点击</td><td>message；不写 incentiveStore</td><td>重置表单</td><td>已提交 N 条认可记录</td><td>缺勋章/人/字数/附件/额度不足 warning</td><td>无后台接口</td></tr><tr><td>查看规则</td><td>H5发放勋章-填写模块-认可规则</td><td>认可规则 link</td><td>已选勋章</td><td>始终</td><td>点击</td><td>底部 Drawer BadgeRules</td><td>开规则</td><td>无</td><td>无</td><td>本地</td></tr></tbody></table>
+</article>
+<article><h3>8.3 热门勋章 / 个人勋章墙</h3>
+<figure><img src="screenshots/H5-热门勋章-页面整体.png" alt="H5热门勋章-页面-整体布局截图"><figcaption><span class="component-path">H5热门勋章-页面-整体布局</span>：筛选条 + 勋章条 + 获得名单。数据 badgesByType(period, 全部类型)，默认 period=近一个月、scopeFilter=全部、category=全部。</figcaption></figure>
+<figure><img src="screenshots/H5-热门勋章-筛选条.png" alt="H5热门勋章-筛选模块-类型分类时间截图"><figcaption><span class="component-path">H5热门勋章-筛选模块-类型分类时间</span>：类型 role=group：全部/公司表彰/同事认可（aria-pressed）。右侧时间 Dropdown「近一个月」可选三个月/半年。下一行分类横向滚动，随类型变化。改类型若当前分类不属于新类型则回到全部，并 focus 第一条勋章改 hash。</figcaption></figure>
+<figure><img src="screenshots/H5-热门勋章-勋章条.png" alt="H5热门勋章-勋章模块-Tab 条截图"><figcaption><span class="component-path">H5热门勋章-勋章模块-Tab 条</span>：仅展示当前筛选 visible 列表。点勋章更新 selected 并改 hash ranking/{id}。</figcaption></figure>
+<figure><img src="screenshots/H5-热门勋章-获得名单.png" alt="H5热门勋章-名单模块-获得员工截图"><figcaption><span class="component-path">H5热门勋章-名单模块-获得员工</span>：recipientsFor(badge.scope, period, month, name)。同事认可点行进个人墙。</figcaption></figure>
+<figure><img src="screenshots/H5-热门勋章-公司表彰.png" alt="H5热门勋章-筛选模块-公司表彰截图"><figcaption><span class="component-path">H5热门勋章-筛选模块-公司表彰</span>：切到公司表彰后分类变为竞赛与评比成果等；名单点人进光荣事迹。</figcaption></figure>
+<figure><img src="screenshots/H5-公司表彰-光荣事迹.png" alt="H5光荣事迹-页面-公司表彰故事截图"><figcaption><span class="component-path">H5光荣事迹-页面-公司表彰故事</span>：MobileBackbar 标题公司表彰；肖像+勋章；光荣事迹与勋章说明。</figcaption></figure>
+<figure><img src="screenshots/H5-热门勋章-指定勋章.png" alt="H5热门勋章-勋章模块-指定 P02截图"><figcaption><span class="component-path">H5热门勋章-勋章模块-指定 P02</span>：hash ranking/P02 预选「问题解决与闭环」（仍受当前筛选是否包含该勋章影响）。</figcaption></figure>
+<figure><img src="screenshots/H5-个人勋章墙-页面整体.png" alt="H5个人勋章墙-页面-整体布局截图"><figcaption><span class="component-path">H5个人勋章墙-页面-整体布局</span>：person/E001 林晓云。按月分组获奖记录。</figcaption></figure>
+<figure><img src="screenshots/H5-个人勋章墙-页头.png" alt="H5个人勋章墙-页头模块-身份与统计截图"><figcaption><span class="component-path">H5个人勋章墙-页头模块-身份与统计</span>：个人荣誉档案、部门、勋章数、累计积分。</figcaption></figure>
+</article>
+<article><h3>8.4 个人中心 / 消息 / 获得页</h3>
+<figure><img src="screenshots/H5-个人中心-页面整体.png" alt="H5个人中心-页面-整体布局截图"><figcaption><span class="component-path">H5个人中心-页面-整体布局</span>：类型 Tab 默认同事认可；已获得轮播+获得于日期；分类网格，未获得 is-locked。</figcaption></figure>
+<figure><img src="screenshots/H5-个人中心-类型Tab.png" alt="H5个人中心-类型模块-公司表彰同事认可截图"><figcaption><span class="component-path">H5个人中心-类型模块-公司表彰同事认可</span>：切换重置 picked 与折叠。</figcaption></figure>
+<figure><img src="screenshots/H5-个人中心-勋章轮播.png" alt="H5个人中心-轮播模块-已获得截图"><figcaption><span class="component-path">H5个人中心-轮播模块-已获得</span>：点当前张开详情；滑动切 picked。</figcaption></figure>
+<figure><img src="screenshots/H5-个人中心-勋章详情.png" alt="H5个人中心-详情模块-勋章详情抽屉截图"><figcaption><span class="component-path">H5个人中心-详情模块-勋章详情抽屉</span>：title 勋章详情；含获得时间。</figcaption></figure>
+<figure><img src="screenshots/H5-消息-页面整体.png" alt="H5消息-会话模块-即时激励助手截图"><figcaption><span class="component-path">H5消息-会话模块-即时激励助手</span>：官方 Tag。模拟今天 09:32 一条勋章通知。无底栏 FAB。</figcaption></figure>
+<figure><img src="screenshots/H5-消息-勋章卡片.png" alt="H5消息-会话模块-勋章卡片截图"><figcaption><span class="component-path">H5消息-会话模块-勋章卡片</span>：未读文案「你收到一枚新勋章」；点开 award 且 viewed=true，红点消失。</figcaption></figure>
+<figure><img src="screenshots/H5-勋章详情-获得页.png" alt="H5获得页-庆典模块-勋章详情截图"><figcaption><span class="component-path">H5获得页-庆典模块-勋章详情</span>：kicker 已获得勋章或恭喜你获得新勋章（isNew）；分享按钮无 onClick 业务。{todo}</figcaption></figure>
+</article></section>
+<section id="page-pc"><h2>9. PC 页面需求</h2>
+<p>与 H5 共用屏幕组件，差异：PcActivityShell 顶栏导航；右侧 IncentivePcAside 常驻；发放详情/规则/选人为 Modal 而非全屏 Drawer；首页热门横向滚动且无「查看全部」，但 PC 首页热门有类型 Tabs + 分类 Tabs + 时间 Dropdown；个人中心为统计头+类型 Tab+分类网格（无 H5 轮播）。H5IncentiveApp 仍向 Ranking 传入无用 prop <code>scope=同事认可</code>，筛选状态在组件内，该 prop 不生效。</p>
+<figure><img src="screenshots/PC-首页-页面整体.png" alt="PC首页-页面-双栏布局截图"><figcaption><span class="component-path">PC首页-页面-双栏布局</span>：主栏热门（含筛选）+动态；右栏与我相关。</figcaption></figure>
+<figure><img src="screenshots/PC-首页-顶栏导航.png" alt="PC首页-导航模块-顶栏截图"><figcaption><span class="component-path">PC首页-导航模块-顶栏</span>：首页/消息（未读红点）/个人中心。award 时消息高亮。</figcaption></figure>
+<figure><img src="screenshots/PC-首页-热门勋章.png" alt="PC首页-热门模块-热门勋章截图"><figcaption><span class="component-path">PC首页-热门模块-热门勋章</span>：badgesByType(当前 period, 全部类型) 后按类型/分类过滤，横向 is-scroll。</figcaption></figure>
+<figure><img src="screenshots/PC-首页-热门筛选.png" alt="PC首页-热门模块-筛选截图"><figcaption><span class="component-path">PC首页-热门模块-筛选</span>：类型 tablist 全部/公司表彰/同事认可；时间「近一个月」下拉；分类 tablist 随类型变。H5 首页无此块。</figcaption></figure>
+<figure><img src="screenshots/PC-首页-侧栏与我相关.png" alt="PC首页-侧栏模块-与我相关截图"><figcaption><span class="component-path">PC首页-侧栏模块-与我相关</span>：姓名部门、勋章数、可用积分 150、本月已发 50、最近获得最多 3 条。空预览时积分/已发为 0。</figcaption></figure>
+<figure><img src="screenshots/PC-首页-发放按钮.png" alt="PC首页-侧栏模块-发放勋章截图"><figcaption><span class="component-path">PC首页-侧栏模块-发放勋章</span>：block primary，进 issue。H5 无此侧栏按钮。</figcaption></figure>
+<figure><img src="screenshots/PC-发放勋章-页面整体.png" alt="PC发放勋章-页面-主栏表单截图"><figcaption><span class="component-path">PC发放勋章-页面-主栏表单</span>：同 H5 两步，弹层为 Modal。</figcaption></figure>
+<figure><img src="screenshots/PC-热门勋章-页面整体.png" alt="PC热门勋章-页面-整体布局截图"><figcaption><span class="component-path">PC热门勋章-页面-整体布局</span>：筛选 Tabs + 勋章条横向滚到 active。</figcaption></figure>
+<figure><img src="screenshots/PC-热门勋章-筛选条.png" alt="PC热门勋章-筛选模块-类型分类时间截图"><figcaption><span class="component-path">PC热门勋章-筛选模块-类型分类时间</span>：类型/分类为 tablist；时间 PeriodMenu。切筛时若当前勋章不在结果内，选第一条并改 hash。</figcaption></figure>
+<figure><img src="screenshots/PC-个人中心-页面整体.png" alt="PC个人中心-页面-勋章收藏截图"><figcaption><span class="component-path">PC个人中心-页面-勋章收藏</span>：我的勋章 + 分类下已获得/总数。</figcaption></figure>
+<figure><img src="screenshots/PC-个人中心-统计头.png" alt="PC个人中心-页头模块-统计截图"><figcaption><span class="component-path">PC个人中心-页头模块-统计</span>：勋章枚数与累计积分（次数×单枚积分）。</figcaption></figure>
+<figure><img src="screenshots/PC-消息-页面整体.png" alt="PC消息-会话模块-助手截图"><figcaption><span class="component-path">PC消息-会话模块-助手</span>：主栏会话，右栏仍在。</figcaption></figure>
+<figure><img src="screenshots/PC-个人勋章墙-页面整体.png" alt="PC个人勋章墙-页面-整体布局截图"><figcaption><span class="component-path">PC个人勋章墙-页面-整体布局</span>：PC 英雄区右侧直接展示勋章/积分 dl。</figcaption></figure>
+<figure><img src="screenshots/PC-勋章详情-获得页.png" alt="PC获得页-庆典模块-勋章详情截图"><figcaption><span class="component-path">PC获得页-庆典模块-勋章详情</span>：与 H5 同组件，套在 PC 双栏内。</figcaption></figure>
+</section>
+<section id="data-fields"><h2>10. 数据字段与枚举</h2>
+<table><thead><tr><th>实体</th><th>字段</th><th>取值/说明</th></tr></thead><tbody><tr><td>BadgeScope</td><td>id/name/sort</td><td>种子：company 公司表彰、peer 同事认可</td></tr><tr><td>BadgeCategory</td><td>scopeId/name/sort</td><td>卓越贡献/创新突破；团队协作/主动担当</td></tr><tr><td>Badge</td><td>points/orgIds/enabled/definition/criteria/examples/exclusions/riskLabel</td><td>riskLabel 直接发放|低风险</td></tr><tr><td>Recognition.status</td><td>已发放|待审核|已驳回|已撤回</td><td>displayRecognitionStatus 可随审核开关改展示</td></tr><tr><td>Recognition.type</td><td>同事认可|公司表彰</td><td>表彰 giver=系统</td></tr><tr><td>RiskHit.rule</td><td>duplicate|frequency|mutual</td><td>标签：认可原因重复 / 频率异常 / 双方互认频繁</td></tr><tr><td>QuotaRow.objectType</td><td>组织|个人</td><td>个人 employees=1</td></tr><tr><td>Recognition.attachments</td><td>name/url/kind</td><td>kind=image|file（按扩展名）；种子含 png/jpg/pdf/xls DataURL</td></tr><tr><td>recognitionReasonLabel</td><td>公司表彰→表彰理由；否则认可理由</td><td>列表合成列名「表彰理由 / 认可理由」</td></tr><tr><td>RankingPeriod</td><td>近一个月|三个月|半年</td><td>rankingWindow 1/3/6 月，放大人次 mock</td></tr><tr><td>RankingScope</td><td>全部|公司表彰|同事认可</td><td>H5 排行/PC 首页热门/PC 排行</td></tr></tbody></table>
+</section>
+<section id="apis"><h2>11. API / 数据接口清单</h2>
+<p>源码 incentive 与 C 端目录无 fetch/axios/XHR。全部内存 store / 常量。</p>
+<table><thead><tr><th>接口用途</th><th>方法</th><th>路径</th><th>触发场景</th><th>请求参数</th><th>响应字段</th><th>是否真实接口</th><th>备注</th></tr></thead><tbody><tr><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>否</td><td>无真实接口</td></tr></tbody></table>
+<p>建议接口 / 待确认：勋章 CRUD；归属分类；发放查询分页导出；审核通过/驳回/撤回；公司表彰提交（含附件对象存储）；额度 CRUD；规则读取；C 端热门/动态/提交认可/消息已读；排行筛选条件；积分账本与额度扣减事务。</p></section>
+<section id="non-functional"><h2>12. 非功能需求</h2>
+<ul>
+<li>后台表格分页、pageSizeOptions、行选择保留遵循 b2bStandards.table。{impl}</li>
+<li>表单 unsavedChangesGuard：勋章新建/编辑 dirty 离开确认。{impl}</li>
+<li>H5 视口按 390 宽演示；PC 1440。响应式断点以 CSS 为准。{impl}</li>
+<li>附件仅前端拦截体积与数量，无病毒扫描/对象存储。{todo}</li>
+<li>审计：处理时间线在详情展示，无独立审计日志表。{todo}</li>
+<li>无障碍：部分按钮有 aria-label（发放 FAB、排序、对象树）。分享无实现。{todo}</li>
+</ul></section>
+<section id="analytics"><h2>13. 埋点与指标建议</h2>
+<p><span class="status guess">根据页面推测需要</span> 代码无埋点 SDK。</p>
+<table><thead><tr><th>事件名称</th><th>触发动作</th><th>关键属性</th><th>业务目的</th></tr></thead><tbody><tr><td>incentive_issue_click</td><td>点 FAB / PC 发放勋章</td><td>surface</td><td>发放入口转化</td></tr><tr><td>incentive_issue_submit</td><td>确认发放</td><td>badge_id,target_count,cost,success</td><td>提交成功率</td></tr><tr><td>incentive_review_approve</td><td>通过并发放</td><td>record_id</td><td>审核时效</td></tr><tr><td>incentive_review_reject</td><td>确认驳回</td><td>record_id</td><td>驳回率</td></tr><tr><td>incentive_commend_submit</td><td>公司表彰确认发放</td><td>people_count,badge_id</td><td>表彰规模</td></tr><tr><td>incentive_ranking_filter</td><td>改类型/分类/时间</td><td>scope,category,period,surface</td><td>排行筛选使用</td></tr><tr><td>incentive_message_open</td><td>点勋章卡片</td><td>is_new</td><td>通知打开率</td></tr></tbody></table>
+</section>
+<section id="acceptance"><h2>14. 验收标准</h2>
+<ul>
+<li>Given 打开 #/incentive/incentive-dashboard，When 默认周期覆盖 8 月底 mock，Then KPI/待办/近期表有数，点待审核编号打开认可详情。</li>
+<li>Given 勋章管理，When 删除仍被占用的归属，Then warning 且不删；When 空归属删到只剩 1 个，Then 「至少保留一个归属」。</li>
+<li>Given 新建勋章同归属重名，When 保存，Then 「同一归属下勋章名称不能重复」。</li>
+<li>Given 描述缺四段标题，When 保存，Then 「请按四个分类标题完整填写描述」。</li>
+<li>Given 审核员陈佳且审核开启，When 待审核点通过并发放确认，Then toast 已通过并发放且状态已发放。</li>
+<li>Given 驳回不填意见，When 确认驳回，Then warning 驳回须填写审核意见。</li>
+<li>Given 发布表彰不传附件，When 确认发放，Then 按钮保持禁用或 warning 请上传证明材料。</li>
+<li>Given H5 发放 cost&gt;150，When 确认发放，Then 额度不足 warning。</li>
+<li>Given 发放记录列表，When 查看可见表头，Then 积分与状态相邻；DOM 仍有「表彰理由 / 认可理由」。When 打开详情，Then 同事认可显示认可理由、公司表彰显示表彰理由。</li>
+<li>Given 打开 RK20260826004 详情，When 查看字段，Then label 为认可理由且附件可下载现场照片.jpg；打开 RK20260826003 则为表彰理由及多附件。</li>
+<li>Given 发布表彰上传文件后确认，When 再开该条详情，Then attachments 出现对应文件名。</li>
+<li>Given H5 热门勋章，When 点公司表彰，Then 分类变为公司表彰分类且点获得人进入光荣事迹。</li>
+<li>Given H5 首页，When 点查看全部，Then 进入热门勋章且可见类型「全部 / 公司表彰 / 同事认可」与时间「近一个月」。</li>
+<li>Given PC 首页热门，When 切换类型或分类，Then 勋章条过滤；时间下拉含近一个月/三个月/半年。</li>
+<li>Given 消息未读，When 进入 award 返回，Then 消息 Tab 无 has-unread。</li>
+<li>Given PC 首页，When 查看侧栏最近获得，Then 最多 3 条，无「查看全部」文案。</li>
+</ul></section>
+<section id="risks"><h2>15. 风险与待确认问题</h2>
+<ol>
+<li>C 端提交认可不写入后台 recognitions，双端数据断裂。生产必须统一账本。</li>
+<li>C 端额度 200/50/150 写死，与规则设置配额表、扣减未打通。</li>
+<li>热门排行已可筛公司表彰并进光荣事迹；H5 首页热门仍只展示同事认可本年 Top3，与排行默认「全部 + 近一个月」口径不一致。</li>
+<li>规则设置「统计月份」不参与额度过滤。</li>
+<li>发放记录理由列无 width，1440/1920 下计算宽度 0，列表看不到理由文本。详情抽屉可见。是否给该列 minWidth 待确认。</li>
+<li>适用组织、表彰发布范围未作用于 C 端可见性。</li>
+<li>后台演示账号「陈产品」与审核员「陈佳」、C 端「林晓云」三人身份不一致，评审时易误解权限。</li>
+<li>无登录、无集团/单位管理员、无真实积分账本与消息推送。</li>
+<li>风控只展示不拦截，是否生产保持「仅提醒」需业务拍板。</li>
+<li>获得页分享、空预览开关（useCEndEmptyPreview）与门户联调范围 {todo}。</li>
+</ol></section>
+</main>
+</div>
+</div>
+<script>
+  document.querySelectorAll('[data-toggle-toc]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var layout = document.getElementById('prdLayout');
+      var collapsed = layout.classList.toggle('toc-collapsed');
+      document.querySelectorAll('[data-toggle-toc]').forEach(function (btn) {
+        btn.setAttribute('aria-label', collapsed ? '显示目录' : '隐藏目录');
+        btn.setAttribute('title', collapsed ? '显示目录' : '隐藏目录');
+      });
+    });
+  });
+</script>
+</body>
+</html>

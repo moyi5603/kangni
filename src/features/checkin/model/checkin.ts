@@ -1,8 +1,19 @@
 export type CheckinStatus = '未开始' | '进行中' | '已结束';
 export type CheckinOwnerApp = 'culture' | 'skills-contest';
+export const CHECKIN_MOODS = ['平静', '惊喜', '幸福', '担忧', '愤怒', '悲伤'] as const;
+export type CheckinMood = (typeof CHECKIN_MOODS)[number];
+
+export const CHECKIN_MOOD_COLOR: Record<CheckinMood, string> = {
+  平静: '#5b8c9a',
+  惊喜: '#e8a54b',
+  幸福: '#e36b8a',
+  担忧: '#7b8aa3',
+  愤怒: '#d45a4a',
+  悲伤: '#6b6aa8',
+};
 export type RewardTrigger = 'each' | 'streak' | 'total';
 export type RewardRepeat = 'once' | 'repeat';
-export type RewardKind = '勋章' | '积分' | '抽奖次数';
+export type RewardKind = '勋章' | '积分';
 export type GrantStatus = '成功' | '失败' | '未入账';
 
 export const CHECKIN_STATUS_OPTIONS: CheckinStatus[] = ['未开始', '进行中', '已结束'];
@@ -44,6 +55,7 @@ export type CheckinLog = {
   department: string;
   account: string;
   checkedAt: string;
+  mood?: CheckinMood;
 };
 
 export type RewardGrant = {
@@ -76,7 +88,7 @@ export function calendarDayKey(value: string): string {
   return value.slice(0, 10);
 }
 
-function shanghaiYmd(ms: number): string {
+export function shanghaiYmd(ms: number = Date.now()): string {
   const shifted = new Date(ms + 8 * 60 * 60 * 1000);
   return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, '0')}-${String(shifted.getUTCDate()).padStart(2, '0')}`;
 }
@@ -92,6 +104,10 @@ export function nextStreak(previousDays: string[], today: string): number {
     count += 1;
   }
   return count;
+}
+
+export function applyCheckinMood(logs: CheckinLog[], id: number, mood: CheckinMood): CheckinLog[] {
+  return logs.map((item) => (item.id === id ? { ...item, mood } : item));
 }
 
 export function uniqueUserDays(logs: CheckinLog[], themeId: number, userId: string): string[] {
@@ -121,10 +137,9 @@ export function ruleSummary(rule: RewardRule): string {
 }
 
 export function validateRewardRule(rule: RewardRule): string | null {
-  if (!rule.enableMedal && !rule.enablePoints && !rule.enableLotteryChance) return '请至少选择一种奖励';
+  if (!rule.enableMedal && !rule.enablePoints) return '请至少选择一种奖励';
   if (rule.enableMedal && !rule.medalId) return '请选择勋章';
   if (rule.enablePoints && rule.points < 1) return '积分须为正整数';
-  if (rule.enableLotteryChance && rule.lotteryChance < 1) return '抽奖次数须为正整数';
   if (rule.trigger === 'streak' && (rule.streakDays ?? 0) < 1) return '请填写连续天数';
   if (rule.trigger === 'total' && (rule.totalTimes ?? 0) < 1) return '请填写累计次数';
   return null;
@@ -148,6 +163,7 @@ export function submitCheckinResult(input: {
   at: string;
   nextLogId?: number;
   nextGrantId?: number;
+  mood?: CheckinMood;
 }): SubmitOk | SubmitFail {
   const status = checkinStatusOf(input.theme, parseCheckinTime(input.at));
   if (status !== '进行中') return { ok: false, reason: status === '未开始' ? '打卡未开始' : '打卡已结束' };
@@ -169,6 +185,7 @@ export function submitCheckinResult(input: {
     department: input.department ?? '',
     account: input.account ?? '',
     checkedAt: input.at,
+    ...(input.mood ? { mood: input.mood } : {}),
   };
   const grants: RewardGrant[] = [];
   let grantId = input.nextGrantId ?? Math.max(0, ...input.grants.map((item) => item.id)) + 1;
@@ -176,7 +193,6 @@ export function submitCheckinResult(input: {
     const kinds: Array<{ kind: RewardKind; enabled: boolean; content: string }> = [
       { kind: '勋章', enabled: item.enableMedal, content: item.medalId ?? '' },
       { kind: '积分', enabled: item.enablePoints, content: item.enablePoints ? `+${item.points}` : '' },
-      { kind: '抽奖次数', enabled: item.enableLotteryChance, content: item.enableLotteryChance ? `+${item.lotteryChance}` : '' },
     ];
     for (const reward of kinds) {
       if (!reward.enabled) continue;
@@ -205,6 +221,21 @@ export function submitCheckinResult(input: {
     }
   }
   return { ok: true, log, grants };
+}
+
+export function checkinRewardLines(
+  grants: RewardGrant[],
+  extra?: { medalName?: (id: string) => string; lotteryChance?: number },
+): string[] {
+  const lines = grants
+    .filter((item) => item.status !== '失败')
+    .map((item) => {
+      if (item.rewardKind === '积分') return `积分 ${item.content}`;
+      const name = extra?.medalName?.(item.content) ?? item.content;
+      return `勋章「${name}」`;
+    });
+  if ((extra?.lotteryChance ?? 0) > 0) lines.push(`抽奖次数 +${extra?.lotteryChance}`);
+  return lines;
 }
 
 export const initialThemes: CheckinTheme[] = [
@@ -244,8 +275,8 @@ export const initialThemes: CheckinTheme[] = [
         enableMedal: false,
         enablePoints: true,
         points: 5,
-        enableLotteryChance: true,
-        lotteryChance: 1,
+        enableLotteryChance: false,
+        lotteryChance: 0,
         repeat: 'repeat',
       },
     ],
@@ -262,8 +293,8 @@ export const initialThemes: CheckinTheme[] = [
 ];
 
 export const initialLogs: CheckinLog[] = [
-  { id: 1, themeId: 1, userId: 'u1', user: '周洁', department: '品牌文化部', account: 'zhoujie', checkedAt: '2026-09-09 08:10' },
-  { id: 2, themeId: 1, userId: 'u1', user: '周洁', department: '品牌文化部', account: 'zhoujie', checkedAt: '2026-09-10 08:12' },
+  { id: 1, themeId: 1, userId: 'u1', user: '周洁', department: '品牌文化部', account: 'zhoujie', checkedAt: '2026-09-09 08:10', mood: '平静' },
+  { id: 2, themeId: 1, userId: 'u1', user: '周洁', department: '品牌文化部', account: 'zhoujie', checkedAt: '2026-09-10 08:12', mood: '幸福' },
   { id: 3, themeId: 2, userId: 'u2', user: '李工', department: '研发中心 · 前端组', account: 'ligong', checkedAt: '2026-09-10 09:00' },
 ];
 
@@ -280,19 +311,6 @@ export const initialGrants: RewardGrant[] = [
     ruleSummary: '每次打卡',
     grantedAt: '2026-09-10 09:00',
     status: '成功',
-  },
-  {
-    id: 2,
-    themeId: 2,
-    ruleId: 's-points',
-    userId: 'u2',
-    user: '李工',
-    department: '研发中心 · 前端组',
-    rewardKind: '抽奖次数',
-    content: '+1',
-    ruleSummary: '每次打卡',
-    grantedAt: '2026-09-10 09:00',
-    status: '未入账',
   },
 ];
 

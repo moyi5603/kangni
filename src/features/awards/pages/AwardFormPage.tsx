@@ -21,9 +21,11 @@ import {
   Upload,
 } from 'antd';
 import type { UploadFile } from 'antd';
+import { COVER_IMAGE_UPLOAD_HINT, IMAGE_UPLOAD_ACCEPT } from '../../../shared/ui/imageUploadHint';
 import dayjs from 'dayjs';
 import { orgDepartmentTree, orgPeoplePickerTree } from '../../activities/model/activity';
 import { useMedals } from '../../activities/model/medalLibrary';
+import { MedalIdFormPicker } from '../../checkin/components/MedalRewardFields';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import {
   awardTypes,
@@ -457,9 +459,9 @@ export function AwardFormPage({ mode, recordId, onBack, onNavigate }: Props) {
           <Form.Item name="type" label="评优类型" rules={[{ required: true, message: '请选择评优类型' }]}>
             <Radio.Group options={optionsOf(awardTypes)} />
           </Form.Item>
-          <Form.Item label="封面图片" extra="支持 jpg / png" required>
+          <Form.Item label="封面图片" extra={COVER_IMAGE_UPLOAD_HINT} required>
             <Upload
-              accept="image/*"
+              accept={IMAGE_UPLOAD_ACCEPT}
               listType="picture-card"
               maxCount={1}
               fileList={coverList}
@@ -625,10 +627,7 @@ export function AwardFormPage({ mode, recordId, onBack, onNavigate }: Props) {
                                 label="勋章"
                                 rules={[{ required: true, message: '请选择勋章' }]}
                               >
-                                <Select
-                                  placeholder="请选择勋章"
-                                  options={medals.map((item) => ({ value: item.id, label: item.name }))}
-                                />
+                                <MedalIdFormPicker medals={medals} />
                               </Form.Item>
                             ) : null}
                             {rewards.includes('certificate') ? (

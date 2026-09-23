@@ -20,6 +20,7 @@ import {
   Upload,
 } from 'antd';
 import type { UploadFile } from 'antd';
+import { IMAGE_UPLOAD_ACCEPT, VOTE_OPTION_IMAGE_UPLOAD_HINT } from '../../../shared/ui/imageUploadHint';
 import dayjs from 'dayjs';
 import { orgDepartmentTree, orgPeopleByName, orgPeoplePickerTree, personDepartment } from '../../activities/model/activity';
 import { employeeAvatarColor, employeeAvatarLetter } from '../../activities/model/employeeAvatar';
@@ -46,6 +47,7 @@ import {
   voteScoreRangeError,
   voteVisualSubtitleMax,
   voteVisualTitleMax,
+  voteNameMax,
   voteVisibilities,
   type VoteCampaign,
   type VoteChoice,
@@ -505,7 +507,7 @@ export function VoteFormPage({ mode, recordId, onBack, onNavigate }: Props) {
       <Breadcrumb
         separator=">"
         items={[
-          { title: '投票' },
+          { title: '投票-废弃' },
           {
             title: (
               <Button type="link" className="breadcrumb-link" onClick={leave}>
@@ -546,16 +548,17 @@ export function VoteFormPage({ mode, recordId, onBack, onNavigate }: Props) {
               }
         }
       >
+        <div className="vote-edit-form">
         <Card title="基础信息">
           <Form.Item
             name="name"
             label="投票名称"
             rules={[
               { required: true, whitespace: true, message: '请输入投票名称' },
-              { max: 50, message: '不超过 50 个字' },
+              { max: voteNameMax, message: `不超过 ${voteNameMax} 个字` },
             ]}
           >
-            <Input maxLength={50} showCount placeholder="请输入投票名称" disabled={nameLocked} />
+            <Input maxLength={voteNameMax} showCount placeholder="请输入投票名称" disabled={nameLocked} />
           </Form.Item>
           <Form.Item name="type" hidden>
             <Input />
@@ -845,6 +848,7 @@ export function VoteFormPage({ mode, recordId, onBack, onNavigate }: Props) {
               取消
             </Button>
           </Space>
+        </div>
         </div>
       </Form>
     </div>
@@ -1154,7 +1158,7 @@ function ImageUpload({
   const fileList = toFileList(value ?? '', '图片');
   return (
     <Upload
-      accept="image/*"
+      accept={IMAGE_UPLOAD_ACCEPT}
       maxCount={1}
       listType="picture-card"
       className={className ?? (compact ? 'vote-question-upload' : undefined)}
@@ -1194,7 +1198,7 @@ function ContestOptionFields({
         >
           <Input maxLength={40} placeholder="请输入作品标题" disabled={disabledIdentity} />
         </Form.Item>
-        <Form.Item name={[name, 'workCover']} label="封面" rules={[{ required: true, message: '请上传封面' }]}>
+        <Form.Item name={[name, 'workCover']} label="封面" extra={VOTE_OPTION_IMAGE_UPLOAD_HINT} rules={[{ required: true, message: '请上传封面' }]}>
           <ImageUpload disabled={disabledCopy} />
         </Form.Item>
         <Form.Item name={[name, 'workIntro']} label="简介" rules={[{ max: 200, message: '不超过 200 个字' }]}>
@@ -1216,7 +1220,7 @@ function ContestOptionFields({
           disabled={disabledIdentity}
         />
       </Form.Item>
-      <Form.Item name={[name, 'imageUrl']} label="头图">
+      <Form.Item name={[name, 'imageUrl']} label="头图" extra={VOTE_OPTION_IMAGE_UPLOAD_HINT}>
         <ImageUpload disabled={disabledCopy} />
       </Form.Item>
     </>

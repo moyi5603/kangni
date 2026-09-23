@@ -1,23 +1,19 @@
 import { useMemo, useState } from 'react';
 import { useActivities } from '../../../activities/model/activityStore';
-import { useAllMoments } from '../../../activities/model/momentStore';
-import { goCEnd, goCEndActivityList, goCEndPastMoments } from '../../../../app/navigation';
-import { MomentPastCard } from '../h5/H5ActivityCards';
-import { ActivityMeta } from '../components/ActivityMeta';
-import { HomeQuotaBlock } from '../components/HomeQuotaBlock';
-import { ActivityCoverOverlay } from '../components/StatusPill';
+import { goCEnd } from '../../../../app/navigation';
+import { useActivityDecoration } from '../../../activities/model/activityDecorationStore';
+import { decoActivityCardFields } from '../../../../shared/decoration/decoCardFields';
+import { ActivitySearchBar, ActivitySearchResults } from '../components/ActivitySearchBar';
+import { ActivityHomePreviewBlocks, ActivityStyleList } from '../components/ActivityHomeLayout';
 import {
   CLIENT_TABS,
   filterActivitiesByTitle,
   filterByTab,
-  pastHighlightMoments,
-  PC_ACTIVITY_PREVIEW_LIMIT,
-  PC_PAST_HIGHLIGHT_LIMIT,
-  signupCta,
   useLiveSocial,
   type ClientTabId,
 } from '../model/clientActivity';
 import { useUserSignups } from '../model/signupStore';
+import { usePreviewList } from '../../portal/emptyPreview';
 import { PcActivityShell } from './PcActivityShell';
 
 const CATALOG_ID = 'pc-activity-catalog';
@@ -27,11 +23,11 @@ export function PcActivityHome({
   variant = 'preview',
 }: {
   initialQuery?: string;
-  variant?: 'preview' | 'all';
+  variant?: 'preview' | 'all' | 'search';
 } = {}) {
   useLiveSocial();
-  const activities = useActivities();
-  const moments = useAllMoments();
+  const activities = usePreviewList(useActivities());
+  const layout = useActivityDecoration('pc');
   const signups = useUserSignups();
   const [tab, setTab] = useState<ClientTabId>('all');
   const [query, setQuery] = useState(initialQuery);
@@ -39,26 +35,52 @@ export function PcActivityHome({
     () => new Set(signups.map((signup) => signup.activityId)),
     [signups],
   );
+  const searching = variant === 'search';
   const filtered = useMemo(
-    () => filterActivitiesByTitle(filterByTab(activities, tab), query),
-    [activities, tab, query],
+    () => filterActivitiesByTitle(filterByTab(activities, searching ? 'all' : tab), searching || variant === 'all' ? query : ''),
+    [activities, tab, query, searching, variant],
   );
   const preview = variant === 'preview';
-  const list = preview ? filtered.slice(0, PC_ACTIVITY_PREVIEW_LIMIT) : filtered;
-  const past = preview ? pastHighlightMoments(moments, activities, PC_PAST_HIGHLIGHT_LIMIT) : [];
-  const emptyCopy = query.trim() ? '未找到相关活动' : '暂无相关活动';
+  const list = filtered;
+  const emptyCopy = variant === 'all' && query.trim() ? '未找到相关活动' : '暂无相关活动';
+  const title = preview ? layout.pageTitle : searching ? '搜索' : '全部活动';
+  const activityBlock = layout.blocks.find((item) => item.type === 'activity');
+  const activityStyle = activityBlock?.listStyle ?? 'large-image';
+  const activityCols = activityBlock?.columnCount;
+  const activityFields = decoActivityCardFields(activityBlock);
+
+  if (searching) {
+    return (
+      <PcActivityShell title="搜索">
+        <button className="c-back-link" type="button" onClick={() => goCEnd('pc')}>
+          ← 返回首页
+        </button>
+        <ActivitySearchBar value={query} onChange={setQuery} />
+        <ActivitySearchResults query={query} activities={filterByTab(activities, 'all')} surface="pc" />
+      </PcActivityShell>
+    );
+  }
 
   return (
-    <PcActivityShell title={preview ? '员工活动' : '全部活动'}>
+    <PcActivityShell title={title}>
       {preview ? null : (
         <button className="c-back-link" type="button" onClick={() => goCEnd('pc')}>
           ← 返回首页
         </button>
       )}
-      <section id={CATALOG_ID} className="c-pc-section c-catalog">
-        <div className="c-catalog-bar">
-          <div className="c-catalog-title-row">
-            <h2 className="c-catalog-title">活动</h2>
+      {preview ? (
+        <ActivityHomePreviewBlocks
+          layout={layout}
+          surface="pc"
+          activities={activities}
+          signedIds={signedIds}
+          tab={tab}
+          onTab={setTab}
+          searchClassName="c-pc-catalog-search"
+        />
+      ) : (
+        <section id={CATALOG_ID} className="c-pc-section c-catalog">
+          <div className="c-catalog-bar">
             <input
               className="c-pc-catalog-search"
               type="search"
@@ -67,89 +89,43 @@ export function PcActivityHome({
               aria-label="搜索活动名称"
               onChange={(event) => setQuery(event.target.value)}
             />
-          </div>
-          <div className="c-catalog-toolbar">
-            <div className="c-tabs" role="tablist" aria-label="活动分类">
-              {CLIENT_TABS.map((item) => {
-                const active = item.id === tab;
-                return (
-                  <button
-                    key={item.id}
-                    className={`c-tab${active ? ' is-active' : ''}`}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() => setTab(item.id)}
-                  >
-                    {item.label}
-                  </button>
-                );
-              })}
+            <div className="c-catalog-title-row">
+              <h2 className="c-catalog-title">活动</h2>
             </div>
-            {preview ? (
-              <div className="c-catalog-more">
-                <button type="button" onClick={() => goCEndActivityList('pc')}>
-                  查看全部
-                </button>
+            <div className="c-catalog-toolbar">
+              <div className="c-tabs" role="tablist" aria-label="活动分类">
+                {CLIENT_TABS.map((item) => {
+                  const active = item.id === tab;
+                  return (
+                    <button
+                      key={item.id}
+                      className={`c-tab${active ? ' is-active' : ''}`}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setTab(item.id)}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
               </div>
-            ) : null}
-          </div>
-        </div>
-        {list.length === 0 ? (
-          <p className="c-empty">{emptyCopy}</p>
-        ) : (
-          <ul className="c-pc-grid" aria-label="活动列表">
-            {list.map((activity) => {
-              const cta = signupCta(activity, signedIds.has(activity.id));
-              return (
-                <li key={activity.id}>
-                  <button
-                    className="c-pc-card c-card-btn"
-                    type="button"
-                    aria-label={`活动 ${activity.title}`}
-                    onClick={() => goCEnd('pc', activity.id)}
-                  >
-                    <div className="c-cover">
-                      {activity.coverUrl ? <img src={activity.coverUrl} alt="" /> : null}
-                      <ActivityCoverOverlay activity={activity} variant="home" />
-                    </div>
-                    <div className="c-pc-card-body">
-                      <ActivityMeta activity={activity} compact />
-                      <HomeQuotaBlock
-                        activity={activity}
-                        ctaLabel={cta.label}
-                        ctaEnabled={cta.enabled}
-                        signedUp={signedIds.has(activity.id)}
-                      />
-                    </div>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-      {past.length > 0 ? (
-        <section className="c-past-sec" aria-labelledby="pc-past-title">
-          <div className="c-past-head">
-            <h2 id="pc-past-title" className="c-past-title">
-              往期精彩回顾
-            </h2>
-            <div className="c-catalog-more">
-              <button type="button" onClick={() => goCEndPastMoments('pc')}>
-                查看全部
-              </button>
             </div>
           </div>
-          <ul className="c-past-rail" aria-label="往期精彩回顾">
-            {past.map((moment) => (
-              <li key={moment.id}>
-                <MomentPastCard moment={moment} />
-              </li>
-            ))}
-          </ul>
+          {list.length === 0 ? (
+            <p className="c-empty">{emptyCopy}</p>
+          ) : (
+            <ActivityStyleList
+              activities={list}
+              style={activityStyle}
+              surface="pc"
+              signedIds={signedIds}
+              columnCount={activityCols}
+              fields={activityFields}
+            />
+          )}
         </section>
-      ) : null}
+      )}
     </PcActivityShell>
   );
 }

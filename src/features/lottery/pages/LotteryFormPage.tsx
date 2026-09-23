@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   DatePicker,
+  Flex,
   Form,
   Input,
   InputNumber,
@@ -20,22 +21,31 @@ import {
 } from 'antd';
 import type { UploadFile } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
+import * as XLSX from 'xlsx';
 import { COVER_IMAGE_UPLOAD_HINT, IMAGE_UPLOAD_ACCEPT } from '../../../shared/ui/imageUploadHint';
 import { orgDepartmentTree } from '../../activities/model/activity';
 import {
+  LOTTERY_AUDIENCE_KIND_OPTIONS,
+  LOTTERY_AUDIENCE_TEMPLATE_FILENAME,
   LOTTERY_FORM_OPTIONS,
-  LOTTERY_VISIBILITY_SCOPES,
+  LOTTERY_ORG_SCOPE_OPTIONS,
   canEditLotteryPrizes,
   consolationProbability,
+  lotteryAudienceTemplateCsv,
   lotteryStatusOf,
   migrateLotteryChanceSources,
+  needsAudienceImport,
+  parseLotteryAudienceCsv,
   prizeProbabilitySum,
+  validateLotteryAudience,
   validateLotteryChanceSources,
   validateLotteryPrizes,
+  type LotteryAudienceKind,
+  type LotteryAudiencePerson,
   type LotteryFormKind,
+  type LotteryOrgScope,
   type LotteryPrize,
   type LotteryRecord,
-  type LotteryVisibilityScope,
 } from '../model/lottery';
 import { getLottery, nextLotteryId, saveLottery } from '../model/lotteryStore';
 import { useCheckinThemes } from '../../checkin/model/checkinStore';
@@ -57,16 +67,17 @@ type LotteryFormValues = {
   gainDailyLoginEnabled: boolean;
   gainDailyLoginCount: number;
   gainCheckinEnabled: boolean;
+  gainCheckinCount: number;
   gainCheckinThemeIds: number[];
   maxWins: number;
   consumeChanceOnWin: boolean;
   showRemaining: boolean;
   showWinners: boolean;
   missText: string;
-  visibilityEnabled: boolean;
-  visibilityScope: LotteryVisibilityScope;
-  visibilityDepartments?: string[];
-  visibilityFileName?: string;
+  audienceKind: LotteryAudienceKind;
+  orgScope: LotteryOrgScope;
+  audienceDepartments?: string[];
+  audienceFileName?: string;
   prizes: LotteryPrize[];
 };
 
@@ -81,6 +92,33 @@ function emptyPrize(id: number): LotteryPrize {
   return { id, name: '', imageUrl: '', quantity: 1, drawn: 0, probability: 0 };
 }
 
+function downloadAudienceTemplate() {
+  const blob = new Blob([lotteryAudienceTemplateCsv()], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = LOTTERY_AUDIENCE_TEMPLATE_FILENAME;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function readAudienceFile(file: File) {
+  const lower = file.name.toLowerCase();
+  if (lower.endsWith('.csv')) {
+    return parseLotteryAudienceCsv(await file.text());
+  }
+  try {
+    const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    if (!sheet) return { ok: false as const, error: '请另存为 CSV 后再上传' };
+    return parseLotteryAudienceCsv(XLSX.utils.sheet_to_csv(sheet));
+  } catch {
+    return { ok: false as const, error: '请另存为 CSV 后再上传' };
+  }
+}
+
 export function LotteryFormPage({ mode, recordId, onBack, onSaved }: LotteryFormPageProps) {
   const { message } = App.useApp();
   const editing = mode === 'edit' ? getLottery(Number(recordId)) : undefined;
@@ -88,12 +126,16 @@ export function LotteryFormPage({ mode, recordId, onBack, onSaved }: LotteryForm
   const [coverList, setCoverList] = useState<UploadFile[]>(
     editing?.coverUrl ? [{ uid: 'cover', name: '封面', url: editing.coverUrl }] : [],
   );
-  const [visibilityFileName, setVisibilityFileName] = useState(editing?.visibilityFileName ?? '');
+  const [audienceFileName, setAudienceFileName] = useState(editing?.audienceFileName ?? '');
+  const [audiencePeople, setAudiencePeople] = useState<LotteryAudiencePerson[]>(editing?.audiencePeople ?? []);
+  const [audienceFileList, setAudienceFileList] = useState<UploadFile[]>(
+    editing?.audienceFileName ? [{ uid: 'audience', name: editing.audienceFileName }] : [],
+  );
   const [submitting, setSubmitting] = useState(false);
 
   const checkinThemes = useCheckinThemes();
-  const visibilityEnabled = Form.useWatch('visibilityEnabled', form) ?? editing?.visibilityEnabled ?? false;
-  const visibilityScope = Form.useWatch('visibilityScope', form) ?? editing?.visibilityScope ?? '全员';
+  const audienceKind = Form.useWatch('audienceKind', form) ?? editing?.audienceKind ?? 'org';
+  const orgScope = Form.useWatch('orgScope', form) ?? editing?.orgScope ?? 'all';
   const totalChanceEnabled = Form.useWatch('totalChanceEnabled', form) ?? editing?.totalChanceEnabled ?? false;
   const gainInitialEnabled = Form.useWatch('gainInitialEnabled', form) ?? editing?.gainInitialEnabled ?? false;
   const gainDailyLoginEnabled = Form.useWatch('gainDailyLoginEnabled', form) ?? editing?.gainDailyLoginEnabled ?? true;
@@ -113,6 +155,7 @@ export function LotteryFormPage({ mode, recordId, onBack, onSaved }: LotteryForm
           gainDailyLoginEnabled: true,
           gainDailyLoginCount: 1,
           gainCheckinEnabled: false,
+          gainCheckinCount: 1,
           gainCheckinThemeIds: [] as number[],
         };
     return {
@@ -129,16 +172,17 @@ export function LotteryFormPage({ mode, recordId, onBack, onSaved }: LotteryForm
       gainDailyLoginEnabled: chanceSources.gainDailyLoginEnabled,
       gainDailyLoginCount: chanceSources.gainDailyLoginCount,
       gainCheckinEnabled: chanceSources.gainCheckinEnabled,
+      gainCheckinCount: chanceSources.gainCheckinCount,
       gainCheckinThemeIds: chanceSources.gainCheckinThemeIds,
       maxWins: editing?.maxWins ?? 1,
       consumeChanceOnWin: editing?.consumeChanceOnWin ?? true,
       showRemaining: editing?.showRemaining ?? false,
       showWinners: editing?.showWinners ?? true,
       missText: editing?.missText ?? '谢谢参与',
-      visibilityEnabled: editing?.visibilityEnabled ?? false,
-      visibilityScope: editing?.visibilityScope ?? '全员',
-      visibilityDepartments: editing?.visibilityDepartments ?? [],
-      visibilityFileName: editing?.visibilityFileName ?? '',
+      audienceKind: editing?.audienceKind ?? 'org',
+      orgScope: editing?.orgScope ?? 'all',
+      audienceDepartments: editing?.audienceDepartments ?? [],
+      audienceFileName: editing?.audienceFileName ?? '',
       prizes: editing?.prizes?.length ? editing.prizes : [emptyPrize(1)],
     };
   }, [editing]);
@@ -164,11 +208,26 @@ export function LotteryFormPage({ mode, recordId, onBack, onSaved }: LotteryForm
       gainDailyLoginEnabled: values.gainDailyLoginEnabled,
       gainDailyLoginCount: values.gainDailyLoginCount ?? 1,
       gainCheckinEnabled: values.gainCheckinEnabled,
+      gainCheckinCount: values.gainCheckinCount ?? 1,
       gainCheckinThemeIds: values.gainCheckinThemeIds ?? [],
     };
     const chanceError = validateLotteryChanceSources(chanceSources);
     if (chanceError) {
       message.error(chanceError);
+      return;
+    }
+    const importRequired = needsAudienceImport(values.audienceKind, values.audienceKind === 'public' ? 'import' : values.orgScope);
+    const audience = {
+      audienceKind: values.audienceKind,
+      orgScope: values.audienceKind === 'public' ? ('import' as const) : values.orgScope,
+      audienceDepartments:
+        values.audienceKind === 'org' && values.orgScope === 'department' ? values.audienceDepartments ?? [] : [],
+      audienceFileName: importRequired ? audienceFileName : '',
+      audiencePeople: importRequired ? audiencePeople : [],
+    };
+    const audienceError = validateLotteryAudience(audience);
+    if (audienceError) {
+      message.error(audienceError);
       return;
     }
     setSubmitting(true);
@@ -191,12 +250,7 @@ export function LotteryFormPage({ mode, recordId, onBack, onSaved }: LotteryForm
         showRemaining: values.showRemaining,
         showWinners: values.showWinners,
         missText: values.missText.trim(),
-        visibilityEnabled: values.visibilityEnabled,
-        visibilityScope: values.visibilityEnabled ? values.visibilityScope : '全员',
-        visibilityDepartments:
-          values.visibilityEnabled && values.visibilityScope === '按部门' ? values.visibilityDepartments ?? [] : [],
-        visibilityFileName:
-          values.visibilityEnabled && values.visibilityScope === '导入' ? visibilityFileName : '',
+        ...audience,
         enabled: editing?.enabled ?? true,
         participants: editing?.participants ?? 0,
         prizes: prizeLocked ? (editing?.prizes ?? []) : values.prizes,
@@ -310,14 +364,27 @@ export function LotteryFormPage({ mode, recordId, onBack, onSaved }: LotteryForm
               <InputNumber min={1} max={99} precision={0} style={{ width: 160 }} />
             </Form.Item>
           ) : null}
-          <Form.Item name="gainCheckinEnabled" label="打卡" valuePropName="checked">
-            <Switch />
+          <Form.Item label="打卡">
+            <Flex align="center" gap={12} wrap="wrap">
+              <Form.Item name="gainCheckinEnabled" valuePropName="checked" noStyle>
+                <Switch />
+              </Form.Item>
+              <span>每次打卡可得</span>
+              <Form.Item
+                name="gainCheckinCount"
+                noStyle
+                rules={gainCheckinEnabled ? [{ required: true, message: '请填写每次打卡可得次数' }] : []}
+              >
+                <InputNumber min={1} max={99} precision={0} disabled={!gainCheckinEnabled} style={{ width: 120 }} />
+              </Form.Item>
+              <span>次</span>
+            </Flex>
           </Form.Item>
           {gainCheckinEnabled ? (
             <Form.Item
               name="gainCheckinThemeIds"
               label="关联主题"
-              extra="关联主题按规则发出次数时入账；未关联时打卡次数不会进入本抽奖"
+              extra="关联主题每次成功打卡按「每次打卡可得」入账"
               rules={[{ required: true, type: 'array', min: 1, message: '请选择关联打卡主题' }]}
             >
               <Select
@@ -407,55 +474,99 @@ export function LotteryFormPage({ mode, recordId, onBack, onSaved }: LotteryForm
           </Form.List>
         </Card>
         <Card title="参与范围" style={{ marginTop: 16 }}>
-          <Form.Item name="visibilityEnabled" label="开启可见范围" valuePropName="checked" extra="开启后仅指定范围内员工可参与">
-            <Switch />
+          <Form.Item name="audienceKind" label="参与范围" rules={[{ required: true, message: '请选择参与范围' }]}>
+            <Radio.Group options={LOTTERY_AUDIENCE_KIND_OPTIONS} />
           </Form.Item>
-          {visibilityEnabled ? (
+          {audienceKind === 'org' ? (
+            <Form.Item name="orgScope" label="组织范围" rules={[{ required: true, message: '请选择组织范围' }]}>
+              <Radio.Group options={LOTTERY_ORG_SCOPE_OPTIONS} />
+            </Form.Item>
+          ) : null}
+          {audienceKind === 'org' && orgScope === 'department' ? (
+            <Form.Item name="audienceDepartments" label="选择部门" rules={[{ required: true, message: '请选择可见部门' }]}>
+              <TreeSelect
+                treeData={orgDepartmentTree}
+                treeCheckable
+                showCheckedStrategy={TreeSelect.SHOW_PARENT}
+                placeholder="请选择部门"
+                style={{ maxWidth: 480, width: '100%' }}
+              />
+            </Form.Item>
+          ) : null}
+          {needsAudienceImport(audienceKind, audienceKind === 'public' ? 'import' : orgScope) ? (
             <>
-              <Form.Item name="visibilityScope" label="范围类型" rules={[{ required: true, message: '请选择范围类型' }]}>
-                <Radio.Group options={LOTTERY_VISIBILITY_SCOPES.map((item) => ({ value: item, label: item }))} />
+              <Form.Item
+                label="导入名单"
+                required
+                extra="请按模板填写姓名、手机号。支持 csv / xlsx。"
+              >
+                <Space direction="vertical" size={8} style={{ width: '100%', maxWidth: 480 }}>
+                  <Button type="link" style={{ paddingInline: 0 }} onClick={downloadAudienceTemplate}>
+                    下载导入模板
+                  </Button>
+                  <Upload.Dragger
+                    accept=".csv,.xlsx,.xls"
+                    maxCount={1}
+                    beforeUpload={() => false}
+                    fileList={audienceFileList}
+                    onChange={async ({ fileList }) => {
+                      const file = fileList[0];
+                      setAudienceFileList(fileList.slice(-1));
+                      if (!file) {
+                        setAudienceFileName('');
+                        setAudiencePeople([]);
+                        form.setFieldValue('audienceFileName', '');
+                        return;
+                      }
+                      const origin = file.originFileObj as File | undefined;
+                      if (!origin) {
+                        setAudienceFileName(file.name);
+                        form.setFieldValue('audienceFileName', file.name);
+                        return;
+                      }
+                      const parsed = await readAudienceFile(origin);
+                      if (!parsed.ok) {
+                        message.error(parsed.error);
+                        setAudienceFileList([]);
+                        setAudienceFileName('');
+                        setAudiencePeople([]);
+                        form.setFieldValue('audienceFileName', '');
+                        return;
+                      }
+                      if (!parsed.people.length) {
+                        message.error('名单中没有有效的姓名和手机号');
+                        setAudienceFileList([]);
+                        setAudienceFileName('');
+                        setAudiencePeople([]);
+                        form.setFieldValue('audienceFileName', '');
+                        return;
+                      }
+                      setAudienceFileName(origin.name);
+                      setAudiencePeople(parsed.people);
+                      form.setFieldValue('audienceFileName', origin.name);
+                      message.success(
+                        parsed.skipped > 0
+                          ? `已导入 ${parsed.people.length} 人，跳过 ${parsed.skipped} 行`
+                          : `已导入 ${parsed.people.length} 人`,
+                      );
+                    }}
+                    onRemove={() => {
+                      setAudienceFileList([]);
+                      setAudienceFileName('');
+                      setAudiencePeople([]);
+                      form.setFieldValue('audienceFileName', '');
+                    }}
+                  >
+                    <p className="ant-upload-drag-icon">
+                      <InboxOutlined />
+                    </p>
+                    <p className="ant-upload-text">点击或拖拽文件到此区域上传</p>
+                  </Upload.Dragger>
+                </Space>
               </Form.Item>
-              {visibilityScope === '按部门' ? (
-                <Form.Item name="visibilityDepartments" label="选择部门" rules={[{ required: true, message: '请选择可见部门' }]}>
-                  <TreeSelect
-                    treeData={orgDepartmentTree}
-                    treeCheckable
-                    showCheckedStrategy={TreeSelect.SHOW_PARENT}
-                    placeholder="请选择部门"
-                    style={{ maxWidth: 480, width: '100%' }}
-                  />
-                </Form.Item>
-              ) : null}
-              {visibilityScope === '导入' ? (
-                <>
-                  <Form.Item label="导入名单" required extra="支持 Excel/CSV 文件，需包含员工工号列">
-                    <Upload.Dragger
-                      accept=".xlsx,.xls,.csv"
-                      maxCount={1}
-                      beforeUpload={() => false}
-                      defaultFileList={visibilityFileName ? [{ uid: 'visibility', name: visibilityFileName }] : []}
-                      onChange={({ fileList }) => {
-                        const name = fileList[0]?.name ?? '';
-                        setVisibilityFileName(name);
-                        form.setFieldValue('visibilityFileName', name);
-                      }}
-                      onRemove={() => {
-                        setVisibilityFileName('');
-                        form.setFieldValue('visibilityFileName', '');
-                      }}
-                      style={{ maxWidth: 480 }}
-                    >
-                      <p className="ant-upload-drag-icon">
-                        <InboxOutlined />
-                      </p>
-                      <p className="ant-upload-text">点击或拖拽文件到此区域上传</p>
-                    </Upload.Dragger>
-                  </Form.Item>
-                  <Form.Item name="visibilityFileName" hidden rules={[{ required: true, message: '请上传名单文件' }]}>
-                    <Input />
-                  </Form.Item>
-                </>
-              ) : null}
+              <Form.Item name="audienceFileName" hidden rules={[{ required: true, message: '请导入参与名单' }]}>
+                <Input />
+              </Form.Item>
             </>
           ) : null}
         </Card>

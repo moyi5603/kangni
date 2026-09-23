@@ -8,6 +8,7 @@ export function PcSignupModal({
   fields,
   scheduleType,
   sessions,
+  terminatedAt,
   signupStartAt,
   signupEndAt,
   signupHoursBefore,
@@ -23,6 +24,7 @@ export function PcSignupModal({
   fields: SignupField[];
   scheduleType?: ActivityScheduleType;
   sessions?: ActivitySession[];
+  terminatedAt?: string;
   signupStartAt?: string;
   signupEndAt?: string;
   signupHoursBefore?: number;
@@ -43,7 +45,7 @@ export function PcSignupModal({
         onClick={(event) => event.stopPropagation()}
       >
         <h2 id="pc-signup-heading" className="c-signup-page-heading">
-          {mode === 'adjust' ? '调整报名' : '填写报名信息'}
+          {mode === 'adjust' ? '立即报名' : '填写报名信息'}
         </h2>
         <p className="c-signup-page-title">{title}</p>
         <SignupForm
@@ -51,6 +53,7 @@ export function PcSignupModal({
           fields={fields}
           scheduleType={scheduleType}
           sessions={sessions}
+          terminatedAt={terminatedAt}
           signupStartAt={signupStartAt}
           signupEndAt={signupEndAt}
           signupHoursBefore={signupHoursBefore}

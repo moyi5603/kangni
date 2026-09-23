@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import dayjs from 'dayjs';
-import { goVoteDetail, goVoteResults, type CEndSurface } from '../../../../app/navigation';
+import { goH5Back, goVoteResults, type CEndSurface } from '../../../../app/navigation';
 import { useCEndToast } from '../../activities/components/CEndToast';
 import { getVote, getVoteQuestions, getVoteResponses, submitVoteResponse, useVotes } from '../../../voting/model/voteStore';
 import {
@@ -167,7 +167,7 @@ export function H5VoteTaking({ id, surface = 'h5' }: { id: number; surface?: CEn
   const status = campaign ? resolveVoteStatus(campaign, now) : '未开始';
   const [draft, setDraft] = useState<Record<number, VoteDraftAnswer>>({});
   const [busy, setBusy] = useState(false);
-  const back = () => goVoteDetail(surface, id);
+  const back = goH5Back;
 
   let block: string | null = null;
   if (gate === 'forbidden') block = '无权参与该投票';

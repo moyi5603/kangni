@@ -38,9 +38,12 @@ import {
   type Activity,
 } from '../model/activity';
 import {
-  formatPickedSessionsLabel,
+  formatPickedSessionIndexLabel,
+  formatPickedSessionTimeLabel,
   needsSessionPick,
+  parseSessionIds,
 } from '../model/activitySchedule';
+import { SignupSessionSearchSelect } from '../components/SignupSessionSearchSelect';
 import { formatSignupCheckIns } from '../model/activityCheckIn';
 import { downloadSignupImportTemplate, parseSignupImportCsv } from '../model/signupImport';
 import {
@@ -50,6 +53,7 @@ import {
   resolveSignupRecordAnswers,
 } from '../model/signupAnswers';
 import {
+  approveSignupRecord,
   patchRelated,
   signupStatuses,
   surveyStatuses,
@@ -59,8 +63,11 @@ import {
   type SignupRecord,
   type SurveyRecord,
 } from '../model/related';
-import { commentReplyLabel, removeCommentsAndDescendants } from '../model/commentTree';
+import { removeCommentsAndDescendants } from '../model/commentTree';
+import { activityAdminSelf, adminReplyActivityComment } from '../model/activityCommentReply';
+import { AdminReplyFormItems } from '../components/AdminReplyAccountSelect';
 import { employeeAvatarColor, employeeAvatarLetter } from '../model/employeeAvatar';
+import { filterBySessionId } from '../model/sessionSignupOverview';
 
 type DateRange = [Dayjs | null, Dayjs | null] | null;
 
@@ -330,14 +337,18 @@ export function SignupList({ activity }: { activity: Activity }) {
   );
   const signedNames = useMemo(() => new Set(data.map((item) => item.name)), [data]);
   const peopleTree = useMemo(() => withDisabledPeople(orgPeoplePickerTree, signedNames), [signedNames]);
+  const needsPick = needsSessionPick(activity.scheduleType);
+  const sessions = activity.sessions ?? [];
   const [draft, setDraft] = useState<{
     name: string;
     department?: string;
     status?: SignupRecord['status'];
     createdAt: DateRange;
+    sessionId: string;
   }>({
     name: '',
     createdAt: null,
+    sessionId: '',
   });
   const [query, setQuery] = useState(draft);
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
@@ -346,19 +357,26 @@ export function SignupList({ activity }: { activity: Activity }) {
   const [importList, setImportList] = useState<UploadFile[]>([]);
   const [detailRecord, setDetailRecord] = useState<SignupRecord | null>(null);
   const [addForm] = Form.useForm();
-  const filtered = useMemo(
-    () =>
-      data.filter(
-        (item) =>
-          (!query.name || item.name.includes(query.name)) &&
-          (!query.department || item.department === query.department) &&
-          (!query.status || item.status === query.status) &&
-          inDayRange(item.createdAt, query.createdAt),
-      ),
-    [data, query],
-  );
+  const filtered = useMemo(() => {
+    const rows = data.filter(
+      (item) =>
+        (!query.name || item.name.includes(query.name)) &&
+        (!query.department || item.department === query.department) &&
+        (!query.status || item.status === query.status) &&
+        inDayRange(item.createdAt, query.createdAt),
+    );
+    const matched = filterBySessionId(rows, query.sessionId, (item) =>
+      parseSessionIds(resolveSignupRecordAnswers(item)['场次']),
+    );
+    const statusRank: Record<string, number> = { 待审核: 0, 已通过: 1, 已驳回: 2, 已取消: 3 };
+    return matched.slice().sort((left, right) => {
+      const rank = (statusRank[left.status] ?? 9) - (statusRank[right.status] ?? 9);
+      if (rank !== 0) return rank;
+      return right.createdAt.localeCompare(left.createdAt);
+    });
+  }, [data, query]);
   const selected = data.filter((item) => selectedRowKeys.includes(item.id));
-  const hasFilter = Boolean(query.name || query.department || query.status || query.createdAt);
+  const hasFilter = Boolean(query.name || query.department || query.status || query.createdAt || query.sessionId);
   const openAdd = () => {
     addForm.resetFields();
     addForm.setFieldsValue({ people: [] });
@@ -371,10 +389,30 @@ export function SignupList({ activity }: { activity: Activity }) {
       okText: '确认',
       cancelText: '取消',
       footer: modalFooter,
+      okButtonProps: { danger: true },
       onOk: () => {
         patchRelated('signups', (list) => list.filter((item) => item.id !== record.id));
         setSelectedRowKeys((keys) => keys.filter((key) => key !== record.id));
         message.success(`已删除「${record.name}」的报名`);
+      },
+    });
+  };
+  const approveOne = (record: SignupRecord) => {
+    modal.confirm({
+      title: `确认通过「${record.name}」的报名？`,
+      content: '通过后该人员可参加本活动。',
+      okText: '确认',
+      cancelText: '取消',
+      footer: modalFooter,
+      onOk: () => {
+        const totalNodes = activity.signupApprovalNodes.length;
+        const next = approveSignupRecord(record, totalNodes);
+        patchRelated('signups', (list) => list.map((item) => (item.id === record.id ? next : item)));
+        message.success(
+          next.status === '待审核'
+            ? `已通过第 ${(record.currentNodeIndex ?? 0) + 1} 节点，待下一节点审核`
+            : `已通过「${record.name}」的报名`,
+        );
       },
     });
   };
@@ -480,16 +518,17 @@ export function SignupList({ activity }: { activity: Activity }) {
     }
     const ids = new Set(targets.map((item) => item.id));
     const rejectReason = status === '已驳回' ? reason || undefined : undefined;
+    const totalNodes = activity.signupApprovalNodes.length;
     patchRelated('signups', (list) =>
-      list.map((item) =>
-        ids.has(item.id)
-          ? {
-              ...item,
-              status,
-              rejectReason: status === '已驳回' ? rejectReason : status === '已通过' ? undefined : item.rejectReason,
-            }
-          : item,
-      ),
+      list.map((item) => {
+        if (!ids.has(item.id)) return item;
+        if (status === '已通过') return approveSignupRecord(item, totalNodes);
+        return {
+          ...item,
+          status,
+          rejectReason: status === '已驳回' ? rejectReason : item.rejectReason,
+        };
+      }),
     );
     message.success(`已${label} ${targets.length} 条报名`);
     setSelectedRowKeys(selectedRowKeys.filter((key) => !ids.has(Number(key))));
@@ -509,16 +548,27 @@ export function SignupList({ activity }: { activity: Activity }) {
       ellipsis: true,
       render: (value: string) => <TableEllipsisText text={value || '—'} />,
     },
-    ...(needsSessionPick(activity.scheduleType)
+    ...(needsPick
       ? [
           {
             title: '场次',
             key: 'sessions',
-            width: 260,
+            width: 100,
             ellipsis: true,
             render: (_: unknown, record: SignupRecord) => (
               <TableEllipsisText
-                text={formatPickedSessionsLabel(activity.sessions ?? [], resolveSignupRecordAnswers(record)['场次']) || '—'}
+                text={formatPickedSessionIndexLabel(sessions, resolveSignupRecordAnswers(record)['场次']) || '—'}
+              />
+            ),
+          },
+          {
+            title: '场次时间',
+            key: 'sessionTime',
+            width: 280,
+            ellipsis: true,
+            render: (_: unknown, record: SignupRecord) => (
+              <TableEllipsisText
+                text={formatPickedSessionTimeLabel(sessions, resolveSignupRecordAnswers(record)['场次']) || '—'}
               />
             ),
           },
@@ -547,7 +597,7 @@ export function SignupList({ activity }: { activity: Activity }) {
             width: 220,
             ellipsis: true,
             render: (_: unknown, record: SignupRecord) => (
-              <TableEllipsisText text={formatSignupCheckIns(record.checkIns, activity.sessions ?? [])} />
+              <TableEllipsisText text={formatSignupCheckIns(record.checkIns, sessions)} />
             ),
           },
         ]
@@ -559,34 +609,27 @@ export function SignupList({ activity }: { activity: Activity }) {
       align: 'right' as const,
       width: 220,
       render: (_, record) => {
-        const actions: TableRowAction[] = [];
-        if (signupFields.length) {
-          actions.push({
+        const actions: TableRowAction[] = [
+          {
             key: 'detail',
-            label: '报名详情',
-            ariaLabel: `查看 ${record.name} 的报名详情`,
+            label: '详情',
+            ariaLabel: `详情 ${record.name}`,
             onClick: () => setDetailRecord(record),
-          });
-        }
+          },
+        ];
         if (record.status === '待审核') {
           actions.push({
             key: 'approve',
             label: '通过',
             ariaLabel: `通过 ${record.name} 的报名`,
-            onClick: () => {
-              patchRelated('signups', (list) =>
-                list.map((item) =>
-                  item.id === record.id ? { ...item, status: '已通过' as const, rejectReason: undefined } : item,
-                ),
-              );
-              message.success(`已通过「${record.name}」的报名`);
-            },
+            onClick: () => approveOne(record),
           });
           actions.push({
             key: 'reject',
             label: '驳回',
             ariaLabel: `驳回 ${record.name} 的报名`,
             onClick: () => rejectOne(record),
+            danger: true,
           });
         }
         actions.push({
@@ -603,32 +646,43 @@ export function SignupList({ activity }: { activity: Activity }) {
   return (
     <RelatedTable
       query={
-        <SearchPanel
-          onSearch={() => {
-            setQuery(draft);
-            setSelectedRowKeys([]);
-            message.success('查询完成');
-          }}
-          onReset={() => {
-            const empty = { name: '', createdAt: null as DateRange };
-            setDraft(empty);
-            setQuery(empty);
-            setSelectedRowKeys([]);
-          }}
-        >
-          <SearchField label="姓名">
-            <Input allowClear placeholder="请输入姓名" value={draft.name} onChange={(event) => setDraft((currentDraft) => ({ ...currentDraft, name: event.target.value }))} />
-          </SearchField>
-          <SearchField label="部门">
-            <Select allowClear placeholder="全部部门" value={draft.department} onChange={(value) => setDraft((currentDraft) => ({ ...currentDraft, department: value }))} options={optionsOf(departmentOptions)} />
-          </SearchField>
-          <SearchField label="状态">
-            <Select allowClear placeholder="全部状态" value={draft.status} onChange={(value) => setDraft((currentDraft) => ({ ...currentDraft, status: value }))} options={optionsOf(signupStatuses)} />
-          </SearchField>
-          <SearchField label="报名时间">
-            <DatePicker.RangePicker style={{ width: '100%' }} value={draft.createdAt} onChange={(value) => setDraft((currentDraft) => ({ ...currentDraft, createdAt: value }))} />
-          </SearchField>
-        </SearchPanel>
+        <>
+          <SearchPanel
+            onSearch={() => {
+              setQuery(draft);
+              setSelectedRowKeys([]);
+              message.success('查询完成');
+            }}
+            onReset={() => {
+              const empty = { name: '', createdAt: null as DateRange, sessionId: '' };
+              setDraft(empty);
+              setQuery(empty);
+              setSelectedRowKeys([]);
+            }}
+          >
+            <SearchField label="姓名">
+              <Input allowClear placeholder="请输入姓名" value={draft.name} onChange={(event) => setDraft((currentDraft) => ({ ...currentDraft, name: event.target.value }))} />
+            </SearchField>
+            <SearchField label="部门">
+              <Select allowClear placeholder="全部部门" value={draft.department} onChange={(value) => setDraft((currentDraft) => ({ ...currentDraft, department: value }))} options={optionsOf(departmentOptions)} />
+            </SearchField>
+            {needsPick ? (
+              <SearchField label="场次">
+                <SignupSessionSearchSelect
+                  sessions={sessions}
+                  value={draft.sessionId}
+                  onChange={(value) => setDraft((currentDraft) => ({ ...currentDraft, sessionId: value }))}
+                />
+              </SearchField>
+            ) : null}
+            <SearchField label="状态">
+              <Select allowClear placeholder="全部状态" value={draft.status} onChange={(value) => setDraft((currentDraft) => ({ ...currentDraft, status: value }))} options={optionsOf(signupStatuses)} />
+            </SearchField>
+            <SearchField label="报名时间">
+              <DatePicker.RangePicker style={{ width: '100%' }} value={draft.createdAt} onChange={(value) => setDraft((currentDraft) => ({ ...currentDraft, createdAt: value }))} />
+            </SearchField>
+          </SearchPanel>
+        </>
       }
       toolbar={
         <>
@@ -660,6 +714,18 @@ export function SignupList({ activity }: { activity: Activity }) {
             </Typography.Text>
             <Space>
               <Button
+                danger
+                onClick={() =>
+                  promptReject({
+                    title: `确认驳回已选 ${selectedRowKeys.length} 条报名？`,
+                    description: '仅待审核记录会被驳回，报名人将无法参加该活动。',
+                    onConfirm: (reason) => batchStatus('已驳回', '驳回', reason),
+                  })
+                }
+              >
+                批量驳回
+              </Button>
+              <Button
                 onClick={() =>
                   modal.confirm({
                     title: `确认通过已选 ${selectedRowKeys.length} 条报名？`,
@@ -672,17 +738,6 @@ export function SignupList({ activity }: { activity: Activity }) {
                 }
               >
                 批量通过
-              </Button>
-              <Button
-                onClick={() =>
-                  promptReject({
-                    title: `确认驳回已选 ${selectedRowKeys.length} 条报名？`,
-                    description: '仅待审核记录会被驳回，报名人将无法参加该活动。',
-                    onConfirm: (reason) => batchStatus('已驳回', '驳回', reason),
-                  })
-                }
-              >
-                批量驳回
               </Button>
               <Button onClick={() => setSelectedRowKeys([])}>取消选择</Button>
             </Space>
@@ -768,7 +823,7 @@ export function SignupList({ activity }: { activity: Activity }) {
             </Form>
           </Modal>
           <Modal
-            title={`报名收集信息 — ${detailRecord?.name ?? ''}`}
+            title={`报名详情 — ${detailRecord?.name ?? ''}`}
             open={detailRecord != null}
             footer={null}
             onCancel={() => setDetailRecord(null)}
@@ -781,14 +836,27 @@ export function SignupList({ activity }: { activity: Activity }) {
                 column={1}
                 size="small"
                 items={[
-                  ...(needsSessionPick(activity.scheduleType)
+                  { key: 'name', label: '姓名', children: detailRecord.name },
+                  { key: 'department', label: '部门', children: detailRecord.department || '—' },
+                  { key: 'status', label: '状态', children: detailRecord.status },
+                  { key: 'createdAt', label: '报名时间', children: detailRecord.createdAt },
+                  ...(needsPick
                     ? [
                         {
                           key: '场次',
                           label: '场次',
                           children:
-                            formatPickedSessionsLabel(
-                              activity.sessions ?? [],
+                            formatPickedSessionIndexLabel(
+                              sessions,
+                              resolveSignupRecordAnswers(detailRecord)['场次'],
+                            ) || '—',
+                        },
+                        {
+                          key: '场次时间',
+                          label: '场次时间',
+                          children:
+                            formatPickedSessionTimeLabel(
+                              sessions,
                               resolveSignupRecordAnswers(detailRecord)['场次'],
                             ) || '—',
                         },
@@ -815,6 +883,7 @@ export function SignupList({ activity }: { activity: Activity }) {
 
 export function CommentList({ activity }: { activity: Activity }) {
   const { message, modal } = App.useApp();
+  const [form] = Form.useForm<{ content: string; author: string }>();
   const data = useRelated('comments', activity.id);
   const [draft, setDraft] = useState<{ content: string; author: string; createdAt: DateRange }>({
     content: '',
@@ -823,6 +892,31 @@ export function CommentList({ activity }: { activity: Activity }) {
   });
   const [query, setQuery] = useState(draft);
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
+  const [replyTarget, setReplyTarget] = useState<CommentRecord | null>(null);
+  const openReply = (record: CommentRecord) => {
+    setReplyTarget(record);
+    form.setFieldsValue({ content: '', author: activityAdminSelf });
+  };
+  const saveReply = async () => {
+    const values = await form.validateFields();
+    if (!replyTarget) return;
+    const result = adminReplyActivityComment(activity.id, replyTarget.id, values.content, values.author);
+    if (result === 'empty') {
+      message.error('请输入回复内容');
+      return;
+    }
+    if (result === 'missing') {
+      message.error('原评论不存在');
+      return;
+    }
+    if (result === 'bad-account') {
+      message.error('请选择回复账号');
+      return;
+    }
+    setReplyTarget(null);
+    form.resetFields();
+    message.success('回复成功');
+  };
   const filtered = useMemo(
     () =>
       data.filter(
@@ -861,15 +955,6 @@ export function CommentList({ activity }: { activity: Activity }) {
       render: (value: string) => <TableEllipsisText text={value} />,
     },
     {
-      title: '回复',
-      key: 'reply',
-      width: 160,
-      render: (_, record) => {
-        const label = commentReplyLabel(record, data);
-        return label === record.author ? '—' : label;
-      },
-    },
-    {
       title: '评论人',
       key: 'author',
       width: 160,
@@ -885,14 +970,27 @@ export function CommentList({ activity }: { activity: Activity }) {
     { title: '部门', key: 'department', width: 120, render: (_, record) => personDepartment(record.author) ?? '—' },
     { title: '评论时间', dataIndex: 'createdAt', width: 180 },
     {
+      title: '点赞',
+      dataIndex: 'likedBy',
+      width: 80,
+      align: 'right' as const,
+      render: (value: string[]) => value.length,
+    },
+    {
       title: '操作',
       key: 'action',
       fixed: 'right',
       align: 'right' as const,
-      width: 88,
+      width: 136,
       render: (_, record) => (
         <TableRowActions
           actions={[
+            {
+              key: 'reply',
+              label: '回复',
+              ariaLabel: `回复 ${record.author} 的评论`,
+              onClick: () => openReply(record),
+            },
             {
               key: 'delete',
               label: '删除',
@@ -967,7 +1065,7 @@ export function CommentList({ activity }: { activity: Activity }) {
           rowSelection={{ selectedRowKeys, preserveSelectedRowKeys: true, onChange: setSelectedRowKeys }}
           columns={columns}
           dataSource={filtered}
-          scroll={{ x: 840 }}
+          scroll={{ x: 980 }}
           pagination={{
             pageSize: b2bStandards.table.pageSize,
             pageSizeOptions: [...b2bStandards.table.pageSizeOptions],
@@ -977,7 +1075,34 @@ export function CommentList({ activity }: { activity: Activity }) {
           locale={{ emptyText: <Empty description={query.content || query.author || query.createdAt ? '没有符合条件的评论' : b2bStandards.table.emptyText} /> }}
         />
       }
-      modal={null}
+      modal={
+        <Modal
+          title="回复评论"
+          open={Boolean(replyTarget)}
+          footer={modalFooter}
+          onOk={() => void saveReply()}
+          onCancel={() => {
+            setReplyTarget(null);
+            form.resetFields();
+          }}
+          okText="确认"
+          cancelText="取消"
+          width={b2bStandards.form.modalWidth}
+          destroyOnHidden
+        >
+          <Form
+            form={form}
+            layout="horizontal"
+            className="edit-form"
+            requiredMark
+            labelWrap={false}
+            validateTrigger="onBlur"
+            initialValues={{ author: activityAdminSelf, content: '' }}
+          >
+            <AdminReplyFormItems />
+          </Form>
+        </Modal>
+      }
     />
   );
 }

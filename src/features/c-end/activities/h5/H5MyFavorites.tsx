@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useActivities } from '../../../activities/model/activityStore';
-import { goCEnd } from '../../../../app/navigation';
+import { goH5Back, goCEnd } from '../../../../app/navigation';
 import { ActivityMeta } from '../components/ActivityMeta';
 import { IconChevronRight, IconStar } from '../components/Icons';
 import { SignupStatusRow } from '../components/SignupStatusRow';
@@ -32,7 +32,7 @@ export function H5MyFavorites() {
   const goHome = () => goCEnd('h5');
 
   return (
-    <H5ActivityShell title="我的收藏" onBack={goHome}>
+    <H5ActivityShell title="我的收藏" onBack={goH5Back}>
       {ids.length === 0 ? (
         <div className="c-h5-signup-empty">
           <IconStar />

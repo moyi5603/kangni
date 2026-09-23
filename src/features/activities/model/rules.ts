@@ -11,6 +11,11 @@ export const assigneeModeLabels: Record<AssigneeMode, string> = {
   parentLevelLeader: '上级部门负责人',
 };
 
+export const assigneeModeHints: Record<Exclude<AssigneeMode, 'people'>, string> = {
+  sameLevelLeader: '由前一节点的本级部门负责人审核。',
+  parentLevelLeader: '由前一节点的上级部门负责人审核。',
+};
+
 export type SignupLadder = {
   minSeniorityYears: number;
   annualQuota: number;

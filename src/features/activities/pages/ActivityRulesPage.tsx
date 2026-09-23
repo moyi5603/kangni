@@ -68,7 +68,10 @@ export function ActivityRulesPage() {
 
   const save = async () => {
     const values = await form.validateFields();
-    const prepared = cloneActivityPointRules(values);
+    const prepared = cloneActivityPointRules({
+      ...getActivityPointRules(),
+      ...values,
+    });
     const err = validateActivityPointRules(prepared);
     if (err) {
       message.error(err);
@@ -83,8 +86,8 @@ export function ActivityRulesPage() {
   return (
     <div className="page-stack advanced-form-page">
       <ListPageHeading
-        paths={['活动', '规则设置']}
-        title="规则设置"
+        paths={['活动', '规则设置（仅演示）']}
+        title="规则设置（仅演示）"
         subtitle="配置活动可发放的积分范围，创建活动时须在此范围内填写积分数值。"
       />
       <Form

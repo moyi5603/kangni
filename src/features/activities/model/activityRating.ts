@@ -44,12 +44,12 @@ export function resetActivityRatings() {
 }
 
 export function canShowActivityRating(status: string): boolean {
-  return status === '已结束';
+  return status === '已结束' || status === '进行中';
 }
 
 export function canSubmitActivityRating(activityId: number, phone: string): boolean {
   const activity = getActivity(activityId);
-  if (!activity || activity.activityStatus !== '已结束') return false;
+  if (!activity || !canShowActivityRating(activity.activityStatus)) return false;
   return getRelatedList('signups').some(
     (item) =>
       item.activityId === activityId &&
@@ -81,8 +81,9 @@ export function setActivityRating(
   activityId: number,
   phone: string,
   stars: number,
-): 'ok' | 'forbidden' | 'invalid' {
+): 'ok' | 'forbidden' | 'invalid' | 'already' {
   if (!Number.isInteger(stars) || stars < 1 || stars > 5) return 'invalid';
+  if (ratings.has(keyOf(activityId, phone))) return 'already';
   if (!canSubmitActivityRating(activityId, phone)) return 'forbidden';
   ratings = new Map(ratings);
   ratings.set(keyOf(activityId, phone), { activityId, phone, stars });

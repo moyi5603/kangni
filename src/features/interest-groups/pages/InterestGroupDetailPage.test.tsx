@@ -41,5 +41,6 @@ describe('InterestGroupDetailPage', () => {
     );
     expect(html).toContain('午休飞盘局');
     expect(html).toContain('待审核');
+    expect(html).toContain('未发布');
   });
 });

@@ -1,25 +1,30 @@
-import { useMemo } from 'react';
+import { goH5Back, goCEnd } from '../../../../app/navigation';
 import { useActivities } from '../../../activities/model/activityStore';
-import { useAllMoments } from '../../../activities/model/momentStore';
-import { goCEnd, goCEndPortal } from '../../../../app/navigation';
-import { listPastHighlightMoments } from '../model/clientActivity';
+import { useActivityDecoration } from '../../../activities/model/activityDecorationStore';
 import { H5ActivityShell } from '../h5/H5ActivityShell';
+import { listPastHighlightActivities } from '../model/clientActivity';
 import { PcActivityShell } from '../pc/PcActivityShell';
-import { MomentCard } from './MomentFeed';
+import { decoPastAllListStyle } from '../../../../shared/decoration/decoTypes';
+import { decoActivityCardFields } from '../../../../shared/decoration/decoCardFields';
+import { PastHighlightList, type HomeSurface } from './ActivityHomeLayout';
 
-function PastMomentsList({ surface }: { surface: 'h5' | 'pc' }) {
+function PastActivitiesList({ surface }: { surface: HomeSurface }) {
   const activities = useActivities();
-  const moments = useAllMoments();
-  const titles = useMemo(() => new Map(activities.map((item) => [item.id, item.title])), [activities]);
-  const list = listPastHighlightMoments(moments, activities);
-
-  if (list.length === 0) return <p className="c-empty">暂无精彩瞬间</p>;
+  const layout = useActivityDecoration(surface === 'pc' ? 'pc' : 'mobile');
+  const moments = layout.blocks.find((item) => item.type === 'moments');
+  const homeStyle = moments?.listStyle ?? 'scroll';
+  const style = decoPastAllListStyle(homeStyle);
+  const list = listPastHighlightActivities(activities);
 
   return (
-    <section className="c-moment-feed" aria-label="往期精彩回顾">
-      {list.map((moment) => (
-        <MomentCard key={moment.id} moment={moment} surface={surface} activityTitle={titles.get(moment.activityId)} />
-      ))}
+    <section className="c-past-sec">
+      <PastHighlightList
+        activities={list}
+        style={style}
+        surface={surface}
+        columnCount={homeStyle === 'scroll' ? 2 : moments?.columnCount}
+        fields={decoActivityCardFields(moments)}
+      />
     </section>
   );
 }
@@ -28,16 +33,9 @@ export function H5PastMomentsPage() {
   return (
     <H5ActivityShell
       title="往期精彩回顾"
-      onBack={() => goCEnd('h5')}
-      overlay={
-        <nav className="c-h5-detail-fab is-home" aria-label="页面导航">
-          <button type="button" onClick={goCEndPortal}>
-            回主页
-          </button>
-        </nav>
-      }
+      onBack={goH5Back}
     >
-      <PastMomentsList surface="h5" />
+      <PastActivitiesList surface="h5" />
     </H5ActivityShell>
   );
 }
@@ -48,7 +46,7 @@ export function PcPastMomentsPage() {
       <button className="c-back-link" type="button" onClick={() => goCEnd('pc')}>
         ← 返回首页
       </button>
-      <PastMomentsList surface="pc" />
+      <PastActivitiesList surface="pc" />
     </PcActivityShell>
   );
 }

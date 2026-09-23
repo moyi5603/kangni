@@ -8,6 +8,7 @@ import {
   listCreatableTypeOptions,
   prepareRulesForSave,
   formatSignupAuditSummary,
+  assigneeModeHints,
   type ActivityTypeRule,
 } from './rules';
 
@@ -87,6 +88,8 @@ describe('formatApprovalNodeSummary', () => {
     expect(
       formatApprovalNodeSummary({ id: '3', assigneeMode: 'parentLevelLeader', reviewerIds: [] }),
     ).toBe('上级部门负责人');
+    expect(assigneeModeHints.sameLevelLeader).toBe('由前一节点的本级部门负责人审核。');
+    expect(assigneeModeHints.parentLevelLeader).toBe('由前一节点的上级部门负责人审核。');
   });
 });
 

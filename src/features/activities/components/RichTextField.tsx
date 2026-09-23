@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useImperativeHandle, useRef, useState, type ReactNode, forwardRef } from 'react';
 import {
   AlignCenterOutlined,
   AlignLeftOutlined,
@@ -7,6 +7,7 @@ import {
   BoldOutlined,
   ClearOutlined,
   DisconnectOutlined,
+  FormatPainterOutlined,
   FontColorsOutlined,
   ItalicOutlined,
   LinkOutlined,
@@ -20,13 +21,20 @@ import {
   UndoOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
+import { applyRichTextBlockBackground, readRichTextBlockBackground } from './richTextBackground';
 import { Button, ColorPicker, Divider, Form, Input, Modal, Select, Space, Tooltip } from 'antd';
+
+export type RichTextFieldHandle = {
+  insertText: (text: string) => void;
+};
 
 type RichTextFieldProps = {
   value?: string;
   onChange?: (value: string) => void;
   placeholder?: string;
   ariaLabel?: string;
+  disabled?: boolean;
+  variant?: 'full' | 'simple';
 };
 
 function ToolButton({
@@ -54,7 +62,10 @@ function ToolButton({
   );
 }
 
-export function RichTextField({ value = '', onChange, placeholder, ariaLabel = '富文本' }: RichTextFieldProps) {
+export const RichTextField = forwardRef<RichTextFieldHandle, RichTextFieldProps>(function RichTextField(
+  { value = '', onChange, placeholder, ariaLabel = '富文本', disabled = false, variant = 'full' },
+  ref,
+) {
   const editorRef = useRef<HTMLDivElement>(null);
   const savedRange = useRef<Range | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
@@ -88,6 +99,23 @@ export function RichTextField({ value = '', onChange, placeholder, ariaLabel = '
 
   const emit = () => onChange?.(editorRef.current?.innerHTML ?? '');
 
+  useImperativeHandle(ref, () => ({
+    insertText(text: string) {
+      const editor = editorRef.current;
+      if (!editor || disabled) return;
+      editor.focus();
+      restoreSelection();
+      const selection = window.getSelection();
+      const inEditor = Boolean(selection?.anchorNode && editor.contains(selection.anchorNode));
+      if (inEditor && selection && selection.rangeCount > 0) {
+        document.execCommand('insertText', false, text);
+      } else {
+        editor.append(document.createTextNode(text));
+      }
+      onChange?.(editor.innerHTML);
+    },
+  }));
+
   const run = (command: string, commandValue?: string) => {
     restoreSelection();
     document.execCommand(command, false, commandValue);
@@ -114,24 +142,39 @@ export function RichTextField({ value = '', onChange, placeholder, ariaLabel = '
     setImageUrl('');
   };
 
+  const applyBlockBackground = (color: string | null) => {
+    const editor = editorRef.current;
+    const current = editor?.innerHTML ?? value ?? '';
+    const next = applyRichTextBlockBackground(current, color);
+    if (editor) editor.innerHTML = next;
+    onChange?.(next);
+  };
+
+  const blockBackground = readRichTextBlockBackground(value);
+
   return (
-    <div className="rich-text">
+    <div className={`rich-text${disabled ? ' is-disabled' : ''}${variant === 'simple' ? ' is-simple' : ''}`}>
+      {disabled ? null : (
       <div className="rich-text-toolbar" onMouseDown={saveSelection}>
-        <Select
-          size="small"
-          className="rich-text-block"
-          defaultValue="p"
-          options={[
-            { value: 'p', label: '正文' },
-            { value: 'h1', label: '标题 1' },
-            { value: 'h2', label: '标题 2' },
-            { value: 'h3', label: '标题 3' },
-            { value: 'blockquote', label: '引用' },
-            { value: 'pre', label: '代码块' },
-          ]}
-          onChange={(block) => run('formatBlock', block)}
-        />
-        <Divider orientation="vertical" />
+        {variant === 'full' ? (
+          <>
+            <Select
+              size="small"
+              className="rich-text-block"
+              defaultValue="p"
+              options={[
+                { value: 'p', label: '正文' },
+                { value: 'h1', label: '标题 1' },
+                { value: 'h2', label: '标题 2' },
+                { value: 'h3', label: '标题 3' },
+                { value: 'blockquote', label: '引用' },
+                { value: 'pre', label: '代码块' },
+              ]}
+              onChange={(block) => run('formatBlock', block)}
+            />
+            <Divider orientation="vertical" />
+          </>
+        ) : null}
         <Space size={0} wrap>
           <ToolButton label="撤销" icon={<UndoOutlined />} onClick={() => run('undo')} />
           <ToolButton label="重做" icon={<RedoOutlined />} onClick={() => run('redo')} />
@@ -141,7 +184,9 @@ export function RichTextField({ value = '', onChange, placeholder, ariaLabel = '
           <ToolButton label="加粗" icon={<BoldOutlined />} onClick={() => run('bold')} />
           <ToolButton label="斜体" icon={<ItalicOutlined />} onClick={() => run('italic')} />
           <ToolButton label="下划线" icon={<UnderlineOutlined />} onClick={() => run('underline')} />
-          <ToolButton label="删除线" icon={<StrikethroughOutlined />} onClick={() => run('strikeThrough')} />
+          {variant === 'full' ? (
+            <ToolButton label="删除线" icon={<StrikethroughOutlined />} onClick={() => run('strikeThrough')} />
+          ) : null}
         </Space>
         <Divider orientation="vertical" />
         <Space size={4} wrap align="center">
@@ -160,29 +205,54 @@ export function RichTextField({ value = '', onChange, placeholder, ariaLabel = '
               </ColorPicker>
             </span>
           </Tooltip>
-          <Tooltip title="背景色">
-            <span>
-              <ColorPicker
-                size="small"
-                defaultValue="#FFF1B8"
-                disabledAlpha
-                onOpenChange={(open) => {
-                  if (open) saveSelection();
-                }}
-                onChangeComplete={(color) => applyColor('hiliteColor', color)}
-              >
-                <Button type="text" size="small" icon={<BgColorsOutlined />} aria-label="背景色" />
-              </ColorPicker>
-            </span>
-          </Tooltip>
+          {variant === 'full' ? (
+            <>
+              <Tooltip title="背景色">
+                <span>
+                  <ColorPicker
+                    size="small"
+                    defaultValue="#FFF1B8"
+                    disabledAlpha
+                    onOpenChange={(open) => {
+                      if (open) saveSelection();
+                    }}
+                    onChangeComplete={(color) => applyColor('hiliteColor', color)}
+                  >
+                    <Button type="text" size="small" icon={<BgColorsOutlined />} aria-label="背景色" />
+                  </ColorPicker>
+                </span>
+              </Tooltip>
+              <Tooltip title="区块背景">
+                <span>
+                  <ColorPicker
+                    size="small"
+                    allowClear
+                    value={blockBackground}
+                    disabledAlpha
+                    onOpenChange={(open) => {
+                      if (open) saveSelection();
+                    }}
+                    onChangeComplete={(color) => applyBlockBackground(color.toHexString())}
+                    onClear={() => applyBlockBackground(null)}
+                  >
+                    <Button type="text" size="small" icon={<FormatPainterOutlined />} aria-label="区块背景" />
+                  </ColorPicker>
+                </span>
+              </Tooltip>
+            </>
+          ) : null}
         </Space>
-        <Divider orientation="vertical" />
-        <Space size={0} wrap>
-          <ToolButton label="无序列表" icon={<UnorderedListOutlined />} onClick={() => run('insertUnorderedList')} />
-          <ToolButton label="有序列表" icon={<OrderedListOutlined />} onClick={() => run('insertOrderedList')} />
-          <ToolButton label="增加缩进" icon={<MenuUnfoldOutlined />} onClick={() => run('indent')} />
-          <ToolButton label="减少缩进" icon={<MenuFoldOutlined />} onClick={() => run('outdent')} />
-        </Space>
+        {variant === 'full' ? (
+          <>
+            <Divider orientation="vertical" />
+            <Space size={0} wrap>
+              <ToolButton label="无序列表" icon={<UnorderedListOutlined />} onClick={() => run('insertUnorderedList')} />
+              <ToolButton label="有序列表" icon={<OrderedListOutlined />} onClick={() => run('insertOrderedList')} />
+              <ToolButton label="增加缩进" icon={<MenuUnfoldOutlined />} onClick={() => run('indent')} />
+              <ToolButton label="减少缩进" icon={<MenuFoldOutlined />} onClick={() => run('outdent')} />
+            </Space>
+          </>
+        ) : null}
         <Divider orientation="vertical" />
         <Space size={0} wrap>
           <ToolButton label="左对齐" icon={<AlignLeftOutlined />} onClick={() => run('justifyLeft')} />
@@ -191,40 +261,47 @@ export function RichTextField({ value = '', onChange, placeholder, ariaLabel = '
         </Space>
         <Divider orientation="vertical" />
         <Space size={0} wrap>
-          <ToolButton
-            label="插入链接"
-            icon={<LinkOutlined />}
-            onClick={() => {
-              saveSelection();
-              setLinkUrl('https://');
-              setLinkOpen(true);
-            }}
-          />
-          <ToolButton label="取消链接" icon={<DisconnectOutlined />} onClick={() => run('unlink')} />
-          <ToolButton
-            label="插入图片"
-            icon={<PictureOutlined />}
-            onClick={() => {
-              saveSelection();
-              setImageUrl('');
-              setImageOpen(true);
-            }}
-          />
+          {variant === 'full' ? (
+            <>
+              <ToolButton
+                label="插入链接"
+                icon={<LinkOutlined />}
+                onClick={() => {
+                  saveSelection();
+                  setLinkUrl('https://');
+                  setLinkOpen(true);
+                }}
+              />
+              <ToolButton label="取消链接" icon={<DisconnectOutlined />} onClick={() => run('unlink')} />
+              <ToolButton
+                label="插入图片"
+                icon={<PictureOutlined />}
+                onClick={() => {
+                  saveSelection();
+                  setImageUrl('');
+                  setImageOpen(true);
+                }}
+              />
+            </>
+          ) : null}
           <ToolButton label="清除格式" icon={<ClearOutlined />} onClick={() => run('removeFormat')} />
         </Space>
       </div>
+      )}
       <div
         ref={editorRef}
         className="rich-text-body"
-        contentEditable
+        contentEditable={!disabled}
         role="textbox"
         aria-label={ariaLabel}
+        aria-readonly={disabled}
         data-placeholder={placeholder}
+        style={{ background: blockBackground || 'transparent' }}
         suppressContentEditableWarning
-        onMouseUp={saveSelection}
-        onKeyUp={saveSelection}
-        onInput={() => onChange?.(editorRef.current?.innerHTML ?? '')}
-        onBlur={() => onChange?.(editorRef.current?.innerHTML ?? '')}
+        onMouseUp={disabled ? undefined : saveSelection}
+        onKeyUp={disabled ? undefined : saveSelection}
+        onInput={disabled ? undefined : () => onChange?.(editorRef.current?.innerHTML ?? '')}
+        onBlur={disabled ? undefined : () => onChange?.(editorRef.current?.innerHTML ?? '')}
       />
       <Modal
         title="插入链接"
@@ -268,4 +345,4 @@ export function RichTextField({ value = '', onChange, placeholder, ariaLabel = '
       </Modal>
     </div>
   );
-}
+});

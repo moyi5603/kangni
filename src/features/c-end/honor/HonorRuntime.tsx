@@ -1,10 +1,9 @@
 // @ts-nocheck
 /* Pixel-faithful port of 康尼 honor/index.html embed=mobile. */
 import React from 'react';
-import { goCEndPortal } from '../../../app/navigation';
+import { goH5Back } from '../../../app/navigation';
 import { formatCEndDateTime } from '../formatDateTime';
 import { IconBack } from '../activities/components/Icons';
-import { HonorNavFab } from './h5/HonorNavFab';
 import { H5HonorEmployeeHome } from './h5/H5HonorEmployeeHome';
 import { H5HonorManagerHome } from './h5/H5HonorManagerHome';
 
@@ -1545,7 +1544,7 @@ function HRHomePage({ nav, roleSwitcher }) {
 
   return (
     <div style={{ background: '#fff', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Header title="荣誉 Agent" onBack={goCEndPortal} />
+      <Header title="荣誉 Agent" onBack={goH5Back} />
       <H5HonorManagerHome
         me="张晓东"
         dateLabel={formatEmpHomeDate(new Date())}
@@ -2182,7 +2181,7 @@ function EmployeeHomePage({ nav, roleSwitcher }) {
 
   return (
     <div style={{ background: '#fff', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Header title="荣誉 Agent" onBack={goCEndPortal} />
+      <Header title="荣誉 Agent" onBack={goH5Back} />
       <H5HonorEmployeeHome
         me={ME}
         dateLabel={formatEmpHomeDate(new Date())}
@@ -7468,11 +7467,6 @@ export function HonorEmbedApp({ initialRole = 'employee' } = {}) {
       <div key={screenKey} className="c-honor-h5-screen">
         {renderScreen()}
       </div>
-      <HonorNavFab
-        atRoot={currentStack.length === 1}
-        onBack={goBack}
-        onHome={currentStack.length === 1 ? goCEndPortal : goHonorHome}
-      />
     </div>
   );
 }

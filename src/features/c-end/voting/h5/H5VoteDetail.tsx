@@ -1,5 +1,10 @@
 import dayjs from 'dayjs';
-import { goVoteList, toVoteResultsHash, toVoteTakingHash, type CEndSurface } from '../../../../app/navigation';
+import {
+  goH5Back,
+  toVoteResultsHash,
+  toVoteTakingHash,
+  type CEndSurface,
+} from '../../../../app/navigation';
 import { IconBack } from '../../activities/components/Icons';
 import { useCEndToast } from '../../activities/components/CEndToast';
 import { ActivityCommentList } from '../../activities/components/ActivityCommentList';
@@ -51,7 +56,7 @@ export function H5VoteDetail({ id, surface = 'h5' }: { id: number; surface?: CEn
   const remaining = campaign ? remainingQuota(campaign, DEMO_VOTE_USER.id, dayKey, responses) : 0;
   const gate = resolveVoteDetailGate(campaign, DEMO_VOTE_USER, now, used);
   const status = campaign ? resolveVoteStatus(campaign, now) : '未开始';
-  const back = () => goVoteList(surface);
+  const back = goH5Back;
 
   if (gate === 'missing' || gate === 'forbidden') {
     return (

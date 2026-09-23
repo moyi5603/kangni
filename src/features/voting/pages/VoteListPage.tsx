@@ -236,7 +236,7 @@ export function VoteListPage({
 
   return (
     <div className="page-stack">
-      <ListPageHeading paths={['投票', '投票管理']} title="投票管理" subtitle="查询并维护投票活动。" />
+      <ListPageHeading paths={['投票-废弃', '投票管理']} title="投票管理" subtitle="查询并维护投票活动。" />
       <SearchPanel
         onSearch={() => {
           setQuery(draft);

@@ -1,25 +1,46 @@
 import { describe, expect, it } from 'vitest';
 import {
   canReviewInterestGroup,
+  canPublishInterestGroup,
+  canRevokeInterestGroup,
   interestGroupEntityAuditStatuses,
+  isInterestGroupLead,
   validateInterestGroupForm,
   type InterestGroupFormValues,
 } from './interestGroup';
 
 const base: InterestGroupFormValues = {
-  name: '测试小组',
+  name: '测试兴趣圈',
   categoryKey: 'sport',
-  leadEmployeeId: '',
+  leadEmployeeIds: [],
   joinMode: 'free',
-  area: '',
-  tags: [],
   intro: '',
   coverUrl: '/cover.jpg',
 };
 
 describe('validateInterestGroupForm', () => {
-  it('asks for 小组负责人 instead of 组长', () => {
-    expect(validateInterestGroupForm(base, false)).toBe('请选择小组负责人');
+  it('asks for 兴趣圈负责人 instead of 组长', () => {
+    expect(validateInterestGroupForm(base, false)).toBe('请选择兴趣圈负责人');
+  });
+
+  it('accepts multiple 兴趣圈负责人', () => {
+    expect(validateInterestGroupForm({ ...base, leadEmployeeIds: ['张悦', '赵人事'] }, false)).toBeNull();
+  });
+});
+
+describe('isInterestGroupLead', () => {
+  it('matches any selected lead', () => {
+    expect(isInterestGroupLead({ leadEmployeeIds: ['张悦', '赵人事'], leadName: '张悦、赵人事' }, '赵人事')).toBe(true);
+    expect(isInterestGroupLead({ leadEmployeeIds: ['张悦'], leadName: '张悦' }, '林浅')).toBe(false);
+  });
+});
+
+describe('interest group publish', () => {
+  it('only unpublished groups can be published', () => {
+    expect(canPublishInterestGroup({ publishStatus: '未发布' })).toBe(true);
+    expect(canPublishInterestGroup({ publishStatus: '已发布' })).toBe(false);
+    expect(canRevokeInterestGroup({ publishStatus: '已发布' })).toBe(true);
+    expect(canRevokeInterestGroup({ publishStatus: '未发布' })).toBe(false);
   });
 });
 

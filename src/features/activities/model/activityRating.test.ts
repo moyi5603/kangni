@@ -16,23 +16,29 @@ describe('activity ratings', () => {
     resetActivityRatings();
   });
 
-  it('shows the rating block only after the activity ended', () => {
+  it('shows the rating block while the activity is ongoing or ended', () => {
     expect(canShowActivityRating('已结束')).toBe(true);
-    expect(canShowActivityRating('进行中')).toBe(false);
+    expect(canShowActivityRating('进行中')).toBe(true);
     expect(canShowActivityRating('未开始')).toBe(false);
   });
 
-  it('lets an approved signup rate an ended activity and change the score', () => {
+  it('lets an approved signup rate an ended activity only once', () => {
     expect(canSubmitActivityRating(1, DEMO_PHONE)).toBe(true);
     expect(setActivityRating(1, DEMO_PHONE, 4)).toBe('ok');
     expect(getActivityRating(1, DEMO_PHONE)).toBe(4);
-    expect(setActivityRating(1, DEMO_PHONE, 5)).toBe('ok');
-    expect(getActivityRating(1, DEMO_PHONE)).toBe(5);
+    expect(setActivityRating(1, DEMO_PHONE, 5)).toBe('already');
+    expect(getActivityRating(1, DEMO_PHONE)).toBe(4);
   });
 
-  it('rejects ratings on ongoing activities and for people who did not pass signup', () => {
-    expect(canSubmitActivityRating(2, DEMO_PHONE)).toBe(false);
-    expect(setActivityRating(2, DEMO_PHONE, 5)).toBe('forbidden');
+  it('lets an approved signup rate an ongoing activity', () => {
+    expect(canSubmitActivityRating(2, DEMO_PHONE)).toBe(true);
+    expect(setActivityRating(2, DEMO_PHONE, 5)).toBe('ok');
+    expect(getActivityRating(2, DEMO_PHONE)).toBe(5);
+  });
+
+  it('rejects ratings for upcoming activities and people who did not pass signup', () => {
+    expect(canSubmitActivityRating(21, DEMO_PHONE)).toBe(false);
+    expect(setActivityRating(21, DEMO_PHONE, 5)).toBe('forbidden');
     expect(canSubmitActivityRating(1, '13900009999')).toBe(false);
     expect(setActivityRating(1, DEMO_PHONE, 0)).toBe('invalid');
   });

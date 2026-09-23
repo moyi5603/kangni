@@ -21,6 +21,9 @@ describe('PC vote pages', () => {
     expect(html).toContain('<h1 class="c-pc-header-title">投票</h1>');
     expect(html).toContain('我的记录');
     expect(html).toContain('href="#/c/pc/votes/mine"');
+    expect(html).not.toContain('c-pc-vote-mine');
+    expect(html.indexOf('aria-label="投票状态"')).toBeLessThan(html.indexOf('我的记录'));
+    expect(html.indexOf('已结束')).toBeLessThan(html.indexOf('c-vote-records'));
     expect(html).toContain('href="#/c/pc/vote-2"');
     expect(html).toContain('部门团建目的地');
     expect(html).toContain('去投票');

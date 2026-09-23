@@ -1,0 +1,670 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+from datetime import date
+from pathlib import Path
+import re
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from _gen_prd import CSS, JS, wrap  # type: ignore
+
+OUT = Path(__file__).resolve().parent
+TODAY = date.today().isoformat()
+
+EXTRA_CSS = CSS + r'''
+    .p0 { background:#fee2e2; color:#991b1b; }
+    .p1 { background:#ffedd5; color:#9a3412; }
+    .p2 { background:#e0f2fe; color:#075985; }
+    .must { background:#fecaca; color:#7f1d1d; font-weight:600; }
+    .flow { background:#f8fafc; border:1px solid #e5e7eb; padding:12px 16px; margin:12px 0; }
+'''
+
+
+def fig(path: str, component: str, explain: str) -> str:
+    return f'''<figure>
+        <img src="screenshots/{path}" alt="{component}截图">
+        <figcaption><span class="component-path">{component}</span>：{explain}</figcaption>
+      </figure>'''
+
+
+def wrap2(title: str, toc_items: list[tuple[str, str]], body: str) -> str:
+    html = wrap(title, toc_items, body)
+    return html.replace(f"<style>{CSS}</style>", f"<style>{EXTRA_CSS}</style>")
+
+
+def body() -> str:
+    return f'''
+  <section id="doc-note">
+    <h2>1. 文档说明</h2>
+    <ul>
+      <li>文档来源：基于康尼原型 React/TSX 反向分析（html-to-prd），并按产品要求补充角色、优先级、异常与必改建议。</li>
+      <li>分析范围：应用「兴趣圈」管理后台（hash <code>#/interest-groups/…</code>）、员工端 H5（<code>#/c/h5/interest-groups</code>）、员工端 PC（<code>#/c/pc/interest-groups</code>）。产品界面文案为「兴趣圈」。</li>
+      <li>生成日期：{TODAY}（对照当前源码再更新）</li>
+      <li>产品确认（{TODAY}）：<strong>积分发放与扣回</strong>——参加活动、评论、发精彩瞬间、活动评分均可获得规则页配置的<strong>固定积分</strong>；<strong>活动积分在活动结束后发放</strong>，若该活动开启签到码则须完成扫码才发活动积分。员工自己删除评论或精彩瞬间须<strong>扣回</strong>对应积分；<strong>管理员删除不扣回</strong>。原型规则页可配额度，账本发放/扣回尚未落地。</li>
+      <li>产品确认：<strong>精彩瞬间无审核功能</strong>（无通过/驳回/批量审瞬间）。后台瞬间 Tab 以查看、筛选、删除为主。C 端 toast 仍写「已提交审核」、员工发布仍写 <code>status=待审核</code>，属代码残留。</li>
+      <li>产品确认（{TODAY}）：<strong>精彩瞬间不限发布次数</strong>。活动应用与兴趣圈：活动<strong>进行中、已结束</strong>均可发布（未开始/已终止不可）。兴趣圈发布须同时关联<strong>所属兴趣圈</strong>和<strong>活动</strong>（活动须属于该圈子，且员工已报名、状态为进行中或已结束）。</li>
+      <li>产品确认（{TODAY}）：兴趣圈管理、活动管理支持<strong>置顶</strong>与自定义区<strong>上移/下移</strong>（单击即时生效）。置顶区优先；置顶行不展示上移下移；自定义区首项上移、末项下移置灰。新建数据插入置顶区之后第一位。</li>
+      <li>相对 2026-08-31 版：后台增加「兴趣圈装修」；圈子发布/撤销；概览 KPI 改版；列表卡片视图；C 端首页装修驱动；快捷入口九宫格。</li>
+      <li>产品确认（{TODAY}）：<strong>无活动审核菜单、无报名审核按钮、无菜单级 RBAC</strong>。侧栏固定 6 项（概览 / 兴趣圈管理 / 活动管理 / 分类管理 / 规则设置 / 兴趣圈装修（仅演示）），不按账号隐藏。进入应用即可操作全部后台页。</li>
+      <li>可信度：交互与字段以源码为准（<span class="status impl">代码已实现</span>）；无后端/账号体系处标 <span class="status todo">待确认</span>；由界面合理推断标 <span class="status guess">根据页面推测需要</span>。</li>
+      <li>组件命名：一律 <code>页面-模块-组件名称</code>。</li>
+      <li>截图：{TODAY} 对本地 <code>http://127.0.0.1:5173/</code> 重新截取，保存在同级 <code>screenshots/</code>。</li>
+      <li>数据层：<code>interestGroupStore</code> / <code>igDecorationStore</code> 内存订阅，无 <code>fetch</code>/<code>axios</code>。</li>
+    </ul>
+  </section>
+
+  <section id="overview">
+    <h2>2. 功能概述与业务背景</h2>
+    <p><strong>产品定位：</strong>员工兴趣圈运营工具。后台配置圈子、活动、分类、权限规则与首页装修；员工在 H5/PC 按装修布局发现圈子、加入、报名活动、评论与发布精彩瞬间。</p>
+    <p><strong>为什么做：</strong>把散落的团建/兴趣活动收口到可审核、可发布、可签到、可统计的闭环；装修让运营控制 C 端首页模块顺序与样式。</p>
+    <p><strong>目标用户：</strong>平台运营（B 端）；全员员工、圈子负责人与成员（C 端）。当前 C 端固定演示账号 <code>林浅</code>。</p>
+    <p><strong>核心场景：</strong>运营建圈/审圈/发布圈；装修首页；建活动并发布（无活动审核页）；发签到码；员工浏览→加入→报名（含多场次）→签到→发瞬间。</p>
+    {fig("后台-概览-页面整体.png", "后台概览页-数据看板-页面整体", "默认页：日期范围、五张 KPI、饼图、待办与进行中活动表。")}
+    {fig("H5-首页-页面整体.png", "H5首页-装修模块-页面整体", "默认：搜索+快捷菜单、热门兴趣圈、活动 Tab、往期精彩回顾（已结束活动）。无轮播、无 AI。")}
+    {fig("PC-首页-页面整体.png", "PC首页-装修模块-页面整体", "同一套默认区块；PC 圈子大图 3 条、活动 latestCount 默认 6（三列）、回顾 4 条。")}
+  </section>
+
+  <section id="roles">
+    <h2>3. 用户角色与权限</h2>
+    <p>无菜单级 RBAC：<code>applicationMenus['interest-groups']</code> 为静态数组，无 permission/role 过滤。下列「角色」只描述页面条件 + <code>interestGroupSettings</code> + 成员 <code>role</code>，不是后台账号权限。</p>
+    <table>
+      <thead><tr><th>角色</th><th>使用端</th><th>能做什么</th><th>不能/限制</th><th>证据</th></tr></thead>
+      <tbody>
+        <tr><td>平台运营/管理员</td><td>管理后台</td><td>侧栏 6 项内全部能力：概览、圈子 CRUD/审圈/发布、活动 CRUD/发布/撤销/置顶/截止报名/终止、分类、规则、装修、成员添加导入导出、评论管理、瞬间查看/删除</td><td><strong>确认没有</strong>：活动审核菜单、报名审核按钮、瞬间审核（通过/驳回）、菜单级 RBAC。成员表无删除/入组审核。<span class="status impl">代码已实现</span></td><td>菜单静态 6 项；报名 Tab 无批量通过/驳回；瞬间产品确认不审</td></tr>
+        <tr><td>普通员工</td><td>H5/PC</td><td>浏览<strong>已发布且</strong>已通过/无需审核圈子；搜索；报名（未入组时「报名+入组」）；按规则创建圈子</td><td>待审核/已驳回/未发布圈子不出现在发现列表；<code>allowEmployeeCreateGroup=false</code> 时快捷菜单无「创建兴趣圈」</td><td><code>isCEndGroupDiscoverable</code>、<code>SHORTCUTS</code> 过滤</td></tr>
+        <tr><td>兴趣圈负责人</td><td>H5/PC + 被后台指定（可多人）</td><td>始终可创建活动；不能退出圈子。C 端成员 Tab 标「负责人」（不再写「组长」）</td><td>退出 toast「兴趣圈负责人不能退出」</td><td><code>interestGroupMemberRoleLabels.lead</code>；<code>leaveInterestGroupAsEmployee</code></td></tr>
+        <tr><td>兴趣圈成员</td><td>H5/PC</td><td>报名/改场次、评论、发瞬间；当规则 <code>activityCreator='member'</code> 时可创建活动</td><td>规则为仅负责人时创建活动空态「当前规则仅允许负责人创建活动」</td><td><code>CreateAct</code> hostable 过滤</td></tr>
+        <tr><td>待审核加入者</td><td>H5/PC</td><td>看到「审核中」按钮禁用</td><td>报名 CTA 禁用，toast「加入兴趣圈申请正在审核中…」</td><td><code>igDetailCta.pendingGroup</code>、<code>useEnroll</code></td></tr>
+      </tbody>
+    </table>
+    {fig("后台-规则设置-创建权限.png", "后台规则设置页-创建权限-开关组", "管理员配置：员工能否建圈（关闭则隐藏建圈审核开关）、成员能否建活动。")}
+  </section>
+
+  <section id="ia">
+    <h2>4. 页面结构 / 信息架构</h2>
+    {fig("后台-应用-左侧菜单.png", "后台壳-左侧菜单-兴趣圈菜单", "固定 6 项：概览、兴趣圈管理、活动管理、分类管理、规则设置、兴趣圈装修（仅演示）。无活动审核项，无按角色隐藏。")}
+    <h3>后台路由</h3>
+    <table>
+      <thead><tr><th>Hash</th><th>页面</th></tr></thead>
+      <tbody>
+        <tr><td><code>#/interest-groups</code></td><td>概览</td></tr>
+        <tr><td><code>#/interest-groups/interest-group-list</code></td><td>兴趣圈管理</td></tr>
+        <tr><td><code>#/interest-groups/interest-group-detail/:id[/:tab]</code></td><td>兴趣圈详情（acts/members/comments/moments）</td></tr>
+        <tr><td><code>#/interest-groups/interest-group-activities</code></td><td>活动管理</td></tr>
+        <tr><td><code>#/interest-groups/interest-group-activity-create[/:groupId]</code></td><td>新建活动</td></tr>
+        <tr><td><code>#/interest-groups/interest-group-activity-edit/:id</code></td><td>编辑活动</td></tr>
+        <tr><td><code>#/interest-groups/interest-group-activity-detail/:id[/:tab]</code></td><td>活动详情（detail/signups/checkin/comments/moments）</td></tr>
+        <tr><td><code>#/interest-groups/interest-group-categories</code></td><td>分类管理</td></tr>
+        <tr><td><code>#/interest-groups/interest-group-rules</code></td><td>规则设置</td></tr>
+        <tr><td><code>#/interest-groups/interest-group-layout</code></td><td>兴趣圈装修（仅演示；默认移动画布）</td></tr>
+        <tr><td><code>#/interest-groups/interest-group-layout-mobile</code></td><td>装修 · 移动</td></tr>
+        <tr><td><code>#/interest-groups/interest-group-layout-pc</code></td><td>装修 · PC</td></tr>
+      </tbody>
+    </table>
+    <h3>C 端</h3>
+    <p>H5/PC 首页同一套 <code>InterestGroupHome</code>，区块顺序/样式读 <code>useIgDecoration(surface)</code>。子页多为内存栈 <code>IgRoute</code>：search / createGroup / createAct / myActivities / myGroups / allActs / allGroups / activity / group / moments / post / aichat。</p>
+    <p>独立 hash：扫码签到 <code>#/c/h5/ig-act-:id/checkin?s=&amp;t=</code>；往期瞬间 <code>#/c/h5/interest-groups/moments</code> 与 PC 对应路径（<code>h5Page=ig-past-moments</code>）。</p>
+    <p>入口：C 端门户「兴趣圈 H5 / 兴趣圈 PC」。快捷入口在搜索栏旁 <code>IgAppsMenu</code>（默认无 AI）。</p>
+  </section>
+
+  <section id="implemented-features">
+    <h2>5. 功能清单与优先级</h2>
+    <p>优先级按「无此功能则主链路不通」为 P0；运营效率/社交为 P1；增强为 P2。状态均为当前原型已实现，除非标明待确认。</p>
+    <table>
+      <thead><tr><th>优先级</th><th>端</th><th>功能点</th><th>说明</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td><span class="status p0">P0</span></td><td>后台</td><td>兴趣圈列表/查询/新建/编辑/删除</td><td>抽屉表单；进行中活动禁止删除；列表/卡片切换</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p0">P0</span></td><td>后台</td><td>员工建圈审核</td><td>仅 <code>auditStatus=待审核</code> 显示审核</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p0">P0</span></td><td>后台</td><td>兴趣圈发布/撤销</td><td>未发布对其他员工不可见</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p0">P0</span></td><td>后台</td><td>活动列表/筛选/新建/编辑/复制</td><td>单次/周期/系列；列表/卡片</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p0">P0</span></td><td>后台</td><td>活动发布/撤销</td><td>未发布显示「发布」，已发布显示「撤销」；无提交审批/审核</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p0">P0</span></td><td>后台</td><td>分类启用禁用</td><td>名称≤12、不可重名</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p0">P0</span></td><td>后台</td><td>创建权限规则</td><td>建圈开关联动建圈审核、成员能否建活动；<strong>无</strong>活动创建审核开关</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p0">P0</span></td><td>后台</td><td>兴趣圈装修</td><td>移动/PC 双画布。工具栏只有「保存」（调用 <code>publishIgDecoration</code>）。画布改动即时 <code>saveIgDecoration</code>。C 端读 draft，不是 published</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p0">P0</span></td><td>H5/PC</td><td>装修驱动首页</td><td>默认搜索+圈子+活动+已结束活动回顾；轮播/AI 需运营加入画布</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p0">P0</span></td><td>H5/PC</td><td>加入圈子 / 报名活动</td><td>未入组报名会入组；多场次弹层选场</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p1">P1</span></td><td>后台</td><td>概览 KPI、日期范围、进行中活动</td><td>点击跳列表/详情</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p1">P1</span></td><td>后台</td><td>成员添加/导入/导出</td><td>详情成员 Tab；无删除、无入组审核操作列</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p1">P1</span></td><td>后台</td><td>报名名单、截止/恢复报名、终止活动</td><td>名单为花名册（姓名/部门/场次/时间/签到）；无报名通过/驳回</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p1">P1</span></td><td>后台</td><td>签到码 Tab</td><td>动态码可选</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p1">P1</span></td><td>后台</td><td>评论管理、瞬间查看/删除</td><td>产品确认瞬间无审核。列有状态 Tag，待审核行代码仍露出通过/驳回（残留）</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p1">P1</span></td><td>H5</td><td>扫码签到落地页</td><td>成功/已签/失败文案</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p1">P1</span></td><td>H5/PC</td><td>员工建圈/建活动</td><td>建圈默认未发布（可能待审）；建活动校验通过后直接已发布，toast「活动已发布」</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p1">P1</span></td><td>H5/PC</td><td>评论、点赞、发瞬间</td><td>进行中/已结束可发、不限次数；须关联所属兴趣圈+活动；toast 仍写「精彩瞬间已提交审核」</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p1">P1</span></td><td>H5/PC</td><td>活动评分</td><td>仅已结束展示。已报名（报名状态已通过）可打 1–5 星，点「确认评分」一次；已评不再出确认。展示均分（1 位小数）与人数。进行中不展示。账本未发分</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p1">P1</span></td><td>H5/PC</td><td>AI 助手入口与对话页</td><td>需装修加入 AI 区块；对话页 <code>aichat</code></td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p1">P1</span></td><td>H5/PC</td><td>往期精彩回顾独立页</td><td>列出已结束活动卡，不是瞬间 Feed；圈子内 Tab 才是瞬间流</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p2">P2</span></td><td>后台</td><td>AI 帮写简介、AI 策划活动</td><td>前端延时生成文案</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p1">P1</span></td><td>规则</td><td>积分发放与扣回</td><td>见 7.8：结束后发活动积分（开签到码须扫码）；评论/瞬间/评分发固定积分；员工自删评论或瞬间扣回，管理员删不扣。当前仅规则页可配，无账本</td><td>产品确认；额度 <span class="status impl">代码已实现</span>；账本 <span class="status todo">待落地</span></td></tr>
+        <tr><td><span class="status p2">P2</span></td><td>后台</td><td>活动积分额度</td><td>四行固定单次 + 每日上限：活动积分、评论、打分、精彩瞬间。卡标题仍写「仅演示」</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p2">P2</span></td><td>后台</td><td>圈子/活动置顶与上移下移、批量发布/撤销/改分类</td><td>置顶区在上；自定义区可上移下移（首项上移/末项下移置灰）；置顶行无上移下移；新建插在置顶区后第一位；列表多选无批量提交审批</td><td><span class="status impl">代码已实现</span></td></tr>
+        <tr><td><span class="status p2">P2</span></td><td>模型残留</td><td>活动审核枚举 / 报名 needAudit</td><td>产品确认不做对应 UI。store 仍有字段与 <code>setInterestGroupSignupStatus</code>，页面不调用</td><td><span class="status impl">代码已实现（无 UI）</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="flows">
+    <h2>6. 用户流程</h2>
+    <div class="flow">
+      <p><strong>员工报名（P0）</strong> 入口：H5/PC 首页活动卡报名或进详情 CTA → 若未入组：无场次则 <code>signupAndJoinFree</code>；有场次则先入组再打开选场 sheet → 已入组：无场次 toggle 报名/取消；有场次打开 sheet 勾选 → toast「报名成功,已通知发起人」或「报名场次已更新」。异常：入组待审则 toast 并禁用 CTA。</p>
+    </div>
+    <div class="flow">
+      <p><strong>员工建圈（P1）</strong> 规则允许 → 快捷菜单「创建兴趣圈」→ 名称必填 → 创建。员工创建默认 <code>publishStatus=未发布</code>。需审 toast「已提交审核，通过并发布后对其他员工可见」；无需审 toast「兴趣圈已创建，发布后对其他员工可见」。发现列表还要求已发布。</p>
+    </div>
+    <div class="flow">
+      <p><strong>运营审圈并发布（P0）</strong> 列表「审核」→ 通过/驳回 → 未发布时点「发布」→ C 端可发现。撤销发布后其他员工不可见。</p>
+    </div>
+    <div class="flow">
+      <p><strong>运营装修首页（P0）</strong> 兴趣圈装修 → 拖选区块/改样式（即时写入 draft）→ 点「保存」把 draft 复制到 published 并 toast「已保存，C端首页已更新」。原型 C 端 <code>useIgDecoration</code> 读的是 draft，故未点保存首页也会变。</p>
+    </div>
+    <div class="flow">
+      <p><strong>运营发活动（P0）</strong> 新建活动填封面/标题≤20/排期/人数 → 保存（默认未发布、<code>auditStatus=无需审核</code>、<code>needAudit=false</code>）→ 列表/详情点「发布」→ C 端可见。无提交审批、无活动审核弹窗。</p>
+    </div>
+    <div class="flow">
+      <p><strong>员工建活动（P1）</strong> 有资格（负责人，或规则允许成员）→ 创建活动表单 → 成功则 store 写 <code>publishStatus=已发布</code> + <code>auditStatus=无需审核</code>，toast「活动已发布」。失败 toast「创建失败」。</p>
+    </div>
+    <div class="flow">
+      <p><strong>员工发瞬间（P1）</strong> 活动进行中或已结束且已报名 → 发布瞬间（不限次数）。表单必选所属兴趣圈与该圈下已报名活动。未开始/已终止不可发。</p>
+    </div>
+    <div class="flow">
+      <p><strong>员工评分（P1）</strong> 活动已结束 → 详情在简介与评论区之间出「活动评分」→ 已报名未评：选星后点「确认评分」，toast「已评分」，每人一次。未报名只看均分/人数，无确认钮。进行中不展示该块。</p>
+    </div>
+    <div class="flow">
+      <p><strong>积分发放与扣回（P1，产品确认）</strong> 员工完成动作 → 按规则页固定额度入账（受每日上限）。活动积分：活动结束后结算；开启签到码则未扫码不发活动积分。员工自己删除评论或精彩瞬间 → 扣回该笔已发积分。管理员在后台删除评论/瞬间 → 内容下线，<strong>不扣回</strong>员工已得积分。原型无账本、C 端无到账/扣回提示。</p>
+    </div>
+    {fig("H5-活动详情-场次报名.png", "H5活动详情页-报名模块-场次选择弹层", "多场次活动点立即报名后出底部 sheet。勾选场次；已报名过主按钮「保存场次」。不展示报名人姓名/手机号。")}
+  </section>
+
+  <section id="page-requirements">
+    <h2>7. 页面级需求说明</h2>
+
+    <article id="p-ov">
+      <h3>7.1 后台概览页</h3>
+      <p><strong>页面目标：</strong>按日期范围看规模、待办与进行中活动。</p>
+      {fig("后台-概览-KPI指标卡.png", "后台概览页-KPI模块-指标卡", "五张卡：待审核兴趣圈、兴趣圈总数、进行中活动、已发布活动、成员总数。")}
+      {fig("后台-概览-分布图.png", "后台概览页-图表模块-饼图", "活动状态分布、活动分类分布（饼图）。")}
+      {fig("后台-概览-待办表.png", "后台概览页-待办模块-关注表与进行中表", "待办关注 + 进行中的活动（名称、圈子、时间、报名人数、详情）。")}
+      <h4>组件显示逻辑</h4>
+      <table>
+        <thead><tr><th>组件路径</th><th>默认状态</th><th>显示/隐藏</th><th>启用/禁用</th><th>数据来源</th><th>空/错/加载</th><th>权限</th></tr></thead>
+        <tbody>
+          <tr><td>后台概览页-标题模块-日期范围</td><td>默认区间 <code>defaultOverviewDateRange</code></td><td>始终</td><td>可改</td><td>本地 state</td><td>—</td><td>无</td></tr>
+          <tr><td>后台概览页-KPI模块-待审核兴趣圈卡</td><td>显示数字</td><td>始终</td><td>可点，跳兴趣圈列表</td><td>范围内 <code>computeInterestGroupOverviewStats</code></td><td>0 仍显示</td><td>无</td></tr>
+          <tr><td>后台概览页-KPI模块-进行中活动卡</td><td>显示数字</td><td>始终</td><td>可点，跳活动管理</td><td>范围内进行中活动数</td><td>0 仍显示</td><td>无</td></tr>
+          <tr><td>后台概览页-待办模块-关注表</td><td>有则列出</td><td>无待办 Empty「暂无待办」</td><td>详情启用</td><td><code>buildInterestGroupAttentionRows</code></td><td>Empty</td><td>无</td></tr>
+          <tr><td>后台概览页-进行中模块-活动表</td><td>有则列出</td><td>空 Empty「当前没有进行中的活动」</td><td>详情跳活动详情</td><td><code>buildInterestGroupInProgressRows</code></td><td>Empty</td><td>无</td></tr>
+        </tbody>
+      </table>
+      <p>已去掉「待审核活动 / 待审核瞬间」KPI。产品确认不做瞬间审核，概览也无瞬间待办。</p>
+      <h4>操作说明</h4>
+      <table>
+        <thead><tr><th>操作名称</th><th>组件路径</th><th>触发</th><th>前置</th><th>启用</th><th>用户动作</th><th>系统响应</th><th>跳转</th></tr></thead>
+        <tbody>
+          <tr><td>查看待审圈子</td><td>后台概览页-KPI模块-待审核兴趣圈卡</td><td>卡片</td><td>无</td><td>始终</td><td>单击</td><td>路由切换</td><td><code>interest-group-list</code></td></tr>
+          <tr><td>处理待办行</td><td>后台概览页-待办模块-详情按钮</td><td>链接按钮</td><td>有行</td><td>始终</td><td>单击</td><td>打开对应详情</td><td><code>targetPage + recordId</code></td></tr>
+        </tbody>
+      </table>
+    </article>
+
+    <article id="p-glist">
+      <h3>7.2 后台兴趣圈管理页</h3>
+      {fig("后台-兴趣圈管理-页面整体.png", "后台兴趣圈管理页-页面整体-列表", "查询区 + 列表/卡片切换 + 新建兴趣圈 + 表格（封面、兴趣圈名称、分类、审核、发布、兴趣圈负责人、成员/活动数、创建时间、操作）。无加入方式、无活动区域。")}
+      {fig("后台-兴趣圈管理-查询筛选.png", "后台兴趣圈管理页-查询筛选-条件区", "兴趣圈名称、分类、审核状态、发布状态；查询/重置。")}
+      {fig("后台-兴趣圈管理-列表表格.png", "后台兴趣圈管理页-列表表格-数据表", "名称可点进详情。置顶 Tag 在前。操作含置顶、未置顶行上移/下移。")}
+      {fig("后台-兴趣圈管理-卡片视图.png", "后台兴趣圈管理页-卡片模块-卡片网格", "封面卡展示发布状态与行操作。")}
+      {fig("后台-兴趣圈管理-新建抽屉.png", "后台兴趣圈管理页-新建模块-表单抽屉", "标题「新建兴趣圈」。封面、兴趣圈名称≤40、分类、兴趣圈负责人 TreeSelect 多选至少 1 人、简介≤500、AI 帮写。无活动区域、无标签。成功 toast「兴趣圈创建成功」。")}
+      {fig("后台-兴趣圈管理-审核弹窗.png", "后台兴趣圈管理页-审核模块-审核弹窗", "示例「午休飞盘局」。通过 / 驳回 / 取消。")}
+      {fig("后台-兴趣圈管理-空状态.png", "后台兴趣圈管理页-列表表格-无匹配空状态", "查询无结果文案「没有匹配的兴趣圈」。")}
+      <h4>字段说明</h4>
+      <table>
+        <thead><tr><th>字段名称</th><th>组件路径</th><th>控件</th><th>必填</th><th>默认</th><th>校验</th><th>选项</th><th>业务含义</th></tr></thead>
+        <tbody>
+          <tr><td>封面图</td><td>后台兴趣圈管理页-新建模块-封面上传</td><td>Upload 1 张</td><td>新建是</td><td>空</td><td>新建无图 warning「请上传封面图」</td><td>image/* JPG/PNG 建议 16:9</td><td>列表与详情头图</td></tr>
+          <tr><td>兴趣圈名称</td><td>后台兴趣圈管理页-新建模块-名称输入</td><td>Input</td><td>是</td><td>空</td><td>非空；trim 后 ≤40</td><td>—</td><td>展示名</td></tr>
+          <tr><td>分类</td><td>后台兴趣圈管理页-新建模块-分类选择</td><td>Select</td><td>否</td><td>空=未分类</td><td>仅启用分类（编辑保留原禁用 key）</td><td>分类表</td><td>筛选与 C 端标签</td></tr>
+          <tr><td>兴趣圈负责人</td><td>后台兴趣圈管理页-新建模块-负责人树</td><td>TreeSelect 多选</td><td>是</td><td>空</td><td>至少 1 人</td><td>组织人员树</td><td>leadEmployeeIds；C 端不可退出</td></tr>
+          <tr><td>兴趣圈简介</td><td>后台兴趣圈管理页-新建模块-简介</td><td>TextArea</td><td>否</td><td>空</td><td>≤500 计字</td><td>—</td><td>详情介绍</td></tr>
+          <tr><td>发布状态</td><td>后台兴趣圈管理页-查询筛选-发布状态</td><td>Select</td><td>否</td><td>全部</td><td>—</td><td>未发布 / 已发布</td><td>控制 C 端是否可见</td></tr>
+          <tr><td>加入方式</td><td>—</td><td>无控件</td><td>—</td><td>写死 <code>free</code></td><td>—</td><td>模型另有 approve</td><td>见优化建议</td></tr>
+          <tr><td>驳回原因</td><td>后台兴趣圈管理页-审核模块-原因</td><td>TextArea</td><td>否</td><td>空</td><td>≤200</td><td>—</td><td>驳回可选</td></tr>
+        </tbody>
+      </table>
+      <h4>操作与按钮状态</h4>
+      <table>
+        <thead><tr><th>操作名称</th><th>组件路径</th><th>前置</th><th>启用/禁用</th><th>点击后</th><th>成功</th><th>失败</th></tr></thead>
+        <tbody>
+          <tr><td>查询</td><td>后台兴趣圈管理页-查询筛选-查询按钮</td><td>无</td><td>始终</td><td>draft→query 过滤</td><td>表格刷新</td><td>—</td></tr>
+          <tr><td>重置</td><td>后台兴趣圈管理页-查询筛选-重置按钮</td><td>无</td><td>始终</td><td>条件清空</td><td>全量列表</td><td>—</td></tr>
+          <tr><td>新建兴趣圈</td><td>后台兴趣圈管理页-工具栏-新建按钮</td><td>无</td><td>始终 primary</td><td>打开空抽屉</td><td>—</td><td>—</td></tr>
+          <tr><td>创建兴趣圈</td><td>后台兴趣圈管理页-新建模块-提交按钮</td><td>抽屉打开</td><td>始终可点，校验失败 warning</td><td>validate + upsert</td><td>「兴趣圈创建成功」关抽屉</td><td>字段 message.warning</td></tr>
+          <tr><td>AI 帮写</td><td>后台兴趣圈管理页-新建模块-AI帮写按钮</td><td>抽屉打开</td><td>生成中 loading 且简介 disabled</td><td>800ms 按分类填简介</td><td>「已生成简介，可继续修改」</td><td>—</td></tr>
+          <tr><td>详情</td><td>后台兴趣圈管理页-列表表格-详情</td><td>有行</td><td>始终</td><td>跳详情</td><td>—</td><td>—</td></tr>
+          <tr><td>编辑</td><td>后台兴趣圈管理页-列表表格-编辑</td><td>有行</td><td>始终</td><td>抽屉带记录</td><td>「兴趣圈已更新」</td><td>校验失败</td></tr>
+          <tr><td>审核</td><td>后台兴趣圈管理页-列表表格-审核</td><td>仅待审核</td><td>否则不渲染</td><td>打开审核弹窗</td><td>通过/驳回 success</td><td>「当前兴趣圈不可审核」</td></tr>
+          <tr><td>发布</td><td>后台兴趣圈管理页-列表表格-发布</td><td>publishStatus≠已发布</td><td>已发布则改为撤销</td><td><code>publishInterestGroups</code></td><td>「已发布「名称」」</td><td>info 已发布</td></tr>
+          <tr><td>撤销</td><td>后台兴趣圈管理页-列表表格-撤销</td><td>已发布</td><td>未发布则 info</td><td>confirm 后 unpublish</td><td>「已撤销「名称」」</td><td>—</td></tr>
+          <tr><td>置顶 / 取消置顶</td><td>后台兴趣圈管理页-列表表格-置顶</td><td>有行</td><td>始终；点击即时生效</td><td><code>toggleInterestGroupPin</code>，置顶区优先</td><td>「已置顶 / 已取消置顶」</td><td>—</td></tr>
+          <tr><td>上移 / 下移</td><td>后台兴趣圈管理页-列表表格-排序</td><td>未置顶</td><td>置顶行不展示；自定义区首项上移、末项下移 disabled</td><td>单击即时换序</td><td>「已上移 / 已下移」</td><td>边界 no-op</td></tr>
+          <tr><td>删除</td><td>后台兴趣圈管理页-列表表格-删除</td><td>无进行中活动</td><td>有进行中则 disabled + Tooltip</td><td>Popconfirm；可拆活动会提示变为未归属</td><td>「兴趣圈已删除」</td><td>warning「存在进行中的活动…」</td></tr>
+        </tbody>
+      </table>
+    </article>
+
+    <article id="p-gdetail">
+      <h3>7.3 后台兴趣圈详情页</h3>
+      {fig("后台-兴趣圈详情-页面整体.png", "后台兴趣圈详情页-页面整体-头部与Tab", "面包屑返回列表；封面、名称、分类、负责人、简介、成员/活动/评论/瞬间统计；Tab 活动/成员/评论/精彩瞬间。")}
+      {fig("后台-兴趣圈详情-头部卡片.png", "后台兴趣圈详情页-头部模块-信息卡", "分类 Tag + 发布状态 Tag；未通过才显示审核 Tag。右上编辑；未发布显示「发布」，已发布显示撤销。")}
+      {fig("后台-兴趣圈详情-待审核状态.png", "后台兴趣圈详情页-头部模块-待审核标签", "auditStatus 非已通过/无需审核时显示 warning/error Tag。")}
+      {fig("后台-兴趣圈详情-活动Tab.png", "后台兴趣圈详情页-活动模块-内嵌列表", "复用活动列表并带 groupId 过滤。")}
+      {fig("后台-兴趣圈详情-成员Tab.png", "后台兴趣圈详情页-成员模块-成员表", "添加人员 / 批量导入 / 导出；列与导入模板均为姓名、部门、角色（lead=负责人 / member=成员），无手机号；无操作列、无删除、无入组审核。")}
+      {fig("后台-兴趣圈详情-评论Tab.png", "后台兴趣圈详情页-评论模块-评论表", "列：评论内容、评论人、点赞；行操作回复在前、删除在后。")}
+      {fig("后台-兴趣圈详情-瞬间Tab.png", "后台兴趣圈详情页-瞬间模块-瞬间表", "内容/类型/提交人/状态/点赞/评论/时间；行操作详情、删除。产品确认无审核（无通过/驳回）。")}
+      <p>兴趣圈不存在：Empty「兴趣圈不存在或已删除」+ 返回列表。</p>
+      <p>添加人员弹窗：TreeSelect 必选至少 1 人，已在圈人员 disabled。</p>
+    </article>
+
+    <article id="p-alist">
+      <h3>7.4 后台活动管理页</h3>
+      {fig("后台-活动管理-页面整体.png", "后台活动管理页-页面整体-列表", "筛选 + 列表/卡片 + 新建活动 + AI 策划 + 列表视图多选批量。副标题：查询并维护活动基础信息、发布与状态。")}
+      {fig("后台-活动管理-查询筛选.png", "后台活动管理页-查询筛选-条件区", "活动标题、所属兴趣圈、分类、举办方式、活动时间、发布状态、状态（生命周期）、创建时间、发布时间。无审核状态。")}
+      {fig("后台-活动管理-列表表格.png", "后台活动管理页-列表表格-数据表", "列：封面+标题、所属兴趣圈、分类、举办方式、活动时间、发布状态、状态、操作。无审核列。行选择仅列表视图。")}
+      {fig("后台-活动管理-卡片视图.png", "后台活动管理页-卡片模块-卡片网格", "封面、生命周期、置顶、发布状态与操作。")}
+      <h4>行操作状态机</h4>
+      <table>
+        <thead><tr><th>发布条件</th><th>主状态按钮</th><th>禁用条件</th></tr></thead>
+        <tbody>
+          <tr><td>已发布</td><td>撤销</td><td><code>canRevokeInterestGroupActivity</code> 为假时 disabled + tooltip</td></tr>
+          <tr><td>未发布</td><td>发布</td><td>始终可点（不再校验活动审核状态）</td></tr>
+        </tbody>
+      </table>
+      <p>另有：详情、编辑、复制、置顶/取消置顶；未置顶可上移/下移（单击即时生效，自定义区首项上移、末项下移置灰，置顶行不展示排序按钮）；新建活动插入置顶区之后第一位。满足条件时截止报名/恢复报名、终止活动、删除（已有人报名则删除 disabled「已有人报名，无法删除」）。批量：撤销、批量发布、设置分类。测试断言页面不含「审核状态」「提交审批」「批量提交审批」。</p>
+      <p>空数据：无筛选「暂无活动」；有筛选「没有匹配的活动」。</p>
+    </article>
+
+    <article id="p-aform">
+      <h3>7.5 后台新建/编辑活动页</h3>
+      {fig("后台-新建活动-表单页.png", "后台新建活动页-表单模块-整页", "封面、标题≤20、分类、活动地点、所属兴趣圈、活动时间、举办方式、报名时间、报名总人数/每场人数上限、活动详情、通知、签到。无可见范围/高级设置/活动积分/是否审核报名。底栏 aria「取消」「保存」。")}
+      <h4>字段说明（校验来自 <code>validateInterestGroupActivityForm</code>）</h4>
+      <table>
+        <thead><tr><th>字段</th><th>组件路径</th><th>必填</th><th>边界</th></tr></thead>
+        <tbody>
+          <tr><td>封面</td><td>后台新建活动页-基础信息-封面上传</td><td>是</td><td>无则「请上传封面图片」</td></tr>
+          <tr><td>活动标题</td><td>后台新建活动页-基础信息-标题</td><td>是</td><td>≤20</td></tr>
+          <tr><td>分类</td><td>后台新建活动页-基础信息-分类</td><td>是</td><td>启用分类</td></tr>
+          <tr><td>活动地点</td><td>后台新建活动页-基础信息-地点</td><td>否</td><td>≤80</td></tr>
+          <tr><td>所属兴趣圈</td><td>后台新建活动页-基础信息-兴趣圈</td><td>是</td><td>选圈子可回填分类</td></tr>
+          <tr><td>活动时间</td><td>后台新建活动页-排期-时间范围</td><td>单次/窗口是</td><td>结束≥开始，详见 schedule 校验</td></tr>
+          <tr><td>举办方式</td><td>后台新建活动页-排期-方式</td><td>是</td><td>once / recurring / series</td></tr>
+          <tr><td>报名人数</td><td>后台新建活动页-报名-人数</td><td>是</td><td>单次 label「报名总人数」；周期/系列「每场人数上限」；整数 ≥1</td></tr>
+          <tr><td>报名开始</td><td>后台新建活动页-报名-开始时间</td><td>是</td><td>空则「请选择报名开始时间」</td></tr>
+          <tr><td>报名结束</td><td>后台新建活动页-报名-结束时间</td><td>单次是</td><td>周期/系列用开场前小时</td></tr>
+          <tr><td>开场前小时</td><td>后台新建活动页-报名-截止小时</td><td>周期/系列是</td><td>≥0 整数</td></tr>
+          <tr><td>活动详情</td><td>后台新建活动页-详情-富文本</td><td>是</td><td>trim 非空</td></tr>
+          <tr><td>发送通知</td><td>后台新建活动页-通知-开关</td><td>否</td><td>开启后仅通知兴趣圈成员，无通知对象选项</td></tr>
+          <tr><td>扫码签到</td><td>后台新建活动页-签到-开关</td><td>否</td><td>开则可填开始前分钟、动态码</td></tr>
+        </tbody>
+      </table>
+      <p>表单<strong>不展示</strong>「是否审核报名」；提交时写死 <code>needAudit: false</code>、<code>signupApprovalNodes: []</code>。保存失败：表单 rules + 函数返回中文错误 message。成功：create 跳详情。</p>
+    </article>
+
+    <article id="p-adetail">
+      <h3>7.6 后台活动详情页</h3>
+      {fig("后台-活动详情-页面整体.png", "后台活动详情页-页面整体-头与详情Tab", "封面、标题、分类/生命周期/发布状态 Tag；头部无活动审核 Tag。")}
+      {fig("后台-活动详情-头部操作.png", "后台活动详情页-头部模块-操作按钮", "编辑、复制创建；签到开启时「签到码」跳 Tab。")}
+      {fig("后台-活动详情-报名Tab.png", "后台活动详情页-报名模块-名单表", "筛姓名/部门/场次；列姓名、部门、场次、报名时间、签到。无通过/驳回。")}
+      {fig("后台-活动详情-签到码Tab.png", "后台活动详情页-签到模块-二维码", "按场次展示签到码；动态码约 5 分钟刷新（与 C 端文案一致）。")}
+      {fig("后台-活动详情-评论Tab.png", "后台活动详情页-评论模块-评论表", "活动维度评论。管理员删除评论：产品确认不扣回员工积分。")}
+      {fig("后台-活动详情-瞬间Tab.png", "后台活动详情页-瞬间模块-瞬间表", "活动维度瞬间列表，能力同圈子详情：查看/删除，无审核。管理员删除瞬间不扣回积分。")}
+      {fig("后台-活动详情-未发布活动.png", "后台活动详情页-头部模块-未发布态", "发布状态 Tag 为未发布；可点发布后对 C 端可见。种子如 id=301「周一晚共读 · 固定围读局」。")}
+    </article>
+
+    <article id="p-cat">
+      <h3>7.7 后台分类管理页</h3>
+      {fig("后台-分类管理-页面整体.png", "后台分类管理页-页面整体-分类表", "分类名称、排序、状态启用/禁用、操作。")}
+      {fig("后台-分类管理-新建弹窗.png", "后台分类管理页-新建模块-分类弹窗", "名称必填空白校验，maxLength 12，重名「分类名称已存在」。")}
+    </article>
+
+    <article id="p-rules">
+      <h3>7.8 后台规则设置页</h3>
+      {fig("后台-规则设置-页面整体.png", "后台规则设置页-页面整体-表单", "创建权限 + 活动积分（仅演示）；底栏保存始终可点、取消仅 dirty。")}
+      {fig("后台-规则设置-活动积分.png", "后台规则设置页-积分模块-积分项", "卡标题「活动积分（仅演示）」。四行固定额度：活动积分、活动评论可得、活动打分可得、发布精彩瞬间可得。每行「N 积分，每日上限 M」。无下限。每日上限不得小于单次。")}
+      <h4>积分发放与扣回（产品确认，落地账本）</h4>
+      <p>额度来自本页四行，对所有活动统一、固定，不在单场活动表单再配。C 端当前不展示到账。</p>
+      <table>
+        <thead><tr><th>触发</th><th>发哪一项</th><th>何时入账</th><th>前置</th><th>扣回</th></tr></thead>
+        <tbody>
+          <tr><td>参加活动</td><td>活动积分（规则页「活动积分」）</td><td><strong>活动结束后</strong>一次结算</td><td>须已参加。若开启签到码：须完成扫码，未扫码不发活动积分。未开签到码：结束后向已报名/已参加员工发放</td><td>—</td></tr>
+          <tr><td>活动评论</td><td>活动评论可得</td><td>评论提交成功</td><td>固定单次分 + 每日上限</td><td>员工自己删除该评论：扣回；管理员删除：不扣回</td></tr>
+          <tr><td>活动评分</td><td>活动打分可得</td><td>点确认评分成功</td><td>活动已结束 + 报名已通过；1–5 星每人一次。原型有 UI，积分账本未入账</td><td>—</td></tr>
+          <tr><td>发布精彩瞬间</td><td>发布精彩瞬间可得</td><td>发布成功</td><td>固定单次分 + 每日上限</td><td>员工自己删除该瞬间：扣回；管理员删除：不扣回</td></tr>
+        </tbody>
+      </table>
+      <p>扣回只针对<strong>该条内容当时发过的积分</strong>，不影响同日其他已发记录。管理员删内容后员工账上仍保留积分。原型 store 无积分流水，本表为上线必须实现口径。</p>
+      <p>创建权限三项：是否允许员工创建兴趣圈、员工创建兴趣圈是否需要审核、是否允许兴趣圈成员创建活动。后两项中「建圈是否审核」与「是否允许员工创建兴趣圈」联动：关闭允许建圈后隐藏审核开关，并强制 <code>employeeCreateGroupNeedAudit=false</code>。页面不含「员工创建活动是否需要管理员审核」、不含「谁可以创建活动」。副标题仍写「积分范围」，与控件不一致。成功 message「规则设置已保存」。关闭员工建圈后，C 端快捷菜单不再渲染「创建兴趣圈」。积分走 <code>initialInterestGroupPointRules</code>（报名单次默认 1），与员工活动应用规则隔离。</p>
+    </article>
+
+    <article id="p-deco">
+      <h3>7.9 后台兴趣圈装修页</h3>
+      <p><strong>页面目标：</strong>配置 H5/PC 首页区块。组件库：搜索、AI助手、轮播图、兴趣圈、活动、精彩瞬间。顶栏有演示提示 <code>DEMO_DECO_PAGE_HINT</code>：「仅方便演示使用，实际无此装修页面，统一在H5/PC装修中实现」。</p>
+      <p>默认画布（<code>defaultIgDecoPageFor</code>）：search → groups（标题「热门兴趣圈」，H5 横滑 5 条 / PC 大图 3 条）→ activity（标题「活动」，大图，H5 3 条 / PC 6 条）→ moments（标题「往期精彩回顾」，H5 横滑 5 条已结束活动 / PC 大图 4 条）。<strong>不含</strong> banner、AI。顶栏「页面设置」可改 <code>pageTitle</code>（默认「兴趣圈」），C 端 H5/PC 壳标题读该字段。</p>
+      {fig("后台-兴趣圈装修-页面整体.png", "后台兴趣圈装修页-工作台-页面整体", "左组件库、中画布、右配置；顶栏移动/PC 切换。")}
+      {fig("后台-兴趣圈装修-组件面板.png", "后台兴趣圈装修页-组件库-调色板", "六类区块可加入画布。")}
+      {fig("后台-兴趣圈装修-画布.png", "后台兴趣圈装修页-画布模块-移动预览", "默认四块：搜索、热门兴趣圈、活动、往期精彩回顾。可改标题栏、查看全部、卡片字段、Tab、样式、条数。")}
+      {fig("后台-兴趣圈装修-配置区.png", "后台兴趣圈装修页-配置模块-检查器", "选中区块后编辑标题/更多链接/列表样式/列数/条数/占位文案；轮播可配跳转兴趣圈。")}
+      {fig("后台-兴趣圈装修-PC画布.png", "后台兴趣圈装修页-画布模块-PC预览", "hash <code>interest-group-layout-pc</code>；圈子/瞬间 PC 仅大图/左图/左文。")}
+      <h4>组件显示逻辑</h4>
+      <table>
+        <thead><tr><th>组件路径</th><th>默认</th><th>显示/隐藏</th><th>启用</th><th>数据来源</th></tr></thead>
+        <tbody>
+          <tr><td>后台兴趣圈装修页-工具栏-保存</td><td>主按钮文案「保存」，aria「保存」</td><td>始终</td><td>始终</td><td>点击 <code>publishIgDecoration(surface)</code>；toast「已保存，C端首页已更新」。无单独「发布」钮</td></tr>
+          <tr><td>后台兴趣圈装修页-画布-增删改排序</td><td>即时生效</td><td>始终</td><td>始终</td><td><code>saveIgDecoration</code> 写 draft。C 端 <code>useIgDecoration</code>=draft</td></tr>
+          <tr><td>后台兴趣圈装修页-轮播-链接选择</td><td>IgBannerLinkPicker</td><td>banner 区块</td><td>可选已有圈子</td><td>兴趣圈列表</td></tr>
+        </tbody>
+      </table>
+      <p>C 端按 <code>layout.blocks</code> 顺序渲染。H5 活动 Tab 可被装修关掉（<code>showActivityTabs</code>）或只开最新/热门。圈子/活动卡片字段（标题、分类、简介、成员、报名进度、报名按钮等）均可关。标题默认「兴趣圈」。</p>
+    </article>
+
+    <article id="p-h5home">
+      <h3>7.10 H5 兴趣圈首页</h3>
+      {fig("H5-首页-搜索入口.png", "H5首页-搜索模块-搜索条与菜单钮", "默认占位「搜索活动或兴趣圈名称」（非 input type=search）；右侧九宫格快捷菜单。")}
+      {fig("H5-首页-快捷入口.png", "H5首页-快捷模块-弹出菜单", "创建兴趣圈（规则可藏）、创建活动、我的活动、我的兴趣圈。创建活动不按 hostable 隐藏。")}
+      {fig("H5-首页-AI助手.png", "H5首页-AI模块-助手入口", "默认画布无此块。运营加入后出现，快捷菜单可挂在 AI 条旁。芯片 HINTS 仍写「适合新人的小组」；对话页输入占位「和小趣说点什么…」；回复与兜底已用「适合新人的兴趣圈」。")}
+      {fig("H5-首页-热门兴趣圈.png", "H5首页-兴趣圈模块-卡片区", "标题「热门兴趣圈」；可发现=已发布且非待审/驳回；名额「N人 · 活动 M」，无单独「成员N」。不展示活动区域文案。")}
+      {fig("H5-首页-活动Tab.png", "H5首页-活动模块-排序Tab", "推荐 / 最新 / 热门；H5 可被装修关闭或裁剪。PC 始终三 Tab。")}
+      {fig("H5-首页-活动列表.png", "H5首页-活动模块-活动卡列表", "默认大图。名额「已报名2/24」「余22位」无空格。封面叠「周期活动」等举办方式。CTA 见下表。")}
+      {fig("H5-首页-往期瞬间.png", "H5首页-回顾模块-已结束活动轨", "列出已结束活动卡（如「初夏城市漫步」+「已结束」），不是瞬间正文。")}
+      <h4>首页活动卡 CTA（<code>igHomeCta</code>，点卡进详情，按钮本身不报名）</h4>
+      <table>
+        <thead><tr><th>条件</th><th>文案</th><th>启用</th></tr></thead>
+        <tbody>
+          <tr><td>已结束 / 已终止 / signupClosed</td><td>报名已结束</td><td>否</td></tr>
+          <tr><td>已报名</td><td>已报名</td><td>否</td></tr>
+          <tr><td>其他</td><td>立即报名</td><td>是（仅展示，点击走开详情）</td></tr>
+        </tbody>
+      </table>
+      <p><code>enrollInfo</code> 仍有「报名+入组 / 选场次报名 / 取消报名」，首页不用。顶栏「返回」回门户；<strong>无</strong>底栏「回主页」、无 <code>c-h5-detail-fab</code>。子页打开时顶栏 pointer-events:none。快捷菜单默认挂搜索条旁；画布只有 AI 无搜索时挂 AI 条旁。</p>
+    </article>
+
+    <article id="p-h5sub">
+      <h3>7.11 H5 子页（栈内与独立 hash）</h3>
+      {fig("H5-搜索-页面整体.png", "H5搜索页-查询模块-搜索页", "空查询提示「输入名称搜索活动或兴趣圈」。无「回主页」悬浮按钮。")}
+      {fig("H5-搜索-空状态.png", "H5搜索页-结果模块-无结果", "无匹配时分栏空态：没有匹配的兴趣圈 / 没有匹配的活动。无「回主页」悬浮按钮。")}
+      {fig("H5-创建兴趣圈-表单.png", "H5创建兴趣圈页-表单模块-字段", "名称*、分类（CATS 8 项默认运动健身）、简介。无封面、无 maxlength。")}
+      {fig("H5-创建兴趣圈-底部创建按钮.png", "H5创建兴趣圈页-底部模块-创建按钮", "名称 trim 为空则 disabled；有字 primary 可点。")}
+      {fig("H5-创建活动-表单.png", "H5创建活动页-表单模块-字段", "封面、活动标题、分类、活动地点、所属兴趣圈、举办方式（单次/周期/系列）、活动时间、报名时间、报名总人数、活动介绍、发送消息通知（仅通知圈内成员，无通知对象）、签到。无可见范围/积分/报名信息收集。")}
+      {fig("H5-创建活动-底部创建按钮.png", "H5创建活动页-底部模块-创建按钮", "底栏「创建」；formError 非空则 disabled。")}
+      {fig("H5-我的活动-列表.png", "H5我的活动页-列表模块-分段", "我创建的 / 我报名的；左图卡片。")}
+      {fig("H5-我的兴趣圈-列表.png", "H5我的兴趣圈页-列表模块-分段", "我创建的 / 我加入的；左图卡片。")}
+      {fig("H5-全部兴趣圈-列表.png", "H5全部兴趣圈页-列表模块-发现", "全部可发现圈子。排序跟后台 <code>comparePinSort</code>（置顶优先再 sortIndex）。")}
+      {fig("H5-全部活动-列表.png", "H5全部活动页-列表模块-发现", "状态分段：全部/未开始/已结束/已终止；日期：全部/本周/本月；搜索活动名称、兴趣圈、标签。列表顺序同样置顶优先。")}
+      {fig("H5-兴趣圈详情-页面整体.png", "H5兴趣圈详情页-页面整体-主信息", "封面、分类、简介（H5 过长可展开）、成员/活动数。不强调活动区域。")}
+      {fig("H5-兴趣圈详情-加入或退出.png", "H5兴趣圈详情页-关系模块-主按钮", "未加入：加入兴趣圈；已加入：退出（负责人失败 toast）；pending：审核中 disabled。")}
+      {fig("H5-兴趣圈详情-成员Tab.png", "H5兴趣圈详情页-成员模块-成员网格", "负责人标「负责人」（可多人，如桌游电竞局黄码+吴检）；成员卡展示部门；H5 网格两列。不再写「组长」。")}
+      {fig("H5-兴趣圈详情-圈子Tab.png", "H5兴趣圈详情页-圈子模块-瞬间流", "成员可见「发布瞬间」。")}
+      {fig("H5-发布瞬间-表单.png", "H5发布瞬间页-表单模块-编辑器", "必填所属兴趣圈 + 关联活动（进行中/已结束且已报名）；文案+图/视频。toast 仍写「精彩瞬间已提交审核」（产品确认不审，文案残留）。")}
+      {fig("H5-活动详情-页面整体.png", "H5活动详情页-页面整体-详情", "封面叠分类/举办方式；信息卡：时间、地点、发起人、总名额/每场名额；有场次则「最近场次」+已报n场；已报名人员可「查看名单」。已结束默认可折叠「查看活动详情 / 收起活动详情」。进行中评论占位「说点什么」；已报名且进行中/已结束可出瞬间 Tab 并发布（不限次数）。发起人或圈主且开启签到时出签到二维码。")}
+      {fig("H5-活动详情-活动评分.png", "H5活动详情页-评分模块-星级", "仅已结束、夹在简介与评论/瞬间之间。文案「活动评分 均分 · N 人评分」。已报名未评：1–5 星 +「确认评分」；已评星星保留、无确认钮。进行中无此块。")}
+      {fig("H5-活动详情-底部报名.png", "H5活动详情页-底部模块-CTA栏", "未入组提示「报名将同时加入该兴趣圈」；点赞、分享、立即报名/取消报名/报名已结束。")}
+      {fig("H5-活动详情-场次报名.png", "H5活动详情页-报名模块-场次选择弹层", "legend「参加场次 *」。未报名过标题「填写报名信息」、主按钮「确认报名」；已报名过标题仍写「立即报名」、主按钮「保存场次」。可「展开全部场次」。不展示「林浅 · 手机号」。")}
+      <h4>详情 CTA（<code>igDetailCta</code>）</h4>
+      <table>
+        <thead><tr><th>条件</th><th>文案</th><th>enabled</th><th>action</th></tr></thead>
+        <tbody>
+          <tr><td>已结束 / 已终止 / signupClosed</td><td>报名已结束</td><td>否</td><td>none</td></tr>
+          <tr><td>入组 pending</td><td>立即报名</td><td>否</td><td>none</td></tr>
+          <tr><td>已报名且有场次</td><td>立即报名</td><td>是</td><td>adjust</td></tr>
+          <tr><td>已报名无场次</td><td>取消报名</td><td>是</td><td>cancel</td></tr>
+          <tr><td>其他</td><td>立即报名</td><td>是</td><td>signup</td></tr>
+        </tbody>
+      </table>
+      {fig("H5-扫码签到-结果页.png", "H5扫码签到页-结果模块-反馈", "解析 query session/token；成功/已签过/失败文案；按钮返回兴趣圈。")}
+      {fig("H5-往期精彩回顾-页面整体.png", "H5往期精彩回顾页-目录模块-独立页", "hash <code>#/c/h5/interest-groups/moments</code>；已结束活动列表，返回兴趣圈首页。")}
+    </article>
+
+    <article id="p-pc">
+      <h3>7.12 PC 员工端</h3>
+      <p>与 H5 同一 <code>IgProvider</code> + 栈。差异：<code>PcActivityShell</code>；装修 surface=pc（默认圈子 3 列大图、活动 6 条 3 列、回顾 4 列）；子页 overlay；往期独立页有「← 返回首页」。</p>
+      {fig("PC-首页-AI助手.png", "PC首页-AI模块-助手入口", "默认无。加入 AI 区块后与 H5 同一组件。")}
+      {fig("PC-首页-快捷入口.png", "PC首页-快捷模块-弹出菜单", "规则允许时含创建兴趣圈。")}
+      {fig("PC-首页-活动三列.png", "PC首页-活动模块-网格列表", "列数来自装修 columnCount，不再写死 6 条三列。")}
+      {fig("PC-搜索-页面整体.png", "PC搜索页-查询模块-搜索", "栈内搜索，交互同 H5。")}
+      {fig("PC-创建兴趣圈-表单.png", "PC创建兴趣圈页-表单模块-字段", "字段同 H5。")}
+      {fig("PC-创建活动-表单.png", "PC创建活动页-表单模块-字段", "字段同 H5。")}
+      {fig("PC-活动详情-页面整体.png", "PC活动详情页-页面整体-详情", "overlay 详情。已结束同样出活动评分块。")}
+      {fig("PC-活动详情-底部报名.png", "PC活动详情页-底部模块-CTA栏", "报名 CTA 逻辑同 H5。")}
+      {fig("PC-兴趣圈详情-页面整体.png", "PC兴趣圈详情页-页面整体-主信息", "加入/退出与 Tab 同 H5。")}
+      {fig("PC-往期精彩回顾-页面整体.png", "PC往期精彩回顾页-目录模块-独立页", "<code>#/c/pc/interest-groups/moments</code>；已结束活动卡 + 「← 返回首页」。")}
+    </article>
+  </section>
+
+  <section id="data-fields">
+    <h2>8. 数据字段与枚举</h2>
+    <table>
+      <thead><tr><th>枚举</th><th>取值</th></tr></thead>
+      <tbody>
+        <tr><td>兴趣圈审核</td><td>待审核 / 已通过 / 已驳回 / 无需审核</td></tr>
+        <tr><td>兴趣圈发布</td><td>未发布 / 已发布</td></tr>
+        <tr><td>兴趣圈来源</td><td>admin / employee</td></tr>
+        <tr><td>加入方式 / 活动区域 / 标签</td><td>模型仍有；后台表单与列表不展示，新建写死 free / 空 area / 空 tags</td></tr>
+        <tr><td>成员角色</td><td>lead 负责人 / member 成员。C 端与后台角色文案均为「负责人」，无「组长」</td></tr>
+        <tr><td>成员状态</td><td>待审核 / 已通过 / 已驳回</td></tr>
+        <tr><td>活动审核（模型残留）</td><td>待提交 / 待审核 / 已通过 / 已驳回 / 无需审核；后台列表/详情不展示。新建与员工创建写死无需审核</td></tr>
+        <tr><td>报名审核（模型残留）</td><td><code>needAudit</code> + 报名状态待审核/已通过；表单写死 false，名单无审操作</td></tr>
+        <tr><td>活动发布</td><td>未发布 / 已发布</td></tr>
+        <tr><td>活动生命周期</td><td>未开始 / 进行中 / 已结束 / 已终止</td></tr>
+        <tr><td>举办方式</td><td>once 单次 / recurring 周期性 / series 系列</td></tr>
+        <tr><td>分类状态</td><td>启用 / 禁用</td></tr>
+        <tr><td>消息通知对象</td><td>发布开启时固定 members（兴趣圈成员）；表单无全员选项</td></tr>
+        <tr><td>装修区块类型</td><td>search / ai / banner / groups / activity / moments</td></tr>
+        <tr><td>活动评分</td><td>1–5 整数星；每人每活动一次；仅已结束可展示/可评（须报名已通过）</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="apis">
+    <h2>9. API / 数据接口清单</h2>
+    <p>源码无真实 HTTP。内存 store + 版本号 mock。下列为落地建议，<strong>不是已实现接口</strong>。</p>
+    <table>
+      <thead><tr><th>接口用途</th><th>方法</th><th>路径（建议）</th><th>触发</th><th>是否真实</th></tr></thead>
+      <tbody>
+        <tr><td>圈子列表</td><td>GET</td><td>/api/interest-groups</td><td>列表/C 端目录</td><td>否</td></tr>
+        <tr><td>圈子保存</td><td>POST/PUT</td><td>/api/interest-groups</td><td>抽屉/员工创建</td><td>否</td></tr>
+        <tr><td>圈子审核</td><td>POST</td><td>/api/interest-groups/:id/review</td><td>审核弹窗</td><td>否</td></tr>
+        <tr><td>圈子发布</td><td>POST</td><td>/api/interest-groups/:id/publish</td><td>发布/撤销</td><td>否</td></tr>
+        <tr><td>装修读写</td><td>GET/PUT</td><td>/api/ig-decoration?surface=</td><td>装修页/C 端首页</td><td>否</td></tr>
+        <tr><td>活动 CRUD/发布</td><td>REST</td><td>/api/ig-activities</td><td>后台活动；当前无审核接口 UI</td><td>否</td></tr>
+        <tr><td>报名/场次</td><td>POST</td><td>/api/ig-activities/:id/signups</td><td>C 端报名</td><td>否</td></tr>
+        <tr><td>签到</td><td>POST</td><td>/api/ig-activities/:id/checkin</td><td>扫码页</td><td>否</td></tr>
+        <tr><td>积分账本</td><td>POST</td><td>/api/ig-points/ledger</td><td>结束结算、评论/评分/瞬间、自删扣回</td><td>否</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="exceptions">
+    <h2>10. 异常场景与边界条件</h2>
+    <table>
+      <thead><tr><th>场景</th><th>表现（代码）</th></tr></thead>
+      <tbody>
+        <tr><td>圈子名称空/超 40</td><td>后台拦截；C 端仅空名称禁用按钮，超长未截</td></tr>
+        <tr><td>新建无封面</td><td>后台必填；C 端用默认 <code>/activities/share.jpg</code></td></tr>
+        <tr><td>删除有进行中活动的圈子</td><td>删除禁用 + Tooltip</td></tr>
+        <tr><td>查询无结果</td><td>「没有匹配的兴趣圈/活动」</td></tr>
+        <tr><td>详情 id 无效</td><td>Empty 不存在或已删除</td></tr>
+        <tr><td>未入组报名</td><td>自动入组或报名+入组；审核加入 pending 则不能报</td></tr>
+        <tr><td>负责人退出</td><td>toast 不能退出</td></tr>
+        <tr><td>退出有已报活动</td><td>confirm 将取消 N 个报名</td></tr>
+        <tr><td>无资格创建活动</td><td>空态文案 + 去探索兴趣圈</td></tr>
+        <tr><td>规则关闭员工建圈仍走 saveGroup</td><td>toast「暂不允许员工创建兴趣圈」</td></tr>
+        <tr><td>签到 token/场次/时间非法</td><td><code>checkInFailCopy[reason]</code></td></tr>
+        <tr><td>瞬间未审</td><td>产品确认不审。代码仍：他人不可见（<code>visibleIgMoments</code>），作者可见</td></tr>
+        <tr><td>积分每日上限 &lt; 单次</td><td>规则页校验拒绝保存</td></tr>
+        <tr><td>活动已结束且开了签到码、员工未扫码</td><td>产品：不发活动积分。原型无结算</td></tr>
+        <tr><td>员工自删评论/精彩瞬间</td><td>产品：扣回对应积分。原型只删内容</td></tr>
+        <tr><td>管理员删评论/精彩瞬间</td><td>产品：内容下线，不扣回积分。原型只删内容</td></tr>
+        <tr><td>分类重名/&gt;12 字</td><td>弹窗校验</td></tr>
+        <tr><td>评论空提交</td><td>store「请输入评论」</td></tr>
+        <tr><td>未发布圈子</td><td>C 端发现列表过滤；员工/后台新建默认未发布</td></tr>
+        <tr><td>未发布活动</td><td>C 端活动发现过滤；后台可点发布。员工新建活动则直接已发布</td></tr>
+        <tr><td>活动区域/标签</td><td>后台新建不填；C 端首页圈子卡不展示种子 area</td></tr>
+        <tr><td>装修去掉某区块</td><td>首页不渲染该模块（含搜索/AI）</td></tr>
+        <tr><td>未报名看已结束活动</td><td>可见均分与人数，无「确认评分」</td></tr>
+        <tr><td>进行中活动</td><td>无活动评分块</td></tr>
+        <tr><td>重复评分</td><td>store 返回 already，不再出确认钮</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="optimizations">
+    <h2>11. 优化建议（必须改动项）</h2>
+    <p>只列逻辑漏洞，全部建议「必须改」以免上线口径分裂。重要程度：高=主路径错误；中=规则失效；低=体验不一致。</p>
+    <table>
+      <thead><tr><th>#</th><th>漏洞</th><th>必须改动</th><th>影响内容</th><th>重要程度</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>模型有 <code>joinMode=approve</code>，后台抽屉写死 <code>free</code>；卡片 <code>toggleJoin</code> 走 <code>joinGroupFree</code>，<code>applyJoin</code> 几乎闲置</td><td>后台露出加入方式；C 端按 joinMode 分支</td><td>成员审核、报名门槛</td><td class="must">高</td></tr>
+        <tr><td>2</td><td>「创建活动」仍在快捷菜单展示，无资格用户点进去才空态</td><td>按 hostable 隐藏或禁用并说明</td><td>H5/PC 快捷菜单</td><td class="must">高</td></tr>
+        <tr><td>3</td><td>产品确认精彩瞬间无审核，但列表待审核行仍有通过/驳回/批量审，员工发布写待审核、toast「已提交审核」</td><td>去掉通过/驳回；发布即已通过或立刻可见；改 toast</td><td>瞬间 Tab、C 端发瞬间</td><td class="must">高</td></tr>
+        <tr><td>4</td><td>C 端建圈无 40 字/封面校验，默认封面；且创建后未发布，文案依赖运营去点发布</td><td>对齐校验；明确谁负责首次发布</td><td>创建兴趣圈、C 端可见性</td><td class="must">中</td></tr>
+        <tr><td>5</td><td><code>toggleJoin</code> 自由加入后无条件 toast「已加入兴趣圈」，pending 结果可能误报</td><td>按 joined/pending/already 分支 toast</td><td>加入反馈</td><td class="must">中</td></tr>
+        <tr><td>7</td><td>详情 CTA 已报名有场次仍写「立即报名」；首页卡走另一套 <code>igHomeCta</code>（已报名禁用）</td><td>统一「调整场次」/「已报名」</td><td>活动卡、详情 CTA、报名 sheet 标题</td><td class="must">中</td></tr>
+        <tr><td>13</td><td>装修区块 type=moments、页面名叫往期精彩回顾，实际渲染已结束活动，瞬间只在圈子/已结束活动详情</td><td>改区块名或改数据源，避免运营配「瞬间」却看到旧活动</td><td>首页、独立回顾页</td><td class="must">中</td></tr>
+        <tr><td>8</td><td>产品已确认发放/扣回口径，但规则卡仍标「仅演示」，且无账本、C 端无到账/扣回</td><td>落地账本：结束结算活动积分（开签到须扫码）；评论/评分/瞬间按固定分入账；员工自删评论或瞬间扣回，管理员删不扣；去掉「仅演示」或标明演示范围</td><td>规则页、结束态、评论/瞬间删除</td><td class="must">高</td></tr>
+        <tr><td>12</td><td>AI HINTS 仍写「适合新人的小组」，回复已改兴趣圈</td><td>芯片改成「适合新人的兴趣圈」</td><td>H5/PC AI</td><td class="must">低</td></tr>
+        <tr><td>15</td><td>C 端首页读 draft（<code>useIgDecoration</code>），工具栏「保存」才写入 published。拖拽未保存也会改员工端</td><td>C 端改读 published，或去掉 publish 层只保留一份配置，并改 toast 口径</td><td>装修页、H5/PC 首页</td><td class="must">高</td></tr>
+        <tr><td>14</td><td>规则页副标题写「积分范围」，表单已无下限</td><td>副标题改成「单次积分与每日上限」</td><td>规则设置</td><td class="must">低</td></tr>
+        <tr><td>9</td><td>后台与员工新建圈子一律 <code>publishStatus=未发布</code>，运营容易漏点发布导致 C 端空白</td><td>创建成功后强提示去发布，或提供「创建并发布」</td><td>兴趣圈管理、C 端发现</td><td class="must">高</td></tr>
+        <tr><td>10</td><td>活动 <code>auditStatus</code>、<code>needAudit</code>、报名待审仍在模型；产品确认无活动审核菜单、无报名审核按钮</td><td>删死字段/死函数或标明「对接勿实现审活动/审报名」，避免后端按旧口径做</td><td>活动管理、报名名单、规则设置</td><td class="must">高</td></tr>
+        <tr><td>11</td><td>后台新建活动默认未发布；员工创建活动直接已发布，两边口径不一致</td><td>统一「保存即草稿」或「保存即发布」，并写进规则</td><td>活动可见性、运营管控</td><td class="must">高</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="non-functional">
+    <h2>12. 非功能需求</h2>
+    <ul>
+      <li>后台 Ant Design 桌面布局；C 端 H5 约 390 宽，PC 宽屏三列。</li>
+      <li>可访问性：部分 aria-label（搜索、删除、返回）；完整读屏 <span class="status todo">待确认</span>。</li>
+      <li>安全：签到依赖 query token，无服务端鉴权 <span class="status todo">待确认</span>。</li>
+      <li>性能：列表前端过滤；瞬间/评论随 store 全量订阅。</li>
+      <li>持久化：刷新丢失（内存 store）。</li>
+    </ul>
+  </section>
+
+  <section id="analytics">
+    <h2>13. 埋点与指标建议</h2>
+    <p><span class="status">建议补充</span> 代码无埋点。</p>
+    <table>
+      <thead><tr><th>事件</th><th>触发</th><th>属性</th><th>目的</th></tr></thead>
+      <tbody>
+        <tr><td>ig_home_view</td><td>打开 H5/PC 首页</td><td>surface</td><td>DAU</td></tr>
+        <tr><td>ig_signup_click</td><td>点报名 CTA</td><td>aid, hasSessions, joined</td><td>转化</td></tr>
+        <tr><td>ig_signup_success</td><td>报名成功 toast</td><td>aid, sessionCount</td><td>成功率</td></tr>
+        <tr><td>ig_group_join</td><td>加入结果</td><td>gid, result</td><td>入组漏斗</td></tr>
+        <tr><td>ig_create_group_submit</td><td>员工建圈</td><td>needAudit</td><td>UGC</td></tr>
+        <tr><td>ig_admin_review</td><td>审圈</td><td>pass</td><td>运营时效（活动/瞬间审核产品确认不做）</td></tr>
+        <tr><td>ig_checkin_result</td><td>扫码页</td><td>ok, reason</td><td>现场签到</td></tr>
+        <tr><td>ig_deco_publish</td><td>装修发布</td><td>surface, blockTypes</td><td>运营配置</td></tr>
+        <tr><td>ig_rating_submit</td><td>确认评分</td><td>aid, stars</td><td>结束后评价</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="acceptance">
+    <h2>14. 验收标准</h2>
+    <ul>
+      <li>Given 运营新建圈子 When 保存成功 Then 默认未发布，C 端不可见；点发布后可见（且审核非待审/驳回）。</li>
+      <li>Given 员工建圈 When 提交 Then 默认未发布，发现列表不可见，直至运营发布（且审核通过）。</li>
+      <li>Given 已发布圈子 When 撤销发布 Then C 端不再展示。</li>
+      <li>Given 默认装修 When 打开 H5 首页 Then 无轮播、无 AI；有搜索、热门兴趣圈、活动、往期精彩回顾（已结束活动卡）。</li>
+      <li>Given 首页活动卡 When 未报名 Then 文案「立即报名」且不含「报名+入组」。</li>
+      <li>Given 装修画布加入 AI 区块 When 打开 H5 首页 Then 可见 AI 入口并可进入对话（当前跟 draft，不必先点保存）。</li>
+      <li>Given 圈子成员 Tab When 打开 Then 负责人标签为「负责人」且可多人，无「组长」。</li>
+      <li>Given 装修工作台 When 看工具栏 Then 仅「保存」，无「发布」。</li>
+      <li>Given 圈子有进行中活动 When 点删除 Then 按钮禁用。</li>
+      <li>Given 兴趣圈/活动列表 When 点置顶 Then 立刻到置顶区顶部；取消置顶立刻回到自定义区第一位。</li>
+      <li>Given 自定义区非首项 When 点上移 Then 与上一条对调且 toast「已上移」；置顶行无上移下移。</li>
+      <li>Given 成员已入组 When 报名单次活动 Then toast 成功且人数+1；再点取消报名。</li>
+      <li>Given 周期活动 When 点立即报名 Then 出现场次 sheet，确认后「报名场次已更新」。</li>
+      <li>Given 入组 pending When 点报名 Then toast 审核中且 CTA 禁用。</li>
+      <li>Given 负责人 When 退出 Then toast 不能退出。</li>
+      <li>Given 规则不允许员工建圈 When 打开快捷菜单 Then 无「创建兴趣圈」。</li>
+      <li>Given 规则仅负责人建活动 When 普通成员进创建活动 Then 空态说明。</li>
+      <li>Given 合法签到 URL When 打开 Then 「签到成功」或「你已签到过这场」。</li>
+      <li>Given 员工发布瞬间 When 提交 Then 必须已选所属兴趣圈与关联活动；产品不要求后台审核；当前 toast 仍写已提交审核（残留）。</li>
+      <li>Given 已结束活动 When 打开详情 Then 简介与评论区之间有「活动评分」；进行中无此块。</li>
+      <li>Given 已报名未评 When 选星并点确认评分 Then toast「已评分」且不再出现确认钮。</li>
+      <li>Given 规则不允许员工建圈 When 打开规则页 Then 无「员工创建兴趣圈是否需要审核」开关。</li>
+      <li>Given 运营新建活动 When 保存成功 Then 默认未发布；点发布后 C 端可见。</li>
+      <li>Given 员工创建活动 When 校验通过 Then toast「活动已发布」且发布状态为已发布。</li>
+      <li>Given 活动列表 When 打开 Then 无「审核状态」「提交审批」。</li>
+      <li>Given 活动详情报名 Tab When 打开 Then 无通过/驳回/批量审核按钮。</li>
+      <li>Given 后台侧栏 When 打开兴趣圈 Then 固定 6 项，无按角色隐藏菜单。</li>
+      <li>Given H5 首页 When 打开 Then 顶栏有返回、无「回主页」。</li>
+      <li>Given 规则设置 When 打开 Then 见「活动积分（仅演示）」，无积分下限。</li>
+      <li>Given 活动已结束 When 员工已参加且未开签到码 Then 发放活动积分（固定额度）。</li>
+      <li>Given 活动已结束且开启签到码 When 员工未扫码 Then 不发放活动积分；扫码完成后才发。</li>
+      <li>Given 员工评论/评分/发瞬间 When 成功 Then 按规则固定积分入账（受每日上限）。</li>
+      <li>Given 员工自己删除评论或精彩瞬间 When 成功 Then 扣回该条已发积分。</li>
+      <li>Given 管理员删除评论或精彩瞬间 When 成功 Then 内容删除且不扣回员工积分。</li>
+    </ul>
+  </section>
+
+  <section id="risks">
+    <h2>15. 风险与待确认问题</h2>
+    <ul>
+      <li>无登录/组织权限，C 端永远是「林浅」。后台也无菜单级 RBAC（产品确认）。</li>
+      <li>积分账本未实现。产品确认口径见 7.8；卡标题「仅演示」与确认口径冲突，见优化 #8。</li>
+      <li>装修：原型无独立「发布」按钮；C 端跟 draft。上线是否改为「仅 published 生效」<span class="status todo">待确认</span>。</li>
+      <li>「审核加入」产品是否还要做：代码半成品（见优化 #1）。</li>
+      <li>活动审核、报名审核：产品确认不做。模型残留见优化 #10。</li>
+      <li>精彩瞬间审核：产品确认不做。代码残留见优化 #3。</li>
+      <li>员工活动保存即发布、后台活动需点发布：产品是否接受双轨 <span class="status todo">待确认</span>。</li>
+      <li>PC 是否要独立信息架构还是继续 overlay 移动栈 <span class="status todo">待确认</span>。</li>
+      <li>旧文档 <code>docs/prd/interest-group-admin/</code> 仍写「小组管理 / 概览 Placeholder」，已过时，以本文为准。</li>
+    </ul>
+  </section>
+'''
+
+
+def main() -> None:
+    toc = [
+        ("doc-note", "1. 文档说明"),
+        ("overview", "2. 功能概述与业务背景"),
+        ("roles", "3. 用户角色与权限"),
+        ("ia", "4. 页面结构 / 信息架构"),
+        ("implemented-features", "5. 功能清单与优先级"),
+        ("flows", "6. 用户流程"),
+        ("page-requirements", "7. 页面级需求说明"),
+        ("p-ov", "7.1 后台概览"),
+        ("p-glist", "7.2 兴趣圈管理"),
+        ("p-gdetail", "7.3 兴趣圈详情"),
+        ("p-alist", "7.4 活动管理"),
+        ("p-aform", "7.5 新建活动"),
+        ("p-adetail", "7.6 活动详情"),
+        ("p-cat", "7.7 分类管理"),
+        ("p-rules", "7.8 规则设置"),
+        ("p-deco", "7.9 兴趣圈装修"),
+        ("p-h5home", "7.10 H5 首页"),
+        ("p-h5sub", "7.11 H5 子页"),
+        ("p-pc", "7.12 PC 员工端"),
+        ("data-fields", "8. 数据字段与枚举"),
+        ("apis", "9. API / 数据接口清单"),
+        ("exceptions", "10. 异常场景与边界"),
+        ("optimizations", "11. 优化建议"),
+        ("non-functional", "12. 非功能需求"),
+        ("analytics", "13. 埋点建议"),
+        ("acceptance", "14. 验收标准"),
+        ("risks", "15. 风险与待确认"),
+    ]
+    html = wrap2("兴趣圈应用 产品需求文档", toc, body())
+    path = OUT / "兴趣圈应用-PRD.html"
+    path.write_text(html, encoding="utf-8")
+    missing = []
+    for m in re.finditer(r'src="screenshots/([^"]+)"', html):
+        if not (OUT / "screenshots" / m.group(1)).exists():
+            missing.append(m.group(1))
+    print(path, "bytes", path.stat().st_size, "missing", missing or "none")
+
+
+if __name__ == "__main__":
+    main()

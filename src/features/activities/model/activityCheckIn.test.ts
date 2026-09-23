@@ -6,7 +6,9 @@ import {
   defaultCheckInSettings,
   dynamicCheckInToken,
   evaluateCheckIn,
+  formatCheckInRuleSummary,
   toH5CheckInHash,
+  currentCheckInUrl,
   parseCheckInQuery,
   listCheckInSessions,
   type CheckInActivity,
@@ -97,28 +99,30 @@ describe('evaluateCheckIn', () => {
     ).toBe(true);
   });
 
-  it('waits until start in after_start mode', () => {
-    expect(
-      evaluateCheckIn({
-        activity: activity({ checkInOpenMode: 'after_start' }),
-        sessionId: 's-a',
-        token: 'tok-a',
-        signup: approved,
-        now: Date.parse('2026-09-02T18:59:00'),
-      }),
-    ).toMatchObject({ ok: false, reason: 'too_early' });
-  });
-
-  it('expires after the configured duration from start', () => {
+  it('expires when the session ends, not after a separate QR validity span', () => {
     expect(
       evaluateCheckIn({
         activity: activity({ checkInValidAfterStart: 3, checkInValidAfterStartUnit: 'day' }),
         sessionId: 's-a',
         token: 'tok-a',
         signup: approved,
-        now: Date.parse('2026-09-06T19:00:01'),
+        now: Date.parse('2026-09-02T20:59:00'),
+      }).ok,
+    ).toBe(true);
+    expect(
+      evaluateCheckIn({
+        activity: activity({ checkInValidAfterStart: 3, checkInValidAfterStartUnit: 'day' }),
+        sessionId: 's-a',
+        token: 'tok-a',
+        signup: approved,
+        now: Date.parse('2026-09-02T21:00:01'),
       }),
     ).toMatchObject({ ok: false, reason: 'expired' });
+  });
+
+  it('summarizes only the minutes-before-start rule', () => {
+    expect(formatCheckInRuleSummary(activity())).toBe('活动开始前 30 分钟可扫；静态二维码');
+    expect(formatCheckInRuleSummary({ ...activity(), checkInEnabled: false })).toBe('未开启');
   });
 
   it('requires an approved signup for the scanned session', () => {
@@ -203,5 +207,25 @@ describe('checkIn urls', () => {
   it('encodes session and token in the H5 hash', () => {
     expect(toH5CheckInHash(26, 's-a', 'tok-a')).toBe('#/c/h5/26/checkin?s=s-a&t=tok-a');
     expect(parseCheckInQuery('#/c/h5/26/checkin?s=s-a&t=tok-a')).toEqual({ sessionId: 's-a', token: 'tok-a' });
+  });
+
+  it('keeps http pages as origin + hash', () => {
+    expect(
+      currentCheckInUrl(26, 's-a', 'tok-a', {
+        href: 'http://localhost:5173/',
+        origin: 'http://localhost:5173',
+        pathname: '/',
+      }),
+    ).toBe('http://localhost:5173/#/c/h5/26/checkin?s=s-a&t=tok-a');
+  });
+
+  it('does not throw when Chrome file:// origin is the string null', () => {
+    expect(
+      currentCheckInUrl(26, 's-a', 'tok-a', {
+        href: 'file:///tmp/demo.html',
+        origin: 'null',
+        pathname: '/tmp/demo.html',
+      }),
+    ).toBe('file:///tmp/demo.html#/c/h5/26/checkin?s=s-a&t=tok-a');
   });
 });

@@ -8,9 +8,10 @@ import {
   initialLogs,
   initialThemes,
   parseCheckinTime,
+  applyCheckinMood,
   submitCheckinResult,
+  type CheckinMood,
   type CheckinTheme,
-  type RewardGrant,
 } from './checkin';
 
 let themes = [...initialThemes];
@@ -111,6 +112,7 @@ export function submitUserCheckin(input: {
   department?: string;
   account?: string;
   at: string;
+  mood?: CheckinMood;
 }) {
   const theme = getTheme(input.themeId);
   if (!theme) return { ok: false as const, reason: '主题不存在' };
@@ -124,38 +126,36 @@ export function submitUserCheckin(input: {
     department: input.department,
     account: input.account,
     at: input.at,
+    mood: input.mood,
     nextLogId: Math.max(0, ...logs.map((item) => item.id)) + 1,
     nextGrantId: Math.max(0, ...grants.map((item) => item.id)) + 1,
   });
 
   if (!result.ok) return result;
 
-  const lotteries = getLotteries();
-  const now = parseCheckinTime(input.at);
-  let ledger = getLotteryChanceLedger();
-  const nextGrants: RewardGrant[] = result.grants.map((grant) => {
-    if (grant.rewardKind !== '抽奖次数') return grant;
-    const parsed = Number.parseInt(grant.content.replace(/[^\d-]/g, ''), 10);
-    const amount = Number.isFinite(parsed) ? parsed : 0;
-    const credited = creditCheckinChance({
-      themeId: input.themeId,
-      userId: input.userId,
-      amount,
-      at: input.at,
-      lotteries,
-      ledger,
-      now,
-    });
-    ledger = credited.ledger;
-    if (credited.creditedLotteryIds.length > 0) return grant;
-    const hasTheme = lotteries.some((item) => item.gainCheckinThemeIds.includes(input.themeId));
-    const note = hasTheme ? '（关联抽奖已不可用）' : '（尚未被抽奖关联）';
-    const content = grant.content.includes(note) ? grant.content : `${grant.content}${note}`;
-    return { ...grant, status: '未入账' as const, content };
+  const credited = creditCheckinChance({
+    themeId: input.themeId,
+    userId: input.userId,
+    at: input.at,
+    lotteries: getLotteries(),
+    ledger: getLotteryChanceLedger(),
+    now: parseCheckinTime(input.at),
   });
+  setLotteryChanceLedger(credited.ledger);
+
+  const lotteryChance = credited.ledger
+    .filter((item) => item.at === input.at && item.userId === input.userId && item.source === 'checkin')
+    .reduce((sum, item) => sum + item.amount, 0);
 
   logs = [...logs, result.log];
-  grants = [...grants, ...nextGrants];
-  setLotteryChanceLedger(ledger);
-  return { ...result, grants: nextGrants };
+  grants = [...grants, ...result.grants];
+  emit();
+  return { ...result, lotteryChance };
+}
+
+export function setCheckinMood(id: number, mood: CheckinMood) {
+  if (!logs.some((item) => item.id === id)) return false;
+  logs = applyCheckinMood(logs, id, mood);
+  emit();
+  return true;
 }

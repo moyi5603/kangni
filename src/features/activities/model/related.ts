@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
+import { initialActivities } from './activity';
+import { parseSessionIds, stringifySessionIds } from './activitySchedule';
 import { initialMedals } from './medalLibrary';
+import { applyOrganizerSignups } from './organizerSignupApply';
 
 export const prizeTypes = ['勋章'] as const;
-export const prizeTargetTypes = ['全部报名人员', '指定人员', '批量导入'] as const;
+export const prizeTargetTypes = ['全部报名人员', '指定分组', '指定人员', '批量导入'] as const;
 export const surveyStatuses = ['草稿', '收集中', '已结束'] as const;
 export const approvalActions = ['提交', '通过', '驳回'] as const;
 export const approvalResults = ['待处理', '已通过', '已驳回'] as const;
@@ -30,6 +33,7 @@ export type PrizeRecord = BaseRecord & {
   medalName: string;
   medalImageUrl: string;
   targetType: PrizeTargetType;
+  targetGroup?: string;
 };
 
 export type SurveyRecord = BaseRecord & {
@@ -54,6 +58,8 @@ export type SignupRecord = BaseRecord & {
   department: string;
   status: SignupStatus;
   accountPhone?: string;
+  /** 报名审核当前节点下标（0 起），仅待审核时有意义 */
+  currentNodeIndex?: number;
   answers?: Record<string, string>;
   rejectReason?: string;
   checkIns?: Record<string, string>;
@@ -76,6 +82,20 @@ export type RelatedMaps = {
 
 export type RelatedKind = keyof RelatedMaps;
 
+export function signupOccupantKey(item: Pick<SignupRecord, 'name' | 'phone' | 'accountPhone'>): string {
+  return `${item.name}\t${item.accountPhone ?? item.phone}`;
+}
+
+export function uniqueBySignupOccupant<T extends Pick<SignupRecord, 'name' | 'phone' | 'accountPhone'>>(rows: T[]): T[] {
+  const seen = new Set<string>();
+  return rows.filter((item) => {
+    const key = signupOccupantKey(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 const medalImage: Record<string, string> = Object.fromEntries(initialMedals.map((item) => [item.id, item.imageUrl]));
 
 const PINNED_CAMP_ACTIVITY_ID = 2;
@@ -83,6 +103,12 @@ const PINNED_CAMP_NAMED_APPROVED = 4;
 const PINNED_CAMP_APPROVED_TARGET = 50;
 const PINNED_CAMP_DEPTS = ['研发中心', '生产中心', '职能中心', '营销中心', '人力资源'] as const;
 const PINNED_CAMP_GROUPS = ['技术组', '业务组'] as const;
+const PINNED_CAMP_SESSION_IDS = ['onboard-1', 'onboard-2', 'onboard-3'] as const;
+const PINNED_CAMP_SESSION_PICK = stringifySessionIds([...PINNED_CAMP_SESSION_IDS]);
+
+function campAnswers(extra: Record<string, string> = {}): Record<string, string> {
+  return { ...extra, 场次: PINNED_CAMP_SESSION_PICK };
+}
 
 function extraPinnedCampApprovedSignups(): SignupRecord[] {
   const need = PINNED_CAMP_APPROVED_TARGET - PINNED_CAMP_NAMED_APPROVED;
@@ -97,11 +123,32 @@ function extraPinnedCampApprovedSignups(): SignupRecord[] {
       phone: `1392000${String(n).padStart(4, '0')}`,
       signupType: '个人报名',
       department: PINNED_CAMP_DEPTS[index % PINNED_CAMP_DEPTS.length],
-      status: '已通过',
+      status: '已通过' as const,
       createdAt: `2026-08-19 ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`,
-      answers: { 分组选择: PINNED_CAMP_GROUPS[index % 2], 岗位: '学员' },
+      answers: campAnswers({ 分组选择: PINNED_CAMP_GROUPS[index % 2], 岗位: '学员' }),
     };
   });
+}
+
+export function splitSignupRowsBySession(records: SignupRecord[]): SignupRecord[] {
+  let nextId = Math.max(0, ...records.map((item) => item.id)) + 1;
+  const rows: SignupRecord[] = [];
+  records.forEach((item) => {
+    const ids = parseSessionIds(item.answers?.['场次']);
+    if (ids.length <= 1) {
+      rows.push(item);
+      return;
+    }
+    ids.forEach((sessionId, index) => {
+      rows.push({
+        ...item,
+        id: index === 0 ? item.id : nextId,
+        answers: { ...item.answers, 场次: sessionId },
+      });
+      if (index > 0) nextId += 1;
+    });
+  });
+  return rows;
 }
 
 function prizePerson(
@@ -139,8 +186,8 @@ const initialRelated: RelatedMaps = {
     prizePerson(5, 2, '张悦', '13800001001', '前端组', 'done', '结业纪念勋章', '指定人员', '2026-08-16 11:20:00'),
   ],
   surveys: [
-    { id: 1, activityId: 1, title: '春季开放日满意度', status: '已结束', responseCount: 126, collectStartAt: '2026-04-12 18:00', collectEndAt: '2026-04-18 18:00', createdAt: '2026-04-10 09:00:00' },
-    { id: 2, activityId: 2, title: '入职训练营课后反馈', status: '收集中', responseCount: 18, collectStartAt: '2026-08-18 18:00', collectEndAt: '2026-08-25 18:00', createdAt: '2026-08-15 10:00:00' },
+    { id: 1, activityId: 1, title: '春季开放日满意度', status: '已结束', responseCount: 3, collectStartAt: '2026-04-12 18:00', collectEndAt: '2026-04-18 18:00', createdAt: '2026-04-10 09:00:00' },
+    { id: 2, activityId: 2, title: '入职训练营课后反馈', status: '收集中', responseCount: 18, collectStartAt: '2026-08-31 18:00', collectEndAt: '2026-09-04 18:00', createdAt: '2026-08-15 10:00:00' },
     { id: 3, activityId: 4, title: '篮球联赛观赛体验', status: '草稿', responseCount: 0, collectStartAt: '2026-09-13 18:00', collectEndAt: '2026-09-20 18:00', createdAt: '2026-08-12 11:00:00' },
   ],
   approvals: [
@@ -149,35 +196,37 @@ const initialRelated: RelatedMaps = {
     { id: 3, activityId: 3, action: '提交', operator: '王芳', result: '待处理', comment: '', createdAt: '2026-08-10 16:40:00' },
     { id: 4, activityId: 5, action: '驳回', operator: '李明', result: '已驳回', comment: '分享提纲不完整，请补充后再提交。', createdAt: '2026-06-20 09:18:00' },
   ],
-  signups: [
-    { id: 1, activityId: 1, name: '张悦', phone: '13800001001', signupType: '个人报名', department: '研发中心', status: '已通过', createdAt: '2026-03-25 11:20:00' },
-    { id: 2, activityId: 1, name: '李明', phone: '13800001002', signupType: '个人报名', department: '研发中心', status: '已通过', createdAt: '2026-03-25 14:08:00' },
-    { id: 14, activityId: 1, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '职能中心', status: '已通过', createdAt: '2026-04-12 10:00:00', answers: { 性别: '男', 年龄: '32', 同行人: '[{"姓名":"李小明","手机号":"13900002222"}]' } },
-    { id: 3, activityId: 2, name: '王芳', phone: '13800001003', signupType: '个人报名', department: '营销中心', status: '待审核', createdAt: '2026-08-05 09:12:00' },
-    { id: 4, activityId: 2, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '职能中心', status: '已通过', createdAt: '2026-08-18 16:00:00', answers: { 分组选择: '技术组', 岗位: '产品经理' } },
-    { id: 6, activityId: 2, name: '张悦', phone: '13800001001', signupType: '个人报名', department: '前端组', status: '已通过', createdAt: '2026-08-02 09:18:00', answers: { 分组选择: '技术组', 岗位: '前端工程师' } },
-    { id: 7, activityId: 2, name: '李明', phone: '13800001002', signupType: '个人报名', department: '前端组', status: '待审核', createdAt: '2026-08-03 10:05:00' },
-    { id: 8, activityId: 2, name: '苏然', phone: '13800001004', signupType: '个人报名', department: '测试组', status: '待审核', createdAt: '2026-08-04 14:22:00' },
-    { id: 9, activityId: 2, name: '周工', phone: '13800001005', signupType: '个人报名', department: '总装车间', status: '已通过', createdAt: '2026-08-05 11:40:00' },
-    { id: 10, activityId: 2, name: '吴检', phone: '13800001006', signupType: '个人报名', department: '质检部', status: '已驳回', createdAt: '2026-08-06 16:08:00' },
-    { id: 11, activityId: 2, name: '林销', phone: '13800001008', signupType: '个人报名', department: '华南大区', status: '待审核', createdAt: '2026-08-07 09:55:00' },
-    { id: 12, activityId: 2, name: '赵人事', phone: '13800001009', signupType: '个人报名', department: '人力资源', status: '已通过', createdAt: '2026-08-08 13:12:00' },
-    { id: 13, activityId: 2, name: '钱会', phone: '13800001010', signupType: '个人报名', department: '财务', status: '已取消', createdAt: '2026-08-09 15:30:00' },
-    { id: 5, activityId: 4, name: '苏然', phone: '13800001004', signupType: '个人报名', department: '生产中心', status: '已驳回', createdAt: '2026-08-12 16:22:00' },
-    { id: 15, activityId: 6, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '职能中心', status: '已通过', createdAt: '2026-08-17 16:00:00', answers: { 场次: 'checkup-1' } },
-    { id: 16, activityId: 9, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '职能中心', status: '已通过', createdAt: '2026-08-16 16:00:00' },
-    { id: 17, activityId: 12, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '职能中心', status: '已驳回', createdAt: '2026-04-12 10:00:00' },
+  signups: applyOrganizerSignups(
+    splitSignupRowsBySession([
+    { id: 1, activityId: 1, name: '张悦', phone: '13800001001', signupType: '个人报名', department: '前端组', status: '已通过', createdAt: '2026-03-25 11:20:00' },
+    { id: 2, activityId: 1, name: '李明', phone: '13800001002', signupType: '个人报名', department: '前端组', status: '已通过', createdAt: '2026-03-25 14:08:00' },
+    { id: 14, activityId: 1, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '华东大区', status: '已通过', createdAt: '2026-04-12 10:00:00', answers: { 性别: '男', 年龄: '32', 同行人: '[{"姓名":"李小明","手机号":"13900002222"}]' } },
+    { id: 900, activityId: 28, name: '陈产品', phone: '13800001111', accountPhone: '13800001111', signupType: '个人报名', department: '华东大区', status: '待审核', currentNodeIndex: 0, createdAt: '2026-08-30 10:00:00' },
+    { id: 3, activityId: 2, name: '王芳', phone: '13800001003', signupType: '个人报名', department: '后端组', status: '待审核', createdAt: '2026-08-05 09:12:00', answers: campAnswers() },
+    { id: 4, activityId: 2, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '华东大区', status: '已通过', createdAt: '2026-08-18 16:00:00', answers: campAnswers({ 分组选择: '技术组', 岗位: '产品经理' }) },
+    { id: 6, activityId: 2, name: '张悦', phone: '13800001001', signupType: '个人报名', department: '前端组', status: '已通过', createdAt: '2026-08-02 09:18:00', answers: campAnswers({ 分组选择: '技术组', 岗位: '前端工程师' }) },
+    { id: 7, activityId: 2, name: '李明', phone: '13800001002', signupType: '个人报名', department: '前端组', status: '待审核', createdAt: '2026-08-03 10:05:00', answers: campAnswers() },
+    { id: 8, activityId: 2, name: '苏然', phone: '13800001004', signupType: '个人报名', department: '测试组', status: '待审核', createdAt: '2026-08-04 14:22:00', answers: campAnswers() },
+    { id: 9, activityId: 2, name: '周工', phone: '13800001005', signupType: '个人报名', department: '总装车间', status: '已通过', createdAt: '2026-08-05 11:40:00', answers: campAnswers() },
+    { id: 10, activityId: 2, name: '吴检', phone: '13800001006', signupType: '个人报名', department: '质检部', status: '已驳回', createdAt: '2026-08-06 16:08:00', answers: campAnswers() },
+    { id: 11, activityId: 2, name: '林销', phone: '13800001008', signupType: '个人报名', department: '华南大区', status: '待审核', createdAt: '2026-08-07 09:55:00', answers: campAnswers() },
+    { id: 12, activityId: 2, name: '赵人事', phone: '13800001009', signupType: '个人报名', department: '人力资源', status: '已通过', createdAt: '2026-08-08 13:12:00', answers: campAnswers() },
+    { id: 13, activityId: 2, name: '钱会', phone: '13800001010', signupType: '个人报名', department: '财务', status: '已取消', createdAt: '2026-08-09 15:30:00', answers: campAnswers() },
+    { id: 5, activityId: 4, name: '苏然', phone: '13800001004', signupType: '个人报名', department: '测试组', status: '已驳回', createdAt: '2026-08-12 16:22:00' },
+    { id: 15, activityId: 6, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '华东大区', status: '已通过', createdAt: '2026-08-17 16:00:00', answers: { 场次: 'checkup-1' } },
+    { id: 16, activityId: 9, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '华东大区', status: '已通过', createdAt: '2026-08-16 16:00:00' },
+    { id: 17, activityId: 12, name: '陈产品', phone: '13800001111', signupType: '个人报名', department: '华东大区', status: '已驳回', createdAt: '2026-04-12 10:00:00' },
     {
       id: 18,
       activityId: 26,
       name: '陈产品',
       phone: '13800001111',
       signupType: '个人报名',
-      department: '职能中心',
+      department: '华东大区',
       status: '已通过',
       createdAt: '2026-08-20 16:00:00',
       accountPhone: '13800001111',
-      answers: { 场次: 's-0-202608271400' },
+      answers: { 场次: 's-0-202608271400', 分组选择: '红队' },
     },
     {
       id: 19,
@@ -185,25 +234,48 @@ const initialRelated: RelatedMaps = {
       name: '陈产品',
       phone: '13800001111',
       signupType: '个人报名',
-      department: '职能中心',
+      department: '华东大区',
       status: '已通过',
       createdAt: '2026-08-21 10:00:00',
       accountPhone: '13800001111',
       answers: { 场次: 's-0-202609050900' },
     },
-    {
-      id: 20,
+    { id: 20,
       activityId: 10,
       name: '陈产品',
       phone: '13800001111',
       signupType: '个人报名',
-      department: '职能中心',
+      department: '华东大区',
       status: '已通过',
       createdAt: '2026-08-21 11:00:00',
       accountPhone: '13800001111',
     },
+    {
+      id: 2141,
+      activityId: 14,
+      name: '吴检',
+      phone: '13800001006',
+      signupType: '个人报名',
+      department: '质检部',
+      status: '已通过',
+      createdAt: '2026-06-30 10:00:00',
+      answers: { 分组选择: '质量组', 部门: '质检部', 岗位: '质量工程师' },
+    },
+    {
+      id: 2142,
+      activityId: 14,
+      name: '周工',
+      phone: '13800001005',
+      signupType: '个人报名',
+      department: '总装车间',
+      status: '已通过',
+      createdAt: '2026-06-30 11:20:00',
+      answers: { 分组选择: '工艺组', 部门: '总装车间', 岗位: '工艺工程师' },
+    },
     ...extraPinnedCampApprovedSignups(),
-  ],
+    ]),
+    initialActivities,
+  ),
   comments: [
     { id: 1, activityId: 1, content: '开放日讲解很清楚，希望明年还能参加。', author: '张悦', createdAt: '2026-04-12 18:20:00', likedBy: ['李明'] },
     { id: 2, activityId: 1, content: '下午场次人有点多。', author: '李明', createdAt: '2026-04-12 19:05:00', likedBy: [] },
@@ -213,7 +285,7 @@ const initialRelated: RelatedMaps = {
     { id: 6, activityId: 1, content: '希望增加名额。', author: '苏然', createdAt: '2026-04-12 17:00:00', likedBy: [] },
     { id: 7, activityId: 1, content: '带家属参观体验很好。', author: '赵人事', createdAt: '2026-04-12 18:00:00', likedBy: [] },
     { id: 8, activityId: 1, content: '园区指引牌再大一点。', author: '钱会', createdAt: '2026-04-12 16:40:00', likedBy: [] },
-    { id: 9, activityId: 1, content: '希望有英文导览。', author: '吴工', createdAt: '2026-04-12 17:30:00', likedBy: [] },
+    { id: 9, activityId: 1, content: '希望有英文导览。', author: '吴检', createdAt: '2026-04-12 17:30:00', likedBy: [] },
     { id: 10, activityId: 1, content: '谢谢认可。', author: '陈产品', createdAt: '2026-04-12 18:50:00', parentId: 5, likedBy: [] },
     { id: 11, activityId: 1, content: '分流可以再明确。', author: '苏然', createdAt: '2026-04-12 19:15:00', parentId: 2, likedBy: [] },
     { id: 12, activityId: 1, content: '同意，孩子也喜欢。', author: '王芳', createdAt: '2026-04-12 18:10:00', parentId: 7, likedBy: [] },
@@ -234,7 +306,7 @@ const initialRelated: RelatedMaps = {
     { id: 27, activityId: 1, content: '展厅空调有点冷。', author: '苏然', createdAt: '2026-04-13 10:03:00', likedBy: [] },
     { id: 28, activityId: 1, content: '亲子区很热闹。', author: '赵人事', createdAt: '2026-04-13 10:04:00', likedBy: [] },
     { id: 29, activityId: 1, content: '停车位不够。', author: '钱会', createdAt: '2026-04-13 10:05:00', likedBy: [] },
-    { id: 30, activityId: 1, content: '讲解耳机有杂音。', author: '吴工', createdAt: '2026-04-13 10:06:00', likedBy: [] },
+    { id: 30, activityId: 1, content: '讲解耳机有杂音。', author: '吴检', createdAt: '2026-04-13 10:06:00', likedBy: [] },
     { id: 31, activityId: 1, content: '食堂套餐实惠。', author: '陈产品', createdAt: '2026-04-13 10:07:00', likedBy: [] },
     { id: 32, activityId: 1, content: '合影墙排队长。', author: '周工', createdAt: '2026-04-13 10:08:00', likedBy: [] },
     { id: 33, activityId: 1, content: '洗手间指示不够。', author: '林销', createdAt: '2026-04-13 10:09:00', likedBy: [] },
@@ -244,7 +316,7 @@ const initialRelated: RelatedMaps = {
     { id: 37, activityId: 1, content: '雨天有伞。', author: '苏然', createdAt: '2026-04-13 10:13:00', likedBy: [] },
     { id: 38, activityId: 1, content: '签到处顺。', author: '赵人事', createdAt: '2026-04-13 10:14:00', likedBy: [] },
     { id: 39, activityId: 1, content: '班车准点。', author: '钱会', createdAt: '2026-04-13 10:15:00', likedBy: [] },
-    { id: 40, activityId: 1, content: '车间很安静。', author: '吴工', createdAt: '2026-04-13 10:16:00', likedBy: [] },
+    { id: 40, activityId: 1, content: '车间很安静。', author: '吴检', createdAt: '2026-04-13 10:16:00', likedBy: [] },
     { id: 41, activityId: 1, content: '有无障碍通道。', author: '陈产品', createdAt: '2026-04-13 10:17:00', likedBy: [] },
     { id: 42, activityId: 1, content: '馆内WIFI稳。', author: '周工', createdAt: '2026-04-13 10:18:00', likedBy: [] },
     { id: 43, activityId: 1, content: '纪念品柜台要排队。', author: '赵人事', createdAt: '2026-04-13 10:19:00', likedBy: [] },
@@ -307,6 +379,14 @@ export function useAllRelated<K extends RelatedKind>(kind: K): RelatedMaps[K] {
 export function patchRelated<K extends RelatedKind>(kind: K, updater: (list: RelatedMaps[K]) => RelatedMaps[K]) {
   related = { ...related, [kind]: updater(related[kind]) };
   emit();
+}
+
+export function approveSignupRecord(record: SignupRecord, totalNodes: number): SignupRecord {
+  const current = record.currentNodeIndex ?? 0;
+  if (totalNodes > current + 1) {
+    return { ...record, status: '待审核', currentNodeIndex: current + 1, rejectReason: undefined };
+  }
+  return { ...record, status: '已通过', currentNodeIndex: undefined, rejectReason: undefined };
 }
 
 export function recordApprovalSubmit(activityId: number, operator: string, createdAt: string) {

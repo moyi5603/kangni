@@ -1,0 +1,366 @@
+.c-h5-shell.is-daily-checkin .c-h5-frame {
+  background: linear-gradient(180deg, #fff4e8 0%, #f5f5f5 220px);
+}
+
+.c-h5-shell.is-daily-checkin .c-h5-main {
+  padding: 12px 16px 28px;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+
+.c-h5-shell.is-daily-checkin .c-h5-main::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.c-daily-checkin {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.c-daily-hero,
+.c-daily-cal {
+  min-width: 0;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgb(24 24 27 / 6%);
+}
+
+.c-daily-hero {
+  padding: 20px 18px 16px;
+  text-align: center;
+}
+
+.c-daily-kicker {
+  margin: 0;
+  color: #ff7f24;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.c-daily-hello {
+  margin: 6px 0 0;
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+.c-daily-sub {
+  margin: 6px 0 18px;
+  color: #71717a;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.c-daily-stamp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 148px;
+  height: 148px;
+  margin: 0 auto;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffb067, #ff7f24 58%, #f06a12);
+  color: #fff;
+  box-shadow: 0 12px 24px rgb(255 127 36 / 32%);
+}
+
+.c-daily-stamp:active {
+  transform: scale(0.96);
+}
+
+.c-daily-stamp:disabled {
+  background: #d4d4d8;
+  box-shadow: none;
+}
+
+.c-daily-stamp.is-done {
+  background: radial-gradient(circle at 35% 30%, #7dd3a0, #22a06b 60%, #178056);
+  box-shadow: 0 12px 24px rgb(34 160 107 / 28%);
+}
+
+.c-daily-stamp-label {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.c-daily-stamp-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.c-daily-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.c-daily-stats div {
+  padding: 10px 0 4px;
+  border-radius: 12px;
+  background: #fff7f0;
+}
+
+.c-daily-stats strong {
+  display: block;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.c-daily-stats span {
+  color: #a16207;
+  font-size: 12px;
+}
+
+.c-daily-cal {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  padding: 14px 12px 16px;
+}
+
+.c-daily-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 8px;
+}
+
+.c-daily-cal-head h3 {
+  margin: 0;
+  min-width: 0;
+  flex: 1;
+  font-size: 15px;
+  font-weight: 650;
+  text-align: center;
+}
+
+.c-h5-shell.is-daily-checkin .c-daily-cal-head .c-icon-btn {
+  flex: 0 0 36px;
+  min-width: 36px;
+  min-height: 36px;
+}
+
+.c-daily-week,
+.c-daily-grid {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  min-width: 0;
+}
+
+.c-daily-week span,
+.c-daily-cell {
+  flex: 0 0 calc(100% / 7);
+  max-width: calc(100% / 7);
+  box-sizing: border-box;
+}
+
+.c-daily-week span {
+  padding: 6px 0;
+  color: #a1a1aa;
+  font-size: 11px;
+  text-align: center;
+}
+
+.c-daily-cell {
+  appearance: none;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 10px;
+  font-size: 14px;
+  color: inherit;
+}
+
+.c-daily-cell.is-empty {
+  pointer-events: none;
+}
+
+.c-daily-cell.is-today {
+  font-weight: 700;
+  color: #ff7f24;
+}
+
+.c-daily-cell.is-checked {
+  background: #fff7f0;
+}
+
+.c-daily-mood {
+  display: flex;
+  line-height: 0;
+  margin-top: 2px;
+}
+
+.c-daily-cell .c-mood-face {
+  width: 18px;
+  height: 18px;
+}
+
+.c-daily-dot {
+  width: 6px;
+  height: 6px;
+  margin-top: 3px;
+  border-radius: 50%;
+}
+
+.c-daily-dot.is-plain {
+  background: #ff7f24;
+}
+
+.c-daily-cal-hint {
+  margin: 12px 4px 0;
+  color: #a16207;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.c-daily-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  justify-content: center;
+}
+
+.c-daily-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #71717a;
+  font-size: 12px;
+}
+
+.c-daily-legend .c-mood-face,
+.c-mood-pick .c-mood-face {
+  width: 22px;
+  height: 22px;
+}
+
+.c-mood-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.c-mood-sheet.is-reward {
+  align-items: center;
+}
+
+.c-mood-mask {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgb(24 24 27 / 45%);
+}
+
+.c-mood-panel {
+  position: relative;
+  width: min(430px, 100%);
+  padding: 16px 16px 28px;
+  border-radius: 20px 20px 0 0;
+  background: #fff;
+}
+
+.c-mood-sheet-kicker {
+  margin: 0;
+  color: #a1a1aa;
+  font-size: 12px;
+  text-align: center;
+}
+
+.c-mood-sheet-title {
+  margin: 4px 0 14px;
+  font-size: 18px;
+  text-align: center;
+}
+
+.c-mood-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.c-mood-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-height: 88px;
+  padding: 12px 8px;
+  border: 1px solid #f4f4f5;
+  border-radius: 14px;
+  background: #fafafa;
+  font-size: 13px;
+}
+
+.c-mood-pick .c-mood-face {
+  width: 40px;
+  height: 40px;
+}
+
+.c-mood-pick.is-on {
+  border-color: #ff7f24;
+  background: #fff7f0;
+}
+
+.c-mood-pick:active {
+  transform: scale(0.97);
+}
+
+.c-reward-panel {
+  position: relative;
+  width: min(320px, calc(100% - 40px));
+  margin: auto;
+  padding: 22px 18px 18px;
+  border-radius: 20px;
+  background: #fff;
+  text-align: center;
+}
+
+.c-reward-list {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.c-reward-list li {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff7f0;
+  color: #9a3412;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.c-reward-ok {
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  border-radius: 12px;
+}

@@ -29,6 +29,6 @@ describe('CheckinDetailPage', () => {
       </App>,
     );
     expect(html).toContain('+5');
-    expect(html).toContain('抽奖次数');
+    expect(html).not.toContain('抽奖次数');
   });
 });

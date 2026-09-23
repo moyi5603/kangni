@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import {
   App,
+  Alert,
   Breadcrumb,
   Button,
   Card,
+  Checkbox,
   Col,
   Collapse,
   DatePicker,
@@ -23,13 +25,16 @@ import {
   Upload,
 } from 'antd';
 import type { UploadFile } from 'antd';
+import { COVER_IMAGE_UPLOAD_HINT, IMAGE_UPLOAD_ACCEPT } from '../../../shared/ui/imageUploadHint';
 import dayjs, { type Dayjs } from 'dayjs';
 import { RichTextField } from '../components/RichTextField';
 import { SignupApprovalNodesEditor } from '../components/SignupApprovalNodesEditor';
 import { SignupFieldsEditor } from '../components/SignupFieldsEditor';
+import { SignupGroupsEditor } from '../components/SignupGroupsEditor';
 import {
   activityTypes,
   canSubmitApproval,
+  editActivityBlockReason,
   orgDepartmentTree,
   orgPeoplePickerTree,
   type Activity,
@@ -37,14 +42,15 @@ import {
   type SignupField,
   type Visibility,
 } from '../model/activity';
-import { defaultSignupFields, validateSignupFields } from '../model/signupFields';
+import { defaultSignupFields, findGroupSignupField, setGroupSignupEnabled, setSignupFieldGroups, validateSignupFields } from '../model/signupFields';
 import {
   formatDateTimeRange,
   toDateTimeRange,
   validateDateTimeRange,
   type DateTimeRange,
 } from '../model/activityForm';
-import { getActivity, upsertActivity } from '../model/activityStore';
+import { getActivity, getActivities, upsertActivity } from '../model/activityStore';
+import { nextCustomSortIndex } from '../../interest-groups/model/pinSort';
 import {
   defaultActivityPointValues,
   normalizeActivityPointRules,
@@ -52,22 +58,28 @@ import {
 } from '../model/activityPointRules';
 import { getActivityPointRules, useActivityPointRules } from '../model/activityPointRulesStore';
 import { recordApprovalSubmit } from '../model/related';
+import { activityAdminSelf } from '../model/activityCommentReply';
 import { useCategories } from '../model/categoryStore';
 import type { ApprovalNode } from '../model/rules';
 import {
   WEEKDAYS,
   activityScheduleTypeLabels,
+  applyRepeatWeekdaySelection,
+  coerceRepeatRules,
   createSessionId,
   generateRecurringSessions,
   needsSessionPick,
+  repeatWeekdayValues,
+  sessionFullyWithinWindow,
   SIGNUP_HOURS_PLACEHOLDER,
   signupQuotaLabel,
   signupQuotaPlaceholder,
-  syncSessionBounds,
   syncSignupEndAt,
   validateActivitySchedule,
+  weekdayLabel,
   type ActivityScheduleType,
   type ActivitySession,
+  type RepeatRule,
 } from '../model/activitySchedule';
 import {
   CHECK_IN_ONCE_SESSION_ID,
@@ -116,10 +128,7 @@ type FormValues = {
   notifyOnPublish: boolean;
   signupFields: SignupField[];
   scheduleType: ActivityScheduleType;
-  repeatWeekday?: number;
-  cycleRange?: DateTimeRange;
-  sessionTimeStart?: Dayjs;
-  sessionTimeEnd?: Dayjs;
+  repeatRules?: Array<{ weekday: number; timeStart?: Dayjs; timeEnd?: Dayjs }>;
   sessionList?: Array<{ range?: DateTimeRange }>;
   checkInEnabled: boolean;
   checkInOpenMode: CheckInOpenMode;
@@ -164,41 +173,43 @@ function timeOf(value?: string) {
   return value ? dayjs(`2000-01-01 ${value}`) : undefined;
 }
 
+function RepeatRulesHolder(_props: { value?: FormValues['repeatRules'] }) {
+  return null;
+}
+
+function repeatRulesFromForm(values: FormValues): RepeatRule[] {
+  return (values.repeatRules ?? [])
+    .filter((item) => item.weekday != null)
+    .map((item) => ({
+      weekday: Number(item.weekday),
+      timeStart: item.timeStart?.format('HH:mm') ?? '',
+      timeEnd: item.timeEnd?.format('HH:mm') ?? '',
+    }));
+}
+
 function resolveScheduleFromForm(values: FormValues): {
   scheduleType: ActivityScheduleType;
   sessions: ActivitySession[];
   startAt: string;
   endAt: string;
-  repeatWeekday?: number;
-  timeStart?: string;
-  timeEnd?: string;
-  cycleStart?: string;
-  cycleEnd?: string;
+  repeatRules?: RepeatRule[];
 } {
   const scheduleType = values.scheduleType ?? 'once';
+  const activityTime = formatDateTimeRange(
+    values.activityRange?.[0] && values.activityRange[1] ? values.activityRange : fallbackRange(),
+  );
   if (scheduleType === 'recurring') {
-    const cycleStart = values.cycleRange?.[0]?.format('YYYY-MM-DD') ?? '';
-    const cycleEnd = values.cycleRange?.[1]?.format('YYYY-MM-DD') ?? '';
-    const timeStart = values.sessionTimeStart?.format('HH:mm') ?? '';
-    const timeEnd = values.sessionTimeEnd?.format('HH:mm') ?? '';
-    const sessions = generateRecurringSessions({
-      repeatWeekday: values.repeatWeekday ?? 1,
-      timeStart,
-      timeEnd,
-      cycleStart,
-      cycleEnd,
-    });
-    const bounds = syncSessionBounds(sessions);
+    const repeatRules = repeatRulesFromForm(values);
     return {
       scheduleType,
-      sessions,
-      startAt: bounds.startAt,
-      endAt: bounds.endAt,
-      repeatWeekday: values.repeatWeekday,
-      timeStart,
-      timeEnd,
-      cycleStart,
-      cycleEnd,
+      repeatRules,
+      sessions: generateRecurringSessions({
+        rules: repeatRules,
+        windowStart: activityTime.startAt,
+        windowEnd: activityTime.endAt,
+      }),
+      startAt: activityTime.startAt,
+      endAt: activityTime.endAt,
     };
   }
   if (scheduleType === 'series') {
@@ -207,12 +218,8 @@ function resolveScheduleFromForm(values: FormValues): {
       const range = formatDateTimeRange(item.range);
       return [{ id: createSessionId(range.startAt, index), startAt: range.startAt, endAt: range.endAt }];
     });
-    const bounds = syncSessionBounds(sessions);
-    return { scheduleType, sessions, startAt: bounds.startAt, endAt: bounds.endAt };
+    return { scheduleType, sessions, startAt: activityTime.startAt, endAt: activityTime.endAt };
   }
-  const activityTime = formatDateTimeRange(
-    values.activityRange?.[0] && values.activityRange[1] ? values.activityRange : fallbackRange(),
-  );
   return {
     scheduleType: 'once',
     sessions: [{ id: createSessionId(activityTime.startAt, 0), startAt: activityTime.startAt, endAt: activityTime.endAt }],
@@ -255,10 +262,11 @@ function activityToFormValues(activity: Activity): Partial<FormValues> {
     signupHoursBefore: activity.signupHoursBefore ?? 0,
     location: activity.location,
     scheduleType: activity.scheduleType ?? 'once',
-    repeatWeekday: activity.repeatWeekday,
-    cycleRange: activity.cycleStart && activity.cycleEnd ? toDateTimeRange(`${activity.cycleStart} 00:00`, `${activity.cycleEnd} 00:00`) : undefined,
-    sessionTimeStart: timeOf(activity.timeStart),
-    sessionTimeEnd: timeOf(activity.timeEnd),
+    repeatRules: coerceRepeatRules(activity).map((rule) => ({
+      weekday: rule.weekday,
+      timeStart: timeOf(rule.timeStart),
+      timeEnd: timeOf(rule.timeEnd),
+    })),
     sessionList: (activity.sessions ?? []).map((session) => ({ range: toDateTimeRange(session.startAt, session.endAt) })),
     signupTotalLimit: activity.signupSettings.reduce((sum, item) => sum + (item.limit ?? 0), 0) || undefined,
     needAudit: primary?.needAudit ?? false,
@@ -312,11 +320,23 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
   const showSignupApproval = needAudit ?? editing?.signupSettings[0]?.needAudit ?? copySource?.signupSettings[0]?.needAudit ?? false;
   const hasSeniorityLimit = Form.useWatch('hasSeniorityLimit', form);
   const signupTotalLimit = Form.useWatch('signupTotalLimit', form);
+  const signupFields = Form.useWatch('signupFields', form) ?? [];
+  const groupSignupField = findGroupSignupField(signupFields);
   const signupPointsEnabled = Form.useWatch('signupPointsEnabled', form);
   const checkInEnabled = Form.useWatch('checkInEnabled', form);
-  const checkInOpenMode = Form.useWatch('checkInOpenMode', form);
-  const scheduleType = Form.useWatch('scheduleType', form);
+  const scheduleType = Form.useWatch('scheduleType', form) ?? (editing ? editing.scheduleType : undefined) ?? 'once';
+  const repeatRules =
+    Form.useWatch('repeatRules', { form, preserve: true }) ??
+    (editing
+      ? coerceRepeatRules(editing).map((rule) => ({
+          weekday: rule.weekday,
+          timeStart: timeOf(rule.timeStart),
+          timeEnd: timeOf(rule.timeEnd),
+        }))
+      : []);
+  const activityRange = Form.useWatch('activityRange', form);
   const title = mode === 'edit' ? '编辑活动' : '新建活动';
+  const editLockedReason = mode === 'edit' && editing ? editActivityBlockReason(editing) : undefined;
 
   const initialValues = useMemo<Partial<FormValues>>(
     () =>
@@ -379,11 +399,15 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
   };
 
   const save = async (submit = false) => {
+    if (editLockedReason) {
+      message.warning(editLockedReason);
+      return;
+    }
     const values = await form.validateFields();
     const groupSumHint = validateSignupFields(values.signupFields ?? [], {
       signupTotalLimit: values.signupTotalLimit,
     });
-    // 分组人数不符时，提示只保留「分组选择」下方文案，此处仅拦截保存
+    // 分组人数不符时，提示只保留「报名分组设置」下方文案，此处仅拦截保存
     if (groupSumHint?.startsWith('各组人数合计要等于报名总人数')) {
       return;
     }
@@ -409,11 +433,9 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
     const sessions = ensureSessionCheckInTokens(schedule.sessions, editing?.sessions ?? copySource?.sessions ?? []);
     const scheduleError = validateActivitySchedule({
       scheduleType: schedule.scheduleType,
-      repeatWeekday: schedule.repeatWeekday,
-      timeStart: schedule.timeStart,
-      timeEnd: schedule.timeEnd,
-      cycleStart: schedule.cycleStart,
-      cycleEnd: schedule.cycleEnd,
+      windowStart: schedule.startAt,
+      windowEnd: schedule.endAt,
+      repeatRules: schedule.repeatRules,
       sessions,
     });
     if (scheduleError) {
@@ -428,12 +450,13 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
     } else if (!values.signupRange) {
       throw new Error('时间范围未填写完整');
     }
-    if (schedule.scheduleType === 'once' && !values.activityRange) {
+    if (!values.activityRange) {
       throw new Error('时间范围未填写完整');
     }
     const signup = resolveSignupWindow(values, schedule.scheduleType, sessions);
+    const publishOnCreate = submit && mode === 'create';
     const currentStatus = editing?.auditStatus ?? '无需审核';
-    const auditStatus: AuditStatus = submit ? '待审核' : currentStatus;
+    const auditStatus: AuditStatus = publishOnCreate ? '无需审核' : submit ? '待审核' : currentStatus;
     const activity: Activity = {
       id: editing?.id ?? Date.now(),
       coverUrl: values.coverUrl || '',
@@ -444,11 +467,7 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
       startAt: schedule.startAt,
       endAt: schedule.endAt,
       scheduleType: schedule.scheduleType,
-      repeatWeekday: schedule.repeatWeekday,
-      timeStart: schedule.timeStart,
-      timeEnd: schedule.timeEnd,
-      cycleStart: schedule.cycleStart,
-      cycleEnd: schedule.cycleEnd,
+      repeatRules: schedule.scheduleType === 'recurring' ? schedule.repeatRules : undefined,
       sessions,
       location: values.location?.trim() || '',
       organizer: values.organizer,
@@ -462,8 +481,10 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
       importedPeople: values.visibility === '导入人群' ? editing?.importedPeople ?? copySource?.importedPeople ?? [] : [],
       notifyOnPublish: Boolean(values.notifyOnPublish),
       signupStartAt: signup.signupStartAt,
-      signupEndAt: signup.signupEndAt,
+      signupEndAt: editing?.signupClosedAt ? editing.signupEndAt : signup.signupEndAt,
       signupHoursBefore: signup.signupHoursBefore,
+      signupClosedAt: editing?.signupClosedAt,
+      signupEndAtBeforeClose: editing?.signupEndAtBeforeClose,
       signupSettings: [
         {
           type: editing?.signupSettings[0]?.type?.trim() || copySource?.signupSettings[0]?.type?.trim() || '个人报名',
@@ -476,7 +497,11 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
       itinerary: '',
       extraFeeRule: '',
       momentAuditEnabled: false,
-      activityApprovalEnabled: submit ? true : (editing?.activityApprovalEnabled ?? copySource?.activityApprovalEnabled ?? false),
+      activityApprovalEnabled: publishOnCreate
+        ? false
+        : submit
+          ? true
+          : (editing?.activityApprovalEnabled ?? copySource?.activityApprovalEnabled ?? false),
       signupApprovalNodes: values.needAudit ? values.signupApprovalNodes ?? [] : [],
       signupPoints: values.signupPoints,
       firstCommentPoints: pointRulesForSave.firstCommentPointsMax,
@@ -487,7 +512,7 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
       ratingPointsEnabled: false,
       firstMomentPointsEnabled: false,
       checkInEnabled: Boolean(values.checkInEnabled),
-      checkInOpenMode: values.checkInOpenMode ?? 'before_start',
+      checkInOpenMode: 'before_start',
       checkInOpenMinutesBefore: values.checkInOpenMinutesBefore ?? 30,
       checkInValidAfterStart: values.checkInValidAfterStart ?? 3,
       checkInValidAfterStartUnit: values.checkInValidAfterStartUnit ?? 'day',
@@ -499,16 +524,20 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
             checkInTokenForSession({ id: CHECK_IN_ONCE_SESSION_ID })
           : undefined,
       auditStatus,
-      publishStatus: editing?.publishStatus ?? '未发布',
+      publishStatus: publishOnCreate ? '已发布' : (editing?.publishStatus ?? '未发布'),
       activityStatus: editing?.activityStatus ?? '未开始',
       pinned: editing?.pinned ?? false,
+      sortIndex: editing?.sortIndex ?? nextCustomSortIndex(getActivities()),
       createdAt: editing?.createdAt ?? nowText(),
-      publishedAt: editing?.publishedAt ?? '',
+      creator: editing?.creator ?? activityAdminSelf,
+      publishedAt: publishOnCreate ? nowText() : (editing?.publishedAt ?? ''),
     };
     upsertActivity(activity);
-    if (submit) {
+    if (publishOnCreate) {
+      message.success('已保存并发布');
+    } else if (submit) {
       recordApprovalSubmit(activity.id, activity.organizer, nowText());
-      message.success(mode === 'create' ? '已提交审核' : '已提交审批');
+      message.success('已提交审批');
     } else {
       message.success(mode === 'edit' ? '活动已更新' : '活动已保存');
     }
@@ -521,7 +550,7 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
       auditStatus: editing?.auditStatus ?? '待提交',
       activityApprovalEnabled: editing?.activityApprovalEnabled ?? false,
     });
-  const submitLabel = mode === 'create' ? '提交审核' : '提交审批';
+  const submitLabel = mode === 'create' ? '保存并发布' : '提交审批';
 
   return (
     <div className="page-stack advanced-form-page">
@@ -539,20 +568,22 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
         </Typography.Title>
         <Typography.Text type="secondary">填写活动信息、报名规则和高级设置。封面与详情仅保存在本地演示数据中。</Typography.Text>
       </div>
+      {editLockedReason ? <Alert type="warning" showIcon message={editLockedReason} /> : null}
       <Form
         form={form}
         layout="horizontal"
         className="edit-form"
         requiredMark
         labelWrap={false}
+        disabled={Boolean(editLockedReason)}
         validateTrigger="onBlur"
         scrollToFirstError={{ focus: true }}
         initialValues={initialValues}
       >
         <Card title="活动信息">
-          <Form.Item label="封面图片" extra="支持 jpg / png" required>
+          <Form.Item label="封面图片" extra={COVER_IMAGE_UPLOAD_HINT} required>
             <Upload
-              accept="image/*"
+              accept={IMAGE_UPLOAD_ACCEPT}
               listType="picture-card"
               maxCount={1}
               fileList={coverList}
@@ -611,6 +642,34 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
               </Form.Item>
             </Col>
           </Row>
+          <Row gutter={16} className="form-2col">
+            <Col xs={24} lg={12} className="activity-time-field">
+              <Form.Item
+                name="activityRange"
+                label="活动时间"
+                required
+                rules={[
+                  {
+                    validator: async (_, value) =>
+                      validateDateTimeRange(value, {
+                        required: '请选择活动时间',
+                        order: '结束时间不得早于开始时间',
+                      }),
+                  },
+                ]}
+              >
+                <DatePicker.RangePicker
+                  showTime={{ format: 'HH:mm' }}
+                  format="YYYY-MM-DD HH:mm"
+                  style={{ width: '100%' }}
+                  placeholder={['开始时间', '结束时间']}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item name="repeatRules" hidden>
+            <RepeatRulesHolder />
+          </Form.Item>
           <Form.Item name="scheduleType" label="举办方式" rules={[{ required: true, message: '请选择举办方式' }]}>
             <Radio.Group disabled={mode === 'edit'} optionType="button">
               {(['once', 'recurring', 'series'] as const).map((item) => (
@@ -622,29 +681,6 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
           </Form.Item>
           {scheduleType === 'once' || !scheduleType ? (
             <Row gutter={16} className="form-2col">
-              <Col xs={24} lg={12}>
-                <Form.Item
-                  name="activityRange"
-                  label="活动时间"
-                  required
-                  rules={[
-                    {
-                      validator: async (_, value) =>
-                        validateDateTimeRange(value, {
-                          required: '请选择活动时间',
-                          order: '结束时间不得早于开始时间',
-                        }),
-                    },
-                  ]}
-                >
-                  <DatePicker.RangePicker
-                    showTime={{ format: 'HH:mm' }}
-                    format="YYYY-MM-DD HH:mm"
-                    style={{ width: '100%' }}
-                    placeholder={['开始时间', '结束时间']}
-                  />
-                </Form.Item>
-              </Col>
               <Col xs={24} lg={12}>
                 <Form.Item
                   name="signupRange"
@@ -689,41 +725,90 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
           ) : null}
           {scheduleType === 'recurring' ? (
             <>
-              <Form.Item name="repeatWeekday" label="重复周几" rules={[{ required: true, message: '请选择周几' }]}>
-                <Radio.Group disabled={mode === 'edit'} options={WEEKDAYS.map((item) => ({ value: item.value, label: item.label }))} />
+              <Form.Item
+                label="重复周几"
+                required
+                rules={[
+                  {
+                    validator: async () => {
+                      if (!repeatWeekdayValues(form.getFieldValue('repeatRules') ?? []).length) {
+                        throw new Error('请选择重复的周几');
+                      }
+                    },
+                  },
+                ]}
+              >
+                <div className="repeat-weekday-checks">
+                  {WEEKDAYS.map((item) => {
+                    const selected = repeatWeekdayValues(repeatRules).includes(item.value);
+                    return (
+                      <Checkbox
+                        key={item.value}
+                        disabled={mode === 'edit'}
+                        checked={selected}
+                        onChange={(event) => {
+                          const current = form.getFieldValue('repeatRules') ?? [];
+                          const picked = new Set(repeatWeekdayValues(current));
+                          if (event.target.checked) picked.add(item.value);
+                          else picked.delete(item.value);
+                          form.setFieldValue(
+                            'repeatRules',
+                            applyRepeatWeekdaySelection(current, [...picked]).map((rule) => ({
+                              weekday: Number(rule.weekday),
+                              timeStart:
+                                'timeStart' in rule && rule.timeStart
+                                  ? rule.timeStart
+                                  : timeOf('19:30'),
+                              timeEnd:
+                                'timeEnd' in rule && rule.timeEnd ? rule.timeEnd : timeOf('21:00'),
+                            })),
+                          );
+                        }}
+                      >
+                        {item.label}
+                      </Checkbox>
+                    );
+                  })}
+                </div>
               </Form.Item>
-              <Row gutter={16} className="form-2col">
-                <Col xs={24} lg={12}>
-                  <Form.Item label="每日时段" required>
-                    <div className="time-range">
-                      <Form.Item name="sessionTimeStart" noStyle rules={[{ required: true, message: '请选择开始时段' }]}>
-                        <TimePicker format="HH:mm" style={{ width: '100%' }} />
-                      </Form.Item>
-                      <span>—</span>
-                      <Form.Item name="sessionTimeEnd" noStyle rules={[{ required: true, message: '请选择结束时段' }]}>
-                        <TimePicker format="HH:mm" style={{ width: '100%' }} />
-                      </Form.Item>
-                    </div>
-                  </Form.Item>
-                </Col>
-                <Col xs={24} lg={12}>
-                  <Form.Item
-                    name="cycleRange"
-                    label="周期起止"
-                    required
-                    rules={[
-                      {
-                        validator: async (_, value) =>
-                          validateDateTimeRange(value, {
-                            required: '请选择周期起止日期',
-                            order: '结束日期不得早于开始日期',
-                          }),
-                      },
-                    ]}
-                  >
-                    <DatePicker.RangePicker format="YYYY-MM-DD" style={{ width: '100%' }} placeholder={['开始日期', '结束日期']} />
-                  </Form.Item>
-                </Col>
+              <Row gutter={16} className="form-2col repeat-session-grid">
+                {repeatRules.map((rule, index) => (
+                  <Col span={12} key={Number(rule.weekday)}>
+                    <Form.Item label={`${weekdayLabel(Number(rule.weekday))}时段`} required>
+                      <div className="time-range">
+                        <TimePicker
+                          format="HH:mm"
+                          needConfirm={false}
+                          disabled={mode === 'edit'}
+                          style={{ width: '100%' }}
+                          value={rule.timeStart}
+                          onChange={(timeStart) => {
+                            const current = form.getFieldValue('repeatRules') ?? [];
+                            form.setFieldValue(
+                              'repeatRules',
+                              current.map((item, itemIndex) => (itemIndex === index ? { ...item, timeStart } : item)),
+                            );
+                          }}
+                        />
+                        <span>—</span>
+                        <TimePicker
+                          format="HH:mm"
+                          needConfirm={false}
+                          disabled={mode === 'edit'}
+                          style={{ width: '100%' }}
+                          value={rule.timeEnd}
+                          onChange={(timeEnd) => {
+                            const current = form.getFieldValue('repeatRules') ?? [];
+                            form.setFieldValue(
+                              'repeatRules',
+                              current.map((item, itemIndex) => (itemIndex === index ? { ...item, timeEnd } : item)),
+                            );
+                          }}
+                        />
+                      </div>
+                    </Form.Item>
+                  </Col>
+                ))}
               </Row>
             </>
           ) : null}
@@ -740,11 +825,18 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
                           name={[field.name, 'range']}
                           rules={[
                             {
-                              validator: async (_, value) =>
-                                validateDateTimeRange(value, {
+                              validator: async (_, value) => {
+                                await validateDateTimeRange(value, {
                                   required: '请选择场次时间',
                                   order: '结束时间不得早于开始时间',
-                                }),
+                                });
+                                const window = activityRange?.[0] && activityRange[1] ? formatDateTimeRange(activityRange) : undefined;
+                                if (!value?.[0] || !value[1] || !window) return;
+                                const range = formatDateTimeRange(value);
+                                if (!sessionFullyWithinWindow(range, window.startAt, window.endAt)) {
+                                  throw new Error(`第 ${index + 1} 场必须完全落在活动时间内`);
+                                }
+                              },
                             },
                           ]}
                         >
@@ -901,6 +993,43 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
           </Form.Item>
         </Card>
 
+        <Card title="报名分组设置" className="activity-settings-card">
+          <Form.Item
+            label="是否设置"
+            extra="可不设置。设置后员工报名时选择分组，各组人数合计须等于报名总人数"
+          >
+            <Switch
+              checked={Boolean(groupSignupField)}
+              checkedChildren="已设置"
+              unCheckedChildren="不设置"
+              onChange={(checked) => {
+                form.setFieldValue(
+                  'signupFields',
+                  setGroupSignupEnabled(form.getFieldValue('signupFields') ?? defaultSignupFields(), checked),
+                );
+              }}
+            />
+          </Form.Item>
+          {groupSignupField ? (
+            <Form.Item label="分组">
+              <SignupGroupsEditor
+                groups={groupSignupField.groups ?? []}
+                signupTotalLimit={typeof signupTotalLimit === 'number' ? signupTotalLimit : undefined}
+                onChange={(groups) => {
+                  form.setFieldValue(
+                    'signupFields',
+                    setSignupFieldGroups(
+                      form.getFieldValue('signupFields') ?? defaultSignupFields(),
+                      groupSignupField.key,
+                      groups,
+                    ),
+                  );
+                }}
+              />
+            </Form.Item>
+          ) : null}
+        </Card>
+
         <Card styles={{ body: { paddingBlock: 0 } }} className="advanced-settings-card">
           <Collapse
             ghost
@@ -954,7 +1083,7 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
                       </Form.Item>
                       <Form.Item
                         label="活动积分"
-                        extra={signupPointsEnabled ? `规则范围 ${pointRules.signupPointsMin}～${pointRules.signupPointsMax}` : undefined}
+                        extra={`规则范围 ${pointRules.signupPointsMin}～${pointRules.signupPointsMax}`}
                       >
                         <Flex align="center" gap={12} className="activity-signup-points">
                           <Form.Item name="signupPointsEnabled" valuePropName="checked" noStyle>
@@ -995,46 +1124,16 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
                       </Form.Item>
                       {checkInEnabled ? (
                         <>
-                          <Form.Item label="签到时间" required>
-                            <Flex vertical gap={8}>
-                              <Form.Item name="checkInOpenMode" noStyle>
-                                <Radio.Group>
-                                  <Radio value="before_start">活动开始前可扫</Radio>
-                                  <Radio value="after_start">活动开始后可扫</Radio>
-                                </Radio.Group>
-                              </Form.Item>
-                              {checkInOpenMode !== 'after_start' ? (
-                                <Space.Compact className="activity-unit-compact">
-                                  <Form.Item
-                                    name="checkInOpenMinutesBefore"
-                                    noStyle
-                                    rules={[{ required: true, message: '请输入可扫分钟数' }]}
-                                  >
-                                    <InputNumber min={0} precision={0} placeholder="请输入" />
-                                  </Form.Item>
-                                  <Button disabled>分钟</Button>
-                                </Space.Compact>
-                              ) : null}
-                            </Flex>
-                          </Form.Item>
-                          <Form.Item label="二维码有效期" required extra="从该场开始时间起算，默认 3 天">
+                          <Form.Item label="活动开始前可扫" required extra="签到从开始前该分钟数开放，至该场结束关闭">
                             <Space.Compact className="activity-unit-compact">
                               <Form.Item
-                                name="checkInValidAfterStart"
+                                name="checkInOpenMinutesBefore"
                                 noStyle
-                                rules={[{ required: true, message: '请输入有效时长' }]}
+                                rules={[{ required: true, message: '请输入可扫分钟数' }]}
                               >
-                                <InputNumber min={1} precision={0} placeholder="请输入" />
+                                <InputNumber min={0} precision={0} placeholder="请输入" />
                               </Form.Item>
-                              <Form.Item name="checkInValidAfterStartUnit" noStyle>
-                                <Select
-                                  style={{ width: 88 }}
-                                  options={[
-                                    { value: 'day', label: '天' },
-                                    { value: 'hour', label: '小时' },
-                                  ]}
-                                />
-                              </Form.Item>
+                              <Button disabled>分钟</Button>
                             </Space.Compact>
                           </Form.Item>
                           <Form.Item
@@ -1061,7 +1160,7 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
                                 signupTotalLimit: form.getFieldValue('signupTotalLimit'),
                               });
                               if (!error) return;
-                              // 与「分组选择」下方提示重复，不在 Form.Item 再展示
+                              // 与「报名分组设置」下方提示重复，不在 Form.Item 再展示
                               if (error.startsWith('各组人数合计要等于报名总人数')) return;
                               throw new Error(error);
                             },
@@ -1082,21 +1181,25 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
 
         <div className="sticky-form-actions">
           <Space>
-            <Button aria-label="取消" onClick={leave}>
+            <Button aria-label="取消" disabled={false} onClick={leave}>
               取消
             </Button>
-            <Button
-              type={showSubmit ? 'default' : 'primary'}
-              aria-label="保存"
-              onClick={() => void save(false)}
-            >
-              保存
-            </Button>
-            {showSubmit ? (
-              <Button type="primary" aria-label={submitLabel} onClick={() => void save(true)}>
-                {submitLabel}
-              </Button>
-            ) : null}
+            {editLockedReason ? null : (
+              <>
+                <Button
+                  type={showSubmit ? 'default' : 'primary'}
+                  aria-label="保存"
+                  onClick={() => void save(false)}
+                >
+                  保存
+                </Button>
+                {showSubmit ? (
+                  <Button type="primary" aria-label={submitLabel} onClick={() => void save(true)}>
+                    {submitLabel}
+                  </Button>
+                ) : null}
+              </>
+            )}
           </Space>
         </div>
       </Form>

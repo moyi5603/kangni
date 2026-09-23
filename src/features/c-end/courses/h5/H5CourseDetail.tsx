@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { goH5CourseList } from '../../../../app/navigation';
+import { goH5Back } from '../../../../app/navigation';
 import { H5ActivityShell } from '../../activities/h5/H5ActivityShell';
-import { IconComment, IconLike, IconStar } from '../../activities/components/Icons';
+import { IconComment, IconLike, IconShare, IconStar } from '../../activities/components/Icons';
 import { useCEndToast } from '../../activities/components/CEndToast';
 import { H5CommentSheet } from '../../activities/h5/H5CommentSheet';
 import {
@@ -66,7 +66,7 @@ export function H5CourseDetail({ id }: { id: number }) {
 
   if (!course || !learning) {
     return (
-      <H5ActivityShell className="is-course is-detail" title="课程学习" onBack={goH5CourseList}>
+      <H5ActivityShell className="is-course is-detail" title="课程学习" onBack={goH5Back}>
         <p className="c-h5-course-empty">课程不存在</p>
       </H5ActivityShell>
     );
@@ -81,7 +81,7 @@ export function H5CourseDetail({ id }: { id: number }) {
     <H5ActivityShell
       className="is-course is-detail"
       title="课程学习"
-      onBack={goH5CourseList}
+      onBack={goH5Back}
       detail
       footer={
         <div className="c-h5-course-engage">
@@ -126,6 +126,14 @@ export function H5CourseDetail({ id }: { id: number }) {
               {comments.length}
             </button>
           ) : null}
+          <button
+            className="c-h5-course-engage-btn"
+            type="button"
+            aria-label="分享"
+            onClick={() => toast.show('链接已复制')}
+          >
+            <IconShare />
+          </button>
           <button
             className="c-h5-course-rocket"
             type="button"

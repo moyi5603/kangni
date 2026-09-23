@@ -4,18 +4,24 @@ import type { TableColumnsType } from 'antd';
 import { downloadQrFromRoot } from '../../voting/model/voteShare';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import { TableEllipsisText } from '../../../shared/ui/TableEllipsisText';
-import type { Activity } from '../model/activity';
 import {
   CHECK_IN_DYNAMIC_MS,
   currentCheckInUrl,
   formatCheckInRuleSummary,
   listCheckInSessions,
   qrCheckInToken,
+  type CheckInActivity,
 } from '../model/activityCheckIn';
 import { formatSessionLabel } from '../model/activitySchedule';
 import type { ActivitySession } from '../model/activitySchedule';
 
-export function ActivityQrCheckInPage({ activity }: { activity: Activity }) {
+export function ActivityQrCheckInPage({
+  activity,
+  toCheckInUrl = currentCheckInUrl,
+}: {
+  activity: CheckInActivity & { id: number; title: string };
+  toCheckInUrl?: (activityId: number, sessionId: string, token: string) => string;
+}) {
   const { message } = App.useApp();
   const [now, setNow] = useState(() => Date.now());
   const [fullSession, setFullSession] = useState<ActivitySession>();
@@ -64,7 +70,7 @@ export function ActivityQrCheckInPage({ activity }: { activity: Activity }) {
           onClick={() => setFullSession(session)}
         >
           <div data-session-qr={session.id}>
-            <QRCode value={currentCheckInUrl(activity.id, session.id, qrCheckInToken(session, activity, now))} size={96} bgColor="#ffffff" />
+            <QRCode value={toCheckInUrl(activity.id, session.id, qrCheckInToken(session, activity, now))} size={96} bgColor="#ffffff" />
           </div>
         </button>
       ),
@@ -124,7 +130,7 @@ export function ActivityQrCheckInPage({ activity }: { activity: Activity }) {
         {fullSession ? (
           <Flex vertical align="center" gap={16}>
             <div ref={fullQrRef}>
-              <QRCode value={currentCheckInUrl(activity.id, fullSession.id, fullToken)} size={280} bgColor="#ffffff" />
+              <QRCode value={toCheckInUrl(activity.id, fullSession.id, fullToken)} size={280} bgColor="#ffffff" />
             </div>
             {activity.checkInDynamicQr ? (
               <Typography.Text type="secondary">动态码，约 {remainSec} 秒后刷新，不支持下载</Typography.Text>

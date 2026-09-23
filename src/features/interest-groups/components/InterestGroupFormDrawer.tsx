@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { PlusOutlined } from '@ant-design/icons';
 import { App, Button, Drawer, Form, Input, Select, Space, TreeSelect, Upload } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
+import { COVER_IMAGE_UPLOAD_HINT, IMAGE_UPLOAD_ACCEPT } from '../../../shared/ui/imageUploadHint';
 import { orgPeoplePickerTree } from '../../activities/model/activity';
 import {
-  normalizeInterestGroupTags,
+  normalizeInterestGroupLeadIds,
   validateInterestGroupForm,
   type InterestGroup,
   type InterestGroupFormValues,
@@ -23,9 +24,7 @@ type InterestGroupFormDrawerProps = {
 type FormShape = {
   name: string;
   categoryKey: string;
-  leadEmployeeId: string;
-  area: string;
-  tags: string[];
+  leadEmployeeIds: string[];
   intro: string;
   coverFileList: UploadFile[];
 };
@@ -34,9 +33,7 @@ function toFormValues(record: InterestGroup | undefined): FormShape {
   return {
     name: record?.name ?? '',
     categoryKey: record?.categoryKey ?? '',
-    leadEmployeeId: record?.leadEmployeeId ?? '',
-    area: record?.area ?? '',
-    tags: record?.tags ?? [],
+    leadEmployeeIds: record?.leadEmployeeIds ?? [],
     intro: record?.intro ?? '',
     coverFileList: record?.coverUrl
       ? [{ uid: '-1', name: 'cover', status: 'done', url: record.coverUrl }]
@@ -88,10 +85,8 @@ export function InterestGroupFormDrawer({ open, record, onClose, onSaved }: Inte
     const payload: InterestGroupFormValues = {
       name: values.name,
       categoryKey: values.categoryKey ?? '',
-      leadEmployeeId: values.leadEmployeeId,
+      leadEmployeeIds: normalizeInterestGroupLeadIds(values.leadEmployeeIds ?? []),
       joinMode: 'free',
-      area: values.area ?? '',
-      tags: normalizeInterestGroupTags(values.tags ?? []),
       intro: values.intro ?? '',
       coverUrl,
     };
@@ -101,7 +96,7 @@ export function InterestGroupFormDrawer({ open, record, onClose, onSaved }: Inte
       return;
     }
     const saved = upsertInterestGroup(payload, record?.id);
-    message.success(isCreate ? '小组创建成功' : '小组已更新');
+    message.success(isCreate ? '兴趣圈创建成功' : '兴趣圈已更新');
     onSaved?.(saved);
     onClose();
   };
@@ -114,7 +109,7 @@ export function InterestGroupFormDrawer({ open, record, onClose, onSaved }: Inte
 
   return (
     <Drawer
-      title={isCreate ? '新建兴趣小组' : '编辑小组'}
+      title={isCreate ? '新建兴趣圈' : '编辑兴趣圈'}
       width={720}
       open={open}
       destroyOnClose
@@ -123,7 +118,7 @@ export function InterestGroupFormDrawer({ open, record, onClose, onSaved }: Inte
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <Button onClick={onClose}>取消</Button>
           <Button type="primary" onClick={() => void save()}>
-            {isCreate ? '创建小组' : '保存修改'}
+            {isCreate ? '创建兴趣圈' : '保存修改'}
           </Button>
         </div>
       }
@@ -135,12 +130,12 @@ export function InterestGroupFormDrawer({ open, record, onClose, onSaved }: Inte
           valuePropName="fileList"
           getValueFromEvent={(event) => (event?.fileList ?? []).slice(-1)}
           rules={isCreate ? [{ required: true, message: '请上传封面图' }] : []}
-          extra="仅 1 张，JPG / PNG，建议 16:9"
+          extra={COVER_IMAGE_UPLOAD_HINT}
         >
           <Upload
             listType="picture-card"
             maxCount={1}
-            accept="image/*"
+            accept={IMAGE_UPLOAD_ACCEPT}
             beforeUpload={() => false}
           >
             {coverFileList.length ? null : (
@@ -151,30 +146,30 @@ export function InterestGroupFormDrawer({ open, record, onClose, onSaved }: Inte
             )}
           </Upload>
         </Form.Item>
-        <Form.Item label="小组名称" name="name" rules={[{ required: true, message: '请输入小组名称' }]}>
-          <Input placeholder="小组名称" maxLength={40} />
+        <Form.Item label="兴趣圈名称" name="name" rules={[{ required: true, message: '请输入兴趣圈名称' }]}>
+          <Input placeholder="兴趣圈名称" maxLength={40} />
         </Form.Item>
         <Form.Item label="分类" name="categoryKey">
           <Select options={categoryOptions} />
         </Form.Item>
-        <Form.Item label="小组负责人" name="leadEmployeeId" rules={[{ required: true, message: '请选择小组负责人' }]}>
+        <Form.Item
+          label="兴趣圈负责人"
+          name="leadEmployeeIds"
+          rules={[{ required: true, type: 'array', min: 1, message: '请选择兴趣圈负责人' }]}
+        >
           <TreeSelect
             treeData={orgPeoplePickerTree}
+            treeCheckable
             treeDefaultExpandAll
+            showCheckedStrategy={TreeSelect.SHOW_CHILD}
             showSearch={{ treeNodeFilterProp: 'title' }}
             allowClear
             placeholder="请按组织架构选择负责人"
             style={{ width: '100%' }}
           />
         </Form.Item>
-        <Form.Item label="活动区域" name="area">
-          <Input placeholder="如：总部 · 滨江园区" maxLength={60} />
-        </Form.Item>
-        <Form.Item label="标签" name="tags">
-          <Select mode="tags" placeholder="输入后回车添加" tokenSeparators={[',']} />
-        </Form.Item>
-        <Form.Item label="小组简介" name="intro">
-          <Input.TextArea rows={4} placeholder="介绍一下你的小组…" maxLength={500} showCount disabled={writingIntro} />
+        <Form.Item label="兴趣圈简介" name="intro">
+          <Input.TextArea rows={4} placeholder="介绍一下你的兴趣圈…" maxLength={500} showCount disabled={writingIntro} />
         </Form.Item>
         <Form.Item label=" " colon={false}>
           <Space>

@@ -3,6 +3,20 @@ import type { Activity, ActivityStatus } from './activity';
 import { computeActivityStats } from './activityStats';
 import type { MomentRecord } from './moment';
 import type { CommentRecord, SignupRecord, SurveyRecord } from './related';
+import { uniqueBySignupOccupant } from './related';
+
+export function activityInDateRange(
+  activity: Pick<Activity, 'startAt' | 'endAt' | 'createdAt'>,
+  from: dayjs.Dayjs,
+  to: dayjs.Dayjs,
+): boolean {
+  const start = dayjs(activity.startAt);
+  const end = dayjs(activity.endAt);
+  const created = dayjs(activity.createdAt);
+  const scheduleOverlap = !end.isBefore(from, 'day') && !start.isAfter(to, 'day');
+  const createdInRange = !created.isBefore(from, 'day') && !created.isAfter(to, 'day');
+  return scheduleOverlap || createdInRange;
+}
 
 export function isSignupOpen(
   activity: Pick<Activity, 'signupStartAt' | 'signupEndAt'>,
@@ -34,6 +48,7 @@ export type ActivityOverviewStats = {
   surveysCollectingCount: number;
   surveyResponseCount: number;
   activityStatusCounts: Record<ActivityStatus, number>;
+  categoryCounts: { label: string; value: number }[];
   publishRate: number | null;
   globalQuotaUsage: number | null;
 };
@@ -47,11 +62,12 @@ export type ActivityAttentionRow = {
   count?: number;
 };
 
-export type SignupOpenActivityRow = {
+export type InProgressActivityRow = {
   activityId: number;
   title: string;
   category: string;
-  signupEndAt: string;
+  startAt: string;
+  endAt: string;
   signupCount: number;
   pendingSignupCount: number;
   quotaUsage: number | null;
@@ -61,6 +77,7 @@ const emptyStatusCounts = (): Record<ActivityStatus, number> => ({
   未开始: 0,
   进行中: 0,
   已结束: 0,
+  已终止: 0,
 });
 
 export function computeActivityOverviewStats(input: {
@@ -73,6 +90,7 @@ export function computeActivityOverviewStats(input: {
 }): ActivityOverviewStats {
   const now = input.now ?? dayjs();
   const activityStatusCounts = emptyStatusCounts();
+  const categoryMap = new Map<string, number>();
   let publishedCount = 0;
   let signupOpenCount = 0;
   let pendingAuditActivityCount = 0;
@@ -83,6 +101,7 @@ export function computeActivityOverviewStats(input: {
 
   input.activities.forEach((activity) => {
     activityStatusCounts[activity.activityStatus] += 1;
+    categoryMap.set(activity.category, (categoryMap.get(activity.category) ?? 0) + 1);
     if (activity.publishStatus === '已发布') publishedCount += 1;
     if (activity.auditStatus === '待审核') pendingAuditActivityCount += 1;
     if (activity.auditStatus === '待提交' || activity.auditStatus === '已驳回') pendingSubmitActivityCount += 1;
@@ -92,11 +111,11 @@ export function computeActivityOverviewStats(input: {
     if (activity.publishStatus === '已发布' && isSignupOpen(activity, now)) signupOpenCount += 1;
   });
 
-  const activeSignups = input.signups.filter((item) => item.status !== '已取消');
-  const pendingSignupCount = input.signups.filter((item) => item.status === '待审核').length;
-  const approvedSignupCount = input.signups.filter((item) => item.status === '已通过').length;
-  const rejectedSignupCount = input.signups.filter((item) => item.status === '已驳回').length;
-  const cancelledSignupCount = input.signups.filter((item) => item.status === '已取消').length;
+  const activeSignups = uniqueBySignupOccupant(input.signups.filter((item) => item.status !== '已取消'));
+  const pendingSignupCount = uniqueBySignupOccupant(input.signups.filter((item) => item.status === '待审核')).length;
+  const approvedSignupCount = uniqueBySignupOccupant(input.signups.filter((item) => item.status === '已通过')).length;
+  const rejectedSignupCount = uniqueBySignupOccupant(input.signups.filter((item) => item.status === '已驳回')).length;
+  const cancelledSignupCount = uniqueBySignupOccupant(input.signups.filter((item) => item.status === '已取消')).length;
   const surveysCollectingCount = input.surveys.filter((item) => item.status === '收集中').length;
   const totalCount = input.activities.length;
   let globalQuota = 0;
@@ -105,8 +124,8 @@ export function computeActivityOverviewStats(input: {
     const limit = activity.signupSettings.reduce((sum, item) => sum + (item.limit ?? 0), 0);
     if (limit <= 0) return;
     globalQuota += limit;
-    globalSignupUsed += input.signups.filter(
-      (signup) => signup.activityId === activity.id && signup.status !== '已取消',
+    globalSignupUsed += uniqueBySignupOccupant(
+      input.signups.filter((signup) => signup.activityId === activity.id && signup.status !== '已取消'),
     ).length;
   });
 
@@ -131,6 +150,9 @@ export function computeActivityOverviewStats(input: {
     surveysCollectingCount,
     surveyResponseCount: input.surveys.reduce((sum, item) => sum + item.responseCount, 0),
     activityStatusCounts,
+    categoryCounts: [...categoryMap.entries()]
+      .map(([label, value]) => ({ label, value }))
+      .sort((left, right) => right.value - left.value || left.label.localeCompare(right.label)),
     publishRate: totalCount > 0 ? Math.round((publishedCount / totalCount) * 100) : null,
     globalQuotaUsage: globalQuota > 0 ? Math.round((globalSignupUsed / globalQuota) * 100) : null,
   };
@@ -174,16 +196,15 @@ export function buildAttentionRows(activities: Activity[], signups: SignupRecord
   return rows;
 }
 
-export function buildSignupOpenRows(
+export function buildInProgressActivityRows(
   activities: Activity[],
   signups: SignupRecord[],
   comments: CommentRecord[],
   moments: MomentRecord[],
   surveys: SurveyRecord[],
-  now = dayjs(),
-): SignupOpenActivityRow[] {
+): InProgressActivityRow[] {
   return activities
-    .filter((activity) => activity.publishStatus === '已发布' && isSignupOpen(activity, now))
+    .filter((activity) => activity.activityStatus === '进行中')
     .map((activity) => {
       const activitySignups = signups.filter((item) => item.activityId === activity.id);
       const activityComments = comments.filter((item) => item.activityId === activity.id);
@@ -200,11 +221,12 @@ export function buildSignupOpenRows(
         activityId: activity.id,
         title: activity.title,
         category: activity.category,
-        signupEndAt: activity.signupEndAt,
+        startAt: activity.startAt,
+        endAt: activity.endAt,
         signupCount: stats.signupCount,
         pendingSignupCount: stats.pendingSignupCount,
         quotaUsage: stats.quotaUsage,
       };
     })
-    .sort((left, right) => dayjs(left.signupEndAt).valueOf() - dayjs(right.signupEndAt).valueOf());
+    .sort((left, right) => dayjs(left.startAt).valueOf() - dayjs(right.startAt).valueOf());
 }

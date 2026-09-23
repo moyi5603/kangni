@@ -1,4 +1,4 @@
-export const INTEREST_GROUP_CATEGORY_MOCK_VERSION = 2;
+export const INTEREST_GROUP_CATEGORY_MOCK_VERSION = 3;
 export const interestGroupCategoryStatuses = ['启用', '禁用'] as const;
 
 export type InterestGroupCategoryStatus = (typeof interestGroupCategoryStatuses)[number];
@@ -23,6 +23,7 @@ export const initialInterestGroupCategories: InterestGroupCategory[] = [
   { key: 'volunteer', label: '公益志愿', order: 50, status: '启用', createdAt: '2026-01-10 09:00:00' },
   { key: 'game', label: '桌游电竞', order: 60, status: '启用', createdAt: '2026-01-10 09:00:00' },
   { key: 'movie', label: '电影音乐', order: 70, status: '启用', createdAt: '2026-01-10 09:00:00' },
+  { key: 'other', label: '其他', order: 80, status: '启用', createdAt: '2026-01-10 09:00:00' },
 ];
 
 export function getInterestGroupCategoryLabel(key: string, categories: InterestGroupCategory[]): string {

@@ -5,9 +5,10 @@ type PcActivityShellProps = {
   children: ReactNode;
   title?: string;
   className?: string;
+  headerActions?: ReactNode;
 };
 
-export function PcActivityShell({ children, title = '员工活动', className }: PcActivityShellProps) {
+export function PcActivityShell({ children, title = '活动', className, headerActions }: PcActivityShellProps) {
   const shellClass = className ? `c-pc-shell ${className}` : 'c-pc-shell';
   return (
     <div className={shellClass}>
@@ -17,6 +18,7 @@ export function PcActivityShell({ children, title = '员工活动', className }:
           <span className="c-pc-brand-name">康尼</span>
         </button>
         <h1 className="c-pc-header-title">{title}</h1>
+        {headerActions ? <div className="c-pc-header-actions">{headerActions}</div> : null}
       </header>
       <main className="c-pc-main">{children}</main>
     </div>

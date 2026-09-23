@@ -1,5 +1,10 @@
 import { useState } from 'react';
-import { goH5ExamResult, toH5ExamRankHash, toH5ExamResultHash, toH5ExamTakingHash } from '../../../../app/navigation';
+import {
+  goH5Back,
+  toH5ExamRankHash,
+  toH5ExamResultHash,
+  toH5ExamTakingHash,
+} from '../../../../app/navigation';
 import { H5ActivityShell } from '../../activities/h5/H5ActivityShell';
 import { RetakeExamDialog } from '../components/RetakeExamDialog';
 import { getClientExamRecordBoard } from '../model/clientExamResult';
@@ -30,7 +35,7 @@ export function H5ExamRecords({ id }: { id: number }) {
 
   if (!board) {
     return (
-      <H5ActivityShell className="is-exam is-records" title="考试记录" onBack={() => goH5ExamResult(id)}>
+      <H5ActivityShell className="is-exam is-records" title="考试记录" onBack={goH5Back}>
         <p className="c-h5-exam-empty">暂无考试记录</p>
       </H5ActivityShell>
     );
@@ -40,7 +45,7 @@ export function H5ExamRecords({ id }: { id: number }) {
     <H5ActivityShell
       className="is-exam is-records"
       title="考试记录"
-      onBack={() => goH5ExamResult(id)}
+      onBack={goH5Back}
       footer={
         <div className="c-h5-exam-result-bar">
           <button className="c-h5-exam-start" type="button" onClick={() => setAskRetake(true)}>

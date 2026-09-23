@@ -1,0 +1,1634 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>页面装修 · 文章导航</title>
+  <style>
+    :root{
+      --bg:#f0f2f5;
+      --card:#fff;
+      --line:#e8e8e8;
+      --text:#333;
+      --muted:#999;
+      --primary:#2f6fed;
+      --red:#ef4444;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;overflow:hidden}
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+      color:var(--text);background:var(--bg);
+    }
+    button,input,select{font:inherit;color:inherit}
+    .studio{
+      display:grid;grid-template-columns:260px 1fr 360px;
+      height:100vh;overflow:hidden;
+    }
+    .studio > *{min-height:0;min-width:0}
+
+    /* left */
+    .left{
+      background:#fff;border-right:1px solid var(--line);overflow:auto;
+      display:flex;flex-direction:column;
+    }
+    .left-h{height:48px;padding:0 14px;display:flex;align-items:center;font-size:14px;font-weight:600;border-bottom:1px solid var(--line);flex-shrink:0}
+    .acc{border-bottom:1px solid #f3f3f3}
+    .acc-h{
+      width:100%;display:flex;align-items:center;justify-content:space-between;
+      padding:12px 14px;background:#fff;border:0;cursor:pointer;font-size:13px;font-weight:600;text-align:left;
+    }
+    .acc-h .caret{color:#bbb;font-size:11px;transition:transform .15s}
+    .acc.open .acc-h .caret{transform:rotate(180deg)}
+    .acc-b{display:none;padding:4px 10px 12px}
+    .acc.open .acc-b{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .comp{
+      display:flex;flex-direction:column;align-items:center;gap:6px;
+      padding:10px 4px;border-radius:8px;cursor:grab;border:1px solid transparent;background:#fafafa;
+    }
+    .comp:active{cursor:grabbing}
+    .comp:hover{background:#f5f8ff;border-color:#dbe7ff}
+    .comp.on{background:#eef4ff;border-color:#2f6fed}
+    .comp-ico{
+      width:36px;height:36px;border-radius:8px;background:#fff;border:1px solid #eee;
+      display:grid;place-items:center;color:#5b8def;
+    }
+    .comp-ico svg{width:20px;height:20px}
+    .comp span{font-size:11px;color:#555;text-align:center;line-height:1.3}
+
+    /* center */
+    .center{
+      background:#eceff3;display:flex;flex-direction:column;align-items:center;
+      overflow:auto;padding:28px 16px 48px;position:relative;
+    }
+    .center-tools{
+      position:absolute;top:16px;right:20px;display:flex;gap:8px;
+    }
+    .ghost{
+      height:32px;padding:0 10px;border:1px solid #ddd;background:#fff;border-radius:6px;
+      font-size:12px;color:#666;cursor:pointer;
+    }
+    .phone{
+      width:375px;background:#f7f7f7;border-radius:12px;overflow:hidden;
+      box-shadow:0 12px 40px rgba(0,0,0,.08);border:1px solid #e5e5e5;
+      transition:box-shadow .15s;
+    }
+    .phone.drop-over{
+      box-shadow:0 0 0 2px var(--primary),0 12px 40px rgba(0,0,0,.08);
+    }
+    .status{height:28px;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 14px;font-size:11px;color:#111}
+    .phone-nav{background:#fff;padding:8px 12px 10px;border-bottom:1px solid #f0f0f0}
+    .phone-nav .ttl{font-size:16px;font-weight:600;text-align:center;margin-bottom:8px}
+    .pills{display:flex;gap:8px;overflow:hidden}
+    .pill{height:26px;padding:0 10px;border-radius:999px;background:#f2f2f2;font-size:12px;color:#666;line-height:26px}
+    .pill.on{background:#f97316;color:#fff}
+
+    .block{margin:10px 12px;background:#fff;border-radius:8px;padding:12px;position:relative}
+    .placeholder{color:#bbb;font-size:13px;padding:18px 8px;text-align:center}
+
+    .art-wrap{position:relative;margin:10px 12px;cursor:pointer}
+    .art-wrap[hidden]{display:none !important}
+    .art-wrap.sel .art-card{outline:1px dashed var(--red);outline-offset:0}
+    .art-tag{
+      position:absolute;left:-2px;top:10px;z-index:2;
+      background:var(--primary);color:#fff;font-size:11px;padding:3px 6px;border-radius:2px 8px 8px 0;
+    }
+    .art-ops{
+      position:absolute;right:-36px;top:8px;width:32px;background:var(--primary);border-radius:6px;
+      display:flex;flex-direction:column;overflow:hidden;z-index:2;
+    }
+    .art-ops button{
+      height:32px;border:0;background:transparent;color:#fff;cursor:pointer;font-size:13px;
+      border-bottom:1px solid rgba(255,255,255,.2);
+    }
+    .art-ops button:last-child{border-bottom:0}
+    .art-card{background:#fff;border-radius:8px;padding:12px 12px 8px}
+    .art-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+    .art-head b{font-size:16px;font-weight:700}
+    .art-head .more{font-size:13px;color:#b0b0b0}
+
+    .ph-pic{
+      background:#ececec;border-radius:4px;flex-shrink:0;
+      display:flex;align-items:center;justify-content:center;color:#c5c5c5;
+    }
+    .ph-pic svg{width:42%;height:42%}
+    .ph-bar{height:10px;background:#e6e6e6;border-radius:4px}
+    .ph-bar.s{width:52%;height:8px;margin-top:8px}
+    .ph-meta{display:flex;gap:8px;margin-top:8px;align-items:center}
+    .ph-meta i{width:28px;height:8px;background:#eee;border-radius:4px;display:block}
+    .ph-meta i.view{width:36px}
+    .sk-list .sk-item{padding:10px 0;border-bottom:1px solid #f3f3f3}
+    .sk-list .sk-item:last-child{border-bottom:0}
+    .sk-list .ph-bar{height:11px}
+    .sk-lr,.sk-rl{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0;align-items:center}
+    .sk-lr:last-child,.sk-rl:last-child{border-bottom:0}
+    .sk-lr .ph-pic,.sk-rl .ph-pic{width:96px;height:72px}
+    .sk-lr .txt,.sk-rl .txt{flex:1;min-width:0}
+    .sk-big{padding-bottom:10px}
+    .sk-big .ph-pic{width:100%;height:132px;margin-bottom:10px}
+    .sk-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-bottom:6px}
+    .sk-grid .ph-pic{width:100%;height:78px;margin-bottom:8px}
+    .sk-slide{display:flex;gap:10px;padding-bottom:6px}
+    .sk-slide .cell{flex:0 0 128px}
+    .sk-slide .ph-pic{width:128px;height:80px;margin-bottom:8px}
+
+    .style-field{margin-bottom:14px}
+    .style-field .lab,.field-set .lab{font-size:13px;color:#5e667a;margin-bottom:8px;font-weight:500}
+    .style-pick{display:flex;flex-wrap:nowrap;gap:10px;overflow-x:auto;padding:2px 2px 12px;scrollbar-width:thin;min-width:0;max-width:100%}
+    .style-opt{flex:0 0 76px;border:0;background:transparent;cursor:pointer;padding:0;text-align:center}
+    .style-thumb{
+      width:76px;height:76px;border:1px solid #e5e5e5;border-radius:6px;background:#fafafa;
+      padding:7px;position:relative;display:flex;flex-direction:column;justify-content:center;gap:3px;
+    }
+    .style-opt.on .style-thumb{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+    .style-opt.on .style-thumb::after{
+      content:"";position:absolute;right:3px;bottom:3px;width:14px;height:14px;border-radius:50%;
+      background:var(--primary) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2' d='M2.5 6.2 5 8.6 9.5 3.5'/%3E%3C/svg%3E") center/9px 9px no-repeat;
+    }
+    .style-opt em{display:block;font-style:normal;font-size:11px;color:#666;margin-top:6px;white-space:nowrap}
+    .mini-bar{height:4px;background:#ddd;border-radius:2px}
+    .mini-pic{background:#e4e4e4;border-radius:2px;position:relative;overflow:hidden}
+    .mini-pic::after{
+      content:"";position:absolute;inset:28% 30% 32% 30%;
+      background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23c8c8c8' d='M4 18l5-7 3 4 4-6 4 9H4z'/%3E%3Ccircle cx='16.5' cy='7.5' r='2' fill='%23c8c8c8'/%3E%3C/svg%3E") center/contain no-repeat;
+    }
+
+    /* right */
+    .right{
+      background:#fff;border-left:1px solid var(--line);
+      display:flex;flex-direction:column;overflow:hidden;
+    }
+    .right-h{
+      height:48px;padding:0 14px;display:flex;align-items:center;gap:8px;
+      font-size:14px;font-weight:600;border-bottom:1px solid var(--line);flex-shrink:0;
+    }
+    .tabs{display:flex;border-bottom:1px solid var(--line);flex-shrink:0}
+    .tabs button{
+      flex:1;height:40px;border:0;background:transparent;color:#888;cursor:pointer;font-size:14px;
+      border-bottom:2px solid transparent;
+    }
+    .tabs button.on{color:var(--primary);font-weight:600;border-bottom-color:var(--primary)}
+    .pane{flex:1;min-height:0;overflow-y:auto;padding:14px 16px 48px}
+    .pane[hidden]{display:none}
+
+    .row{display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:center;margin-bottom:12px}
+    .row.top{align-items:flex-start}
+    .row.top .label{padding-top:8px}
+    .label{font-size:13px;color:#5e667a}
+    .inline{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
+    .right-col{display:flex;flex-direction:column;gap:8px}
+    .hr{height:1px;background:var(--line);margin:14px 0}
+
+    .switch{width:42px;height:24px;border-radius:999px;background:#d6d9e4;position:relative;border:0;cursor:pointer;margin-left:auto}
+    .switch.on{background:#4d8fff}
+    .switch::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:999px;background:#fff}
+    .switch.on::after{left:21px}
+
+    .color-pick{width:28px;height:28px;border-radius:4px;border:1px solid #d9dce7;background:#fff;padding:2px;cursor:pointer;flex-shrink:0}
+    .color-pick::-webkit-color-swatch-wrapper{padding:0}
+    .color-pick::-webkit-color-swatch{border:0;border-radius:3px}
+
+    .input{height:36px;border:1px solid #d9dce7;border-radius:6px;padding:0 12px;min-width:0;flex:1;background:#fff}
+    .count{margin-left:-50px;color:#a0a7b7;font-size:12px;pointer-events:none;z-index:1}
+
+    input[type="radio"],input[type="checkbox"]{
+      -webkit-appearance:none;appearance:none;
+      width:16px;height:16px;min-width:16px;min-height:16px;max-width:16px;max-height:16px;
+      margin:0 6px 0 0;padding:0;flex:none;align-self:center;aspect-ratio:1/1;
+      box-sizing:border-box;border:1px solid #d9d9d9;background:#fff;cursor:pointer;
+    }
+    input[type="radio"]{border-radius:50%}
+    input[type="radio"]:checked{border:5px solid var(--primary);background:#fff}
+    input[type="checkbox"]{border-radius:3px}
+    input[type="checkbox"]:checked{
+      background:var(--primary);border-color:var(--primary);
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2' d='M2.4 6.2 5 8.7 9.6 3.4'/%3E%3C/svg%3E");
+      background-repeat:no-repeat;background-position:center;background-size:10px 10px;
+    }
+
+    .select-wrap{position:relative;width:100%}
+    .select{
+      width:100%;height:36px;border:1px solid #d9dce7;border-radius:6px;
+      display:flex;align-items:center;justify-content:space-between;padding:0 12px;
+      color:#a0a7b7;background:#fff;cursor:pointer;text-align:left;
+    }
+    .select.has-value{color:#444b5a}
+    .select.open{border-color:var(--primary)}
+    .select:disabled{cursor:not-allowed;opacity:.55}
+    .select-menu{
+      display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);
+      background:#fff;border:1px solid #d9dce7;border-radius:6px;max-height:220px;overflow:auto;
+      z-index:40;box-shadow:0 8px 24px rgba(47,54,69,.1);
+    }
+    .select-menu.show{display:block}
+    .select-option{width:100%;padding:9px 12px;border:0;background:#fff;text-align:left;cursor:pointer;font-size:13px}
+    .select-option:hover{background:#f3f4f6}
+
+    .radio-wrap{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .radio{display:inline-flex;align-items:center;gap:0;font-size:13px;cursor:pointer;line-height:22px;white-space:nowrap}
+    .pick-latest{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;white-space:nowrap;flex-shrink:0}
+    .small-input{width:44px;height:30px;border:1px solid #d9dce7;border-radius:6px;padding:0 6px;text-align:center;flex-shrink:0}
+    .btn{width:100%;height:36px;border:1px solid #d9dce7;border-radius:6px;background:#fff;cursor:pointer;font-size:13px}
+    .btn:hover{background:#f8fafc}
+    .custom-pick-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .btn-add-art{
+      height:32px;padding:0 14px;border:1px solid #91b5ff;border-radius:4px;
+      background:#eef4ff;color:var(--primary);cursor:pointer;font-size:13px;width:auto;flex-shrink:0;
+    }
+    .btn-add-art:hover{background:#e3edff}
+    .btn-add-art[hidden]{display:none}
+    .picked-list{display:flex;flex-direction:column;gap:10px}
+    .picked-list[hidden]{display:none !important}
+    .picked-card{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      padding:12px 14px;background:#fff;border:1px solid #eef0f4;border-radius:8px;
+      box-shadow:0 2px 10px rgba(15,23,42,.06);
+    }
+    .picked-card .ttl{font-size:13px;color:#222;line-height:1.45;min-width:0}
+    .picked-card .del{border:0;background:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0}
+    .picked-card .del:hover{opacity:.8}
+
+    .pick-mask{
+      display:none;position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.45);
+      align-items:center;justify-content:center;padding:16px;
+    }
+    .pick-mask.show{display:flex}
+    .pick-modal{
+      width:min(1280px,calc(100vw - 32px));
+      height:min(720px,calc(100vh - 32px));
+      max-height:calc(100vh - 32px);
+      background:#fff;border-radius:8px;
+      display:flex;flex-direction:column;overflow:hidden;box-shadow:0 16px 48px rgba(0,0,0,.18);
+    }
+    .pick-modal.full{width:100vw;height:100vh;max-width:none;border-radius:0}
+    .pick-hd{
+      height:52px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;
+      border-bottom:1px solid var(--line);flex-shrink:0;
+    }
+    .pick-hd h3{font-size:16px;font-weight:600}
+    .pick-hd-ops{display:flex;gap:2px}
+    .pick-ico{
+      width:32px;height:32px;border:0;background:transparent;cursor:pointer;color:#666;
+      display:grid;place-items:center;border-radius:4px;
+    }
+    .pick-ico:hover{background:#f5f5f5}
+    .pick-body{flex:1;min-height:0;display:grid;grid-template-columns:220px minmax(0,1fr) 260px;overflow:hidden}
+    .pick-body.is-flat{grid-template-columns:minmax(0,1fr) 260px}
+    .pick-side{border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0;background:#fff}
+    .pick-side-search{padding:12px;display:flex;gap:8px;border-bottom:1px solid #f3f3f3}
+    .pick-side-search input{flex:1;height:32px;border:1px solid #d9dce7;border-radius:4px;padding:0 10px;min-width:0;font-size:13px}
+    .pick-side-search button{
+      height:32px;padding:0 12px;border:0;border-radius:4px;background:var(--primary);color:#fff;cursor:pointer;font-size:13px;
+    }
+    .pick-tree{flex:1;overflow:auto;padding:6px 0}
+    .tree-row{display:flex;align-items:stretch}
+    .tree-caret{
+      width:28px;flex-shrink:0;border:0;background:transparent;color:#999;cursor:pointer;font-size:10px;
+    }
+    .tree-item{
+      flex:1;border:0;background:transparent;text-align:left;padding:8px 12px 8px 0;
+      font-size:13px;cursor:pointer;color:#333;
+    }
+    .tree-item:hover,.tree-caret:hover{background:#f5f8ff}
+    .tree-item.on{background:#e8f1ff;color:var(--primary);font-weight:600}
+    .tree-children{display:none;flex-direction:column;width:100%}
+    .tree-children.open{display:flex}
+    .tree-item.child{display:block;width:100%;flex:none;padding:8px 12px 8px 36px;color:#555}
+    .pick-main{min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding:12px 16px 4px}
+    .pick-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+    .pick-filters .fl{display:flex;align-items:center;gap:8px;font-size:13px;color:#555;white-space:nowrap}
+    .pick-filters input,.pick-filters select{
+      height:32px;border:1px solid #d9dce7;border-radius:4px;padding:0 10px;background:#fff;min-width:132px;font-size:13px;
+    }
+    .pick-filters select{min-width:108px}
+    .btn-pri{height:32px;padding:0 14px;border:0;border-radius:4px;background:var(--primary);color:#fff;cursor:pointer;font-size:13px}
+    .btn-pri:disabled{opacity:.45;cursor:not-allowed}
+    .btn-ghost{height:32px;padding:0 14px;border:1px solid #d9dce7;border-radius:4px;background:#fff;cursor:pointer;font-size:13px}
+    .sort-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+    .sort-pill{
+      height:28px;padding:0 12px;border:1px solid #e5e5e5;border-radius:999px;background:#fff;
+      font-size:12px;color:#666;cursor:pointer;
+    }
+    .sort-pill.on{border-color:var(--primary);color:var(--primary);background:#f3f7ff}
+    .pick-batch{margin-bottom:10px}
+    .pick-table-wrap{flex:1;min-height:0;overflow:auto;border:1px solid #f0f0f0;border-radius:4px}
+    .pick-table{width:100%;border-collapse:collapse;font-size:13px}
+    .pick-table th,.pick-table td{padding:10px 8px;border-bottom:1px solid #f3f3f3;text-align:left;white-space:nowrap;vertical-align:middle}
+    .pick-table th[hidden]{display:none}
+    .pick-table th{background:#fafafa;color:#666;font-weight:500;position:sticky;top:0;z-index:1}
+    .pick-table td.ttl{max-width:168px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default}
+    .link-add{border:0;background:none;color:var(--primary);cursor:pointer;padding:0;font-size:13px}
+    .link-add:disabled{color:#bbb;cursor:default}
+    .st-dot{display:inline-flex;align-items:center;gap:6px}
+    .st-dot i{width:6px;height:6px;border-radius:50%;background:#22c55e}
+    .st-dot.off i{background:#d1d5db}
+    .pick-empty{padding:48px 16px;text-align:center;color:#999;font-size:13px}
+    .pick-pager{
+      display:flex;align-items:center;justify-content:flex-end;gap:8px;
+      padding:10px 0 8px;margin-top:2px;font-size:13px;color:#666;
+      flex-shrink:0;flex-wrap:nowrap;min-height:52px;background:#fff;
+    }
+    .pick-sel{border-left:1px solid var(--line);display:flex;flex-direction:column;min-width:0;background:#fafbfc}
+    .pick-sel-h{
+      height:44px;padding:0 14px;display:flex;align-items:center;justify-content:space-between;
+      font-size:13px;font-weight:600;border-bottom:1px solid #f0f0f0;flex-shrink:0;
+    }
+    .pick-sel-h button{border:0;background:none;color:var(--primary);cursor:pointer;font-size:12px;font-weight:400}
+    .pick-sel-list{flex:1;overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+    .pick-sel-item{
+      background:#fff;border:1px solid #eef0f4;border-radius:6px;padding:10px 8px 10px 12px;
+      display:flex;align-items:flex-start;gap:8px;
+    }
+    .pick-sel-item .meta{flex:1;min-width:0}
+    .pick-sel-item .t{font-size:13px;color:#222;line-height:1.4}
+    .pick-sel-item .s{font-size:12px;color:#999;margin-top:4px}
+    .pick-sel-item .x{width:20px;height:20px;border:0;background:none;color:#f43f5e;cursor:pointer;font-size:16px;line-height:18px;flex-shrink:0}
+    .pick-sel-empty{padding:24px 8px;text-align:center;color:#bbb;font-size:12px}
+    .pick-ft{
+      height:56px;padding:0 16px;display:flex;align-items:center;justify-content:flex-end;gap:10px;
+      border-top:1px solid var(--line);flex-shrink:0;
+    }
+    .toast{
+      position:fixed;left:50%;top:24px;transform:translateX(-50%) translateY(-12px);
+      background:rgba(0,0,0,.72);color:#fff;padding:8px 16px;border-radius:6px;font-size:13px;
+      z-index:120;opacity:0;pointer-events:none;transition:.2s;
+    }
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+    .field-set{margin-top:6px}
+    .field-row{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:10px 0;font-size:14px;color:#5e667a;
+    }
+    .field-row .switch{margin-left:0}
+    .sk-qrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}
+    .sk-qrow .ph-bar.s{margin-top:0}
+    .art-wrap.sel[data-widget="service"] .art-card,
+    .art-wrap.sel[data-widget="honor"] .art-card{outline:2px solid var(--primary)}
+    .honor-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;gap:8px}
+    .honor-ttl{font-size:14px;font-weight:600;color:#222;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+    .honor-ttl b{font-size:15px}
+    .honor-sub{font-size:12px;color:#888;font-weight:400}
+    .honor-more{font-size:13px;color:#b0b0b0;flex-shrink:0}
+    .honor-medals{display:flex;justify-content:space-between;padding:2px 4px 6px}
+    .honor-badge{display:flex;flex-direction:column;align-items:center;gap:6px;width:64px}
+    .honor-medal{
+      width:48px;height:48px;border-radius:50%;
+      background:radial-gradient(circle at 35% 30%, #ff8a80, #e53935 62%, #c62828);
+      display:grid;place-items:center;box-shadow:0 2px 6px rgba(198,40,40,.28);
+    }
+    .honor-medal svg{width:26px;height:26px}
+    .honor-badge em{font-style:normal;font-size:11px;color:#555;white-space:nowrap}
+    .svc-title{font-size:15px;font-weight:600;margin-bottom:14px;color:#222}
+    .svc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px 4px;padding:2px 0 8px}
+    .svc-item{display:flex;flex-direction:column;align-items:center;gap:6px}
+    .svc-ico{
+      width:44px;height:44px;border-radius:50%;
+      display:grid;place-items:center;color:#fff;flex-shrink:0;
+    }
+    .svc-ico svg{width:22px;height:22px}
+    .svc-item em{font-style:normal;font-size:12px;color:#333;text-align:center;line-height:1.3}
+    .app-tabs{display:flex;gap:16px;margin:0 0 10px;font-size:13px;color:#98a2b3}
+    .app-tabs .on{color:#1677ff;font-weight:600}
+
+    .style-box{width:100%;border:1px solid #d9dce7;border-radius:6px;overflow:hidden}
+    .style-tabs{display:flex;flex-wrap:wrap}
+    .style-tab{
+      border:0;border-right:1px solid #d9dce7;border-bottom:1px solid #d9dce7;
+      background:#f9fafc;color:#4b5563;font-size:13px;height:34px;padding:0 12px;cursor:pointer;
+    }
+    .style-tab.active{color:var(--primary);background:#fff;box-shadow:inset 0 -2px 0 var(--primary)}
+  </style>
+</head>
+<body>
+  <div class="studio">
+    <aside class="left">
+      <div class="left-h">组件库</div>
+      <div id="compLib"></div>
+    </aside>
+
+    <main class="center">
+      <div class="center-tools">
+        <button class="ghost" type="button">页面设置</button>
+        <button class="ghost" type="button">悬浮按钮</button>
+      </div>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="phone-nav">
+          <div class="ttl">微页面首页</div>
+          <div class="pills"><span class="pill on">全部</span><span class="pill">通知公告</span><span class="pill">企业文化</span></div>
+        </div>
+        <div class="block placeholder">宫格导航</div>
+
+        <div class="art-wrap sel" id="artWrap" data-widget="article">
+          <div class="art-tag">文章</div>
+          <div class="art-ops">
+            <button type="button" title="上移">↑</button>
+            <button type="button" title="下移">↓</button>
+            <button type="button" title="复制">⧉</button>
+            <button type="button" title="删除" data-act="del">✕</button>
+          </div>
+          <div class="art-card" id="artPreview"></div>
+        </div>
+
+        <div class="art-wrap" id="surveyWrap" data-widget="survey" hidden>
+          <div class="art-tag">调查问卷</div>
+          <div class="art-ops">
+            <button type="button" title="上移">↑</button>
+            <button type="button" title="下移">↓</button>
+            <button type="button" title="复制">⧉</button>
+            <button type="button" title="删除" data-act="del">✕</button>
+          </div>
+          <div class="art-card" id="surveyPreview"></div>
+        </div>
+
+        <div class="art-wrap" id="svcWrap" data-widget="service" hidden>
+          <div class="art-tag">用户服务</div>
+          <div class="art-ops">
+            <button type="button" title="上移">↑</button>
+            <button type="button" title="下移">↓</button>
+            <button type="button" title="复制">⧉</button>
+            <button type="button" title="删除" data-act="del">✕</button>
+          </div>
+          <div class="art-card" id="svcPreview"></div>
+        </div>
+
+        <div class="art-wrap" id="honorWrap" data-widget="honor" hidden>
+          <div class="art-tag">荣誉组件</div>
+          <div class="art-ops">
+            <button type="button" title="上移">↑</button>
+            <button type="button" title="下移">↓</button>
+            <button type="button" title="复制">⧉</button>
+            <button type="button" title="删除" data-act="del">✕</button>
+          </div>
+          <div class="art-card" id="honorPreview"></div>
+        </div>
+
+        <div class="art-wrap" id="activityWrap" data-widget="activity" hidden>
+          <div class="art-tag">活动</div>
+          <div class="art-ops">
+            <button type="button" title="上移">↑</button>
+            <button type="button" title="下移">↓</button>
+            <button type="button" title="复制">⧉</button>
+            <button type="button" title="删除" data-act="del">✕</button>
+          </div>
+          <div class="art-card" id="activityPreview"></div>
+        </div>
+        <div class="art-wrap" id="momentsWrap" data-widget="moments" hidden>
+          <div class="art-tag">精彩瞬间</div>
+          <div class="art-ops">
+            <button type="button" title="上移">↑</button>
+            <button type="button" title="下移">↓</button>
+            <button type="button" title="复制">⧉</button>
+            <button type="button" title="删除" data-act="del">✕</button>
+          </div>
+          <div class="art-card" id="momentsPreview"></div>
+        </div>
+        <div class="art-wrap" id="groupsWrap" data-widget="groups" hidden>
+          <div class="art-tag">兴趣圈</div>
+          <div class="art-ops">
+            <button type="button" title="上移">↑</button>
+            <button type="button" title="下移">↓</button>
+            <button type="button" title="复制">⧉</button>
+            <button type="button" title="删除" data-act="del">✕</button>
+          </div>
+          <div class="art-card" id="groupsPreview"></div>
+        </div>
+        <div class="art-wrap" id="voteWrap" data-widget="vote" hidden>
+          <div class="art-tag">投票</div>
+          <div class="art-ops">
+            <button type="button" title="上移">↑</button>
+            <button type="button" title="下移">↓</button>
+            <button type="button" title="复制">⧉</button>
+            <button type="button" title="删除" data-act="del">✕</button>
+          </div>
+          <div class="art-card" id="votePreview"></div>
+        </div>
+
+        <div class="block placeholder">图片展示</div>
+        <div class="block placeholder">常用应用</div>
+      </div>
+    </main>
+
+    <aside class="right">
+      <div class="right-h" id="rightTitle">文章导航</div>
+      <div class="tabs">
+        <button type="button" class="on" data-tab="content">内容</button>
+        <button type="button" data-tab="style">样式</button>
+      </div>
+
+      <div class="pane" id="paneContent">
+        <section class="row">
+          <div class="label">标题栏</div>
+          <div class="inline"><button class="switch on" id="titleSwitch" type="button"></button></div>
+        </section>
+        <section class="row">
+          <div class="label">标题名称</div>
+          <div class="inline">
+            <input class="color-pick" id="titleColor" type="color" value="#111111" />
+            <input class="input" id="titleName" maxlength="40" value="文章" />
+            <span class="count" id="titleCount">2/40</span>
+          </div>
+        </section>
+        <section class="row" id="moreRow">
+          <div class="label">查看更多</div>
+          <div class="inline">
+            <input class="color-pick" id="moreColor" type="color" value="#b0b0b0" />
+            <button class="switch on" id="moreSwitch" type="button"></button>
+          </div>
+        </section>
+        <section class="row top" id="jumpRow">
+          <div class="label">跳转链接</div>
+          <div class="right-col" id="jumpChain"></div>
+        </section>
+        <div class="hr"></div>
+        <div class="style-field">
+          <div class="lab">展示样式</div>
+          <div class="style-pick" id="stylePick"></div>
+        </div>
+        <section class="row top">
+          <div class="label">选择文章</div>
+          <div class="right-col" id="newsChain"></div>
+        </section>
+        <section class="row top">
+          <div class="label">选择方式</div>
+          <div class="right-col">
+            <div class="pick-latest">
+              <label class="radio"><input type="radio" name="pickMode" value="latest" checked />展示最新</label>
+              <input class="small-input" id="latestN" value="2" />
+              <span style="font-size:13px;color:#666">篇文章</span>
+            </div>
+            <div class="custom-pick-row">
+              <label class="radio"><input type="radio" name="pickMode" value="custom" />自定义</label>
+              <button class="btn-add-art" type="button" id="addNews" hidden>添加文章</button>
+            </div>
+            <div class="picked-list" id="pickedNews" hidden></div>
+          </div>
+        </section>
+        <div class="hr"></div>
+        <div class="field-set">
+          <div class="lab">字段设置</div>
+          <div class="field-row"><span>标题：</span><button class="switch on" id="fTitle" type="button"></button></div>
+          <div class="field-row"><span>创建时间：</span><button class="switch on" id="fTime" type="button"></button></div>
+          <div class="field-row"><span>阅读量：</span><button class="switch on" id="fViews" type="button"></button></div>
+          <div class="field-row"><span>互动数：</span><button class="switch on" id="fInteract" type="button"></button></div>
+        </div>
+      </div>
+
+      <div class="pane" id="paneSurvey" hidden>
+        <section class="row">
+          <div class="label">标题栏</div>
+          <div class="inline"><button class="switch on" id="sTitleSwitch" type="button"></button></div>
+        </section>
+        <section class="row">
+          <div class="label">标题名称</div>
+          <div class="inline">
+            <input class="color-pick" id="sTitleColor" type="color" value="#111111" />
+            <input class="input" id="sTitleName" maxlength="40" value="调查问卷" />
+            <span class="count" id="sTitleCount">5/40</span>
+          </div>
+        </section>
+        <section class="row" id="sMoreRow">
+          <div class="label">查看更多</div>
+          <div class="inline">
+            <input class="color-pick" id="sMoreColor" type="color" value="#b0b0b0" />
+            <button class="switch on" id="sMoreSwitch" type="button"></button>
+          </div>
+        </section>
+        <section class="row top" id="sJumpRow">
+          <div class="label">跳转链接</div>
+          <div class="right-col">
+            <div class="select-wrap">
+              <button type="button" class="select"><span>请选择</span><span>﹀</span></button>
+            </div>
+          </div>
+        </section>
+        <div class="hr"></div>
+        <div class="style-field">
+          <div class="lab">展示样式</div>
+          <div class="style-pick" id="sStylePick"></div>
+        </div>
+        <div class="hr"></div>
+        <div class="style-field">
+          <div class="lab">选择调查问卷</div>
+        </div>
+        <section class="row top">
+          <div class="label">选择方式</div>
+          <div class="radio-wrap">
+            <div class="pick-latest">
+              <label class="radio"><input type="radio" name="sPickMode" value="latest" />展示最新</label>
+              <input class="small-input" id="sLatestN" value="2" />
+              <span style="font-size:13px;color:#666">份问卷</span>
+            </div>
+            <label class="radio"><input type="radio" name="sPickMode" value="custom" checked />自定义</label>
+          </div>
+        </section>
+        <section class="row" id="sAddRow">
+          <div></div>
+          <button class="btn" type="button" id="addSurvey">添加调查问卷</button>
+        </section>
+        <div class="hr"></div>
+        <div class="field-set">
+          <div class="lab">字段设置</div>
+          <div class="field-row"><span>标题：</span><button class="switch on" id="sFTitle" type="button"></button></div>
+          <div class="field-row"><span>题目数量：</span><button class="switch on" id="sFCount" type="button"></button></div>
+          <div class="field-row"><span>创建时间：</span><button class="switch on" id="sFTime" type="button"></button></div>
+          <div class="field-row"><span>填写/查看：</span><button class="switch on" id="sFAction" type="button"></button></div>
+        </div>
+      </div>
+
+      <div class="pane" id="paneService" hidden>
+        <section class="row">
+          <div class="label">标题</div>
+          <div class="inline">
+            <input class="input" id="svcTitle" maxlength="40" value="应用服务" />
+          </div>
+        </section>
+        <div class="hr"></div>
+        <div class="field-set" id="svcFields"></div>
+      </div>
+
+      <div class="pane" id="paneHonor" hidden>
+        <section class="row">
+          <div class="label">标题</div>
+          <div class="inline">
+            <input class="input" id="honorTitle" maxlength="40" value="我的荣誉" />
+          </div>
+        </section>
+        <div class="hr"></div>
+        <div class="field-set">
+          <div class="field-row"><span>我的积分卡：</span><button class="switch on" id="honorPoints" type="button"></button></div>
+          <div class="field-row"><span>我的勋章：</span><button class="switch on" id="honorMedals" type="button"></button></div>
+        </div>
+      </div>
+
+      <div class="pane" id="paneApp" hidden></div>
+
+      <div class="pane" id="paneStyle" hidden>
+        <p style="font-size:13px;color:#999;padding:8px 0">颜色与间距等样式可在此扩展。</p>
+      </div>
+    </aside>
+  </div>
+
+  <script src="article-picker.js"></script>
+  <script src="activity-picker.js"></script>
+  <script>
+    const GROUPS = [
+      {
+        name: "基础组件",
+        items: ["公告栏","菜单导航","宫格导航","列表导航","弹窗广告","悬浮按钮","常用应用","图标","图片展示","轮播图","标题栏","视频播放","分割线","广告魔方","热区"]
+      },
+      {
+        name: "用户组件",
+        items: ["用户卡片","用户服务","用户互动","荣誉组件","用户组织"]
+      },
+      {
+        name: "应用组件",
+        items: ["文章","调查问卷","课程","活动","精彩瞬间","兴趣圈","投票"]
+      }
+    ];
+
+    const APP_BLOCKS = [
+      {
+        id: "activity", lib: "活动", nav: "活动导航", title: "活动", more: "查看全部", titleBar: true, showMore: true,
+        style: "big", count: 3, max: 20, unit: "个活动",
+        fields: [["showPinned","置顶"],["showCategoryTag","分类"],["showHoldMode","举办方式"],["showStatusTag","状态"],["showLikes","点赞"],["showTitle","标题"],["showTime","活动时间"],["showPlace","活动地点"],["showSignupProgress","报名进度"],["showSignupButton","报名按钮"]]
+      },
+      {
+        id: "moments", lib: "精彩瞬间", nav: "精彩瞬间导航", title: "往期精彩回顾", more: "查看全部", titleBar: true, showMore: true,
+        style: "slide", count: 5, max: 20, unit: "个活动",
+        fields: [["showTitle","标题"],["showStatusTag","状态"]]
+      },
+      {
+        id: "groups", lib: "兴趣圈", nav: "兴趣圈导航", title: "热门兴趣圈", more: "全部", titleBar: true, showMore: true,
+        style: "slide", count: 5, max: 20, unit: "个兴趣圈",
+        fields: [["showTitle","标题"],["showCategoryTag","分类"],["showIntro","描述"],["showMembers","成员"],["showJoinButton","入组按钮"]]
+      },
+      {
+        id: "vote", lib: "投票", nav: "投票导航", title: "发现投票", more: "查看全部", titleBar: false, showMore: false,
+        style: "left", count: 99, max: 99, unit: "个投票",
+        fields: [["showTitle","标题"],["showStatus","状态"],["showTime","投票时间"]]
+      }
+    ];
+    const APP_PICK_POOL = {
+      activity: [
+        { id: "act1", title: "春季健步走 · 园区环湖赛" },
+        { id: "act2", title: "读书分享会 · 航天口述史" },
+        { id: "act3", title: "篮球友谊赛 · 东西厂对抗" },
+        { id: "act4", title: "急救技能培训" }
+      ],
+      moments: [
+        { id: "m1", title: "中秋晚会精彩瞬间" },
+        { id: "m2", title: "健步走完赛花絮" },
+        { id: "m3", title: "读书会现场直击" }
+      ],
+      groups: [
+        { id: "g1", title: "篮球兴趣圈" },
+        { id: "g2", title: "摄影兴趣圈" },
+        { id: "g3", title: "读书会" },
+        { id: "g4", title: "跑步俱乐部" }
+      ],
+      vote: [
+        { id: "v1", title: "年度最美工位评选" },
+        { id: "v2", title: "团建目的地投票" },
+        { id: "v3", title: "食堂口味调研" }
+      ]
+    };
+    const appState = Object.fromEntries(APP_BLOCKS.map((b) => [b.id, {
+      titleBar: b.titleBar, title: b.title, titleColor: "#171A1D", showMore: b.showMore, moreColor: "#747677",
+      style: b.style, count: b.count, pickMode: "latest", picked: [], pickSource: "", jumpLink: "",
+      fields: Object.fromEntries(b.fields.map(([k]) => [k, true]))
+    }]));
+    const chainCloseFns = [];
+    document.addEventListener("click", () => chainCloseFns.forEach((fn) => fn()));
+
+    function icoSvg() {
+      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 10h8M8 14h5"/></svg>`;
+    }
+    const lib = document.getElementById("compLib");
+    const surveyWrap = document.getElementById("surveyWrap");
+    const svcWrap = document.getElementById("svcWrap");
+    const honorWrap = document.getElementById("honorWrap");
+    GROUPS.forEach((g) => {
+      const acc = document.createElement("div");
+      acc.className = "acc" + (g.name === "应用组件" ? " open" : "");
+      acc.innerHTML = `<button type="button" class="acc-h">${g.name}<span class="caret">▾</span></button><div class="acc-b"></div>`;
+      const box = acc.querySelector(".acc-b");
+      g.items.forEach((name) => {
+        const el = document.createElement("div");
+        el.className = "comp" + (name === "文章" ? " on" : "");
+        el.innerHTML = `<div class="comp-ico">${icoSvg()}</div><span>${name}</span>`;
+        el.dataset.name = name;
+        el.draggable = true;
+        el.addEventListener("dragstart", (e) => {
+          e.dataTransfer.setData("text/plain", name);
+          e.dataTransfer.effectAllowed = "copy";
+        });
+        el.addEventListener("click", () => {
+          document.querySelectorAll(".comp").forEach((c) => c.classList.toggle("on", c === el));
+          if (name === "文章") selectWidget("article");
+          else if (name === "调查问卷" && !surveyWrap.hidden) selectWidget("survey");
+          else if (name === "用户服务" && !svcWrap.hidden) selectWidget("service");
+          else if (name === "荣誉组件" && !honorWrap.hidden) selectWidget("honor");
+          else {
+            const block = APP_BLOCKS.find((b) => b.lib === name);
+            if (block) placeApp(block.id);
+          }
+        });
+        box.appendChild(el);
+      });
+      acc.querySelector(".acc-h").addEventListener("click", () => acc.classList.toggle("open"));
+      lib.appendChild(acc);
+    });
+
+    const PH_PIC = `<div class="ph-pic"><svg viewBox="0 0 48 48" fill="currentColor"><path d="M6 36l12-16 7 9 8-11 9 18H6z"/><circle cx="34" cy="14" r="5"/></svg></div>`;
+    const STYLES = [
+      { id: "title", name: "标题列表", thumb: `<div class="mini-bar"></div><div class="mini-bar" style="width:80%"></div><div class="mini-bar" style="width:60%"></div>` },
+      { id: "big", name: "大图模式", thumb: `<div class="mini-pic" style="height:34px"></div><div class="mini-bar"></div><div class="mini-bar s" style="width:55%;height:4px"></div>` },
+      { id: "two", name: "一行两列", thumb: `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px"><div><div class="mini-pic" style="height:28px"></div><div class="mini-bar" style="margin-top:3px"></div></div><div><div class="mini-pic" style="height:28px"></div><div class="mini-bar" style="margin-top:3px"></div></div></div>` },
+      { id: "left", name: "左图右文", thumb: `<div style="display:flex;gap:4px;align-items:center"><div class="mini-pic" style="width:22px;height:18px"></div><div style="flex:1"><div class="mini-bar"></div><div class="mini-bar" style="width:60%;margin-top:3px"></div></div></div><div style="display:flex;gap:4px;align-items:center;margin-top:4px"><div class="mini-pic" style="width:22px;height:18px"></div><div style="flex:1"><div class="mini-bar"></div><div class="mini-bar" style="width:60%;margin-top:3px"></div></div></div>` },
+      { id: "right", name: "左文右图", thumb: `<div style="display:flex;gap:4px;align-items:center"><div style="flex:1"><div class="mini-bar"></div><div class="mini-bar" style="width:60%;margin-top:3px"></div></div><div class="mini-pic" style="width:22px;height:18px"></div></div><div style="display:flex;gap:4px;align-items:center;margin-top:4px"><div style="flex:1"><div class="mini-bar"></div><div class="mini-bar" style="width:60%;margin-top:3px"></div></div><div class="mini-pic" style="width:22px;height:18px"></div></div>` },
+      { id: "slide", name: "横向滑动", thumb: `<div style="display:flex;gap:4px"><div style="flex:1"><div class="mini-pic" style="height:32px"></div><div class="mini-bar" style="margin-top:3px"></div></div><div style="flex:1;opacity:.7"><div class="mini-pic" style="height:32px"></div><div class="mini-bar" style="margin-top:3px"></div></div></div>` }
+    ];
+
+    const SVC_ITEMS = [
+      { id: "welfare", name: "福利申领", color: "#ef5b5b", svg: `<path d="M20 12v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8"/><path d="M3 8h18v4H3z"/><path d="M12 22V8"/><path d="M12 8H8.2A2.2 2.2 0 1 1 8.2 4C11 4 12 8 12 8z"/><path d="M12 8h3.8A2.2 2.2 0 1 0 15.8 4C13 4 12 8 12 8z"/>` },
+      { id: "cs", name: "客服中心", color: "#4d8fff", svg: `<path d="M4 15v-3a8 8 0 1 1 16 0v3"/><rect x="2" y="13" width="4" height="7" rx="2"/><rect x="18" y="13" width="4" height="7" rx="2"/>` },
+      { id: "addr", name: "收货地址", color: "#f59e0b", svg: `<path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11z"/><circle cx="12" cy="10" r="2.2"/>` },
+      { id: "fav", name: "我的收藏", color: "#f0c040", svg: `<path fill="#fff" stroke="none" d="M12 3.2l2.5 5.6 6 .6-4.5 4.1 1.3 6L12 16.8 6.7 19.5l1.3-6L3.5 9.4l6-.6z"/>` },
+      { id: "sign", name: "我的报名", color: "#8b7cf6", svg: `<rect x="6" y="3" width="12" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>` },
+      { id: "life", name: "我的LIFE", color: "#34c759", svg: `<path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4z"/>` },
+      { id: "qnr", name: "我的问卷", color: "#14b8a6", svg: `<rect x="8" y="3" width="12" height="16" rx="2"/><path d="M8 7H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/><path d="M11 9h6M11 13h5"/>` },
+      { id: "course", name: "我的课程", color: "#6366f1", svg: `<path d="M4 19V6l8-3 8 3v13"/><path d="M12 8v11"/><path d="M4 19c2.2 1 5.2 1 8 0 2.8 1 5.8 1 8 0"/>` },
+      { id: "suggest", name: "我的建言", color: "#06b6d4", svg: `<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-4.6-1.3L3 20l1.5-4.2A8.4 8.4 0 1 1 21 11.5z"/><path d="M8.5 11h7M8.5 14h4.5"/>` },
+      { id: "act", name: "我的活动", color: "#ec4899", svg: `<rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/>` },
+      { id: "exam", name: "我的考试", color: "#f97316", svg: `<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>` }
+    ];
+
+    const WIDGET_META = {
+      article: { title: "文章导航", lib: "文章" },
+      survey: { title: "调查问卷", lib: "调查问卷" },
+      service: { title: "用户服务", lib: "用户服务" },
+      honor: { title: "荣誉组件", lib: "荣誉组件" },
+      activity: { title: "活动导航", lib: "活动" },
+      moments: { title: "精彩瞬间导航", lib: "精彩瞬间" },
+      groups: { title: "兴趣圈导航", lib: "兴趣圈" },
+      vote: { title: "投票导航", lib: "投票" }
+    };
+    const artWrap = document.getElementById("artWrap");
+    const phone = document.querySelector(".phone");
+    const rightTitle = document.getElementById("rightTitle");
+    const paneContent = document.getElementById("paneContent");
+    const paneSurvey = document.getElementById("paneSurvey");
+    const paneService = document.getElementById("paneService");
+    const paneHonor = document.getElementById("paneHonor");
+    const paneApp = document.getElementById("paneApp");
+    const paneStyle = document.getElementById("paneStyle");
+    const appWraps = Object.fromEntries(APP_BLOCKS.map((b) => [b.id, document.getElementById(b.id + "Wrap")]));
+    let selected = "article";
+    let currentTab = "content";
+    let listStyle = "left";
+
+    const titleSwitch = document.getElementById("titleSwitch");
+    const moreSwitch = document.getElementById("moreSwitch");
+    const moreRow = document.getElementById("moreRow");
+    const jumpRow = document.getElementById("jumpRow");
+    const titleName = document.getElementById("titleName");
+    const titleColor = document.getElementById("titleColor");
+    const moreColor = document.getElementById("moreColor");
+    const titleCount = document.getElementById("titleCount");
+    const latestN = document.getElementById("latestN");
+    const addNewsBtn = document.getElementById("addNews");
+    const fTitle = document.getElementById("fTitle");
+    const fTime = document.getElementById("fTime");
+    const fViews = document.getElementById("fViews");
+    const fInteract = document.getElementById("fInteract");
+
+    const sTitleSwitch = document.getElementById("sTitleSwitch");
+    const sMoreSwitch = document.getElementById("sMoreSwitch");
+    const sMoreRow = document.getElementById("sMoreRow");
+    const sJumpRow = document.getElementById("sJumpRow");
+    const sTitleName = document.getElementById("sTitleName");
+    const sTitleColor = document.getElementById("sTitleColor");
+    const sMoreColor = document.getElementById("sMoreColor");
+    const sTitleCount = document.getElementById("sTitleCount");
+    const sLatestN = document.getElementById("sLatestN");
+    const sAddRow = document.getElementById("sAddRow");
+    const sFTitle = document.getElementById("sFTitle");
+    const sFCount = document.getElementById("sFCount");
+    const sFTime = document.getElementById("sFTime");
+    const sFAction = document.getElementById("sFAction");
+
+    const stylePick = document.getElementById("stylePick");
+    STYLES.forEach((s) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "style-opt" + (s.id === "left" ? " on" : "");
+      btn.dataset.style = s.id;
+      btn.innerHTML = `<div class="style-thumb">${s.thumb}</div><em>${s.name}</em>`;
+      btn.addEventListener("click", () => {
+        listStyle = s.id;
+        stylePick.querySelectorAll(".style-opt").forEach((x) => x.classList.toggle("on", x === btn));
+        renderPreview();
+      });
+      stylePick.appendChild(btn);
+    });
+
+    const sTitleStyle = STYLES.find((s) => s.id === "title");
+    const sStyleBtn = document.createElement("button");
+    sStyleBtn.type = "button";
+    sStyleBtn.className = "style-opt on";
+    sStyleBtn.innerHTML = `<div class="style-thumb">${sTitleStyle.thumb}</div><em>${sTitleStyle.name}</em>`;
+    document.getElementById("sStylePick").appendChild(sStyleBtn);
+
+    function highlightLib(name) {
+      document.querySelectorAll(".comp").forEach((c) => c.classList.toggle("on", c.dataset.name === name));
+    }
+    function showRightPane() {
+      paneContent.hidden = true;
+      paneSurvey.hidden = true;
+      paneService.hidden = true;
+      paneHonor.hidden = true;
+      paneApp.hidden = true;
+      paneStyle.hidden = true;
+      if (currentTab === "style") paneStyle.hidden = false;
+      else if (selected === "survey") paneSurvey.hidden = false;
+      else if (selected === "service") paneService.hidden = false;
+      else if (selected === "honor") paneHonor.hidden = false;
+      else if (APP_BLOCKS.some((b) => b.id === selected)) paneApp.hidden = false;
+      else if (selected === "article") paneContent.hidden = false;
+    }
+    function selectWidget(type) {
+      selected = type;
+      artWrap.classList.toggle("sel", type === "article");
+      surveyWrap.classList.toggle("sel", type === "survey");
+      svcWrap.classList.toggle("sel", type === "service");
+      honorWrap.classList.toggle("sel", type === "honor");
+      APP_BLOCKS.forEach((b) => appWraps[b.id].classList.toggle("sel", type === b.id));
+      const meta = WIDGET_META[type];
+      rightTitle.textContent = meta ? meta.title : "页面装修";
+      if (meta) highlightLib(meta.lib);
+      try {
+        if (APP_BLOCKS.some((b) => b.id === type)) fillAppPane(type);
+      } finally {
+        showRightPane();
+      }
+    }
+    function fallbackSelect(except) {
+      const order = ["article", "survey", "service", "honor", ...APP_BLOCKS.map((b) => b.id)];
+      const wraps = { article: artWrap, survey: surveyWrap, service: svcWrap, honor: honorWrap, ...appWraps };
+      for (const t of order) {
+        if (t !== except && !wraps[t].hidden) { selectWidget(t); return; }
+      }
+      selected = "";
+      rightTitle.textContent = "页面装修";
+      showRightPane();
+    }
+    function appBars(st) {
+      let h = "";
+      if (st.fields.showTitle !== false) h += `<div class="ph-bar"></div>`;
+      if (st.fields.showTime !== false || st.fields.showPlace !== false || st.fields.showIntro !== false || st.fields.showStatus !== false || st.fields.showStatusTag !== false) {
+        h += `<div class="ph-bar s"></div>`;
+      }
+      if (st.fields.showSignupProgress || st.fields.showSignupButton || st.fields.showMembers || st.fields.showJoinButton) {
+        h += `<div class="ph-meta"><i></i><i></i></div>`;
+      }
+      return h || `<div class="ph-bar" style="opacity:.25"></div>`;
+    }
+    function renderAppPreview(id) {
+      const def = APP_BLOCKS.find((b) => b.id === id);
+      const st = appState[id];
+      const raw = st.pickMode === "custom" ? (st.picked.length || 1) : st.count;
+      const n = Math.min(3, Math.max(1, raw));
+      const bars = () => appBars(st);
+      let html = "";
+      if (st.titleBar) {
+        html += `<div class="art-head"><b style="color:${st.titleColor}">${st.title || def.title}</b>${st.showMore ? `<span class="more" style="color:${st.moreColor}">${def.more} &gt;</span>` : ""}</div>`;
+      }
+      if (id === "activity") html += `<div class="app-tabs"><span class="on">全部</span><span>文化</span><span>体育</span><span>培训</span></div>`;
+      if (st.style === "big") {
+        html += Array.from({ length: n }, () => `<div class="sk-big">${PH_PIC}${bars()}</div>`).join("");
+      } else if (st.style === "two") {
+        html += `<div class="sk-grid">${Array.from({ length: n }, () => `<div>${PH_PIC}${bars()}</div>`).join("")}</div>`;
+      } else if (st.style === "right") {
+        html += Array.from({ length: n }, () => `<div class="sk-rl"><div class="txt">${bars()}</div>${PH_PIC}</div>`).join("");
+      } else if (st.style === "slide") {
+        html += `<div class="sk-slide">${Array.from({ length: Math.max(n, 2) }, () => `<div class="cell">${PH_PIC}${bars()}</div>`).join("")}</div>`;
+      } else {
+        html += Array.from({ length: n }, () => `<div class="sk-lr">${PH_PIC}<div class="txt">${bars()}</div></div>`).join("");
+      }
+      document.getElementById(id + "Preview").innerHTML = html;
+    }
+    function fillAppPane(id) {
+      const def = APP_BLOCKS.find((b) => b.id === id);
+      const st = appState[id];
+      const noun = def.lib;
+      const custom = st.pickMode === "custom";
+      const hideJump = id === "groups";
+      const styleOpts = STYLES.filter((s) => s.id !== "title");
+      const jumpRowHtml = hideJump ? "" : `<section class="row top" data-app-jump-row>
+          <div class="label">跳转链接</div>
+          <div class="right-col" id="appJumpChain"></div>
+        </section>`;
+      const pickRowHtml = (id === "vote" || id === "groups") ? "" : `<section class="row top">
+          <div class="label">选择${noun}</div>
+          <div class="right-col" id="appPickChain"></div>
+        </section>`;
+      paneApp.innerHTML = `
+        <section class="row"><div class="label">标题栏</div><div class="inline"><button class="switch${st.titleBar ? " on" : ""}" data-app="titleBar" type="button"></button></div></section>
+        <section class="row"><div class="label">标题名称</div><div class="inline">
+          <input class="color-pick" data-app="titleColor" type="color" value="${st.titleColor}" />
+          <input class="input" data-app="title" maxlength="40" value="${st.title}" />
+        </div></section>
+        <section class="row" data-app-more-row>
+          <div class="label">查看更多</div>
+          <div class="inline">
+            <input class="color-pick" data-app="moreColor" type="color" value="${st.moreColor}" />
+            <button class="switch${st.showMore ? " on" : ""}" data-app="showMore" type="button"></button>
+          </div>
+        </section>
+        ${jumpRowHtml}
+        <div class="hr"></div>
+        <div class="style-field">
+          <div class="lab">展示样式</div>
+          <div class="style-pick" data-app-styles></div>
+        </div>
+        ${pickRowHtml}
+        <section class="row top">
+          <div class="label">选择方式</div>
+          <div class="right-col">
+            <div class="pick-latest">
+              <label class="radio"><input type="radio" name="appPickMode-${id}" value="latest"${custom ? "" : " checked"} />展示最新</label>
+              <input class="small-input" data-app="count" value="${st.count}" />
+              <span style="font-size:13px;color:#666">${def.unit}</span>
+            </div>
+            <div class="custom-pick-row">
+              <label class="radio"><input type="radio" name="appPickMode-${id}" value="custom"${custom ? " checked" : ""} />自定义</label>
+              <button class="btn-add-art" type="button" data-app-add${custom ? "" : " hidden"}>添加${noun}</button>
+            </div>
+            <div class="picked-list" data-app-picked hidden></div>
+          </div>
+        </section>
+        <div class="hr"></div>
+        <div class="field-set">
+          <div class="lab">字段设置</div>
+          ${def.fields.map(([key, label]) => `<div class="field-row"><span>${label}：</span><button class="switch${st.fields[key] !== false ? " on" : ""}" data-field="${key}" type="button"></button></div>`).join("")}
+        </div>`;
+      const moreRowEl = paneApp.querySelector("[data-app-more-row]");
+      const jumpRowEl = paneApp.querySelector("[data-app-jump-row]");
+      function syncAppTitleBlock() {
+        moreRowEl.style.display = st.titleBar ? "" : "none";
+        if (jumpRowEl) jumpRowEl.style.display = st.titleBar ? "" : "none";
+      }
+      syncAppTitleBlock();
+      if (jumpRowEl) {
+        if (id === "moments") mountMomentsJumpDrop(document.getElementById("appJumpChain"), st);
+        else if (id === "activity") mountActivityJumpDrop(document.getElementById("appJumpChain"), st);
+        else mountCatColChain(document.getElementById("appJumpChain"));
+      }
+      if (id === "activity" || id === "moments") mountActivitySourceDrop(document.getElementById("appPickChain"), st);
+      const styleBox = paneApp.querySelector("[data-app-styles]");
+      styleOpts.forEach((s) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "style-opt" + (st.style === s.id ? " on" : "");
+        btn.innerHTML = `<div class="style-thumb">${s.thumb}</div><em>${s.name}</em>`;
+        btn.addEventListener("click", () => {
+          st.style = s.id;
+          fillAppPane(id);
+          renderAppPreview(id);
+        });
+        styleBox.appendChild(btn);
+      });
+      paneApp.querySelectorAll(".switch[data-app]").forEach((sw) => {
+        sw.addEventListener("click", () => {
+          const key = sw.dataset.app;
+          st[key] = !st[key];
+          sw.classList.toggle("on", st[key]);
+          if (key === "titleBar") syncAppTitleBlock();
+          renderAppPreview(id);
+        });
+      });
+      paneApp.querySelector("[data-app=title]").addEventListener("input", (e) => { st.title = e.target.value; renderAppPreview(id); });
+      paneApp.querySelector("[data-app=titleColor]").addEventListener("input", (e) => { st.titleColor = e.target.value; renderAppPreview(id); });
+      paneApp.querySelector("[data-app=moreColor]").addEventListener("input", (e) => { st.moreColor = e.target.value; renderAppPreview(id); });
+      paneApp.querySelector("[data-app=count]").addEventListener("input", (e) => {
+        st.count = Math.max(1, Math.min(def.max, parseInt(e.target.value, 10) || 1));
+        renderAppPreview(id);
+      });
+      const addBtn = paneApp.querySelector("[data-app-add]");
+      const pickedBox = paneApp.querySelector("[data-app-picked]");
+      function renderAppPicked() {
+        const isCustom = st.pickMode === "custom";
+        addBtn.hidden = !isCustom;
+        if (!isCustom || !st.picked.length) {
+          pickedBox.hidden = true;
+          pickedBox.innerHTML = "";
+          return;
+        }
+        pickedBox.hidden = false;
+        pickedBox.innerHTML = st.picked.map((r) => `<div class="picked-card"><div class="ttl">${r.title}</div><button type="button" class="del" data-id="${r.id}">删除</button></div>`).join("");
+        pickedBox.querySelectorAll(".del").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            st.picked = st.picked.filter((x) => x.id !== btn.dataset.id);
+            renderAppPicked();
+            renderAppPreview(id);
+          });
+        });
+      }
+      paneApp.querySelectorAll(`input[name="appPickMode-${id}"]`).forEach((r) => {
+        r.addEventListener("change", () => {
+          st.pickMode = r.value;
+          renderAppPicked();
+          renderAppPreview(id);
+        });
+      });
+      addBtn.addEventListener("click", () => {
+        if (id === "activity") {
+          activityPicker.open();
+          return;
+        }
+        if (id === "moments") {
+          momentPicker.open();
+          return;
+        }
+        if (id === "vote") {
+          votePicker.open();
+          return;
+        }
+        if (id === "groups") {
+          groupPicker.open();
+          return;
+        }
+        const pool = APP_PICK_POOL[id] || [];
+        const next = pool.find((x) => !st.picked.some((p) => p.id === x.id));
+        if (!next) return;
+        st.picked = st.picked.concat(next);
+        renderAppPicked();
+        renderAppPreview(id);
+      });
+      renderAppPicked();
+      paneApp.querySelectorAll(".switch[data-field]").forEach((sw) => {
+        sw.addEventListener("click", () => {
+          const key = sw.dataset.field;
+          st.fields[key] = !st.fields[key];
+          sw.classList.toggle("on", st.fields[key]);
+          renderAppPreview(id);
+        });
+      });
+    }
+    function placeApp(id) {
+      appWraps[id].hidden = false;
+      renderAppPreview(id);
+      selectWidget(id);
+    }
+    function placeSurvey() {
+      surveyWrap.hidden = false;
+      selectWidget("survey");
+      renderSurveyPreview();
+    }
+    function placeService() {
+      svcWrap.hidden = false;
+      selectWidget("service");
+      renderServicePreview();
+    }
+    function placeHonor() {
+      honorWrap.hidden = false;
+      selectWidget("honor");
+      renderHonorPreview();
+    }
+
+    function bars() {
+      let h = "";
+      if (fTitle.classList.contains("on")) h += `<div class="ph-bar"></div>`;
+      if (fTime.classList.contains("on")) h += `<div class="ph-bar s"></div>`;
+      if (fInteract.classList.contains("on") || fViews.classList.contains("on")) {
+        h += `<div class="ph-meta">${fInteract.classList.contains("on") ? `<i></i><i></i><i></i>` : ""}${fViews.classList.contains("on") ? `<i class="view"></i>` : ""}</div>`;
+      }
+      return h || `<div class="ph-bar" style="opacity:.25"></div>`;
+    }
+    function surveyBars() {
+      let h = "";
+      if (sFTitle.classList.contains("on")) h += `<div class="ph-bar"></div>`;
+      const countOn = sFCount.classList.contains("on");
+      const actionOn = sFAction.classList.contains("on");
+      if (countOn || actionOn) {
+        h += `<div class="sk-qrow">${countOn ? `<div class="ph-bar s" style="width:28%"></div>` : `<span></span>`}${actionOn ? `<span class="sk-fill-btn">填写/查看</span>` : ""}</div>`;
+      }
+      if (sFTime.classList.contains("on")) h += `<div class="ph-bar s"></div>`;
+      return h || `<div class="ph-bar" style="opacity:.25"></div>`;
+    }
+    function renderPreview() {
+      const showTitle = titleSwitch.classList.contains("on");
+      const showMore = moreSwitch.classList.contains("on");
+      const n = Math.max(1, Math.min(4, parseInt(latestN.value, 10) || 2));
+      let html = "";
+      if (showTitle) {
+        html += `<div class="art-head"><b style="color:${titleColor.value}">${titleName.value || "文章"}</b>${showMore ? `<span class="more" style="color:${moreColor.value}">更多 &gt;</span>` : ""}</div>`;
+      }
+      const item = () => `<div class="sk-item">${bars()}</div>`;
+      if (listStyle === "title") {
+        html += `<div class="sk-list">${Array.from({ length: n }, item).join("")}</div>`;
+      } else if (listStyle === "big") {
+        html += Array.from({ length: n }, () => `<div class="sk-big">${PH_PIC}${bars()}</div>`).join("");
+      } else if (listStyle === "two") {
+        html += `<div class="sk-grid">${Array.from({ length: n }, () => `<div>${PH_PIC}${bars()}</div>`).join("")}</div>`;
+      } else if (listStyle === "right") {
+        html += Array.from({ length: n }, () => `<div class="sk-rl"><div class="txt">${bars()}</div>${PH_PIC}</div>`).join("");
+      } else if (listStyle === "slide") {
+        html += `<div class="sk-slide">${Array.from({ length: Math.max(n, 3) }, () => `<div class="cell">${PH_PIC}${bars()}</div>`).join("")}</div>`;
+      } else {
+        html += Array.from({ length: n }, () => `<div class="sk-lr">${PH_PIC}<div class="txt">${bars()}</div></div>`).join("");
+      }
+      document.getElementById("artPreview").innerHTML = html;
+    }
+    function renderSurveyPreview() {
+      const showTitle = sTitleSwitch.classList.contains("on");
+      const showMore = sMoreSwitch.classList.contains("on");
+      const n = Math.max(1, Math.min(4, parseInt(sLatestN.value, 10) || 2));
+      let html = "";
+      if (showTitle) {
+        html += `<div class="art-head"><b style="color:${sTitleColor.value}">${sTitleName.value || "调查问卷"}</b>${showMore ? `<span class="more" style="color:${sMoreColor.value}">更多 &gt;</span>` : ""}</div>`;
+      }
+      html += `<div class="sk-list">${Array.from({ length: n }, () => `<div class="sk-item">${surveyBars()}</div>`).join("")}</div>`;
+      document.getElementById("surveyPreview").innerHTML = html;
+    }
+    function renderServicePreview() {
+      const title = document.getElementById("svcTitle").value || "应用服务";
+      const items = SVC_ITEMS.filter((it) => {
+        const sw = document.getElementById("svc-" + it.id);
+        return sw && sw.classList.contains("on");
+      });
+      let html = `<div class="svc-title">${title}</div>`;
+      html += `<div class="svc-grid">${items.map((it) => `
+        <div class="svc-item">
+          <div class="svc-ico" style="background:${it.color}"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${it.svg}</svg></div>
+          <em>${it.name}</em>
+        </div>`).join("")}</div>`;
+      document.getElementById("svcPreview").innerHTML = html;
+    }
+    function renderHonorPreview() {
+      const title = document.getElementById("honorTitle").value || "我的荣誉";
+      const pointsOn = document.getElementById("honorPoints").classList.contains("on");
+      const medalsOn = document.getElementById("honorMedals").classList.contains("on");
+      const bits = [];
+      if (medalsOn) bits.push("共1枚");
+      if (pointsOn) bits.push("100积分");
+      const sub = bits.length ? bits.join(", ") : "";
+      const medalSvg = `<svg viewBox="0 0 24 24"><circle cx="12" cy="8.4" r="3.1" fill="#fff"/><circle cx="12" cy="17.6" r="3.1" fill="#fff"/><circle cx="7.4" cy="13" r="3.1" fill="#fff"/><circle cx="16.6" cy="13" r="3.1" fill="#fff"/><circle cx="12" cy="13" r="2.3" fill="#c62828"/></svg>`;
+      let html = `<div class="honor-head"><div class="honor-ttl"><b>${title}</b>${sub ? `<span class="honor-sub">${sub}</span>` : ""}</div><span class="honor-more">查看 &gt;</span></div>`;
+      if (medalsOn) {
+        html += `<div class="honor-medals">${Array.from({ length: 4 }, () => `<div class="honor-badge"><div class="honor-medal">${medalSvg}</div><em>卓越贡献</em></div>`).join("")}</div>`;
+      }
+      document.getElementById("honorPreview").innerHTML = html;
+    }
+
+    function syncTitleBlock() {
+      const on = titleSwitch.classList.contains("on");
+      moreRow.style.display = on ? "" : "none";
+      jumpRow.style.display = on ? "" : "none";
+      renderPreview();
+    }
+    function syncSurveyTitleBlock() {
+      const on = sTitleSwitch.classList.contains("on");
+      sMoreRow.style.display = on ? "" : "none";
+      sJumpRow.style.display = on ? "" : "none";
+      renderSurveyPreview();
+    }
+    titleSwitch.addEventListener("click", () => { titleSwitch.classList.toggle("on"); syncTitleBlock(); });
+    moreSwitch.addEventListener("click", () => { moreSwitch.classList.toggle("on"); renderPreview(); });
+    titleName.addEventListener("input", () => {
+      titleCount.textContent = titleName.value.length + "/40";
+      renderPreview();
+    });
+    titleColor.addEventListener("input", renderPreview);
+    moreColor.addEventListener("input", renderPreview);
+    latestN.addEventListener("input", renderPreview);
+    [fTitle, fTime, fViews, fInteract].forEach((sw) => {
+      sw.addEventListener("click", () => { sw.classList.toggle("on"); renderPreview(); });
+    });
+
+    sTitleSwitch.addEventListener("click", () => { sTitleSwitch.classList.toggle("on"); syncSurveyTitleBlock(); });
+    sMoreSwitch.addEventListener("click", () => { sMoreSwitch.classList.toggle("on"); renderSurveyPreview(); });
+    sTitleName.addEventListener("input", () => {
+      sTitleCount.textContent = sTitleName.value.length + "/40";
+      renderSurveyPreview();
+    });
+    sTitleColor.addEventListener("input", renderSurveyPreview);
+    sMoreColor.addEventListener("input", renderSurveyPreview);
+    sLatestN.addEventListener("input", renderSurveyPreview);
+    [sFTitle, sFCount, sFTime, sFAction].forEach((sw) => {
+      sw.addEventListener("click", () => { sw.classList.toggle("on"); renderSurveyPreview(); });
+    });
+
+    const svcFields = document.getElementById("svcFields");
+    SVC_ITEMS.forEach((it) => {
+      const row = document.createElement("div");
+      row.className = "field-row";
+      row.innerHTML = `<span>${it.name}：</span><button class="switch on" id="svc-${it.id}" type="button"></button>`;
+      svcFields.appendChild(row);
+      row.querySelector(".switch").addEventListener("click", (e) => {
+        e.currentTarget.classList.toggle("on");
+        renderServicePreview();
+      });
+    });
+    document.getElementById("svcTitle").addEventListener("input", renderServicePreview);
+    document.getElementById("honorTitle").addEventListener("input", renderHonorPreview);
+    ["honorPoints", "honorMedals"].forEach((id) => {
+      document.getElementById(id).addEventListener("click", (e) => {
+        e.currentTarget.classList.toggle("on");
+        renderHonorPreview();
+      });
+    });
+
+    const momentPicker = mountActivityPicker({
+      kind: "moments",
+      isCustom: () => appState.moments.pickMode === "custom",
+      getSource: () => appState.moments.pickSource || "",
+      getPicked: () => appState.moments.picked,
+      setPicked: (rows) => { appState.moments.picked = rows; },
+      onChange: () => {
+        if (selected === "moments") fillAppPane("moments");
+        renderAppPreview("moments");
+      }
+    });
+    const activityPicker = mountActivityPicker({
+      isCustom: () => appState.activity.pickMode === "custom",
+      getSource: () => appState.activity.pickSource || "",
+      getPicked: () => appState.activity.picked,
+      setPicked: (rows) => { appState.activity.picked = rows; },
+      onChange: () => {
+        if (selected === "activity") fillAppPane("activity");
+        renderAppPreview("activity");
+      }
+    });
+    const votePicker = mountVotePicker({
+      isCustom: () => appState.vote.pickMode === "custom",
+      getPicked: () => appState.vote.picked,
+      setPicked: (rows) => { appState.vote.picked = rows; },
+      onChange: () => {
+        if (selected === "vote") fillAppPane("vote");
+        renderAppPreview("vote");
+      }
+    });
+    const groupPicker = mountGroupPicker({
+      isCustom: () => appState.groups.pickMode === "custom",
+      getPicked: () => appState.groups.picked,
+      setPicked: (rows) => { appState.groups.picked = rows; },
+      onChange: () => {
+        if (selected === "groups") fillAppPane("groups");
+        renderAppPreview("groups");
+      }
+    });
+    const articlePicker = mountArticlePicker({
+      addBtn: addNewsBtn,
+      pickedBox: document.getElementById("pickedNews"),
+      isCustom: () => document.querySelector('input[name="pickMode"]:checked').value === "custom"
+    });
+    document.querySelectorAll('input[name="pickMode"]').forEach((r) => {
+      r.addEventListener("change", () => {
+        articlePicker.renderPicked();
+        renderPreview();
+      });
+    });
+    document.querySelectorAll('input[name="sPickMode"]').forEach((r) => {
+      r.addEventListener("change", () => {
+        sAddRow.style.display = document.querySelector('input[name="sPickMode"]:checked').value === "custom" ? "" : "none";
+        renderSurveyPreview();
+      });
+    });
+
+    document.querySelector(".tabs").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-tab]");
+      if (!btn) return;
+      currentTab = btn.dataset.tab;
+      document.querySelectorAll(".tabs button").forEach((x) => x.classList.toggle("on", x === btn));
+      showRightPane();
+    });
+
+    artWrap.addEventListener("click", (e) => {
+      if (e.target.closest("[data-act=del]")) return;
+      selectWidget("article");
+    });
+    surveyWrap.addEventListener("click", (e) => {
+      if (e.target.closest("[data-act=del]")) return;
+      selectWidget("survey");
+    });
+    svcWrap.addEventListener("click", (e) => {
+      if (e.target.closest("[data-act=del]")) return;
+      selectWidget("service");
+    });
+    honorWrap.addEventListener("click", (e) => {
+      if (e.target.closest("[data-act=del]")) return;
+      selectWidget("honor");
+    });
+    artWrap.querySelector("[data-act=del]").addEventListener("click", (e) => {
+      e.stopPropagation();
+      artWrap.hidden = true;
+      if (selected === "article") fallbackSelect("article");
+    });
+    surveyWrap.querySelector("[data-act=del]").addEventListener("click", (e) => {
+      e.stopPropagation();
+      surveyWrap.hidden = true;
+      if (selected === "survey") fallbackSelect("survey");
+    });
+    svcWrap.querySelector("[data-act=del]").addEventListener("click", (e) => {
+      e.stopPropagation();
+      svcWrap.hidden = true;
+      if (selected === "service") fallbackSelect("service");
+    });
+    honorWrap.querySelector("[data-act=del]").addEventListener("click", (e) => {
+      e.stopPropagation();
+      honorWrap.hidden = true;
+      if (selected === "honor") fallbackSelect("honor");
+    });
+    APP_BLOCKS.forEach((b) => {
+      const wrap = appWraps[b.id];
+      wrap.addEventListener("click", (e) => {
+        if (e.target.closest("[data-act=del]")) return;
+        selectWidget(b.id);
+      });
+      wrap.querySelector("[data-act=del]").addEventListener("click", (e) => {
+        e.stopPropagation();
+        wrap.hidden = true;
+        if (selected === b.id) fallbackSelect(b.id);
+      });
+      renderAppPreview(b.id);
+    });
+
+    const center = document.querySelector(".center");
+    center.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+      phone.classList.add("drop-over");
+    });
+    center.addEventListener("dragleave", (e) => {
+      if (!center.contains(e.relatedTarget)) phone.classList.remove("drop-over");
+    });
+    center.addEventListener("drop", (e) => {
+      e.preventDefault();
+      phone.classList.remove("drop-over");
+      const name = e.dataTransfer.getData("text/plain");
+      if (name === "调查问卷") placeSurvey();
+      else if (name === "用户服务") placeService();
+      else if (name === "荣誉组件") placeHonor();
+      else if (name === "文章") {
+        artWrap.hidden = false;
+        selectWidget("article");
+      } else {
+        const block = APP_BLOCKS.find((b) => b.lib === name);
+        if (block) placeApp(block.id);
+      }
+    });
+
+    const PLATES = [
+      { id: "p_dyn", name: "企业动态" },
+      { id: "p_kb", name: "知识库" },
+      { id: "p_model", name: "劳模风采" }
+    ];
+    const PLATE_TREES = {
+      p_dyn: [
+        { id: "c1", name: "通知公告", columns: [{ id: "c1a", name: "政策文件" }, { id: "c1b", name: "紧急通知" }, { id: "c1c", name: "会议纪要" }] },
+        { id: "c2", name: "企业文化", columns: [{ id: "c2a", name: "品牌故事" }, { id: "c2b", name: "员工风采" }, { id: "c2c", name: "节日活动" }] },
+        { id: "c3", name: "行业资讯", columns: [{ id: "c3a", name: "航天动态" }, { id: "c3b", name: "政策解读" }] }
+      ],
+      p_kb: [
+        { id: "k1", name: "制度流程", columns: [{ id: "k1a", name: "人事制度" }, { id: "k1b", name: "财务制度" }] },
+        { id: "k2", name: "业务知识", columns: [{ id: "k2a", name: "产品手册" }, { id: "k2b", name: "常见问题" }] },
+        { id: "k3", name: "操作手册", columns: [{ id: "k3a", name: "系统操作" }, { id: "k3b", name: "安全规范" }] }
+      ],
+      p_model: [
+        { id: "m1", name: "劳模事迹", columns: [{ id: "m1a", name: "年度劳模" }, { id: "m1b", name: "工匠故事" }] },
+        { id: "m2", name: "荣誉展示", columns: [{ id: "m2a", name: "集体荣誉" }, { id: "m2b", name: "个人荣誉" }] },
+        { id: "m3", name: "风采专题", columns: [{ id: "m3a", name: "一线纪实" }, { id: "m3b", name: "榜样访谈" }] }
+      ]
+    };
+
+    function mountDropdown(parent, { placeholder, getOptions, onChange }) {
+      if (!parent) {
+        return { reset() {}, setValue() {}, setDisabled() {} };
+      }
+      const wrap = document.createElement("div");
+      wrap.className = "select-wrap";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "select";
+      const textEl = document.createElement("span");
+      textEl.textContent = placeholder;
+      const caret = document.createElement("span");
+      caret.textContent = "﹀";
+      btn.append(textEl, caret);
+      const menu = document.createElement("div");
+      menu.className = "select-menu";
+      wrap.append(btn, menu);
+      parent.appendChild(wrap);
+
+      function closeMenu() { menu.classList.remove("show"); btn.classList.remove("open"); }
+      chainCloseFns.push(closeMenu);
+
+      function openMenu() {
+        if (btn.disabled) return;
+        const opts = getOptions() || [];
+        menu.innerHTML = "";
+        if (!opts.length) {
+          const empty = document.createElement("div");
+          empty.className = "select-option";
+          empty.style.color = "#a0a7b7";
+          empty.textContent = "暂无选项";
+          menu.appendChild(empty);
+        } else {
+          opts.forEach((o) => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.className = "select-option";
+            b.textContent = o.label;
+            b.addEventListener("click", () => {
+              textEl.textContent = o.label;
+              btn.classList.add("has-value");
+              closeMenu();
+              onChange?.(o);
+            });
+            menu.appendChild(b);
+          });
+        }
+        chainCloseFns.forEach((fn) => fn());
+        menu.classList.add("show");
+        btn.classList.add("open");
+      }
+
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const wasOpen = menu.classList.contains("show");
+        chainCloseFns.forEach((fn) => fn());
+        if (!wasOpen) openMenu();
+      });
+
+      return {
+        btn,
+        reset(text) {
+          textEl.textContent = text || placeholder;
+          btn.classList.remove("has-value");
+        },
+        setValue(text) {
+          textEl.textContent = text;
+          btn.classList.add("has-value");
+        },
+        setDisabled(disabled) {
+          btn.disabled = disabled;
+          if (disabled) closeMenu();
+        }
+      };
+    }
+
+    function mountActivitySourceDrop(parent, st) {
+      parent.innerHTML = "";
+      const drop = mountDropdown(parent, {
+        placeholder: "请选择",
+        getOptions: () => [
+          { label: "活动", value: "activity" },
+          { label: "兴趣圈活动", value: "ig" }
+        ],
+        onChange: (o) => { st.pickSource = o.value; }
+      });
+      if (st.pickSource === "ig") drop.setValue("兴趣圈活动");
+      else if (st.pickSource === "activity") drop.setValue("活动");
+      else drop.reset("请选择");
+    }
+
+    function mountMomentsJumpDrop(parent, st) {
+      const drop = mountDropdown(parent, {
+        placeholder: "请选择跳转链接",
+        getOptions: () => [
+          { label: "活动-精彩瞬间", value: "activity" },
+          { label: "兴趣圈-精彩瞬间", value: "ig" }
+        ],
+        onChange: (o) => { st.jumpLink = o.value; }
+      });
+      if (st.jumpLink === "activity") drop.setValue("活动-精彩瞬间");
+      else if (st.jumpLink === "ig") drop.setValue("兴趣圈-精彩瞬间");
+    }
+
+    function mountActivityJumpDrop(parent, st) {
+      parent.innerHTML = "";
+      const drop = mountDropdown(parent, {
+        placeholder: "请选择跳转链接",
+        getOptions: () => [
+          { label: "活动", value: "activity" },
+          { label: "兴趣圈活动", value: "ig" }
+        ],
+        onChange: (o) => { st.jumpLink = o.value; }
+      });
+      if (st.jumpLink === "activity") drop.setValue("活动");
+      else if (st.jumpLink === "ig") drop.setValue("兴趣圈活动");
+    }
+
+    function mountCatColChain(rootEl) {
+      const state = { plateId: null, scopeMode: "category", catId: null, colId: null };
+
+      mountDropdown(rootEl, {
+        placeholder: "请选择板块",
+        getOptions: () => PLATES.map((p) => ({ label: p.name, value: p.id })),
+        onChange: (o) => {
+          state.plateId = o.value;
+          state.catId = null;
+          state.colId = null;
+          scopeDrop.setDisabled(false);
+          refreshScope();
+        }
+      });
+
+      const scopeRow = document.createElement("div");
+      scopeRow.className = "radio-wrap";
+      scopeRow.innerHTML = `
+        <label class="radio"><input type="radio" name="${rootEl.id}-scope" value="category" checked/>按分类</label>
+        <label class="radio"><input type="radio" name="${rootEl.id}-scope" value="column"/>按专栏</label>`;
+      rootEl.appendChild(scopeRow);
+
+      const scopeDrop = mountDropdown(rootEl, {
+        placeholder: "请先选择板块",
+        getOptions: () => {
+          const tree = PLATE_TREES[state.plateId] || [];
+          if (state.scopeMode === "category") return tree.map((c) => ({ label: c.name, catId: c.id, colId: null }));
+          const out = [];
+          tree.forEach((c) => c.columns.forEach((col) => out.push({ label: c.name + " · " + col.name, catId: c.id, colId: col.id })));
+          return out;
+        },
+        onChange: (o) => {
+          state.catId = o.catId;
+          state.colId = o.colId;
+        }
+      });
+      scopeDrop.setDisabled(true);
+
+      function refreshScope() {
+        const ready = Boolean(state.plateId);
+        scopeDrop.setDisabled(!ready);
+        if (!ready) {
+          scopeDrop.reset("请先选择板块");
+          return;
+        }
+        scopeDrop.reset(state.scopeMode === "category" ? "请选择一个分类" : "请选择一个专栏");
+      }
+
+      scopeRow.querySelectorAll("input").forEach((r) => {
+        r.addEventListener("change", () => {
+          state.scopeMode = r.value;
+          state.catId = null;
+          state.colId = null;
+          refreshScope();
+        });
+      });
+    }
+
+    mountCatColChain(document.getElementById("jumpChain"));
+    mountCatColChain(document.getElementById("newsChain"));
+
+
+    syncTitleBlock();
+    renderSurveyPreview();
+    syncSurveyTitleBlock();
+    renderServicePreview();
+    renderHonorPreview();
+  </script>
+</body>
+</html>

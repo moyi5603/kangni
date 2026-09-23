@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ACTIVITY_MOCK_VERSION, activityReviewer, canSubmitApproval, initialActivities, type Activity, type AuditStatus } from './activity';
+import { ensureOrganizerSignup } from './organizerSignup';
 import { recordApprovalDecision, recordApprovalSubmit } from './related';
 
 let mockVersion = ACTIVITY_MOCK_VERSION;
@@ -49,6 +50,7 @@ export function getActivity(id: number): Activity | undefined {
 export function upsertActivity(activity: Activity) {
   const index = activities.findIndex((item) => item.id === activity.id);
   activities = index === -1 ? [activity, ...activities] : activities.map((item) => (item.id === activity.id ? activity : item));
+  ensureOrganizerSignup(activity);
   emit();
 }
 

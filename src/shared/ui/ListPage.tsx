@@ -3,13 +3,31 @@ import { DownOutlined, ReloadOutlined, SearchOutlined, UpOutlined } from '@ant-d
 import { Breadcrumb, Button, Card, Flex, Space, Tabs, Typography } from 'antd';
 import type { TabsProps } from 'antd';
 
-export function ListPageHeading({ paths, title, subtitle }: { paths: string[]; title: string; subtitle: string }) {
+export function ListPageHeading({
+  paths,
+  title,
+  subtitle,
+  extra,
+  titleExtra,
+}: {
+  paths: string[];
+  title: string;
+  subtitle: string;
+  extra?: ReactNode;
+  titleExtra?: ReactNode;
+}) {
   return (
     <div className="list-page-heading">
-      <Breadcrumb separator=">" items={paths.map((item) => ({ title: item }))} />
-      <Flex align="baseline" gap={16} wrap="wrap">
-        <Typography.Title level={1}>{title}</Typography.Title>
-        <Typography.Text type="secondary">{subtitle}</Typography.Text>
+      <Flex justify="space-between" align="flex-start" gap={16} wrap="wrap">
+        <div className={titleExtra ? 'list-page-heading-main is-with-title-extra' : 'list-page-heading-main'}>
+          <Breadcrumb separator=">" items={paths.map((item) => ({ title: item }))} />
+          <Flex align={titleExtra ? 'center' : 'baseline'} gap={16} wrap="wrap">
+            <Typography.Title level={1}>{title}</Typography.Title>
+            {titleExtra}
+            <Typography.Text type="secondary">{subtitle}</Typography.Text>
+          </Flex>
+        </div>
+        {extra}
       </Flex>
     </div>
   );
@@ -29,15 +47,17 @@ export function SearchPanel({
   onSearch,
   onReset,
   columns = 4,
+  defaultExpanded = false,
 }: {
   children: ReactNode;
   onSearch: () => void;
   onReset: () => void;
   columns?: 2 | 4;
+  defaultExpanded?: boolean;
 }) {
   const fields = Children.toArray(children);
   const collapsible = fields.length > 3;
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const visibleFields = collapsible && !expanded ? fields.slice(0, 3) : fields;
   const actionRows = {
     '--search-action-row-4': Math.floor(visibleFields.length / 4) + 1,

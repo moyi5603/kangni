@@ -1,3 +1,4 @@
+import dayjs from 'dayjs';
 import {
   addSignupField,
   defaultSignupFields,
@@ -9,11 +10,14 @@ import type { ApprovalNode } from './rules';
 import {
   formatActivityScheduleTime,
   generateRecurringSessions,
-  syncSessionBounds,
   syncSignupEndAt,
   formatScheduleSignupTime,
+  coerceRepeatRules,
+  needsSessionPick,
+  sessionsHeldAfterTerminate,
   type ActivityScheduleType,
   type ActivitySession,
+  type RepeatRule,
 } from './activitySchedule';
 import { defaultCheckInSettings, ensureSessionCheckInTokens, CHECK_IN_ONCE_SESSION_ID, checkInTokenForSession, type CheckInSettings } from './activityCheckIn';
 
@@ -24,7 +28,7 @@ const openDayImg = '/activities/open-day.jpg';
 const shareImg = '/activities/share.jpg';
 const webinarImg = '/activities/webinar.jpg';
 
-export const ACTIVITY_MOCK_VERSION = 32;
+export const ACTIVITY_MOCK_VERSION = 40;
 export type { SignupField } from './signupFields';
 export const activityTypes = ['公司活动', '疗休养活动', '体检活动', '项目活动'] as const;
 export const visibilityOptions = ['全员', '按部门', '自定义人群', '导入人群'] as const;
@@ -178,9 +182,9 @@ export function activitySignupTypes(activity: Pick<Activity, 'signupSettings'>):
 }
 export const auditStatuses = ['待提交', '待审核', '已通过', '已驳回', '无需审核'] as const;
 export const publishStatuses = ['未发布', '已发布'] as const;
-export const activityStatuses = ['未开始', '进行中', '已结束'] as const;
+export const activityStatuses = ['未开始', '进行中', '已结束', '已终止'] as const;
 /** 列表/详情展示用：未发布优先，已发布则显示活动进度 */
-export const lifecycleStatuses = ['未发布', '未开始', '进行中', '已结束'] as const;
+export const lifecycleStatuses = ['未发布', '未开始', '进行中', '已结束', '已终止'] as const;
 
 export type ActivityType = (typeof activityTypes)[number];
 export type Visibility = (typeof visibilityOptions)[number];
@@ -210,11 +214,10 @@ export type Activity = {
   startAt: string;
   endAt: string;
   scheduleType: ActivityScheduleType;
+  repeatRules?: RepeatRule[];
   repeatWeekday?: number;
   timeStart?: string;
   timeEnd?: string;
-  cycleStart?: string;
-  cycleEnd?: string;
   sessions: ActivitySession[];
   location: string;
   organizer: string;
@@ -230,6 +233,10 @@ export type Activity = {
   signupStartAt: string;
   signupEndAt: string;
   signupHoursBefore?: number;
+  /** 运营手操截止报名的时间；有值表示可从后台恢复 */
+  signupClosedAt?: string;
+  /** 手操截止前的报名截止，单次恢复用 */
+  signupEndAtBeforeClose?: string;
   signupSettings: SignupSetting[];
   signupFields: SignupField[];
   itinerary: string;
@@ -257,8 +264,13 @@ export type Activity = {
   auditStatus: AuditStatus;
   publishStatus: PublishStatus;
   activityStatus: ActivityStatus;
+  /** 提前终止时间；仅 activityStatus 为已终止时有值 */
+  terminatedAt?: string;
   pinned: boolean;
+  /** 排序权重，越小越靠前；与 pinned 一起决定列表顺序 */
+  sortIndex: number;
   createdAt: string;
+  creator: string;
   publishedAt: string;
 };
 
@@ -303,6 +315,8 @@ const defaults: Pick<
   | 'checkInValidAfterStartUnit'
   | 'checkInDynamicQr'
   | 'pinned'
+  | 'sortIndex'
+  | 'creator'
 > = {
   coverUrl: '',
   tags: ['自愿参加'],
@@ -310,6 +324,7 @@ const defaults: Pick<
   sessions: [],
   location: '总部一号楼多功能厅',
   organizer: '陈产品',
+  creator: '陈产品',
   phone: '13800001111',
   detailHtml: '<p>活动详情待补充。</p>',
   visibility: '全员',
@@ -338,6 +353,7 @@ const defaults: Pick<
   signupApprovalNodes: [],
   ...defaultCheckInSettings(),
   pinned: false,
+  sortIndex: 0,
 };
 
 const mockCheckInStatic = {
@@ -427,6 +443,8 @@ export const initialActivities: Activity[] = [
     auditStatus: '已通过',
     publishStatus: '已发布',
     activityStatus: '已结束',
+    signupStartAt: '2026-03-20 09:00',
+    signupEndAt: '2026-04-12 17:00',
     createdAt: '2026-03-20 10:12:00',
     publishedAt: '2026-03-22 09:00:00',
     signupSettings: [{ type: '个人报名', limit: 80, needAudit: false }],
@@ -438,20 +456,20 @@ export const initialActivities: Activity[] = [
     title: '新员工入职训练营',
     type: '项目活动',
     category: '培训',
-    startAt: '2026-08-18 09:30',
-    endAt: '2026-08-20 17:30',
+    startAt: '2026-08-31 09:30',
+    endAt: '2026-09-02 17:30',
     scheduleType: 'series',
     sessions: [
-      { id: 'onboard-1', startAt: '2026-08-18 09:30', endAt: '2026-08-18 17:30' },
-      { id: 'onboard-2', startAt: '2026-08-19 09:30', endAt: '2026-08-19 17:30' },
-      { id: 'onboard-3', startAt: '2026-08-20 09:30', endAt: '2026-08-20 17:30' },
+      { id: 'onboard-1', startAt: '2026-08-31 09:30', endAt: '2026-08-31 17:30' },
+      { id: 'onboard-2', startAt: '2026-09-01 09:30', endAt: '2026-09-01 17:30' },
+      { id: 'onboard-3', startAt: '2026-09-02 09:30', endAt: '2026-09-02 17:30' },
     ],
     signupHoursBefore: 0,
     signupEndAt: syncSignupEndAt(
       [
-        { id: 'onboard-1', startAt: '2026-08-18 09:30', endAt: '2026-08-18 17:30' },
-        { id: 'onboard-2', startAt: '2026-08-19 09:30', endAt: '2026-08-19 17:30' },
-        { id: 'onboard-3', startAt: '2026-08-20 09:30', endAt: '2026-08-20 17:30' },
+        { id: 'onboard-1', startAt: '2026-08-31 09:30', endAt: '2026-08-31 17:30' },
+        { id: 'onboard-2', startAt: '2026-09-01 09:30', endAt: '2026-09-01 17:30' },
+        { id: 'onboard-3', startAt: '2026-09-02 09:30', endAt: '2026-09-02 17:30' },
       ],
       0,
     ),
@@ -510,15 +528,15 @@ export const initialActivities: Activity[] = [
     ...defaults,
     id: 4,
     title: '部门篮球联赛',
-    type: '疗休养活动',
+    type: '公司活动',
     category: '体育',
     startAt: '2026-09-12 13:00',
     endAt: '2026-09-13 18:00',
     visibility: '按部门',
     departments: ['研发中心', '生产中心'],
     coverUrl: basketballImg,
-    itinerary: '<p>12 日下午小组赛与半决赛；13 日下午决赛、颁奖和合影。集合地点为总部球馆南门。</p>',
-    extraFeeRule: '<p>员工参赛免费。带家属观赛需另缴餐费和纪念品费用，现场不支持退费。</p>',
+    itinerary: '',
+    extraFeeRule: '',
     signupSettings: [{ type: '个人报名', limit: 50, needAudit: true, minSeniorityYears: 1 }],
     signupFields: groupSignupFields(
       [
@@ -613,7 +631,7 @@ export const initialActivities: Activity[] = [
     location: '总部二号楼会议室',
     organizer: '张悦',
     visibility: '自定义人群',
-    customPeople: mockPeople(30, '骨干'),
+    customPeople: peopleOptions.slice(0, 20),
     visibilityMinSeniorityYears: 3,
     coverUrl: shareImg,
     detailHtml: detailBlock(
@@ -633,13 +651,14 @@ export const initialActivities: Activity[] = [
     signupFields: fieldsWith('工号', '岗位'),
   },
   (() => {
+    const windowStart = '2026-10-02 09:00';
+    const windowEnd = '2026-10-30 12:00';
+    const repeatRules = [{ weekday: 5, timeStart: '09:00', timeEnd: '12:00' }];
     const sessions = ensureSessionCheckInTokens(
       generateRecurringSessions({
-        repeatWeekday: 5,
-        timeStart: '09:00',
-        timeEnd: '12:00',
-        cycleStart: '2026-10-02',
-        cycleEnd: '2026-10-30',
+        rules: repeatRules,
+        windowStart,
+        windowEnd,
       }),
     );
     return {
@@ -654,16 +673,13 @@ export const initialActivities: Activity[] = [
       organizer: '陈产品',
       visibility: '导入人群',
       importFileName: '安全专项培训可见人群.csv',
-      importedPeople: mockPeople(50, '学员'),
+      importedPeople: peopleOptions,
       coverUrl: webinarImg,
       scheduleType: 'recurring',
-      repeatWeekday: 5,
-      timeStart: '09:00',
-      timeEnd: '12:00',
-      cycleStart: '2026-10-02',
-      cycleEnd: '2026-10-30',
+      repeatRules,
+      startAt: windowStart,
+      endAt: windowEnd,
       sessions,
-      ...syncSessionBounds(sessions),
       signupHoursBefore: 0,
       signupEndAt: syncSignupEndAt(sessions, 0),
       detailHtml: detailBlock(
@@ -687,12 +703,13 @@ export const initialActivities: Activity[] = [
     type: '公司活动',
     category: '文化',
     pinned: true,
-    startAt: '2026-08-27 14:00',
-    endAt: '2026-12-30 14:00',
+    startAt: '2026-09-25 18:00',
+    endAt: '2026-09-25 22:00',
+    activityStatus: '未开始',
     coverUrl: openDayImg,
     publishedAt: '2026-08-12 09:30:00',
     ...mockCheckInStatic,
-    checkInValidAfterStart: 125,
+    checkInValidAfterStart: 1,
     checkInToken: checkInTokenForSession({ id: CHECK_IN_ONCE_SESSION_ID }),
     signupSettings: [{ type: '个人报名', limit: 120, needAudit: false }],
     signupFields: companionSignupFields(2, ['姓名', '手机号'], ['性别']),
@@ -747,6 +764,8 @@ export const initialActivities: Activity[] = [
     location: '培训中心 2 楼',
     coverUrl: shareImg,
     publishedAt: '2026-08-13 11:00:00',
+    activityStatus: '已结束',
+    ...closedSignup,
     detailHtml: detailBlock(shareImg, '数字化转型工作坊', '围绕业务流程数字化拆解痛点，输出可落地的改进清单。', ['09:00 现状共创', '13:30 方案工作坊', '16:30 汇报'], '请携带笔记本，提前阅读背景材料。'),
   }),
   publishedClient({
@@ -760,6 +779,14 @@ export const initialActivities: Activity[] = [
     activityStatus: '已结束',
     ...closedSignup,
     publishedAt: '2026-06-28 09:00:00',
+    signupSettings: [{ type: '个人报名', limit: 40, needAudit: false }],
+    signupFields: groupSignupFields(
+      [
+        { name: '质量组', limit: 20 },
+        { name: '工艺组', limit: 20 },
+      ],
+      ['部门', '岗位'],
+    ),
     detailHtml: detailBlock(onboardingImg, '质量改进项目启动', '启动跨部门质量改进项目，明确目标和里程碑，活动已结束。', ['目标对齐', '小组认领', '排期确认'], '后续进展请关注项目周报。'),
   }),
   publishedClient({
@@ -797,6 +824,8 @@ export const initialActivities: Activity[] = [
     location: '合作医院体检中心',
     coverUrl: checkupImg,
     publishedAt: '2026-08-14 08:30:00',
+    activityStatus: '已结束',
+    ...closedSignup,
     detailHtml: detailBlock(checkupImg, '入职体检专场', '为近期入职员工安排集中体检，含基础套餐，请空腹到场。', ['08:00 签到抽血', '09:00 内科检查', '11:00 结果说明'], '请携带身份证与入职通知。'),
   }),
   publishedClient({
@@ -849,6 +878,24 @@ export const initialActivities: Activity[] = [
     publishedAt: '2026-08-15 09:00:00',
     ...recreationExtras(),
     detailHtml: detailBlock(basketballImg, '黄山两日游', '司龄达标员工可报名黄山两日疗休养，含交通、住宿与门票。', ['19 日出发登高', '20 日景区游览返程'], '请根据自身健康状况评估行程强度。'),
+  }),
+  publishedClient({
+    id: 28,
+    title: '志愿服务说明会',
+    type: '公司活动',
+    category: '公益',
+    organizer: '张悦',
+    phone: '13800001001',
+    startAt: '2026-09-10 14:00',
+    endAt: '2026-09-10 16:00',
+    location: '总部二号楼报告厅',
+    publishedAt: '2026-08-28 09:00:00',
+    signupSettings: [{ type: '个人报名', limit: 60, needAudit: true }],
+    signupApprovalNodes: [
+      { id: 'vol-audit-1', assigneeMode: 'people', reviewerIds: ['张悦', '李明'] },
+      { id: 'vol-audit-2', assigneeMode: 'sameLevelLeader', reviewerIds: [] },
+    ],
+    detailHtml: detailBlock(openDayImg, '志愿服务说明会', '介绍年度志愿服务项目、报名方式与服务时长认定规则。', ['项目介绍', '报名流程说明', '现场答疑'], '报名后需通过审核方可参加。'),
   }),
   publishedClient({
     id: 22,
@@ -908,18 +955,20 @@ export const initialActivities: Activity[] = [
     detailHtml: detailBlock(openDayImg, '家庭日郊游', '员工家庭日郊游已举办完成，适合带家属回顾活动照片。', ['上午亲子游戏', '中午野餐', '下午自由参观'], '相册将保留至年底。'),
   }),
   publishedClient((() => {
+    const windowStart = '2026-08-27 14:00';
+    const windowEnd = '2026-12-31 23:00';
+    const repeatRules = [{ weekday: 4, timeStart: '14:00', timeEnd: '23:00' }];
     const sessions = ensureSessionCheckInTokens(
       generateRecurringSessions({
-        repeatWeekday: 4,
-        timeStart: '14:00',
-        timeEnd: '23:00',
-        cycleStart: '2026-08-27',
-        cycleEnd: '2026-12-31',
+        rules: repeatRules,
+        windowStart,
+        windowEnd,
       }),
     );
     return {
       id: 26,
       title: '周四篮球夜',
+      organizer: '张悦',
       ...mockCheckInStatic,
       type: '公司活动',
       category: '体育',
@@ -927,16 +976,20 @@ export const initialActivities: Activity[] = [
       location: '总部球馆',
       coverUrl: basketballImg,
       scheduleType: 'recurring',
-      repeatWeekday: 4,
-      timeStart: '14:00',
-      timeEnd: '23:00',
-      cycleStart: '2026-08-27',
-      cycleEnd: '2026-12-31',
+      repeatRules,
+      startAt: windowStart,
+      endAt: windowEnd,
       sessions,
-      ...syncSessionBounds(sessions),
       signupHoursBefore: 0,
       signupEndAt: syncSignupEndAt(sessions, 0),
-      signupFields: fieldsWith('手机号', '年龄'),
+      activityStatus: '进行中',
+      signupFields: groupSignupFields(
+        [
+          { name: '红队', limit: 25 },
+          { name: '蓝队', limit: 25 },
+        ],
+        ['手机号', '年龄'],
+      ),
       detailHtml: detailBlock(basketballImg, '周四篮球夜', '每周四下午到晚上固定开场，可按场次报名。', ['13:40 热身', '14:00 开打', '23:00 收场'], '请自备室内鞋。'),
     };
   })()),
@@ -967,11 +1020,7 @@ export const initialActivities: Activity[] = [
     signupFields: fieldsWith('手机号', '年龄'),
     detailHtml: detailBlock(webinarImg, '新人导师工作坊', '两场工作坊可任选参加。', ['开场破冰', '案例研讨', '复盘'], '请携带工牌入场。'),
   }),
-];
-
-function mockPeople(count: number, prefix: string): string[] {
-  return Array.from({ length: count }, (_, index) => `${prefix}${String(index + 1).padStart(2, '0')}`);
-}
+].map((item, index) => ({ ...item, sortIndex: item.pinned ? -1 : index }));
 
 export function formatCustomCrowdVisibility(people: string[], years?: number): string {
   const countText = `自定义人群：共${people.length}人`;
@@ -983,11 +1032,7 @@ export function formatActivityTime(activity: Activity): string {
     scheduleType: activity.scheduleType ?? 'once',
     startAt: activity.startAt,
     endAt: activity.endAt,
-    repeatWeekday: activity.repeatWeekday,
-    timeStart: activity.timeStart,
-    timeEnd: activity.timeEnd,
-    cycleStart: activity.cycleStart,
-    cycleEnd: activity.cycleEnd,
+    repeatRules: coerceRepeatRules(activity),
     sessions: activity.sessions ?? [],
   });
 }
@@ -1012,7 +1057,97 @@ export const lifecycleStatusColor: Record<LifecycleStatus, string> = {
   未开始: 'default',
   进行中: 'processing',
   已结束: 'default',
+  已终止: 'error',
 };
+
+export function isActivityClosed(activity: Pick<Activity, 'activityStatus'>): boolean {
+  return activity.activityStatus === '已结束' || activity.activityStatus === '已终止';
+}
+
+export function canEditActivity(activity: Pick<Activity, 'activityStatus'>): boolean {
+  return !isActivityClosed(activity);
+}
+
+export function editActivityBlockReason(activity: Pick<Activity, 'activityStatus'>): string | undefined {
+  if (activity.activityStatus === '已结束') return '活动已结束，不能编辑';
+  if (activity.activityStatus === '已终止') return '活动已终止，不能编辑';
+  return undefined;
+}
+
+export function canTerminateActivity(activity: Pick<Activity, 'publishStatus' | 'activityStatus'>): boolean {
+  return activity.publishStatus === '已发布' && activity.activityStatus === '进行中';
+}
+
+export function canRevokeActivity(activity: Pick<Activity, 'publishStatus' | 'activityStatus'>): boolean {
+  return activity.publishStatus === '已发布' && activity.activityStatus === '未开始';
+}
+
+export function revokeActivityBlockReason(activity: Pick<Activity, 'publishStatus' | 'activityStatus'>): string | undefined {
+  if (canRevokeActivity(activity)) return undefined;
+  if (activity.publishStatus !== '已发布') return '未发布活动无需撤销';
+  if (activity.activityStatus === '进行中') return '进行中请使用终止活动，不能撤销发布';
+  return '已结束或已终止的活动不能撤销发布';
+}
+
+export function applyTerminateActivity<T extends { activityStatus: ActivityStatus; signupEndAt: string; terminatedAt?: string }>(
+  activity: T,
+  now = dayjs(),
+): T {
+  const nowText = now.format('YYYY-MM-DD HH:mm');
+  const signupEndAt = dayjs(activity.signupEndAt).isAfter(now) ? nowText : activity.signupEndAt;
+  return {
+    ...activity,
+    activityStatus: '已终止',
+    terminatedAt: nowText,
+    signupEndAt,
+  };
+}
+
+type SignupCloseFields = {
+  publishStatus: PublishStatus;
+  activityStatus: ActivityStatus;
+  scheduleType: ActivityScheduleType;
+  signupEndAt: string;
+  signupHoursBefore?: number;
+  signupClosedAt?: string;
+  signupEndAtBeforeClose?: string;
+  sessions: ActivitySession[];
+};
+
+export function canCloseActivitySignup(activity: SignupCloseFields, now = dayjs()): boolean {
+  if (activity.publishStatus !== '已发布' || isActivityClosed(activity) || activity.signupClosedAt) return false;
+  return dayjs(activity.signupEndAt).isAfter(now);
+}
+
+export function canReopenActivitySignup(activity: Pick<SignupCloseFields, 'publishStatus' | 'activityStatus' | 'signupClosedAt'>): boolean {
+  return activity.publishStatus === '已发布' && !isActivityClosed(activity) && Boolean(activity.signupClosedAt);
+}
+
+export function applyCloseActivitySignup<T extends SignupCloseFields>(activity: T, now = dayjs()): T {
+  if (!canCloseActivitySignup(activity, now)) return activity;
+  const nowText = now.format('YYYY-MM-DD HH:mm');
+  return {
+    ...activity,
+    signupClosedAt: nowText,
+    signupEndAtBeforeClose: activity.signupEndAt,
+    signupEndAt: nowText,
+  };
+}
+
+export function applyReopenActivitySignup<T extends SignupCloseFields>(activity: T, _now = dayjs()): T {
+  if (!canReopenActivitySignup(activity)) return activity;
+  const restored = needsSessionPick(activity.scheduleType)
+    ? syncSignupEndAt(activity.sessions ?? [], activity.signupHoursBefore ?? 0)
+    : (activity.signupEndAtBeforeClose ?? activity.signupEndAt);
+  return {
+    ...activity,
+    signupEndAt: restored || activity.signupEndAt,
+    signupClosedAt: undefined,
+    signupEndAtBeforeClose: undefined,
+  };
+}
+
+export { sessionsHeldAfterTerminate };
 
 export function formatPublishedAt(value: string): string {
   return value || '—';

@@ -1,8 +1,14 @@
-import { goVoteList, toVoteDetailHash, type CEndSurface } from '../../../../app/navigation';
-import { getVote, getVoteResponses, getVotes, useVotes } from '../../../voting/model/voteStore';
+import { goH5Back, toVoteDetailHash, type CEndSurface } from '../../../../app/navigation';
+import { getVote, getVoteOptions, getVoteResponses, getVotes, useVotes } from '../../../voting/model/voteStore';
 import { voteQuotaRecordIndexLabel } from '../../../voting/model/voting';
+import { VoteV2ListCard } from '../../voting-v2/h5/VoteV2ListCard';
 import { DEMO_VOTE_USER, formatVoteCardTime } from '../model/clientVote';
 import { VoteShell } from '../VoteShell';
+
+function voteRecordCover(campaignId: number): string {
+  const option = getVoteOptions(campaignId)[0];
+  return option?.imageUrl || option?.workCover || '';
+}
 
 export function H5VoteRecords({ surface = 'h5' }: { surface?: CEndSurface }) {
   useVotes();
@@ -12,11 +18,11 @@ export function H5VoteRecords({ surface = 'h5' }: { surface?: CEndSurface }) {
     .sort((left, right) => right.item.submittedAt.localeCompare(left.item.submittedAt));
 
   return (
-    <VoteShell surface={surface} title="我的投票记录" onBack={() => goVoteList(surface)}>
+    <VoteShell surface={surface} title="我的投票记录" onBack={goH5Back}>
       {rows.length === 0 ? (
         <p className="c-empty">暂无投票记录</p>
       ) : (
-        <ul className={surface === 'pc' ? 'c-pc-vote-grid' : 'c-h5-list'} aria-label="我的投票记录">
+        <ul className={surface === 'pc' ? 'c-pc-vote-grid is-left-image' : 'c-h5-list is-left-image'} aria-label="我的投票记录">
           {rows.map((row) => {
             const campaign = getVote(row.item.campaignId) ?? row.campaign;
             const pool = getVoteResponses(campaign.id).filter((item) => {
@@ -29,13 +35,14 @@ export function H5VoteRecords({ surface = 'h5' }: { surface?: CEndSurface }) {
               .findIndex((item) => item.id === row.item.id);
             return (
               <li key={row.item.id}>
-                <a className="c-h5-vote-card" href={toVoteDetailHash(surface, campaign.id)}>
-                  <h2 className="c-h5-vote-title">{campaign.name}</h2>
-                  <p className="c-h5-vote-time">{formatVoteCardTime(row.item.submittedAt)}</p>
-                  <span className="c-h5-vote-cta">
-                    {voteQuotaRecordIndexLabel(campaign.quotaMode, index + 1, campaign.quota)}
-                  </span>
-                </a>
+                <VoteV2ListCard
+                  layout="left-image"
+                  href={toVoteDetailHash(surface, campaign.id)}
+                  coverUrl={voteRecordCover(campaign.id)}
+                  title={campaign.name}
+                  time={formatVoteCardTime(row.item.submittedAt)}
+                  cta={voteQuotaRecordIndexLabel(campaign.quotaMode, index + 1, campaign.quota)}
+                />
               </li>
             );
           })}

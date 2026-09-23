@@ -1,0 +1,26 @@
+{
+  "colors": {
+    "primary": "#2f6fe0",
+    "banner": "#0b3d9a",
+    "union_red": "#c8161d",
+    "gold": "#f0b429",
+    "text_primary": "#1f2329",
+    "text_regular": "#333333",
+    "text_muted": "#999999",
+    "background": "#ffffff",
+    "page": "#f5f6f8",
+    "mailbox_page": "#eef2f8",
+    "mailbox_btn": "#2f6fe8",
+    "tab_inactive": "#888888"
+  },
+  "components": {
+    "home_header_height": "52px",
+    "banner_radius": "12px",
+    "course_card_radius": "10px",
+    "tabbar_item_min_height": "52px",
+    "entry_icon_size": "28px"
+  },
+  "icon_style": "inline SVG, stroke-based, stroke-width 1.6, no emoji",
+  "font_family": "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif",
+  "layout": "H5 contest portal: brand header, banner, 4 entries, rank promo, 2-col courses, 4-tab bar"
+}

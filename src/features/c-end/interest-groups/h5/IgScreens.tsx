@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type ReactNode } from 'react';
 import { IgMobileDescComposer } from './IgMobileDescComposer';
 import { useIg } from './IgContext';
 import {
@@ -14,17 +14,50 @@ import {
   WEEKDAYS,
   needsSessionPick,
   signupQuotaLabel,
+  visibleSignupSessions,
 } from '../../../activities/model/activitySchedule';
+import { COVER_IMAGE_UPLOAD_HINT, IMAGE_UPLOAD_ACCEPT } from '../../../../shared/ui/imageUploadHint';
 import {
   generateInterestGroupActivityIntro,
   interestGroupActivityTypeLabels,
   validateInterestGroupActivityForm,
   type InterestGroupActivityType,
 } from '../../../interest-groups/model/interestGroupActivity';
+import { defaultCheckInSettings } from '../../../activities/model/activityCheckIn';
+import { OrgPeopleTreePicker } from './OrgPeopleTreePicker';
+import { generateInterestGroupIntro } from '../../../interest-groups/model/interestGroupIntro';
+import { canMemberCreateInterestGroupActivity } from '../../../interest-groups/model/interestGroupSettings';
+import { parseClientId } from '../model/clientInterestGroup';
+import { OrganizerCheckInQr } from '../../activities/components/OrganizerCheckInQr';
+import { IgActivityRatingBlock } from './IgActivityRatingBlock';
+import {
+  currentIgCheckInUrl,
+  shouldShowIgCheckInQr,
+  toInterestGroupCheckInActivity,
+} from '../../../interest-groups/model/interestGroupCheckIn';
+import { useInterestGroupSettings } from '../../../interest-groups/model/interestGroupSettingsStore';
+import { useIgDecoration } from '../../../interest-groups/model/igDecorationStore';
+import { decoGroupsAllListStyle, decoPastAllListStyle, decoPcColsClass, normalizeDecoColumnCount } from '../../../../shared/decoration/decoTypes';
+import { decoActivityCardFields, decoGroupCardFields } from '../../../../shared/decoration/decoCardFields';
+import { IgHomePastRail, IgMomentCard } from './IgMomentUi';
 import { buildInterestGroupCategoryOptions } from '../../../interest-groups/model/interestGroupCategory';
-import { useInterestGroupCategories, useInterestGroupMoments } from '../../../interest-groups/model/interestGroupStore';
+import {
+  getInterestGroup,
+  getInterestGroupActivity,
+  useInterestGroupCategories,
+  useInterestGroupComments,
+  useInterestGroupMoments,
+  addInterestGroupComment,
+  removeInterestGroupComment,
+  toggleInterestGroupCommentLike,
+} from '../../../interest-groups/model/interestGroupStore';
+import { buildCommentThreads } from '../../../activities/model/commentTree';
+import { ActivityCommentList } from '../../activities/components/ActivityCommentList';
 import { visibleIgMoments } from '../model/clientInterestGroup';
-import { IgMomentCard } from './IgMomentUi';
+import { ShareContactsPanel } from '../../activities/components/ShareContactsPanel';
+import { shareConfirmMessage } from '../../activities/model/activityShare';
+import { SignupSessionMore } from '../../activities/components/SignupForm';
+import { CategoryPill, SchedulePill } from '../../activities/components/StatusPill';
 import {
   ActivityCard,
   ActivityRow,
@@ -33,16 +66,22 @@ import {
   CATS,
   Empty,
   GroupCard,
+  GroupRow,
   IgIcon,
+  HINTS,
   ME,
   MonoAvatar,
   Photo,
   Sparkles,
-  TYPE_META,
+  canPublishIgMoment,
   filterActs,
   filterGroups,
   groupMemberState,
   momentEligibleActs,
+  momentEligibleGroups,
+  searchActsByName,
+  searchGroupsByName,
+  groupIntroNeedsExpand,
   type Act,
   type ActSession,
   type CatKey,
@@ -58,7 +97,6 @@ function sessionChipStatus(session: ActSession): { label: string; tone: 'signed'
 }
 
 const PEOPLE_PREVIEW = 5;
-const ME_PHONE = '13800138000';
 
 function activitySignupPeople(
   signups: { activityId: string; sessionId?: string; name: string; department: string; id: string }[],
@@ -71,14 +109,15 @@ function activitySignupPeople(
 function igDetailCta(input: {
   ended: boolean;
   cancelled: boolean;
+  signupClosed?: boolean;
   pendingGroup: boolean;
   joinedByMe: boolean;
   hasSessions: boolean;
 }): { label: string; enabled: boolean; action: 'signup' | 'adjust' | 'cancel' | 'none' } {
-  if (input.ended || input.cancelled) return { label: '报名已结束', enabled: false, action: 'none' };
+  if (input.ended || input.cancelled || input.signupClosed) return { label: '报名已结束', enabled: false, action: 'none' };
   if (input.pendingGroup) return { label: '立即报名', enabled: false, action: 'none' };
   if (input.joinedByMe) {
-    if (input.hasSessions) return { label: '调整报名', enabled: true, action: 'adjust' };
+    if (input.hasSessions) return { label: '立即报名', enabled: true, action: 'adjust' };
     return { label: '取消报名', enabled: true, action: 'cancel' };
   }
   return { label: '立即报名', enabled: true, action: 'signup' };
@@ -86,6 +125,46 @@ function igDetailCta(input: {
 
 function Screen({ children }: { children: ReactNode }) {
   return <div className="c-ig-stack-scroll">{children}</div>;
+}
+
+function IgShareBtn({ onClick }: { onClick: () => void }) {
+  return (
+    <button className="c-ig-share-btn" type="button" aria-label="分享" onClick={onClick}>
+      <IgIcon name="share" size={18} />
+    </button>
+  );
+}
+
+function IgGroupIntro({ text }: { text: string }) {
+  const { surface } = useIg();
+  const [expanded, setExpanded] = useState(false);
+  const [overflow, setOverflow] = useState(() => groupIntroNeedsExpand(text));
+  const ref = useRef<HTMLParagraphElement>(null);
+
+  useLayoutEffect(() => {
+    if (surface !== 'h5' || expanded || groupIntroNeedsExpand(text)) return undefined;
+    const el = ref.current;
+    if (!el) return undefined;
+    setOverflow(el.scrollHeight > el.clientHeight + 1);
+    return undefined;
+  }, [text, expanded, surface]);
+
+  if (surface !== 'h5') {
+    return <p className="c-ig-desc">{text}</p>;
+  }
+
+  return (
+    <div className={`c-ig-intro${expanded || !overflow ? '' : ' is-clamp'}`}>
+      <p ref={ref} className="c-ig-desc">
+        {text}
+      </p>
+      {overflow && !expanded ? (
+        <button className="c-ig-intro-expand" type="button" onClick={() => setExpanded(true)}>
+          展开
+        </button>
+      ) : null}
+    </div>
+  );
 }
 
 function StackNav({ title, onBack, right }: { title: string; onBack: () => void; right?: ReactNode }) {
@@ -106,12 +185,12 @@ function useEnroll() {
     const group = store.groups.find((g) => g.id === act.gid);
     const gs = groupMemberState(group);
     if (gs === 'pending') {
-      toast('加入小组申请正在审核中，审核通过后方可报名');
+      toast('加入兴趣圈申请正在审核中，审核通过后方可报名');
       return;
     }
     if (gs === 'none') {
       if (!group) {
-        toast('未找到活动所属小组');
+        toast('未找到活动所属兴趣圈');
         return;
       }
       if (act.sessions) {
@@ -133,7 +212,7 @@ function useEnroll() {
 export function IgRouteView({ route }: { route: IgRoute }) {
   switch (route.name) {
     case 'aichat':
-      return <AIChat />;
+      return <AIChat seed={route.params.q} />;
     case 'myActivities':
       return <MyActivities />;
     case 'myGroups':
@@ -142,6 +221,8 @@ export function IgRouteView({ route }: { route: IgRoute }) {
       return <AllActivities />;
     case 'allGroups':
       return <AllGroups />;
+    case 'search':
+      return <HomeSearch initialQuery={route.params.q} />;
     case 'createGroup':
       return <CreateGroup />;
     case 'createAct':
@@ -149,7 +230,7 @@ export function IgRouteView({ route }: { route: IgRoute }) {
     case 'activity':
       return <ActivityDetail aid={route.params.aid || ''} pickEnroll={route.params.pickEnroll} pickEnrollIntent={route.params.pickEnrollIntent} />;
     case 'group':
-      return <GroupDetail gid={route.params.gid || ''} />;
+      return <GroupDetail gid={route.params.gid || ''} tab={route.params.tab} />;
     case 'moments':
       return <MomentsFeed gid={route.params.gid} />;
     case 'post':
@@ -159,8 +240,69 @@ export function IgRouteView({ route }: { route: IgRoute }) {
   }
 }
 
+function HomeSearch({ initialQuery = '' }: { initialQuery?: string }) {
+  const { nav, store, surface } = useIg();
+  const [q, setQ] = useState(initialQuery);
+  const querying = q.trim().length > 0;
+  const foundActs = useMemo(() => searchActsByName(store.acts, q), [store.acts, q]);
+  const foundGroups = useMemo(() => searchGroupsByName(store.groups, q), [store.groups, q]);
+  return (
+    <Screen>
+      <div className="c-ig-stack-sticky">
+        <StackNav title="搜索" onBack={nav.back} />
+        <div className="c-ig-searchbar">
+          <IgIcon name="search" size={16} style={{ color: 'var(--ink-3)' }} />
+          <input
+            type="search"
+            value={q}
+            placeholder="搜索活动或兴趣圈名称"
+            aria-label="搜索活动或兴趣圈名称"
+            onChange={(event) => setQ(event.target.value)}
+          />
+        </div>
+      </div>
+      <div className="c-ig-stack-pad c-ig-home-search">
+        {querying ? (
+          <>
+            <section className="c-ig-block">
+              <div className="c-ig-sec-head">
+                <span className="c-ig-sec-title">兴趣圈</span>
+              </div>
+              {foundGroups.length ? (
+                <div className={surface === 'pc' ? 'c-ig-row-list is-pc-2' : 'c-ig-row-list'}>
+                  {foundGroups.map((group) => (
+                    <GroupRow key={group.id} group={group} onOpen={() => nav.go('group', { gid: group.id })} />
+                  ))}
+                </div>
+              ) : (
+                <Empty text="没有匹配的兴趣圈" />
+              )}
+            </section>
+            <section className="c-ig-block">
+              <div className="c-ig-sec-head">
+                <span className="c-ig-sec-title">活动</span>
+              </div>
+              {foundActs.length ? (
+                <div className={surface === 'pc' ? 'c-ig-row-list is-pc-2' : 'c-ig-row-list'}>
+                  {foundActs.map((act) => (
+                    <ActivityRow key={act.id} act={act} onOpen={() => nav.go('activity', { aid: act.id })} />
+                  ))}
+                </div>
+              ) : (
+                <Empty text="没有匹配的活动" />
+              )}
+            </section>
+          </>
+        ) : (
+          <Empty text="输入名称搜索活动或兴趣圈" />
+        )}
+      </div>
+    </Screen>
+  );
+}
+
 function MyActivities() {
-  const { nav, store, actions } = useIg();
+  const { nav, store, actions, surface } = useIg();
   const enroll = useEnroll();
   const [tab, setTab] = useState<'created' | 'signed'>('created');
   const created = store.acts.filter((a) => a.createdByMe);
@@ -198,17 +340,22 @@ function MyActivities() {
             </Btn>
           </div>
         ) : (
-          list.map((a) => (
-            <ActivityCard
-              key={a.id}
-              act={a}
-              group={store.groups.find((g) => g.id === a.gid)}
-              onOpen={() => nav.go('activity', { aid: a.id })}
-              onEnroll={() => enroll(a)}
-              onLike={() => actions.toggleLike(a.id)}
-              peopleNames={store.signups.filter((item) => item.activityId === a.id).map((item) => item.name)}
-            />
-          ))
+          <ul className={`${surface === 'pc' ? 'c-pc-grid' : 'c-h5-list'} is-left-image`} aria-label="我的活动">
+            {list.map((a) => (
+              <li key={a.id}>
+                <ActivityCard
+                  act={a}
+                  layout="left-image"
+                  surface={surface}
+                  group={store.groups.find((g) => g.id === a.gid)}
+                  onOpen={() => nav.go('activity', { aid: a.id })}
+                  onEnroll={() => enroll(a)}
+                  onLike={() => actions.toggleLike(a.id)}
+                  peopleNames={store.signups.filter((item) => item.activityId === a.id).map((item) => item.name)}
+                />
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </Screen>
@@ -216,18 +363,19 @@ function MyActivities() {
 }
 
 function AllActivities() {
-  const { nav, store, actions } = useIg();
+  const { nav, store, actions, surface } = useIg();
   const enroll = useEnroll();
+  const deco = useIgDecoration(surface === 'pc' ? 'pc' : 'mobile');
+  const activity = deco.blocks.find((item) => item.type === 'activity');
+  const listStyle = activity?.listStyle || 'large-image';
+  const pc = surface === 'pc';
+  const cols = pc
+    ? decoPcColsClass(normalizeDecoColumnCount(listStyle, 'pc', activity?.columnCount, 'activity'))
+    : '';
   const [q, setQ] = useState('');
-  const [dateFilter, setDateFilter] = useState<'all' | 'week' | 'month'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'upcoming' | 'ended' | 'cancelled'>('all');
   const byStatus = statusFilter === 'all' ? store.acts : store.acts.filter((a) => a.status === statusFilter);
-  const byDate = byStatus.filter((a) => {
-    if (dateFilter === 'all') return true;
-    if (dateFilter === 'week') return a.dateKey >= 602 && a.dateKey <= 608;
-    return a.dateKey >= 601 && a.dateKey <= 630;
-  });
-  const list = filterActs(byDate, store.groups, q);
+  const list = filterActs(byStatus, store.groups, q);
   return (
     <Screen>
       <div className="c-ig-stack-sticky">
@@ -244,36 +392,33 @@ function AllActivities() {
             </button>
           ))}
         </div>
-        <div className="c-ig-pills">
-          <IgIcon name="calendar" size={14} style={{ color: 'var(--ink-3)' }} />
-          {[
-            { key: 'all' as const, label: '全部' },
-            { key: 'week' as const, label: '本周' },
-            { key: 'month' as const, label: '本月' },
-          ].map((item) => (
-            <button key={item.key} className={dateFilter === item.key ? 'is-on' : undefined} type="button" onClick={() => setDateFilter(item.key)}>
-              {item.label}
-            </button>
-          ))}
-        </div>
         <div className="c-ig-searchbar">
           <IgIcon name="search" size={16} style={{ color: 'var(--ink-3)' }} />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="搜索活动名称、小组、标签" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="搜索活动名称、兴趣圈" />
         </div>
       </div>
       <div className="c-ig-stack-pad">
         {list.length ? (
-          list.map((a) => (
-            <ActivityCard
-              key={a.id}
-              act={a}
-              group={store.groups.find((g) => g.id === a.gid)}
-              onOpen={() => nav.go('activity', { aid: a.id })}
-              onEnroll={() => enroll(a)}
-              onLike={() => actions.toggleLike(a.id)}
-              peopleNames={store.signups.filter((item) => item.activityId === a.id).map((item) => item.name)}
-            />
-          ))
+          <ul
+            className={`${pc ? 'c-pc-grid' : 'c-h5-list'} is-${listStyle}${cols ? ` ${cols}` : ''}`}
+            aria-label="全部活动"
+          >
+            {list.map((a) => (
+              <li key={a.id}>
+                <ActivityCard
+                  act={a}
+                  layout={listStyle}
+                  surface={surface}
+                  group={store.groups.find((g) => g.id === a.gid)}
+                  onOpen={() => nav.go('activity', { aid: a.id })}
+                  onEnroll={() => enroll(a)}
+                  onLike={() => actions.toggleLike(a.id)}
+                  peopleNames={store.signups.filter((item) => item.activityId === a.id).map((item) => item.name)}
+                  fields={decoActivityCardFields(activity)}
+                />
+              </li>
+            ))}
+          </ul>
         ) : (
           <Empty text={q.trim() ? '没有匹配的活动' : '暂无活动'} />
         )}
@@ -283,7 +428,9 @@ function AllActivities() {
 }
 
 function MyGroups() {
-  const { nav, store, actions } = useIg();
+  const { nav, store, actions, surface } = useIg();
+  const deco = useIgDecoration(surface === 'pc' ? 'pc' : 'mobile');
+  const groupsBlock = deco.blocks.find((item) => item.type === 'groups');
   const [tab, setTab] = useState<'created' | 'joined'>('created');
   const mine = store.groups.filter((g) => g.createdByMe || g.joined || g.pending);
   const created = mine.filter((g) => g.createdByMe);
@@ -296,8 +443,8 @@ function MyGroups() {
   return (
     <Screen>
       <div className="c-ig-stack-sticky">
-        <StackNav title="我的小组" onBack={nav.back} />
-        <div className="c-ig-seg" role="tablist" aria-label="我的小组分类">
+        <StackNav title="我的兴趣圈" onBack={nav.back} />
+        <div className="c-ig-seg" role="tablist" aria-label="我的兴趣圈分类">
           {tabDefs.map((item) => (
             <button
               key={item.key}
@@ -315,15 +462,25 @@ function MyGroups() {
       <div className="c-ig-stack-pad">
         {list.length === 0 ? (
           <div className="c-ig-empty-wrap">
-            <Empty text={tab === 'created' ? '还没有创建小组' : '还没有加入小组'} />
+            <Empty text={tab === 'created' ? '还没有创建兴趣圈' : '还没有加入兴趣圈'} />
             <Btn variant="soft" size="sm" onClick={() => nav.go(tab === 'created' ? 'createGroup' : 'allGroups')}>
               {tab === 'created' ? '去创建' : '去探索'}
             </Btn>
           </div>
         ) : (
-          list.map((g) => (
-            <GroupCard key={g.id} group={g} wide onOpen={() => nav.go('group', { gid: g.id })} onJoin={() => actions.toggleJoin(g.id)} />
-          ))
+          <div className={`c-ig-group-grid is-left-image`} aria-label="我的兴趣圈">
+            {list.map((g) => (
+              <GroupCard
+                key={g.id}
+                group={g}
+                layout="left-image"
+                surface={surface === 'pc' ? 'pc' : 'h5'}
+                fields={decoGroupCardFields(groupsBlock)}
+                onOpen={() => nav.go('group', { gid: g.id })}
+                onJoin={() => actions.toggleJoin(g.id)}
+              />
+            ))}
+          </div>
         )}
       </div>
     </Screen>
@@ -331,105 +488,89 @@ function MyGroups() {
 }
 
 function AllGroups() {
-  const { nav, store, actions } = useIg();
+  const { nav, store, actions, surface } = useIg();
+  const deco = useIgDecoration(surface === 'pc' ? 'pc' : 'mobile');
+  const block = deco.blocks.find((item) => item.type === 'groups');
+  const homeStyle = block?.listStyle || 'scroll';
+  const listStyle = decoGroupsAllListStyle(homeStyle);
+  const cols =
+    surface === 'pc' && (listStyle === 'large-image' || listStyle === 'left-image' || listStyle === 'left-text')
+      ? ` ${decoPcColsClass(normalizeDecoColumnCount(listStyle, 'pc', homeStyle === 'scroll' ? undefined : block?.columnCount, 'groups'))}`
+      : '';
   const [q, setQ] = useState('');
   const list = filterGroups(store.groups, q);
   return (
     <Screen>
       <div className="c-ig-stack-sticky">
-        <StackNav title="全部小组" onBack={nav.back} />
+        <StackNav title="全部兴趣圈" onBack={nav.back} />
         <div className="c-ig-searchbar">
           <IgIcon name="search" size={16} style={{ color: 'var(--ink-3)' }} />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="搜索小组名称、分类、标签" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="搜索兴趣圈名称、分类、标签" />
         </div>
       </div>
       <div className="c-ig-stack-pad">
         {list.length ? (
-          list.map((g) => (
-            <GroupCard key={g.id} group={g} wide onOpen={() => nav.go('group', { gid: g.id })} onJoin={() => actions.toggleJoin(g.id)} />
-          ))
+          <div
+            className={`c-ig-group-grid is-${listStyle}${cols}`}
+            aria-label="全部兴趣圈"
+          >
+            {list.map((g) => (
+              <GroupCard
+                key={g.id}
+                group={g}
+                layout={listStyle}
+                surface={surface === 'pc' ? 'pc' : 'h5'}
+                fields={decoGroupCardFields(block)}
+                onOpen={() => nav.go('group', { gid: g.id })}
+                onJoin={() => actions.toggleJoin(g.id)}
+              />
+            ))}
+          </div>
         ) : (
-          <Empty text={q.trim() ? '没有匹配的小组' : '暂无小组'} />
+          <Empty text={q.trim() ? '没有匹配的兴趣圈' : '暂无兴趣圈'} />
         )}
       </div>
     </Screen>
   );
 }
 
-type IgComment = { id: string; author: string; text: string; likes: number; liked: boolean; time: string };
-
 function IgActivityComments({
-  comments,
-  draft,
-  onDraft,
-  onSend,
-  onLike,
+  activityId,
   hideTitle,
+  surface,
 }: {
-  comments: IgComment[];
-  draft: string;
-  onDraft: (value: string) => void;
-  onSend: () => void;
-  onLike: (id: string) => void;
+  activityId: number;
   hideTitle?: boolean;
+  surface: 'h5' | 'pc';
 }) {
+  const { toast } = useIg();
+  const raw = useInterestGroupComments().filter((item) => item.activityId === activityId);
+  const threads = buildCommentThreads(raw);
   return (
-    <section className="c-ig-comments" {...(hideTitle ? { 'aria-label': '评论' } : { 'aria-labelledby': 'ig-activity-comments-title' })}>
-      {hideTitle ? null : (
-        <h2 id="ig-activity-comments-title" className="c-ig-block-title">
-          评论 <span>{comments.length}</span>
-        </h2>
-      )}
-      <form
-        className="c-ig-comment-composer"
-        onSubmit={(event) => {
-          event.preventDefault();
-          onSend();
-        }}
-      >
-        <div className="c-ig-comment-composer-row">
-          <MonoAvatar name={ME} size={36} />
-          <input
-            id="ig-activity-comment-box"
-            className="c-ig-comment-field"
-            value={draft}
-            placeholder="说点什么…"
-            aria-label="说点什么"
-            onChange={(event) => onDraft(event.target.value)}
-          />
-          <button className="c-ig-comment-send" type="submit" disabled={!draft.trim()}>
-            发送
-          </button>
-        </div>
-      </form>
-      {comments.length ? (
-        comments.map((c) => (
-          <div key={c.id} className="c-ig-comment">
-            <MonoAvatar name={c.author} size={36} />
-            <div className="c-ig-comment-body">
-              <div className="c-ig-comment-name">{c.author}</div>
-              <div className="c-ig-comment-text">{c.text}</div>
-              <div className="c-ig-comment-meta">{c.time}</div>
-            </div>
-            <button className="c-ig-like-plain" type="button" onClick={() => onLike(c.id)}>
-              <IgIcon name="heart" size={14} fill={c.liked} />
-              {c.likes}
-            </button>
-          </div>
-        ))
-      ) : (
-        <div className="c-ig-empty" style={{ padding: '28px 0' }}>暂无评论</div>
-      )}
-    </section>
+    <ActivityCommentList
+      threads={threads}
+      totalCount={threads.length}
+      viewerName={ME}
+      surface={surface}
+      hideTitle={hideTitle}
+      onLike={(id) => toggleInterestGroupCommentLike(id, ME)}
+      onSubmit={(content, parentId) => {
+        if (addInterestGroupComment(activityId, ME, content, parentId)) toast('评论已发布');
+      }}
+      onDelete={(id) => {
+        removeInterestGroupComment(id);
+        toast('评论已删除');
+      }}
+    />
   );
 }
 
 function ActivityDetail({ aid, pickEnroll, pickEnrollIntent }: { aid: string; pickEnroll?: boolean; pickEnrollIntent?: 'cancel' | 'adjust' }) {
-  const { store, actions, nav, toast } = useIg();
+  const { store, actions, nav, toast, surface } = useIg();
   const rawMoments = useInterestGroupMoments();
+  const rawComments = useInterestGroupComments();
   const aIn = store.acts.find((x) => x.id === aid);
-  const [draft, setDraft] = useState('');
-  const comments = store.comments.filter((c) => c.aid === aid);
+  const comments = rawComments.filter((c) => String(c.activityId) === aid);
   const [pickOpen, setPickOpen] = useState(() => Boolean(pickEnroll));
   const [sel, setSel] = useState<string[]>(() => {
     const act = store.acts.find((x) => x.id === aid);
@@ -442,6 +583,8 @@ function ActivityDetail({ aid, pickEnroll, pickEnrollIntent }: { aid: string; pi
   const [peopleQuery, setPeopleQuery] = useState('');
   const [socialTab, setSocialTab] = useState<'comments' | 'moments'>('comments');
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [sessionListOpen, setSessionListOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     if (pickEnroll && aIn?.sessions && aIn.status !== 'ended') {
@@ -464,15 +607,16 @@ function ActivityDetail({ aid, pickEnroll, pickEnrollIntent }: { aid: string; pi
 
   const g = store.groups.find((x) => x.id === aIn.gid);
   const cat = CATS[aIn.cat];
-  const ended = aIn.status === 'ended' || aIn.status === 'cancelled';
+  const ended = aIn.status === 'ended' || aIn.status === 'cancelled' || Boolean(aIn.signupClosed);
   const gs = groupMemberState(g);
   const sessions = aIn.sessions;
   const joinedCount = sessions ? sessions.filter((s) => s.joinedByMe).length : 0;
   const moms = visibleIgMoments(rawMoments, ME).filter((m) => m.activityId != null && String(m.activityId) === aIn.id);
-  const showPost = ended && aIn.joinedByMe;
+  const showPost = canPublishIgMoment(aIn.status) && aIn.joinedByMe;
   const cta = igDetailCta({
     ended,
     cancelled: aIn.status === 'cancelled',
+    signupClosed: aIn.signupClosed,
     pendingGroup: gs === 'pending',
     joinedByMe: aIn.joinedByMe,
     hasSessions: Boolean(sessions),
@@ -500,7 +644,7 @@ function ActivityDetail({ aid, pickEnroll, pickEnrollIntent }: { aid: string; pi
 
   const onJoinEnroll = () => {
     if (!g) {
-      toast('未找到活动所属小组');
+      toast('未找到活动所属兴趣圈');
       return;
     }
     if (sessions) {
@@ -534,13 +678,6 @@ function ActivityDetail({ aid, pickEnroll, pickEnrollIntent }: { aid: string; pi
     setPickOpen(false);
   };
 
-  const sendComment = () => {
-    const text = draft.trim();
-    if (!text) return;
-    actions.postComment(aIn.id, text);
-    setDraft('');
-  };
-
   return (
     <Screen>
       <div className="c-ig-hero">
@@ -550,14 +687,8 @@ function ActivityDetail({ aid, pickEnroll, pickEnrollIntent }: { aid: string; pi
           <IgIcon name="back" size={20} />
         </button>
         <div className="c-ig-hero-badges">
-          <span className="c-ig-cat" style={{ background: cat.color }}>
-            <IgIcon name={cat.icon} size={13} stroke={2.4} />
-            {cat.label}
-          </span>
-          <span className="c-ig-type">
-            <IgIcon name={TYPE_META[aIn.type].icon} size={12.5} stroke={2.2} />
-            {TYPE_META[aIn.type].label}
-          </span>
+          <CategoryPill category={cat.label} />
+          <SchedulePill scheduleType={aIn.type} />
         </div>
       </div>
       <div className="c-ig-detail">
@@ -592,6 +723,19 @@ function ActivityDetail({ aid, pickEnroll, pickEnrollIntent }: { aid: string; pi
                 <div>发起人：{aIn.host}</div>
                 <div className="c-ig-quota-line">{sessions ? '每场名额' : '总名额'}：{aIn.cap} 人</div>
               </div>
+              {(() => {
+                const raw = getInterestGroupActivity(parseClientId(aIn.id));
+                const group = raw?.groupId != null ? getInterestGroup(raw.groupId) : undefined;
+                if (!raw || !shouldShowIgCheckInQr(raw, group, ME)) return null;
+                return (
+                  <OrganizerCheckInQr
+                    activity={{ ...toInterestGroupCheckInActivity(raw), organizer: raw.hostName }}
+                    viewerName={ME}
+                    visible
+                    toCheckInUrl={currentIgCheckInUrl}
+                  />
+                );
+              })()}
               {sessions ? (
                 <div className="c-ig-recent-sessions">
                   <div className="c-ig-recent-sessions-head">
@@ -637,7 +781,7 @@ function ActivityDetail({ aid, pickEnroll, pickEnrollIntent }: { aid: string; pi
               <p className="c-ig-desc">{aIn.desc}</p>
               <div className="c-ig-chip-row">
                 {aIn.tags.map((t) => (
-                  <span key={t} className="c-ig-tag">#{t}</span>
+                  <CategoryPill key={t} category={`#${t}`} />
                 ))}
               </div>
             </div>
@@ -649,6 +793,8 @@ function ActivityDetail({ aid, pickEnroll, pickEnrollIntent }: { aid: string; pi
             ) : null}
           </>
         )}
+
+        <IgActivityRatingBlock aid={aIn.id} status={aIn.status} />
 
         {showMomentsTab ? (
           <div className="c-ig-social-panel c-ig-social-tabs" id="ig-activity-social">
@@ -690,25 +836,12 @@ function ActivityDetail({ aid, pickEnroll, pickEnrollIntent }: { aid: string; pi
                 )}
               </section>
             ) : (
-              <IgActivityComments
-                comments={comments}
-                draft={draft}
-                onDraft={setDraft}
-                onSend={sendComment}
-                onLike={(id) => actions.toggleCommentLike(id)}
-                hideTitle
-              />
+              <IgActivityComments activityId={Number(aIn.id)} hideTitle surface={surface === 'pc' ? 'pc' : 'h5'} />
             )}
           </div>
         ) : (
           <div id="ig-activity-social">
-            <IgActivityComments
-              comments={comments}
-              draft={draft}
-              onDraft={setDraft}
-              onSend={sendComment}
-              onLike={(id) => actions.toggleCommentLike(id)}
-            />
+            <IgActivityComments activityId={Number(aIn.id)} surface={surface === 'pc' ? 'pc' : 'h5'} />
           </div>
         )}
       </div>
@@ -719,8 +852,8 @@ function ActivityDetail({ aid, pickEnroll, pickEnrollIntent }: { aid: string; pi
             <IgIcon name={gs === 'pending' ? 'clock' : 'userPlus'} size={15} />
             <span>
               {gs === 'pending'
-                ? '加入小组申请正在审核中，审核通过后方可报名'
-                : '报名将同时加入该小组'}
+                ? '加入兴趣圈申请正在审核中，审核通过后方可报名'
+                : '报名将同时加入该兴趣圈'}
             </span>
           </div>
         ) : null}
@@ -736,22 +869,8 @@ function ActivityDetail({ aid, pickEnroll, pickEnrollIntent }: { aid: string; pi
               <IgIcon name="heart" size={18} fill={Boolean(aIn.liked)} />
               {aIn.likes}
             </button>
-            <button
-              className="c-ig-engage-btn"
-              type="button"
-              aria-label="评论"
-              onClick={() => {
-                setSocialTab('comments');
-                requestAnimationFrame(() => {
-                  document.getElementById('ig-activity-social')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  document.getElementById('ig-activity-comment-box')?.focus();
-                });
-              }}
-            >
-              <IgIcon name="edit" size={18} />
-              {comments.length}
-            </button>
           </div>
+          <IgShareBtn onClick={() => setShareOpen(true)} />
           <button className="c-ig-cta" type="button" disabled={!cta.enabled} onClick={onEnrollClick}>
             {cta.label}
           </button>
@@ -759,7 +878,7 @@ function ActivityDetail({ aid, pickEnroll, pickEnrollIntent }: { aid: string; pi
       </div>
 
       {pickOpen && sessions ? (
-        <div className="c-ig-sheet" role="dialog" aria-label={joinedCount > 0 ? '调整报名' : '填写报名信息'}>
+        <div className="c-ig-sheet" role="dialog" aria-label={joinedCount > 0 ? '立即报名' : '填写报名信息'}>
           <div className="c-ig-sheet-mask" onClick={() => setPickOpen(false)} />
           <form
             className="c-ig-sheet-body c-ig-signup-form"
@@ -768,12 +887,12 @@ function ActivityDetail({ aid, pickEnroll, pickEnrollIntent }: { aid: string; pi
               confirmPick();
             }}
           >
-            <div className="c-ig-sheet-title">{pickEnrollIntent === 'cancel' ? '取消报名场次' : joinedCount > 0 ? '调整报名' : '填写报名信息'}</div>
-            <p className="c-ig-signup-legend">{joinedCount > 0 ? '调整报名' : '确认报名'}</p>
+            <div className="c-ig-sheet-title">{pickEnrollIntent === 'cancel' ? '取消报名场次' : joinedCount > 0 ? '立即报名' : '填写报名信息'}</div>
+            <p className="c-ig-signup-legend">{joinedCount > 0 ? '立即报名' : '确认报名'}</p>
             <fieldset className="c-ig-signup-field">
               <legend>参加场次 *</legend>
               <div className="c-ig-signup-options" role="group" aria-label="参加场次">
-                {sessions.map((s) => {
+                {visibleSignupSessions(sessions, sessionListOpen).map((s) => {
                   const on = sel.includes(s.id);
                   const full = s.signed >= s.cap && !s.joinedByMe;
                   const status = sessionChipStatus({ ...s, joinedByMe: on });
@@ -795,9 +914,13 @@ function ActivityDetail({ aid, pickEnroll, pickEnrollIntent }: { aid: string; pi
                     </label>
                   );
                 })}
+                <SignupSessionMore
+                  total={sessions.length}
+                  expanded={sessionListOpen}
+                  onToggle={() => setSessionListOpen((open) => !open)}
+                />
               </div>
             </fieldset>
-            <p className="c-ig-signup-hint">{ME} · {ME_PHONE}</p>
             <div className="c-ig-signup-actions">
               <Btn variant="primary" full onClick={confirmPick}>{joinedCount > 0 ? '保存场次' : '确认报名'}</Btn>
               <Btn variant="ghost" full onClick={() => setPickOpen(false)}>取消</Btn>
@@ -843,7 +966,7 @@ function ActivityDetail({ aid, pickEnroll, pickEnrollIntent }: { aid: string; pi
             {visiblePeople.length === 0 ? (
               <p className="c-ig-empty">没有匹配的报名人员</p>
             ) : (
-              <ul className="c-ig-people-list">
+              <ul className="c-ig-people-list is-row">
                 {visiblePeople.map((person) => (
                   <li key={person.id} className="c-ig-person">
                     <MonoAvatar name={person.name} size={40} />
@@ -881,20 +1004,31 @@ function ActivityDetail({ aid, pickEnroll, pickEnrollIntent }: { aid: string; pi
           </div>
         </div>
       ) : null}
+
+      <ShareContactsPanel
+        open={shareOpen}
+        surface={surface === 'pc' ? 'pc' : 'h5'}
+        onClose={() => setShareOpen(false)}
+        onConfirm={(count) => {
+          setShareOpen(false);
+          toast(shareConfirmMessage(count));
+        }}
+      />
     </Screen>
   );
 }
 
-function GroupDetail({ gid }: { gid: string }) {
-  const { store, actions, nav } = useIg();
+function GroupDetail({ gid, tab: tabInit }: { gid: string; tab?: 'acts' | 'members' | 'moments' }) {
+  const { store, actions, nav, toast, surface } = useIg();
   const rawMoments = useInterestGroupMoments();
   const g = store.groups.find((x) => x.id === gid);
-  const [tab, setTab] = useState<'acts' | 'members' | 'moments'>('acts');
+  const [tab, setTab] = useState<'acts' | 'members' | 'moments'>(tabInit ?? 'acts');
+  const [shareOpen, setShareOpen] = useState(false);
   if (!g) {
     return (
       <Screen>
         <div className="c-ig-empty-wrap">
-          <Empty text="未找到该小组" />
+          <Empty text="未找到该兴趣圈" />
           <Btn variant="soft" size="sm" onClick={nav.back}>返回</Btn>
         </div>
       </Screen>
@@ -904,7 +1038,10 @@ function GroupDetail({ gid }: { gid: string }) {
   const moms = visibleIgMoments(rawMoments, ME).filter((m) => String(m.groupId) === gid);
   const isMember = groupMemberState(g) === 'member';
   const gs = groupMemberState(g);
-  const members = store.groupMembers.filter((m) => m.gid === gid && m.status === '已通过').map((m) => m.name);
+  const roster = store.groupMembers.filter((m) => m.gid === gid && m.status === '已通过');
+  const leads = roster.filter((m) => m.role === 'lead');
+  const leadRows = leads.length ? leads : g.lead ? [{ name: g.lead, department: '', role: 'lead' as const }] : [];
+  const members = roster;
   const cat = CATS[g.cat];
 
   return (
@@ -918,41 +1055,35 @@ function GroupDetail({ gid }: { gid: string }) {
       </div>
       <div className="c-ig-detail">
         <div className="c-ig-group-panel">
-          <span className="c-ig-cat is-sm" style={{ background: cat.color }}>
-            <IgIcon name={cat.icon} size={11} stroke={2.4} />
-            {cat.label}
-          </span>
+          <CategoryPill category={cat.label} />
           <div className="c-ig-detail-title" style={{ marginTop: 8 }}>{g.name}</div>
-          <p className="c-ig-desc">{g.intro}</p>
+          <IgGroupIntro text={g.intro} />
           <div className="c-ig-chip-row">
             {g.tags.map((t) => (
-              <span key={t} className="c-ig-tag">{t}</span>
+              <CategoryPill key={t} category={t} />
             ))}
           </div>
           <div className="c-ig-gstats">
             <span><b>{g.members}</b> 成员</span>
             <span><b>{g.acts}</b> 活动</span>
           </div>
-          {g.area ? (
-            <div className="c-ig-meta-row" style={{ marginBottom: 14 }}>
-              <IgIcon name="pin" size={14} />
-              {g.area}
-            </div>
-          ) : null}
-          {gs === 'pending' ? (
-            <Btn variant="ghost" full icon="clock" disabled>审核中…</Btn>
-          ) : gs === 'member' ? (
-            <Btn variant="ghost" full icon="check" onClick={() => actions.leaveGroupWithConfirm(gid)}>退出小组</Btn>
-          ) : (
-            <Btn variant="primary" full icon="userPlus" onClick={() => actions.joinGroupFree(gid)}>
-              加入小组
-            </Btn>
-          )}
-          {g.pending ? <div className="c-ig-center-hint is-warn">已提交申请,等待小组审核,通过后可报名</div> : null}
+          <div className="c-ig-group-join-row">
+            <IgShareBtn onClick={() => setShareOpen(true)} />
+            {gs === 'pending' ? (
+              <Btn variant="ghost" full icon="clock" disabled>审核中…</Btn>
+            ) : gs === 'member' ? (
+              <Btn variant="ghost" full icon="check" onClick={() => actions.leaveGroupWithConfirm(gid)}>退出兴趣圈</Btn>
+            ) : (
+              <Btn variant="primary" full icon="userPlus" onClick={() => actions.joinGroupFree(gid)}>
+                加入兴趣圈
+              </Btn>
+            )}
+          </div>
+          {g.pending ? <div className="c-ig-center-hint is-warn">已提交申请,等待兴趣圈审核,通过后可报名</div> : null}
         </div>
 
         <div className="c-ig-gtabs">
-          {([['acts', '活动', acts.length], ['members', '成员', g.members], ['moments', '小组圈', moms.length]] as const).map(([k, l, n]) => (
+          {([['acts', '活动', acts.length], ['members', '成员', g.members], ['moments', '圈子', moms.length]] as const).map(([k, l, n]) => (
             <button key={k} className={tab === k ? 'is-on' : undefined} type="button" onClick={() => setTab(k)}>
               {l} <span>{n}</span>
             </button>
@@ -967,16 +1098,21 @@ function GroupDetail({ gid }: { gid: string }) {
 
         {tab === 'members' ? (
           <div>
-            <div className="c-ig-lead">
-              <MonoAvatar name={g.lead} size={46} />
-              <div className="c-ig-lead-name">{g.lead}</div>
-              <span className="c-ig-lead-tag">组长</span>
-            </div>
+            {leadRows.map((lead) => (
+              <div key={lead.name} className="c-ig-lead">
+                <MonoAvatar name={lead.name} size={46} />
+                <div className="c-ig-lead-name">{lead.name}</div>
+                <span className="c-ig-lead-tag">负责人</span>
+              </div>
+            ))}
             <div className="c-ig-members">
               {members.map((m) => (
-                <div key={m} className="c-ig-member">
-                  <MonoAvatar name={m} size={42} />
-                  <span>{m}</span>
+                <div key={m.name} className="c-ig-member">
+                  <MonoAvatar name={m.name} size={42} />
+                  <span className="c-ig-member-meta">
+                    <span className="c-ig-member-name">{m.name}</span>
+                    <span className="c-ig-member-dept">{m.department}</span>
+                  </span>
                 </div>
               ))}
             </div>
@@ -1011,16 +1147,70 @@ function GroupDetail({ gid }: { gid: string }) {
           </section>
         ) : null}
       </div>
+      <ShareContactsPanel
+        open={shareOpen}
+        surface={surface === 'pc' ? 'pc' : 'h5'}
+        onClose={() => setShareOpen(false)}
+        onConfirm={(count) => {
+          setShareOpen(false);
+          toast(shareConfirmMessage(count));
+        }}
+      />
     </Screen>
   );
 }
 
+function EndedActs() {
+  const { nav, surface } = useIg();
+  const list = <IgPastMomentsCatalog />;
+  if (surface === 'pc') {
+    return (
+      <div className="c-ig-stack-scroll">
+        <button className="c-back-link" type="button" onClick={nav.back}>
+          ← 返回首页
+        </button>
+        <section className="c-past-sec">{list}</section>
+      </div>
+    );
+  }
+  return (
+    <Screen>
+      <StackNav title="往期精彩回顾" onBack={nav.back} />
+      <div className="c-ig-stack-pad">{list}</div>
+    </Screen>
+  );
+}
+
+export function IgPastMomentsCatalog() {
+  const { store, surface } = useIg();
+  const deco = useIgDecoration(surface === 'pc' ? 'pc' : 'mobile');
+  const moments = deco.blocks.find((item) => item.type === 'moments');
+  const homeStyle = moments?.listStyle || 'scroll';
+  return (
+    <IgHomePastRail
+      acts={store.acts}
+      limit={store.acts.length}
+      heading={false}
+      showMore={false}
+      listStyle={decoPastAllListStyle(homeStyle)}
+      columnCount={homeStyle === 'scroll' ? 2 : moments?.columnCount}
+      surface={surface}
+      fields={decoActivityCardFields(moments)}
+    />
+  );
+}
+
 function MomentsFeed({ gid }: { gid?: string }) {
+  if (!gid) return <EndedActs />;
+  return <GroupMomentsFeed gid={gid} />;
+}
+
+function GroupMomentsFeed({ gid }: { gid: string }) {
   const { nav, store } = useIg();
   const rawMoments = useInterestGroupMoments();
-  const list = visibleIgMoments(rawMoments, ME).filter((m) => (gid ? String(m.groupId) === gid : true));
+  const list = visibleIgMoments(rawMoments, ME).filter((m) => String(m.groupId) === gid);
   const postableActs = momentEligibleActs(store.acts, gid);
-  const gname = gid ? store.groups.find((g) => g.id === gid)?.name : undefined;
+  const gname = store.groups.find((g) => g.id === gid)?.name;
   const title = gname ? `${gname} · 精彩瞬间` : '往期精彩回顾';
   return (
     <Screen>
@@ -1066,18 +1256,39 @@ function readAsDataUrl(file: File) {
 
 function PostMoment({ gid, aidInit }: { gid?: string; aidInit?: string }) {
   const { nav, actions, store, toast } = useIg();
-  const eligibleActs = useMemo(() => momentEligibleActs(store.acts, gid), [store.acts, gid]);
+  const eligibleGroups = useMemo(() => momentEligibleGroups(store.groups, store.acts), [store.groups, store.acts]);
+  const [gidPick, setGidPick] = useState(() => {
+    if (gid && eligibleGroups.some((g) => g.id === gid)) return gid;
+    if (aidInit) {
+      const fromAct = store.acts.find((a) => a.id === aidInit);
+      if (fromAct && eligibleGroups.some((g) => g.id === fromAct.gid)) return fromAct.gid;
+    }
+    return eligibleGroups.length === 1 ? eligibleGroups[0].id : '';
+  });
+  const eligibleActs = useMemo(() => (gidPick ? momentEligibleActs(store.acts, gidPick) : []), [store.acts, gidPick]);
   const [text, setText] = useState('');
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [videoUrl, setVideoUrl] = useState<string>();
   const [error, setError] = useState<string>();
   const [aid, setAid] = useState(() => {
-    if (aidInit && eligibleActs.some((a) => a.id === aidInit)) return aidInit;
-    return eligibleActs.length === 1 ? eligibleActs[0].id : '';
+    const acts = gidPick ? momentEligibleActs(store.acts, gidPick) : [];
+    if (aidInit && acts.some((a) => a.id === aidInit)) return aidInit;
+    return acts.length === 1 ? acts[0].id : '';
   });
-  const [showPicker, setShowPicker] = useState(!aid);
+  const [showGroupPicker, setShowGroupPicker] = useState(!gidPick);
+  const [showPicker, setShowPicker] = useState(false);
+  const group = eligibleGroups.find((g) => g.id === gidPick);
   const act = eligibleActs.find((a) => a.id === aid);
   const showAdd = !videoUrl && imageUrls.length < MOMENT_IMAGE_MAX;
+
+  const pickGroup = (id: string) => {
+    setGidPick(id);
+    setShowGroupPicker(false);
+    const nextActs = momentEligibleActs(store.acts, id);
+    const keep = aidInit && nextActs.some((a) => a.id === aidInit) ? aidInit : nextActs.length === 1 ? nextActs[0].id : '';
+    setAid(keep);
+    setShowPicker(!keep);
+  };
 
   const addFiles = async (files: FileList | null) => {
     if (!files?.length) return;
@@ -1091,8 +1302,13 @@ function PostMoment({ gid, aidInit }: { gid?: string; aidInit?: string }) {
   };
 
   const publish = () => {
+    if (!group) {
+      toast('请选择所属兴趣圈');
+      setShowGroupPicker(true);
+      return;
+    }
     if (!act) {
-      toast('请选择你参与过的已结束活动');
+      toast('请选择进行中或已结束且已报名的活动');
       setShowPicker(true);
       return;
     }
@@ -1103,7 +1319,7 @@ function PostMoment({ gid, aidInit }: { gid?: string; aidInit?: string }) {
       toast(invalid);
       return;
     }
-    actions.postMoment({ gid: act.gid, aid: act.id, text, imageUrls, videoUrl });
+    actions.postMoment({ gid: group.id, aid: act.id, text, imageUrls, videoUrl });
     nav.back();
   };
 
@@ -1120,18 +1336,47 @@ function PostMoment({ gid, aidInit }: { gid?: string; aidInit?: string }) {
         >
           <p className="c-signup-legend">发布瞬间</p>
           <div className="c-ig-label">
+            所属兴趣圈 <span>*</span>
+          </div>
+          <button className={`c-ig-pick${group ? ' is-on' : ''}`} type="button" onClick={() => setShowGroupPicker((v) => !v)}>
+            <IgIcon name="users" size={16} />
+            <span>{group ? group.name : '请选择所属兴趣圈'}</span>
+            <IgIcon name={showGroupPicker ? 'chevD' : 'chevR'} size={16} />
+          </button>
+          {showGroupPicker ? (
+            <div className="c-ig-pick-list">
+              <div className="c-ig-pick-cap">你加入且有可发布活动的兴趣圈</div>
+              {eligibleGroups.length === 0 ? (
+                <div className="c-ig-pick-empty">暂无可选兴趣圈。报名参加进行中或已结束的活动后才可发布。</div>
+              ) : (
+                eligibleGroups.map((g) => (
+                  <button key={g.id} className={gidPick === g.id ? 'is-on' : undefined} type="button" onClick={() => pickGroup(g.id)}>
+                    <IgIcon name={CATS[g.cat].icon} size={15} style={{ color: CATS[g.cat].color }} />
+                    <div>
+                      <div>{g.name}</div>
+                      <span>{g.area}</span>
+                    </div>
+                    {gidPick === g.id ? <IgIcon name="check" size={16} style={{ color: 'var(--brand)' }} /> : null}
+                  </button>
+                ))
+              )}
+            </div>
+          ) : null}
+          <div className="c-ig-label">
             关联活动 <span>*</span>
           </div>
           <button className={`c-ig-pick${act ? ' is-on' : ''}`} type="button" onClick={() => setShowPicker((v) => !v)}>
             <IgIcon name={act ? CATS[act.cat].icon : 'calendar'} size={16} />
-            <span>{act ? act.title : '请选择你参与过的已结束活动'}</span>
+            <span>{act ? act.title : '请选择进行中或已结束且已报名的活动'}</span>
             <IgIcon name={showPicker ? 'chevD' : 'chevR'} size={16} />
           </button>
           {showPicker ? (
             <div className="c-ig-pick-list">
-              <div className="c-ig-pick-cap">{gid ? '本小组 · 你参与过的已结束活动' : '你参与过的已结束活动'}</div>
-              {eligibleActs.length === 0 ? (
-                <div className="c-ig-pick-empty">暂无可发布的活动。只有报名参加了活动，在活动结束后才可以发布精彩瞬间。</div>
+              <div className="c-ig-pick-cap">{gidPick ? '本兴趣圈 · 进行中 / 已结束且已报名' : '请先选择所属兴趣圈'}</div>
+              {!gidPick ? (
+                <div className="c-ig-pick-empty">请先选择所属兴趣圈。</div>
+              ) : eligibleActs.length === 0 ? (
+                <div className="c-ig-pick-empty">暂无可发布的活动。报名参加进行中或已结束的活动后才可发布精彩瞬间。</div>
               ) : (
                 eligibleActs.map((a) => (
                   <button key={a.id} className={aid === a.id ? 'is-on' : undefined} type="button" onClick={() => { setAid(a.id); setShowPicker(false); }}>
@@ -1228,9 +1473,9 @@ function aiChatReply(text: string, groups: Group[], acts: Act[]) {
       groupCards: ['4', '1'],
     };
   }
-  if (/新人|适合|推荐小组/.test(t)) {
+  if (/新人|适合|推荐兴趣圈/.test(t)) {
     return {
-      answer: '适合新人的小组：城市夜跑团按配速分组，零基础友好；桌游电竞局随时开局，菜也没关系。',
+      answer: '适合新人的兴趣圈：城市夜跑团按配速分组，零基础友好；桌游电竞局随时开局，菜也没关系。',
       cards: [] as string[],
       groupCards: ['1', '4'],
     };
@@ -1244,36 +1489,37 @@ function aiChatReply(text: string, groups: Group[], acts: Act[]) {
   }
   if (/羽毛球/.test(t)) {
     return {
-      answer: '当前兴趣小组暂无羽毛球活动，可以看看夜跑或连营徒步。',
+      answer: '当前兴趣圈暂无羽毛球活动，可以看看夜跑或连营徒步。',
       cards: ['101'],
       groupCards: [] as string[],
     };
   }
   if (/桌游|电竞|阿瓦隆/.test(t)) {
     return {
-      answer: '【桌游电竞局】每周开局、新手教学。可从小组页加入后报名活动。',
+      answer: '【桌游电竞局】每周开局、新手教学。可从兴趣圈页加入后报名活动。',
       cards: [] as string[],
       groupCards: ['4'],
     };
   }
   const live = acts.filter((a) => a.status === 'upcoming').slice(0, 2);
   return {
-    answer: '我可以帮你找活动、找小组，或看看热门排行。试试问「适合新人的小组」或「本月最热门的小组」。',
+    answer: '我可以帮你找活动、找兴趣圈，或看看热门排行。试试问「适合新人的兴趣圈」或「本月最热门的兴趣圈」。',
     cards: live.map((a) => a.id),
     groupCards: [] as string[],
   };
 }
 
-function AIChat() {
+function AIChat({ seed = '' }: { seed?: string }) {
   const { nav, store } = useIg();
   const enroll = useEnroll();
   type ChatMsg = { id: number; side: 'ai' | 'me'; text: string; cards: string[]; groupCards: string[] };
   const [msgs, setMsgs] = useState<ChatMsg[]>(() => [
-    { id: 1, side: 'ai' as const, text: '嗨 林浅 👋 我是小趣。想找活动、找小组，或看看热门排行，直接告诉我就行~', cards: ['101'] as string[], groupCards: [] as string[] },
+    { id: 1, side: 'ai' as const, text: '嗨 林浅 👋 我是小趣。想找活动、找兴趣圈，或看看热门排行，直接告诉我就行~', cards: ['101'] as string[], groupCards: [] as string[] },
     { id: 2, side: 'ai' as const, text: '可以先看看「滨江 8K 夜跑」，每周四 19:30 滨江南门集合。', cards: [] as string[], groupCards: [] as string[] },
   ]);
   const [val, setVal] = useState('');
   const [typing, setTyping] = useState(false);
+  const seeded = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -1291,7 +1537,12 @@ function AIChat() {
       setMsgs((m) => [...m, { id: Date.now() + 1, side: 'ai', text: r.answer, cards: r.cards, groupCards: r.groupCards }]);
     }, 700);
   };
-  const sugg = ['职场成长的活动有什么', '推荐适合新人的小组', '本周还有什么活动'];
+  useEffect(() => {
+    if (!seed.trim() || seeded.current) return;
+    seeded.current = true;
+    send(seed);
+  }, [seed]);
+  const sugg = HINTS;
 
   return (
     <div className="c-ig-chat">
@@ -1353,46 +1604,77 @@ function AIChat() {
 }
 
 function CreateGroup() {
-  const { nav, actions } = useIg();
+  const { nav, actions, toast } = useIg();
   const [name, setName] = useState('');
   const [cat, setCat] = useState<CatKey>('sport');
   const [intro, setIntro] = useState('');
-  const [area, setArea] = useState('');
-  const [tagDraft, setTagDraft] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
-  const ok = Boolean(name.trim());
+  const [coverUrl, setCoverUrl] = useState('');
+  const [leads, setLeads] = useState<string[]>([ME]);
+  const [writing, setWriting] = useState(false);
+  const ok = Boolean(name.trim()) && Boolean(coverUrl) && leads.length > 0;
+
+  const pickCover = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setCoverUrl(String(reader.result ?? ''));
+    reader.readAsDataURL(file);
+  };
+
+  const writeIntro = () => {
+    if (writing) return;
+    setWriting(true);
+    window.setTimeout(() => {
+      setIntro(generateInterestGroupIntro(cat));
+      setWriting(false);
+      toast('已生成简介，可继续修改');
+    }, 400);
+  };
+
   const submit = () => {
-    if (!ok) return;
-    actions.saveGroup({ name, cat, intro, area, tags });
+    if (!ok) {
+      toast(!name.trim() ? '请输入兴趣圈名称' : !coverUrl ? '请上传封面图' : '请选择兴趣圈负责人');
+      return;
+    }
+    actions.saveGroup({ name, cat, intro, coverUrl, leads });
     nav.back();
   };
   return (
     <div className="c-ig-create">
       <Screen>
-        <StackNav title="创建小组" onBack={nav.back} />
+        <StackNav title="创建兴趣圈" onBack={nav.back} />
         <div className="c-ig-form">
-          <label className="c-ig-label">小组名称 <span>*</span></label>
-          <input className="c-ig-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="例如：城市夜跑团" />
+          <label className="c-ig-label">封面图 <span>*</span></label>
+          <label className={coverUrl ? 'c-ig-cover-drop has-image' : 'c-ig-cover-drop'}>
+            <input type="file" accept={IMAGE_UPLOAD_ACCEPT} aria-label="上传封面" hidden onChange={pickCover} />
+            {coverUrl ? (
+              <>
+                <img className="c-ig-cover-preview" src={coverUrl} alt="封面预览" />
+                <span className="c-ig-cover-replace">更换封面</span>
+              </>
+            ) : (
+              <span className="c-ig-cover-placeholder">
+                <span className="c-ig-cover-plus" aria-hidden>+</span>
+                上传封面
+              </span>
+            )}
+          </label>
+          <p className="c-ig-field-hint">{COVER_IMAGE_UPLOAD_HINT}</p>
+          <label className="c-ig-label">兴趣圈名称 <span>*</span></label>
+          <input className="c-ig-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="例如：城市夜跑团" maxLength={40} />
           <label className="c-ig-label">分类</label>
           <select className="c-ig-input" value={cat} onChange={(e) => setCat(e.target.value as CatKey)}>
             {(Object.keys(CATS) as CatKey[]).map((k) => (
               <option key={k} value={k}>{CATS[k].label}</option>
             ))}
           </select>
-          <label className="c-ig-label">活动区域</label>
-          <input className="c-ig-input" value={area} onChange={(e) => setArea(e.target.value)} placeholder="例如：总部 · 滨江园区" />
-          <label className="c-ig-label">简介</label>
-          <textarea className="c-ig-textarea" value={intro} onChange={(e) => setIntro(e.target.value)} placeholder="一句话介绍这个小组" rows={4} />
-          <label className="c-ig-label">标签</label>
-          <div className="c-ig-tag-edit">
-            <input className="c-ig-input" value={tagDraft} onChange={(e) => setTagDraft(e.target.value)} placeholder="输入后添加" />
-            <Btn variant="soft" size="sm" onClick={() => { const t = tagDraft.trim(); if (!t || tags.includes(t)) return; setTags([...tags, t]); setTagDraft(''); }}>添加</Btn>
-          </div>
-          <div className="c-ig-chip-row">
-            {tags.map((t) => (
-              <button key={t} className="c-ig-tag" type="button" onClick={() => setTags(tags.filter((x) => x !== t))}>{t} ×</button>
-            ))}
-          </div>
+          <label className="c-ig-label">兴趣圈负责人 <span>*</span></label>
+          <OrgPeopleTreePicker value={leads} onChange={setLeads} ariaLabel="兴趣圈负责人" />
+          <label className="c-ig-label">兴趣圈简介</label>
+          <textarea className="c-ig-textarea" value={intro} onChange={(e) => setIntro(e.target.value)} placeholder="介绍一下你的兴趣圈…" rows={4} maxLength={500} disabled={writing} />
+          <button type="button" className="c-ig-ai-btn" disabled={writing} onClick={writeIntro}>
+            {writing ? '生成中…' : 'AI 帮写'}
+          </button>
         </div>
       </Screen>
       <div className="c-ig-form-bar">
@@ -1414,29 +1696,38 @@ function fromDatetimeLocal(value: string) {
 
 function CreateAct() {
   const { nav, actions, store, toast } = useIg();
+  const settings = useInterestGroupSettings();
   const categories = useInterestGroupCategories();
-  const joined = store.groups.filter((g) => g.joined);
+  const hostable = store.groups.filter((group) => {
+    const role = store.groupMembers.find(
+      (item) => item.gid === group.id && item.status === '已通过' && item.name === ME,
+    )?.role;
+    return canMemberCreateInterestGroupActivity(settings, role);
+  });
+  const emptyCreateActText = store.groups.some((group) => group.joined)
+    ? '当前规则仅允许负责人创建活动'
+    : '需要先加入兴趣圈才能创建活动';
   const categoryOptions = buildInterestGroupCategoryOptions(categories, { enabledOnly: true });
   const [coverUrl, setCoverUrl] = useState('');
   const [title, setTitle] = useState('');
-  const [gid, setGid] = useState(joined[0]?.id || '');
-  const [categoryKey, setCategoryKey] = useState<string>(joined[0]?.cat || categoryOptions[0]?.value || '');
+  const [gid, setGid] = useState(hostable[0]?.id || '');
+  const [categoryKey, setCategoryKey] = useState<string>(hostable[0]?.cat || categoryOptions[0]?.value || '');
   const [location, setLocation] = useState('');
   const [type, setType] = useState<InterestGroupActivityType>('once');
   const [activityStart, setActivityStart] = useState('');
   const [activityEnd, setActivityEnd] = useState('');
   const [signupStart, setSignupStart] = useState('');
   const [signupEnd, setSignupEnd] = useState('');
-  const [repeatWeekday, setRepeatWeekday] = useState<number>(4);
-  const [timeStart, setTimeStart] = useState('19:30');
-  const [timeEnd, setTimeEnd] = useState('21:00');
-  const [cycleStart, setCycleStart] = useState('');
-  const [cycleEnd, setCycleEnd] = useState('');
+  const [repeatRules, setRepeatRules] = useState([{ weekday: 4, timeStart: '19:30', timeEnd: '21:00' }]);
   const [sessionList, setSessionList] = useState([{ startAt: '', endAt: '' }, { startAt: '', endAt: '' }]);
   const [capacity, setCapacity] = useState('');
   const [signupHoursBefore, setSignupHoursBefore] = useState('0');
   const [detailHtml, setDetailHtml] = useState('');
   const [writing, setWriting] = useState(false);
+  const [notifyOnPublish, setNotifyOnPublish] = useState(false);
+  const [checkInEnabled, setCheckInEnabled] = useState(false);
+  const [checkInOpenMinutesBefore, setCheckInOpenMinutesBefore] = useState('30');
+  const [checkInDynamicQr, setCheckInDynamicQr] = useState(false);
 
   const payload = {
     coverUrl,
@@ -1446,11 +1737,7 @@ function CreateAct() {
     type,
     startAt: fromDatetimeLocal(activityStart),
     endAt: fromDatetimeLocal(activityEnd),
-    repeatWeekday,
-    timeStart,
-    timeEnd,
-    cycleStart,
-    cycleEnd,
+    repeatRules,
     sessions: sessionList
       .filter((item) => item.startAt && item.endAt)
       .map((item) => ({ startAt: fromDatetimeLocal(item.startAt), endAt: fromDatetimeLocal(item.endAt) })),
@@ -1465,14 +1752,19 @@ function CreateAct() {
     customPeople: [] as string[],
     importFileName: '',
     importedPeople: [] as string[],
-    notifyOnPublish: false,
+    notifyOnPublish,
+    notifyAudience: 'members' as const,
+    ...defaultCheckInSettings(),
+    checkInEnabled,
+    checkInOpenMinutesBefore: Number(checkInOpenMinutesBefore) || 0,
+    checkInDynamicQr,
     needAudit: false,
     signupApprovalNodes: [],
     signupFields: [],
     signupPoints: 1,
     signupPointsEnabled: false,
   };
-  const formError = joined.length ? validateInterestGroupActivityForm(payload, true) : '需要先加入小组才能创建活动';
+  const formError = hostable.length ? validateInterestGroupActivityForm(payload, true) : emptyCreateActText;
 
   const pickCover = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1505,11 +1797,7 @@ function CreateAct() {
       type,
       startAt: payload.startAt,
       endAt: payload.endAt,
-      repeatWeekday,
-      timeStart,
-      timeEnd,
-      cycleStart,
-      cycleEnd,
+      repeatRules,
       sessions: payload.sessions,
       signupStartAt: payload.signupStartAt,
       signupEndAt: payload.signupEndAt,
@@ -1517,6 +1805,11 @@ function CreateAct() {
       location,
       capacity: payload.capacity,
       detailHtml,
+      notifyOnPublish,
+      notifyAudience: 'members',
+      checkInEnabled,
+      checkInOpenMinutesBefore: Number(checkInOpenMinutesBefore) || 0,
+      checkInDynamicQr,
     });
     nav.back();
   };
@@ -1526,12 +1819,11 @@ function CreateAct() {
       <Screen>
         <StackNav title="创建活动" onBack={nav.back} />
         <div className="c-ig-form">
-          {joined.length === 0 ? (
-            <Empty text="需要先加入小组才能创建活动" actionLabel="去探索小组" onAction={() => nav.go('allGroups')} />
+          {hostable.length === 0 ? (
+            <Empty text={emptyCreateActText} actionLabel="去探索兴趣圈" onAction={() => nav.go('allGroups')} />
           ) : (
             <>
               <label className="c-ig-label">封面图片 <span>*</span></label>
-              <p className="c-ig-form-extra">支持 jpg / png</p>
               <label className="c-ig-cover-pick">
                 {coverUrl ? <img src={coverUrl} alt="活动封面" /> : (
                   <>
@@ -1539,8 +1831,9 @@ function CreateAct() {
                     <span>上传封面</span>
                   </>
                 )}
-                <input type="file" accept="image/*" aria-label="上传封面" onChange={pickCover} />
+                <input type="file" accept={IMAGE_UPLOAD_ACCEPT} aria-label="上传封面" onChange={pickCover} />
               </label>
+              <p className="c-ig-form-extra">{COVER_IMAGE_UPLOAD_HINT}</p>
               <label className="c-ig-label" htmlFor="ig-act-title">活动标题 <span>*</span></label>
               <input
                 id="ig-act-title"
@@ -1559,21 +1852,27 @@ function CreateAct() {
               </select>
               <label className="c-ig-label">活动地点</label>
               <input className="c-ig-input" value={location} maxLength={80} onChange={(e) => setLocation(e.target.value)} placeholder="选填" />
-              <label className="c-ig-label">所属小组 <span>*</span></label>
+              <label className="c-ig-label">所属兴趣圈 <span>*</span></label>
               <select
                 className="c-ig-input"
                 value={gid}
                 onChange={(e) => {
                   const next = e.target.value;
                   setGid(next);
-                  const group = joined.find((item) => item.id === next);
+                  const group = hostable.find((item) => item.id === next);
                   if (group && !categoryKey) setCategoryKey(group.cat);
                 }}
               >
-                {joined.map((item) => (
+                {hostable.map((item) => (
                   <option key={item.id} value={item.id}>{item.name}</option>
                 ))}
               </select>
+              <label className="c-ig-label">活动时间 <span>*</span></label>
+              <div className="c-ig-time-range">
+                <input className="c-ig-input" type="datetime-local" aria-label="开始时间" value={toDatetimeLocal(activityStart)} onChange={(e) => setActivityStart(e.target.value)} />
+                <span>—</span>
+                <input className="c-ig-input" type="datetime-local" aria-label="结束时间" value={toDatetimeLocal(activityEnd)} onChange={(e) => setActivityEnd(e.target.value)} />
+              </div>
               <label className="c-ig-label">举办方式 <span>*</span></label>
               <div className="c-ig-seg">
                 {SCHEDULE_TYPES.map((item) => (
@@ -1584,12 +1883,6 @@ function CreateAct() {
               </div>
               {type === 'once' ? (
                 <>
-                  <label className="c-ig-label">活动时间 <span>*</span></label>
-                  <div className="c-ig-time-range">
-                    <input className="c-ig-input" type="datetime-local" aria-label="开始时间" value={toDatetimeLocal(activityStart)} onChange={(e) => setActivityStart(e.target.value)} />
-                    <span>—</span>
-                    <input className="c-ig-input" type="datetime-local" aria-label="结束时间" value={toDatetimeLocal(activityEnd)} onChange={(e) => setActivityEnd(e.target.value)} />
-                  </div>
                   <label className="c-ig-label">报名时间 <span>*</span></label>
                   <div className="c-ig-time-range">
                     <input className="c-ig-input" type="datetime-local" aria-label="报名开始时间" value={toDatetimeLocal(signupStart)} onChange={(e) => setSignupStart(e.target.value)} />
@@ -1607,24 +1900,61 @@ function CreateAct() {
                 <>
                   <label className="c-ig-label">重复周几 <span>*</span></label>
                   <div className="c-ig-weekday">
-                    {WEEKDAYS.map((item) => (
-                      <button key={item.value} type="button" className={repeatWeekday === item.value ? 'is-on' : undefined} onClick={() => setRepeatWeekday(item.value)}>
-                        {item.label}
-                      </button>
-                    ))}
+                    {WEEKDAYS.map((item) => {
+                      const on = repeatRules.some((rule) => rule.weekday === item.value);
+                      return (
+                        <button
+                          key={item.value}
+                          type="button"
+                          className={on ? 'is-on' : undefined}
+                          onClick={() => {
+                            setRepeatRules((current) => {
+                              if (current.some((rule) => rule.weekday === item.value)) {
+                                return current.filter((rule) => rule.weekday !== item.value);
+                              }
+                              return [...current, { weekday: item.value, timeStart: '19:30', timeEnd: '21:00' }].sort(
+                                (left, right) => left.weekday - right.weekday,
+                              );
+                            });
+                          }}
+                        >
+                          {item.label}
+                        </button>
+                      );
+                    })}
                   </div>
-                  <label className="c-ig-label">每日时段 <span>*</span></label>
-                  <div className="c-ig-time-range">
-                    <input className="c-ig-input" type="time" aria-label="开始时段" value={timeStart} onChange={(e) => setTimeStart(e.target.value)} />
-                    <span>—</span>
-                    <input className="c-ig-input" type="time" aria-label="结束时段" value={timeEnd} onChange={(e) => setTimeEnd(e.target.value)} />
-                  </div>
-                  <label className="c-ig-label">周期起止 <span>*</span></label>
-                  <div className="c-ig-time-range">
-                    <input className="c-ig-input" type="date" aria-label="开始日期" value={cycleStart} onChange={(e) => setCycleStart(e.target.value)} />
-                    <span>—</span>
-                    <input className="c-ig-input" type="date" aria-label="结束日期" value={cycleEnd} onChange={(e) => setCycleEnd(e.target.value)} />
-                  </div>
+                  {repeatRules.map((rule) => (
+                    <div key={rule.weekday}>
+                      <label className="c-ig-label">{WEEKDAYS.find((item) => item.value === rule.weekday)?.label}时段 <span>*</span></label>
+                      <div className="c-ig-time-range">
+                        <input
+                          className="c-ig-input"
+                          type="time"
+                          aria-label={`${WEEKDAYS.find((item) => item.value === rule.weekday)?.label}开始时段`}
+                          value={rule.timeStart}
+                          onChange={(e) => {
+                            const timeStart = e.target.value;
+                            setRepeatRules((current) =>
+                              current.map((item) => (item.weekday === rule.weekday ? { ...item, timeStart } : item)),
+                            );
+                          }}
+                        />
+                        <span>—</span>
+                        <input
+                          className="c-ig-input"
+                          type="time"
+                          aria-label={`${WEEKDAYS.find((item) => item.value === rule.weekday)?.label}结束时段`}
+                          value={rule.timeEnd}
+                          onChange={(e) => {
+                            const timeEnd = e.target.value;
+                            setRepeatRules((current) =>
+                              current.map((item) => (item.weekday === rule.weekday ? { ...item, timeEnd } : item)),
+                            );
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </>
               ) : null}
               {type === 'series' ? (
@@ -1691,11 +2021,56 @@ function CreateAct() {
               ) : null}
               <label className="c-ig-label">活动介绍 <span>*</span></label>
               <IgMobileDescComposer value={detailHtml} onChange={setDetailHtml} onAiWrite={writeIntro} aiBusy={writing} />
+              <label className="c-ig-label">发送消息通知</label>
+              <p className="c-ig-form-extra">发布后仅通知兴趣圈成员</p>
+              <div className="c-ig-seg">
+                <button type="button" className={!notifyOnPublish ? 'is-on' : undefined} onClick={() => setNotifyOnPublish(false)}>
+                  不发送
+                </button>
+                <button type="button" className={notifyOnPublish ? 'is-on' : undefined} onClick={() => setNotifyOnPublish(true)}>
+                  发送
+                </button>
+              </div>
+              <label className="c-ig-label">扫码签到</label>
+              <div className="c-ig-seg">
+                <button type="button" className={!checkInEnabled ? 'is-on' : undefined} onClick={() => setCheckInEnabled(false)}>
+                  关闭
+                </button>
+                <button type="button" className={checkInEnabled ? 'is-on' : undefined} onClick={() => setCheckInEnabled(true)}>
+                  开启
+                </button>
+              </div>
+              {checkInEnabled ? (
+                <>
+                  <label className="c-ig-label">活动开始前可扫</label>
+                  <div className="c-ig-unit">
+                    <input
+                      className="c-ig-input"
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={checkInOpenMinutesBefore}
+                      onChange={(e) => setCheckInOpenMinutesBefore(e.target.value)}
+                    />
+                    <span>分钟</span>
+                  </div>
+                  <label className="c-ig-label">动态二维码</label>
+                  <p className="c-ig-form-extra">每 5 分钟刷新，适合现场投屏</p>
+                  <div className="c-ig-seg">
+                    <button type="button" className={!checkInDynamicQr ? 'is-on' : undefined} onClick={() => setCheckInDynamicQr(false)}>
+                      关闭
+                    </button>
+                    <button type="button" className={checkInDynamicQr ? 'is-on' : undefined} onClick={() => setCheckInDynamicQr(true)}>
+                      开启
+                    </button>
+                  </div>
+                </>
+              ) : null}
             </>
           )}
         </div>
       </Screen>
-      {joined.length ? (
+      {hostable.length ? (
         <div className="c-ig-form-bar">
           <Btn variant="primary" full size="lg" icon="check" disabled={Boolean(formError)} onClick={submit}>创建</Btn>
         </div>

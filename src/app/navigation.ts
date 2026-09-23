@@ -46,10 +46,10 @@ export type MenuNode = {
 };
 
 export const applications: ApplicationMeta[] = [
-  { key: 'workbench', label: '工作台', category: '通用', icon: 'dashboard', defaultPage: 'dashboard' },
-  { key: 'organization', label: '组织管理', category: '员工与组织', icon: 'team', defaultPage: 'employees' },
-  { key: 'products', label: '商品管理', category: '业务经营', icon: 'tags', defaultPage: 'products' },
-  { key: 'orders', label: '订单管理', category: '业务经营', icon: 'shoppingCart', defaultPage: 'orders-all' },
+  { key: 'workbench', label: '工作台', category: '通用', icon: 'dashboard', defaultPage: 'h5-decoration', hiddenFromSwitcher: true },
+  { key: 'organization', label: '组织管理', category: '员工与组织', icon: 'team', defaultPage: 'employees', hiddenFromSwitcher: true },
+  { key: 'products', label: '商品管理', category: '业务经营', icon: 'tags', defaultPage: 'products', hiddenFromSwitcher: true },
+  { key: 'orders', label: '订单管理', category: '业务经营', icon: 'shoppingCart', defaultPage: 'orders-all', hiddenFromSwitcher: true },
   { key: 'activities', label: '活动', category: '员工与组织', icon: 'calendar', defaultPage: 'activity-overview' },
   { key: 'experience', label: '员工体验', category: '员工与组织', icon: 'heart', defaultPage: 'experience-articles', hiddenFromSwitcher: true },
   { key: 'interest-groups', label: '兴趣圈', category: '员工与组织', icon: 'team', defaultPage: 'interest-group-overview' },
@@ -63,21 +63,16 @@ export const applications: ApplicationMeta[] = [
   { key: 'lottery', label: '抽奖', category: '员工与组织', icon: 'gift', defaultPage: 'lottery-list' },
   { key: 'checkin', label: '打卡', category: '员工与组织', icon: 'clock', defaultPage: 'checkin-list' },
   { key: 'learning-plan', label: '学习计划', category: '员工与组织', icon: 'read', defaultPage: 'learning-plan-list' },
-  { key: 'care', label: '人文关怀', category: '员工与组织', icon: 'gift', defaultPage: 'care-plans', hiddenFromSwitcher: true },
-  { key: 'operations', label: '业务运营', category: '平台能力', icon: 'appstore', defaultPage: 'application-list' },
+  { key: 'incentive', label: '即时激励', category: '员工与组织', icon: 'rocket', defaultPage: 'incentive-dashboard' },
+  { key: 'medal', label: '勋章', category: '员工与组织', icon: 'trophy', defaultPage: 'medal-list' },
+  { key: 'forum', label: '论坛', category: '员工与组织', icon: 'read', defaultPage: 'forum-overview' },
+  { key: 'mailbox', label: '信箱', category: '员工与组织', icon: 'fileText', defaultPage: 'mailbox-overview' },
+  { key: 'care', label: '员工关怀', category: '员工与组织', icon: 'gift', defaultPage: 'care-overview' },
+  { key: 'operations', label: '业务运营', category: '平台能力', icon: 'appstore', defaultPage: 'application-list', hiddenFromSwitcher: true },
 ];
 
 export const applicationMenus: Record<string, MenuNode[]> = {
   workbench: [
-    {
-      key: 'workbench-overview',
-      icon: 'dashboard',
-      label: '概览',
-      children: [
-        { key: 'dashboard', icon: 'dashboard', label: '数据看板' },
-        { key: 'my-tasks', icon: 'checkSquare', label: '我的待办' },
-      ],
-    },
     { key: 'h5-decoration', icon: 'layout', label: 'H5装修' },
     { key: 'pc-decoration', icon: 'appstore', label: 'PC装修' },
   ],
@@ -170,9 +165,8 @@ export const applicationMenus: Record<string, MenuNode[]> = {
   ],
   'skills-contest': [
     { key: 'contest-list', icon: 'trophy', label: '赛事管理' },
-    { key: 'signup-list', icon: 'unorderedList', label: '报名' },
+    { key: 'region-list', icon: 'apartment', label: '区域配置' },
     { key: 'score-list', icon: 'checkCircle', label: '成绩' },
-    { key: 'contest-checkin', icon: 'clock', label: '打卡' },
   ],
   exam: [
     { key: 'exam-overview', icon: 'dashboard', label: '概览' },
@@ -206,25 +200,31 @@ export const applicationMenus: Record<string, MenuNode[]> = {
   'learning-plan': [
     { key: 'learning-plan-list', icon: 'unorderedList', label: '计划管理' },
   ],
+  incentive: [
+    { key: 'incentive-dashboard', icon: 'dashboard', label: '概览' },
+    { key: 'incentive-badges', icon: 'trophy', label: '勋章管理' },
+    { key: 'incentive-records', icon: 'unorderedList', label: '发放记录' },
+    { key: 'incentive-settings', icon: 'appstore', label: '规则设置' },
+  ],
+  medal: [
+    { key: 'medal-list', icon: 'trophy', label: '勋章管理' },
+  ],
+  forum: [
+    { key: 'forum-overview', icon: 'dashboard', label: '概览' },
+    { key: 'forum-list', icon: 'read', label: '论坛列表' },
+    { key: 'forum-tags', icon: 'tags', label: '标签管理' },
+    { key: 'forum-risk', icon: 'checkCircle', label: '禁言管理' },
+  ],
+  mailbox: [
+    { key: 'mailbox-overview', icon: 'dashboard', label: '概览' },
+    { key: 'mailbox-list', icon: 'fileText', label: '信箱列表' },
+  ],
   care: [
-    {
-      key: 'care-operation',
-      icon: 'heart',
-      label: '关怀运营',
-      children: [
-        { key: 'care-plans', icon: 'calendar', label: '关怀计划' },
-        { key: 'care-records', icon: 'checkCircle', label: '关怀记录' },
-      ],
-    },
-    {
-      key: 'care-content',
-      icon: 'gift',
-      label: '内容配置',
-      children: [
-        { key: 'care-templates', icon: 'fileText', label: '关怀模板' },
-        { key: 'care-types', icon: 'tags', label: '关怀类型' },
-      ],
-    },
+    { key: 'care-overview', icon: 'dashboard', label: '概览' },
+    { key: 'care-rules', icon: 'calendar', label: '关怀规则' },
+    { key: 'care-records', icon: 'checkCircle', label: '关怀记录' },
+    { key: 'care-templates', icon: 'fileText', label: '关怀模板' },
+    { key: 'care-settings', icon: 'appstore', label: '关怀设置' },
   ],
   operations: [
     {
@@ -243,12 +243,44 @@ export function getApplication(key: string): ApplicationMeta | undefined {
   return applications.find((item) => item.key === key);
 }
 
+export function isMailboxAdminPage(page: string): boolean {
+  return page === 'advice-detail' || page.startsWith('mailbox-');
+}
+
+function resolveHashApplication(applicationKey: string | undefined, pageKey: string | undefined): ApplicationMeta | undefined {
+  const application = applicationKey ? getApplication(applicationKey) : undefined;
+  if (application?.key === 'forum' && pageKey && isMailboxAdminPage(pageKey)) {
+    return getApplication('mailbox');
+  }
+  return application;
+}
+
 export function visibleApplications(): ApplicationMeta[] {
   return applications.filter((item) => !item.hiddenFromSwitcher);
 }
 
 export function getDirectApplications(max: number): ApplicationMeta[] {
-  return visibleApplications().slice(0, max);
+  return applications.slice(0, max);
+}
+
+const MUTED_HEADER_APPLICATION_KEYS = new Set(['organization', 'products', 'orders']);
+
+export function isMutedHeaderApplication(key: string) {
+  return MUTED_HEADER_APPLICATION_KEYS.has(key);
+}
+
+const MUTED_SWITCHER_APPLICATION_KEYS = new Set([
+  'training',
+  'skills-contest',
+  'exam',
+  'live',
+  'lottery',
+  'checkin',
+  'learning-plan',
+]);
+
+export function isMutedSwitcherApplication(key: string) {
+  return MUTED_SWITCHER_APPLICATION_KEYS.has(key);
 }
 
 export function isLeafMenuKey(nodes: MenuNode[], key: string): boolean {
@@ -302,8 +334,32 @@ export type H5Page =
   | 'exam-rank'
   | 'honor'
   | 'honor-admin'
+  | 'incentive'
+  | 'daily-checkin'
+  | 'learning-plans'
+  | 'practice-bank'
+  | 'practice-quiz'
+  | 'contest-home'
+  | 'contest-events'
+  | 'contest-docs'
+  | 'contest-detail'
+  | 'contest-signup'
+  | 'contest-challenge'
+  | 'contest-rank'
+  | 'contest-mine'
+  | 'contest-wrong'
+  | 'course-notes'
+  | 'course-note-detail'
+  | 'lottery'
+  | 'lottery-play'
   | 'interest-groups'
   | 'ig-past-moments'
+  | 'forum'
+  | 'forum-board'
+  | 'forum-topic'
+  | 'forum-mine'
+  | 'mailbox'
+  | 'mailbox-topic'
   | 'votes'
   | 'votes-v2'
   | 'vote-v2-home'
@@ -316,7 +372,11 @@ export type H5Page =
   | 'vote-results'
   | 'activity-list'
   | 'activity-search'
-  | 'past-moments';
+  | 'past-moments'
+  | 'profile';
+
+export type ProfileTab = 'home' | 'edit' | 'interactions' | 'activities' | 'circles' | 'votes' | 'help' | 'posts' | 'medals' | 'care';
+export type ProfileSub = 'likes' | 'favorites' | 'comments';
 
 export type CEndLocation =
   | { kind: 'admin' }
@@ -331,7 +391,16 @@ export type CEndLocation =
       voteV2Id?: number;
       voteV2OptionId?: number;
       voteResponseId?: number;
+      contestId?: number;
+      forumBoardId?: number;
+      forumTopicId?: number;
+      lotteryId?: number;
+      practiceCategoryId?: number;
+      noteId?: number;
       h5Page?: H5Page;
+      empty?: boolean;
+      profileTab?: ProfileTab;
+      profileSub?: ProfileSub;
     };
 
 function examFlowPage(extra?: string): H5Page {
@@ -343,7 +412,22 @@ function examFlowPage(extra?: string): H5Page {
   return 'exam-prep';
 }
 
+export function isCEndEmptyHash(hash: string): boolean {
+  return new URLSearchParams(hash.split('?')[1] ?? '').get('empty') === '1';
+}
+
+export function withCEndEmpty(href: string): string {
+  if (isCEndEmptyHash(href)) return href;
+  return href.includes('?') ? `${href}&empty=1` : `${href}?empty=1`;
+}
+
 export function parseCEndHash(hash: string): CEndLocation {
+  const loc = parseCEndHashPath(hash);
+  if (loc.kind === 'c-end' && isCEndEmptyHash(hash)) return { ...loc, empty: true };
+  return loc;
+}
+
+function parseCEndHashPath(hash: string): CEndLocation {
   const path = hash.replace(/^#\/?/, '').trim().split('?')[0] ?? '';
   const [scope, surface, rawId, extra, tail] = path.split('/');
   if (scope !== 'c') return { kind: 'admin' };
@@ -374,6 +458,23 @@ export function parseCEndHash(hash: string): CEndLocation {
   if (surface !== 'h5' && surface !== 'pc') return { kind: 'admin' };
   if (rawId == null || rawId === '') return { kind: 'c-end', surface };
   if (rawId === 'my') return { kind: 'c-end', surface, h5Page: 'my' };
+  if (rawId === 'profile') {
+    const tab: ProfileTab =
+      extra === 'edit' ||
+      extra === 'interactions' ||
+      extra === 'activities' ||
+      extra === 'circles' ||
+      extra === 'votes' ||
+      extra === 'help' ||
+      extra === 'posts' ||
+      extra === 'medals' ||
+      extra === 'care'
+        ? extra
+        : 'home';
+    const sub: ProfileSub | undefined =
+      tab === 'interactions' ? (tail === 'favorites' || tail === 'comments' ? tail : 'likes') : undefined;
+    return { kind: 'c-end', surface, h5Page: 'profile', profileTab: tab, profileSub: sub };
+  }
   if (rawId === 'search') return { kind: 'c-end', surface, h5Page: 'activity-search' };
   if (rawId === 'list') return { kind: 'c-end', surface, h5Page: 'activity-list' };
   if (rawId === 'moments') return { kind: 'c-end', surface, h5Page: 'past-moments' };
@@ -389,9 +490,91 @@ export function parseCEndHash(hash: string): CEndLocation {
   if (rawId === 'favorites') return { kind: 'c-end', surface, h5Page: 'favorites' };
   if (rawId === 'honor-admin') return { kind: 'c-end', surface, h5Page: 'honor-admin' };
   if (rawId === 'honor') return { kind: 'c-end', surface, h5Page: 'honor' };
+  if (rawId === 'incentive') return { kind: 'c-end', surface, h5Page: 'incentive' };
+  if (rawId === 'daily-checkin') return { kind: 'c-end', surface, h5Page: 'daily-checkin' };
+  if (rawId === 'learning-plans') return { kind: 'c-end', surface, h5Page: 'learning-plans' };
+  if (rawId === 'notes') {
+    const noteId = Number(extra);
+    if (extra && Number.isFinite(noteId)) {
+      return { kind: 'c-end', surface, h5Page: 'course-note-detail', noteId };
+    }
+    return { kind: 'c-end', surface, h5Page: 'course-notes' };
+  }
+  if (rawId === 'practice') {
+    if (extra) {
+      const practiceCategoryId = Number(extra);
+      if (Number.isFinite(practiceCategoryId)) {
+        return { kind: 'c-end', surface, h5Page: 'practice-quiz', practiceCategoryId };
+      }
+    }
+    return { kind: 'c-end', surface, h5Page: 'practice-bank' };
+  }
+  if (rawId === 'lottery') {
+    if (extra) {
+      const lotteryId = Number(extra);
+      if (Number.isFinite(lotteryId)) {
+        return { kind: 'c-end', surface, h5Page: 'lottery-play', lotteryId };
+      }
+    }
+    return { kind: 'c-end', surface, h5Page: 'lottery' };
+  }
+  if (rawId === 'skills-contest') {
+    if (extra === 'mine') return { kind: 'c-end', surface, h5Page: 'contest-mine' };
+    if (extra === 'events') return { kind: 'c-end', surface, h5Page: 'contest-events' };
+    if (extra === 'docs') return { kind: 'c-end', surface, h5Page: 'contest-docs' };
+    if (extra === 'wrong') return { kind: 'c-end', surface, h5Page: 'contest-wrong' };
+    if (extra === 'notes') {
+      const noteId = Number(tail);
+      if (tail && Number.isFinite(noteId)) {
+        return { kind: 'c-end', surface, h5Page: 'course-note-detail', noteId };
+      }
+      return { kind: 'c-end', surface, h5Page: 'course-notes' };
+    }
+    return { kind: 'c-end', surface, h5Page: 'contest-home' };
+  }
+  const contestToken = /^contest-(\d+)$/.exec(rawId);
+  if (contestToken) {
+    const contestId = Number(contestToken[1]);
+    const page =
+      extra === 'signup'
+        ? 'contest-signup'
+        : extra === 'challenge'
+          ? 'contest-challenge'
+          : extra === 'rank'
+            ? 'contest-rank'
+            : 'contest-detail';
+    return { kind: 'c-end', surface, contestId, h5Page: page };
+  }
   if (rawId === 'interest-groups') {
     if (extra === 'moments') return { kind: 'c-end', surface, h5Page: 'ig-past-moments' };
     return { kind: 'c-end', surface, h5Page: 'interest-groups' };
+  }
+  if (rawId === 'forum-topic') {
+    const forumTopicId = Number(extra);
+    if (Number.isFinite(forumTopicId)) {
+      return { kind: 'c-end', surface, h5Page: 'forum-topic', forumTopicId };
+    }
+  }
+  if (rawId === 'forum-mine') {
+    return { kind: 'c-end', surface, h5Page: 'forum-mine' };
+  }
+  if (rawId === 'forum') {
+    if (extra) {
+      const forumBoardId = Number(extra);
+      if (Number.isFinite(forumBoardId)) {
+        return { kind: 'c-end', surface, h5Page: 'forum-board', forumBoardId };
+      }
+    }
+    return { kind: 'c-end', surface, h5Page: 'forum' };
+  }
+  if (rawId === 'mailbox') {
+    if (extra) {
+      const forumTopicId = Number(extra);
+      if (Number.isFinite(forumTopicId)) {
+        return { kind: 'c-end', surface, h5Page: 'mailbox-topic', forumTopicId };
+      }
+    }
+    return { kind: 'c-end', surface, h5Page: 'mailbox' };
   }
   const igActToken = /^ig-act-(\d+)$/.exec(rawId);
   if (igActToken && extra === 'checkin') {
@@ -470,6 +653,10 @@ export function goCEndPortal() {
   window.location.hash = toCEndPortalHash();
 }
 
+export function goH5Back() {
+  window.history.back();
+}
+
 export function toCEndHash(surface: CEndSurface, activityId?: number): string {
   return activityId == null ? `#/c/${surface}` : `#/c/${surface}/${activityId}`;
 }
@@ -536,6 +723,22 @@ export function toH5CourseListHash(): string {
 
 export function toH5ExamListHash(): string {
   return '#/c/h5/exams';
+}
+
+export function toH5LearningPlanListHash(): string {
+  return '#/c/h5/learning-plans';
+}
+
+export function toH5PracticeBankHash(): string {
+  return '#/c/h5/practice';
+}
+
+export function toH5PracticeQuizHash(categoryId: number): string {
+  return `#/c/h5/practice/${categoryId}`;
+}
+
+export function goH5PracticeBank() {
+  window.location.hash = toH5PracticeBankHash();
 }
 
 export function toVoteListHash(surface: CEndSurface): string {
@@ -714,6 +917,184 @@ export function toH5HonorHash(): string {
   return '#/c/h5/honor';
 }
 
+export type IncentiveH5Page =
+  | 'home'
+  | 'issue'
+  | 'ranking'
+  | 'profile'
+  | 'messages'
+  | 'award'
+  | 'person'
+  | 'company';
+
+export function toIncentiveHash(surface: CEndSurface, page: IncentiveH5Page = 'home', id?: string): string {
+  const base = `#/c/${surface}/incentive`;
+  if (page === 'home') return base;
+  if (page === 'ranking' && id) return `${base}/ranking/${encodeURIComponent(id)}`;
+  if (page === 'person' && id) return `${base}/person/${encodeURIComponent(id)}`;
+  if (page === 'company' && id) return `${base}/company/${encodeURIComponent(id)}`;
+  if (page === 'person' || page === 'company') return base;
+  return `${base}/${page}`;
+}
+
+export function toH5IncentiveHash(page: IncentiveH5Page = 'home', id?: string): string {
+  return toIncentiveHash('h5', page, id);
+}
+
+export function toPcIncentiveHash(page: IncentiveH5Page = 'home', id?: string): string {
+  return toIncentiveHash('pc', page, id);
+}
+
+export function parseIncentiveH5Hash(hash: string): { page: IncentiveH5Page; id?: string } {
+  const path = hash.replace(/^#\/?/, '').trim().split('?')[0] ?? '';
+  const parts = path.split('/');
+  const extra = parts[3];
+  const tail = parts[4];
+  if (extra === 'ranking') {
+    return tail ? { page: 'ranking', id: decodeURIComponent(tail) } : { page: 'ranking' };
+  }
+  if (extra === 'issue' || extra === 'profile' || extra === 'messages' || extra === 'award') {
+    return { page: extra };
+  }
+  if (extra === 'person' && tail) return { page: 'person', id: decodeURIComponent(tail) };
+  if (extra === 'company' && tail) return { page: 'company', id: decodeURIComponent(tail) };
+  return { page: 'home' };
+}
+
+export function goH5Incentive(page: IncentiveH5Page = 'home', id?: string) {
+  const hash = typeof window === 'undefined' ? '' : window.location.hash;
+  const surface: CEndSurface = hash.includes('/c/pc/') ? 'pc' : 'h5';
+  window.location.hash = toIncentiveHash(surface, page, id);
+}
+
+export function toH5DailyCheckinHash(): string {
+  return '#/c/h5/daily-checkin';
+}
+
+export function toH5LotteryListHash(): string {
+  return '#/c/h5/lottery';
+}
+
+export function toH5LotteryPlayHash(id: number): string {
+  return `#/c/h5/lottery/${id}`;
+}
+
+export function goH5LotteryList() {
+  window.location.hash = toH5LotteryListHash();
+}
+
+export function goH5DailyCheckin() {
+  window.location.hash = toH5DailyCheckinHash();
+}
+
+export function toH5ForumHash(): string {
+  return '#/c/h5/forum';
+}
+
+export function toH5ForumBoardHash(id: number): string {
+  return `#/c/h5/forum/${id}`;
+}
+
+export function toH5ForumTopicHash(id: number): string {
+  return `#/c/h5/forum-topic/${id}`;
+}
+
+export function toPcForumBoardHash(id: number): string {
+  return `#/c/pc/forum/${id}`;
+}
+
+export function toPcForumTopicHash(id: number): string {
+  return `#/c/pc/forum-topic/${id}`;
+}
+
+export function toH5ForumMineHash(): string {
+  return '#/c/h5/forum-mine';
+}
+
+export function toPcForumMineHash(): string {
+  return '#/c/pc/forum-mine';
+}
+
+export function toH5MailboxHash(): string {
+  return '#/c/h5/mailbox';
+}
+
+export function toH5MailboxTopicHash(id: number): string {
+  return `#/c/h5/mailbox/${id}`;
+}
+
+export function toPcMailboxHash(): string {
+  return '#/c/pc/mailbox';
+}
+
+export function toPcMailboxTopicHash(id: number): string {
+  return `#/c/pc/mailbox/${id}`;
+}
+
+export function toH5ContestHomeHash(): string {
+  return '#/c/h5/skills-contest';
+}
+
+export function toH5ContestEventsHash(): string {
+  return '#/c/h5/skills-contest/events';
+}
+
+export function toH5ContestDocsHash(): string {
+  return '#/c/h5/skills-contest/docs';
+}
+
+export function toH5ContestMineHash(): string {
+  return '#/c/h5/skills-contest/mine';
+}
+
+export function toH5ContestWrongHash(): string {
+  return '#/c/h5/skills-contest/wrong';
+}
+
+export function toH5CourseNotesHash(): string {
+  return '#/c/h5/skills-contest/notes';
+}
+
+export function toH5CourseNoteHash(id: number): string {
+  return `#/c/h5/skills-contest/notes/${id}`;
+}
+
+export function goH5CourseNotes() {
+  window.location.hash = toH5CourseNotesHash();
+}
+
+export function toH5ContestDetailHash(id: number): string {
+  return `#/c/h5/contest-${id}`;
+}
+
+export function toH5ContestSignupHash(id: number): string {
+  return `#/c/h5/contest-${id}/signup`;
+}
+
+export function toH5ContestChallengeHash(id: number): string {
+  return `#/c/h5/contest-${id}/challenge`;
+}
+
+export function toH5ContestRankHash(id: number): string {
+  return `#/c/h5/contest-${id}/rank`;
+}
+
+export function goH5ContestHome() {
+  window.location.hash = toH5ContestHomeHash();
+}
+
+export function goH5ContestEvents() {
+  window.location.hash = toH5ContestEventsHash();
+}
+
+export function goH5ContestMine() {
+  window.location.hash = toH5ContestMineHash();
+}
+
+export function goH5ContestDetail(id: number) {
+  window.location.hash = toH5ContestDetailHash(id);
+}
+
 export function goH5Honor() {
   window.location.hash = toH5HonorHash();
 }
@@ -858,6 +1239,18 @@ export function goPcExamRank(id: number) {
   window.location.hash = toPcExamRankHash(id);
 }
 
+export function toPcProfileHash(tab: ProfileTab = 'home', sub?: ProfileSub): string {
+  if (tab === 'home') return '#/c/pc/profile';
+  if (tab === 'interactions') {
+    return sub && sub !== 'likes' ? `#/c/pc/profile/interactions/${sub}` : '#/c/pc/profile/interactions';
+  }
+  return `#/c/pc/profile/${tab}`;
+}
+
+export function goPcProfile(tab: ProfileTab = 'home', sub?: ProfileSub) {
+  window.location.hash = toPcProfileHash(tab, sub);
+}
+
 export function toPcMySignupsHash(): string {
   return '#/c/pc/my';
 }
@@ -883,7 +1276,7 @@ export function goPcFavorites() {
 }
 
 export function goAdminWorkbench() {
-  window.location.hash = '#/workbench/dashboard';
+  window.location.hash = '#/workbench/h5-decoration';
 }
 
 export function parseLocationHash(hash: string): {
@@ -893,14 +1286,14 @@ export function parseLocationHash(hash: string): {
   tab?: string;
   ownerApp?: 'culture' | 'skills-contest';
 } {
-  const fallback = { application: 'workbench', page: 'dashboard' };
+  const fallback = { application: 'workbench', page: 'h5-decoration' };
   const path = hash.replace(/^#\/?/, '').trim();
   if (!path) return fallback;
   const [pathname, queryString] = path.split('?');
   const [applicationKey, pageKey, recordId, tab] = pathname.split('/');
   const appQuery = new URLSearchParams(queryString ?? '').get('app');
   const ownerApp = appQuery === 'culture' || appQuery === 'skills-contest' ? appQuery : undefined;
-  const application = getApplication(applicationKey);
+  const application = resolveHashApplication(applicationKey, pageKey);
   if (!application) return fallback;
   const menus = applicationMenus[application.key] ?? [];
   const extraPages = [
@@ -954,6 +1347,28 @@ export function parseLocationHash(hash: string): {
     'learning-plan-create',
     'learning-plan-edit',
     'learning-plan-preview',
+    'incentive-badge-create',
+    'incentive-badge-edit',
+    'medal-create',
+    'medal-edit',
+    'medal-detail',
+    'forum-create',
+    'forum-edit',
+    'forum-detail',
+    'mailbox-create',
+    'mailbox-edit',
+    'mailbox-detail',
+    'mailbox-messages',
+    'topic-detail',
+    'advice-detail',
+    'contest-create',
+    'contest-edit',
+    'contest-detail',
+    'care-rule-create',
+    'care-rule-edit',
+    'care-template-create',
+    'care-template-edit',
+    'care-template-detail',
   ];
   if (pageKey && (isLeafMenuKey(menus, pageKey) || extraPages.includes(pageKey))) {
     return {
@@ -975,6 +1390,12 @@ export function parseLocationHash(hash: string): {
   }
   if (application.key === 'training' && pageKey === 'course-comments' && recordId) {
     return { application: 'training', page: 'course-detail', recordId, tab: 'comments', ...(ownerApp ? { ownerApp } : {}) };
+  }
+  if (application.key === 'workbench' && (pageKey === 'dashboard' || pageKey === 'my-tasks' || pageKey === 'workbench-overview')) {
+    return { application: 'workbench', page: 'h5-decoration' };
+  }
+  if (application.key === 'care' && (pageKey === 'care-plans' || pageKey === 'care-types' || pageKey === 'care-info')) {
+    return { application: 'care', page: pageKey === 'care-types' ? 'care-settings' : pageKey === 'care-info' ? 'care-overview' : 'care-rules' };
   }
   return { application: application.key, page: application.defaultPage, ...(ownerApp ? { ownerApp } : {}) };
 }
@@ -1056,6 +1477,33 @@ export function siderSelectedKey(page: string): string {
   }
   if (page === 'learning-plan-create' || page === 'learning-plan-edit' || page === 'learning-plan-preview') {
     return 'learning-plan-list';
+  }
+  if (page === 'incentive-badge-create' || page === 'incentive-badge-edit') {
+    return 'incentive-badges';
+  }
+  if (page === 'medal-create' || page === 'medal-edit' || page === 'medal-detail') {
+    return 'medal-list';
+  }
+  if (page === 'forum-create' || page === 'forum-edit' || page === 'forum-detail') {
+    return 'forum-list';
+  }
+  if (page === 'mailbox-create' || page === 'mailbox-edit' || page === 'mailbox-detail' || page === 'mailbox-messages') {
+    return 'mailbox-list';
+  }
+  if (page === 'topic-detail') {
+    return 'forum-list';
+  }
+  if (page === 'advice-detail') {
+    return 'mailbox-list';
+  }
+  if (page === 'contest-create' || page === 'contest-edit' || page === 'contest-detail') {
+    return 'contest-list';
+  }
+  if (page === 'care-rule-create' || page === 'care-rule-edit') {
+    return 'care-rules';
+  }
+  if (page === 'care-template-create' || page === 'care-template-edit' || page === 'care-template-detail') {
+    return 'care-templates';
   }
   return page;
 }

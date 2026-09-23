@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" width="640" height="400">
+  <rect width="640" height="400" fill="#1d4ea0"/>
+  <rect x="0" y="250" width="640" height="150" fill="#2b2f38"/>
+  <rect x="40" y="120" width="70" height="130" fill="#9ec4ff"/>
+  <rect x="130" y="80" width="90" height="170" fill="#cfe2ff"/>
+  <rect x="250" y="140" width="60" height="110" fill="#7aa7e8"/>
+  <rect x="360" y="70" width="110" height="180" fill="#d7e8ff"/>
+  <rect x="500" y="110" width="80" height="140" fill="#8fb6f0"/>
+  <path d="M30 310 H610" stroke="#f0b429" stroke-width="18"/>
+  <circle cx="90" cy="310" r="16" fill="#fff"/>
+  <circle cx="240" cy="310" r="16" fill="#fff"/>
+  <circle cx="400" cy="310" r="16" fill="#fff"/>
+  <circle cx="550" cy="310" r="16" fill="#fff"/>
+  <text x="320" y="48" text-anchor="middle" fill="#fff" font-size="28" font-family="sans-serif" font-weight="700">City</text>
+</svg>

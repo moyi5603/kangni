@@ -1,0 +1,1038 @@
+.c-pc-shell.is-incentive {
+  --ig-bg: #f3f6f8;
+  --ig-card: #ffffff;
+  --ig-muted-bg: #eef4f6;
+  --ig-line: #e3ebf0;
+  --ig-text: #16324f;
+  --ig-sub: #5a6d80;
+  --ig-primary: #14b8a6;
+  --ig-primary-soft: #e7f8f5;
+  min-height: 100vh;
+  background: var(--ig-bg);
+  color: var(--ig-text);
+}
+
+.c-pc-shell.is-incentive .c-pc-header {
+  grid-template-columns: auto 1fr auto;
+  height: 64px;
+  padding: 0 28px;
+  box-shadow: 0 1px 0 #eef2f5;
+}
+
+.c-pc-shell.is-incentive .c-pc-header-title {
+  justify-self: start;
+  margin-left: 14px;
+  color: #16324f;
+  font-size: 18px;
+  font-weight: 750;
+}
+
+.c-pc-shell.is-incentive .c-pc-main {
+  max-width: 1280px;
+  padding: 28px 28px 56px;
+}
+
+.c-pc-shell.is-incentive .c-incentive-h5 {
+  display: block;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  background: transparent;
+  position: relative;
+  color: var(--ig-text);
+}
+
+.c-pc-shell.is-incentive .c-incentive-pc .ant-btn-primary {
+  background: #14b8a6 !important;
+  border-color: #14b8a6 !important;
+  box-shadow: none;
+  height: 36px;
+  font-weight: 650;
+}
+
+.c-pc-shell.is-incentive .c-incentive-pc .ant-btn-primary:hover {
+  background: #0f9d8e !important;
+  border-color: #0f9d8e !important;
+}
+
+.c-incentive-pc-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.c-incentive-pc-nav > button:not(.ant-btn) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #5a6d80;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.c-incentive-pc-nav > button:not(.ant-btn):hover {
+  background: #f3f7f8;
+  color: #16324f;
+}
+
+.c-incentive-pc-nav > button:not(.ant-btn).is-active {
+  color: #0f766e;
+  background: #e7f8f5;
+}
+
+.c-incentive-pc-nav > button.has-unread::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f43f5e;
+}
+
+.c-incentive-pc-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  align-items: start;
+  gap: 24px;
+}
+
+.c-incentive-pc-main {
+  min-width: 0;
+}
+
+.c-incentive-pc-aside {
+  position: sticky;
+  top: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: #fff;
+  border: 1px solid var(--ig-line);
+  border-radius: 18px;
+  padding: 20px 18px 18px;
+  box-shadow: 0 10px 28px rgb(22 50 79 / 5%);
+}
+
+.c-incentive-pc-me {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.c-incentive-pc-me strong {
+  display: block;
+  font-size: 16px;
+  font-weight: 750;
+  color: #16324f;
+}
+
+.c-incentive-pc-me span {
+  display: block;
+  margin-top: 4px;
+  color: #5a6d80;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.c-incentive-pc-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 0;
+  padding: 12px 0;
+  border-top: 1px solid var(--ig-line);
+  border-bottom: 1px solid var(--ig-line);
+}
+
+.c-incentive-pc-stats > div {
+  text-align: center;
+}
+
+.c-incentive-pc-stats dd {
+  margin: 0;
+  color: #0f766e;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.c-incentive-pc-stats dt {
+  margin-top: 4px;
+  color: #5a6d80;
+  font-size: 12px;
+}
+
+.c-incentive-pc-aside .ant-btn-primary {
+  height: 42px !important;
+  font-size: 15px;
+}
+
+.c-incentive-pc-aside-block h3 {
+  margin: 0 0 10px;
+  color: #16324f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.c-incentive-pc-recent {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.c-incentive-pc-recent li {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.c-incentive-pc-recent .badge-artwork-shell {
+  width: 40px;
+  height: 40px;
+}
+
+.c-incentive-pc-recent b {
+  display: block;
+  font-size: 13px;
+  font-weight: 650;
+  color: #16324f;
+}
+
+.c-incentive-pc-recent small {
+  display: block;
+  margin-top: 2px;
+  color: #5a6d80;
+  font-size: 12px;
+}
+
+.c-incentive-pc .mobile-home-badge-summary > span {
+  display: none;
+}
+
+@media (max-width: 980px) {
+  .c-incentive-pc-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .c-incentive-pc-aside {
+    position: static;
+  }
+}
+
+.c-incentive-pc > main,
+.c-incentive-pc > .honor-badge-collection {
+  display: block;
+  padding: 0;
+  background: transparent;
+}
+
+.c-incentive-pc .pc-section-title,
+.c-incentive-pc .mobile-home-feed > header h3,
+.c-incentive-pc .mobile-home-ranking-card > header h3,
+.c-incentive-pc .employee-honor-wall-heading h2,
+.c-incentive-pc .mobile-badge-category-group h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #16324f !important;
+  font-size: 18px !important;
+  font-weight: 750 !important;
+  letter-spacing: 0 !important;
+}
+
+.c-incentive-pc .mobile-home-feed > header h3::before,
+.c-incentive-pc .mobile-home-ranking-card > header h3::before,
+.c-incentive-pc .employee-honor-wall-heading h2::before,
+.c-incentive-pc .mobile-badge-category-group h3::before {
+  content: '';
+  width: 4px;
+  height: 16px;
+  border-radius: 999px;
+  background: #14b8a6;
+}
+
+.c-incentive-pc .mobile-home-page {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 0;
+  background: transparent;
+}
+
+.c-incentive-pc .mobile-home-ranking-hero {
+  margin: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+.c-incentive-pc .mobile-home-ranking-card,
+.c-incentive-pc .mobile-home-ranking-hero .mobile-home-ranking-card {
+  padding: 22px 24px 0 !important;
+  border-radius: 18px !important;
+  box-shadow: 0 10px 28px rgb(22 50 79 / 6%) !important;
+}
+
+.c-incentive-pc .c-incentive-home-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+}
+
+.c-incentive-pc .c-incentive-home-filters .c-incentive-scope-tabs,
+.c-incentive-pc .c-incentive-home-filters .c-incentive-cat-tabs {
+  margin: 0;
+}
+
+.c-incentive-pc .c-incentive-scope-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.c-incentive-pc .c-incentive-scope-row .c-incentive-scope-tabs {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.c-incentive-pc .c-incentive-period-trigger {
+  margin-bottom: 8px;
+}
+
+.c-incentive-pc .mobile-home-hot-medals,
+.c-incentive-pc .mobile-home-ranking-hero .mobile-home-hot-medals {
+  display: flex !important;
+  grid-template-columns: none !important;
+  gap: 8px;
+  padding: 16px 0 20px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
+
+.c-incentive-pc .mobile-home-hot-medals > button,
+.c-incentive-pc .mobile-home-ranking-hero .mobile-home-hot-medals > button {
+  flex: 0 0 124px;
+  width: 124px;
+  padding: 8px 6px 12px;
+  border-radius: 14px;
+  scroll-snap-align: start;
+}
+
+.c-incentive-pc .mobile-home-hot-medals > button:hover {
+  background: #f6fbfa;
+}
+
+.c-incentive-pc .mobile-home-hot-medals .badge-artwork-shell,
+.c-incentive-pc .mobile-home-ranking-hero .mobile-home-hot-medals .badge-artwork-shell {
+  width: 92px;
+  height: 92px;
+}
+
+.c-incentive-pc .mobile-home-ranking-hero .mobile-home-hot-medals > button > strong {
+  margin-top: 10px;
+  font-size: 14px !important;
+}
+
+.c-incentive-pc .mobile-home-ranking-hero .mobile-home-hot-medals > button > span {
+  font-size: 13px !important;
+}
+
+.c-incentive-pc .mobile-home-ranking-card > footer.mobile-home-badge-summary {
+  margin: 8px -24px 0;
+  padding: 14px 24px;
+}
+
+.c-incentive-pc .mobile-home-ranking-card > footer.mobile-home-badge-summary > span {
+  font-size: 14px !important;
+}
+
+.c-incentive-pc .mobile-home-ranking-card > footer.mobile-home-badge-summary > span b {
+  color: #0f766e !important;
+  font-size: 18px !important;
+}
+
+.c-incentive-pc .mobile-home-ranking-card > footer.mobile-home-badge-summary > button {
+  color: #0f766e !important;
+  font-size: 14px;
+}
+
+.c-incentive-pc .mobile-home-feed {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.c-incentive-pc .mobile-home-feed > header {
+  margin: 0 0 14px !important;
+}
+
+.c-incentive-pc .mobile-home-feed .feed-card,
+.c-incentive-pc .mobile-home-feed .recognition-story-card {
+  margin: 0 0 12px;
+  padding: 18px 20px;
+  border-radius: 16px;
+  box-shadow: 0 8px 22px rgb(22 50 79 / 5%) !important;
+}
+
+.c-incentive-pc .feed-recognition-body,
+.c-incentive-pc .mobile-home-feed .feed-recognition-body {
+  background: #e7f8f5 !important;
+  grid-template-columns: 56px 1fr;
+  padding: 12px 14px;
+}
+
+.c-incentive-pc .feed-recognition-title em {
+  color: #0f766e !important;
+}
+
+.c-incentive-pc .feed-award-medal,
+.c-incentive-pc .feed-recognition-body > .badge-artwork-shell {
+  width: 56px;
+  height: 56px;
+}
+
+.c-incentive-pc .mobile-recognition-page,
+.c-incentive-pc .mobile-ranking-page,
+.c-incentive-pc .recognition-im-conversation,
+.c-incentive-pc .recognition-award-view {
+  background: #fff;
+  border: 1px solid var(--ig-line);
+  border-radius: 18px;
+  padding: 24px 28px 32px;
+  box-shadow: 0 10px 28px rgb(22 50 79 / 5%);
+}
+
+.c-incentive-pc .mobile-person-honor-page {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.c-incentive-pc .honor-badge-collection {
+  background: #fff !important;
+  border: 1px solid var(--ig-line);
+  border-radius: 18px;
+  padding: 22px 28px 32px !important;
+  box-shadow: 0 10px 28px rgb(22 50 79 / 5%);
+}
+
+.c-incentive-pc .honor-badge-tabs {
+  gap: 28px;
+  border-bottom-color: var(--ig-line) !important;
+}
+
+.c-incentive-pc .honor-badge-tabs > button {
+  color: #5a6d80 !important;
+  font-size: 15px !important;
+}
+
+.c-incentive-pc .honor-badge-tabs > button.is-active {
+  color: #0f766e !important;
+}
+
+.c-incentive-pc .honor-badge-tabs > button.is-active::after {
+  background: #14b8a6 !important;
+  width: 28px;
+}
+
+.c-incentive-pc .honor-badge-carousel {
+  justify-content: flex-start;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+  scroll-padding-inline: 8px;
+}
+
+.c-incentive-pc .honor-badge-caption strong {
+  color: #16324f !important;
+}
+
+.c-incentive-pc .honor-badge-caption span,
+.c-incentive-pc .honor-badge-caption em {
+  color: #5a6d80 !important;
+}
+
+.c-incentive-pc .honor-badge-divider {
+  background: var(--ig-line) !important;
+}
+
+.c-incentive-pc .honor-badge-category-head > h3,
+.c-incentive-pc .honor-badge-category > h3 {
+  color: #5a6d80 !important;
+}
+
+.c-incentive-pc .monthly-issue-quota,
+.c-incentive-pc .mobile-monthly-issue-quota {
+  background: #e7f8f5 !important;
+  border: 1px solid #b7efe6 !important;
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+
+.c-incentive-pc .monthly-issue-quota strong,
+.c-incentive-pc .mobile-monthly-issue-quota > div:first-child strong {
+  color: #0f766e !important;
+}
+
+.c-incentive-pc .mobile-form-backbar {
+  position: static;
+  margin: 0 0 18px;
+  top: auto;
+  box-shadow: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.c-incentive-pc .mobile-form-backbar > strong {
+  color: #16324f;
+  font-size: 16px;
+}
+
+.c-incentive-pc .mobile-confirm-actions {
+  position: static;
+  background: none;
+  padding: 20px 0 0;
+}
+
+.c-incentive-pc .mobile-all-badges {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  grid-auto-flow: row !important;
+  grid-auto-columns: unset !important;
+  overflow: visible !important;
+  gap: 14px !important;
+}
+
+.c-incentive-pc .mobile-badge-choice {
+  height: 232px;
+  border: 1px solid var(--ig-line) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 6px 16px rgb(22 50 79 / 4%) !important;
+  background: #fff !important;
+}
+
+.c-incentive-pc .mobile-badge-choice:hover {
+  border-color: #9ee0d6 !important;
+  box-shadow: 0 12px 24px rgb(15 118 110 / 10%) !important;
+}
+
+.c-incentive-pc .mobile-all-badges .mobile-badge-issue-trigger small,
+.c-incentive-pc .mobile-all-badges .mobile-badge-issue-trigger b {
+  color: inherit;
+}
+
+.c-incentive-pc .mobile-all-badges .mobile-badge-issue-trigger small {
+  color: #0f766e !important;
+}
+
+.c-incentive-pc .honor-badge-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 18px 16px;
+}
+
+.c-incentive-pc .c-incentive-scope-tabs,
+.c-incentive-pc .c-incentive-cat-tabs,
+.c-incentive-pc .c-incentive-period-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 20px;
+  margin: 0 0 8px;
+  border-bottom: 1px solid var(--ig-line);
+}
+
+.c-incentive-pc .c-incentive-scope-tabs > button,
+.c-incentive-pc .c-incentive-cat-tabs > button,
+.c-incentive-pc .c-incentive-period-tabs > button {
+  position: relative;
+  height: 40px;
+  padding: 0 2px 10px;
+  border: 0;
+  background: transparent;
+  color: #5a6d80;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.c-incentive-pc .c-incentive-scope-tabs > button.is-active {
+  color: #0f766e;
+}
+
+.c-incentive-pc .c-incentive-scope-tabs > button.is-active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: #14b8a6;
+}
+
+.c-incentive-pc .c-incentive-cat-tabs,
+.c-incentive-pc .c-incentive-period-tabs {
+  gap: 8px;
+  border-bottom: 0;
+}
+
+.c-incentive-pc .c-incentive-cat-tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.c-incentive-pc .c-incentive-cat-tabs > button {
+  flex: none;
+}
+
+.c-incentive-pc .c-incentive-cat-tabs > button,
+.c-incentive-pc .c-incentive-period-tabs > button {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid #d8e2eb;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 13px;
+}
+
+.c-incentive-pc .c-incentive-cat-tabs > button.is-active,
+.c-incentive-pc .c-incentive-period-tabs > button.is-active {
+  border-color: #0f766e;
+  background: #e7f8f5;
+  color: #0f766e;
+}
+
+.c-incentive-pc .c-incentive-cat-tabs > button.is-active::after,
+.c-incentive-pc .c-incentive-period-tabs > button.is-active::after {
+  content: none;
+}
+
+.c-incentive-pc .mobile-medal-tab-strip,
+.c-incentive-pc .mobile-medal-tab-strip.is-scroll {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 2px 14px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
+
+.c-incentive-pc .mobile-medal-tab-strip > button {
+  flex: none;
+  width: 108px;
+  min-width: 108px;
+  min-height: 118px;
+  padding: 10px 8px 12px;
+  border: 1px solid var(--ig-line);
+  border-radius: 14px;
+  background: #fff;
+  scroll-snap-align: start;
+}
+
+.c-incentive-pc .mobile-medal-tab-strip > button.active {
+  border-color: #14b8a6;
+  background: #e7f8f5;
+  box-shadow: 0 0 0 1px #14b8a6;
+}
+
+.c-incentive-pc .mobile-medal-recipient-heading > b {
+  color: #0f766e !important;
+}
+
+.c-incentive-pc .mobile-medal-recipient-row:hover {
+  background: #f6fbfa !important;
+}
+
+.c-incentive-pc .employee-honor-wall-hero {
+  background: linear-gradient(128deg, #0f766e 0%, #14b8a6 58%, #2dd4bf 100%) !important;
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: center;
+  padding: 24px 32px;
+  border-radius: 18px;
+  box-shadow: 0 16px 32px rgb(15 118 110 / 22%);
+}
+
+.c-incentive-pc .employee-honor-wall-hero > .employee-photo {
+  width: 88px !important;
+  height: 88px !important;
+}
+
+.c-incentive-pc .employee-honor-wall-identity {
+  min-width: 0;
+}
+
+.c-incentive-pc .employee-honor-wall-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.c-incentive-pc .employee-honor-wall-name-row h1 {
+  margin: 0;
+}
+
+.c-incentive-pc .employee-honor-wall-name-row p {
+  margin: 4px 0 0;
+}
+
+.c-incentive-pc .employee-honor-wall-name-row dl {
+  display: flex !important;
+  grid-column: auto !important;
+  flex: none;
+  gap: 22px;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  min-width: 0;
+}
+
+.c-incentive-pc .employee-honor-wall-name-row dl > div {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.c-incentive-pc .employee-honor-wall-name-row dl > div + div {
+  border: 0 !important;
+}
+
+.c-incentive-pc .employee-honor-wall-name-row dt {
+  font-size: 22px !important;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.c-incentive-pc .employee-honor-wall-name-row dd {
+  margin: 0 !important;
+  font-size: 14px !important;
+  opacity: 0.92;
+}
+
+.c-incentive-pc .employee-honor-wall-heading {
+  margin: 24px 2px 16px;
+}
+
+.c-incentive-pc .desktop-employee-honor-wall .employee-honor-month > div {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.c-incentive-pc .employee-honor-record {
+  background: #fff;
+  border: 1px solid var(--ig-line);
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgb(22 50 79 / 5%);
+}
+
+.c-incentive-pc .desktop-employee-honor-wall .employee-honor-record-main h3 {
+  font-size: 16px !important;
+  color: #16324f;
+}
+
+.c-incentive-pc .desktop-employee-honor-wall .employee-honor-record-main > header > strong {
+  color: #0f766e !important;
+  font-size: 14px !important;
+}
+
+.c-incentive-pc .desktop-employee-honor-wall .employee-honor-record-main > p,
+.c-incentive-pc .desktop-employee-honor-wall .employee-honor-record-main > footer,
+.c-incentive-pc .desktop-employee-honor-wall .employee-honor-record-main time {
+  font-size: 14px !important;
+}
+
+.c-incentive-pc .mobile-badge-detail-drawer .badge-detail-title-row > strong,
+.c-incentive-pc .badge-detail-meta > strong {
+  color: #0f766e !important;
+  background: #e7f8f5 !important;
+}
+
+.c-incentive-pc .mobile-badge-detail-link {
+  color: #0f766e !important;
+  background: #f6fbfa !important;
+  border-top: 1px solid var(--ig-line) !important;
+  min-height: 40px;
+  padding: 10px 8px;
+  font-size: 13px !important;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.c-incentive-pc .mobile-badge-detail-link:hover {
+  color: #0d9488 !important;
+  background: #e7f8f5 !important;
+}
+
+.c-incentive-pc .ant-drawer {
+  position: absolute;
+}
+
+.c-incentive-pc-badge-modal.ant-modal-wrap,
+.c-incentive-pc-rule-modal,
+.c-incentive-pc-picker-modal {
+  z-index: 1100;
+}
+
+.c-incentive-pc-badge-modal .ant-modal-content {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgb(15 118 110 / 18%);
+}
+
+.c-incentive-pc-badge-modal .ant-modal-header {
+  margin: 0;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e7eef2;
+}
+
+.c-incentive-pc-badge-modal .ant-modal-title {
+  color: #16324f;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.c-incentive-pc-badge-modal .ant-modal-body {
+  padding: 20px 24px 8px;
+}
+
+.c-incentive-pc-badge-modal .ant-modal-footer {
+  margin: 0;
+  padding: 12px 24px 20px;
+  border-top: 1px solid #e7eef2;
+}
+
+.c-incentive-pc-badge-modal .ant-btn-primary {
+  background: #14b8a6;
+}
+
+.c-incentive-pc-badge-modal .ant-btn-primary:hover {
+  background: #0d9488 !important;
+}
+
+.c-incentive-pc-badge-modal .badge-detail-content {
+  padding: 0;
+  align-items: center;
+  text-align: center;
+}
+
+.c-incentive-pc-badge-modal .badge-detail-kicker {
+  color: #5a6d80;
+  font-size: 12px;
+}
+
+.c-incentive-pc-badge-modal .badge-detail-medal {
+  width: 128px;
+  height: 128px;
+  margin: 8px auto 0;
+  border-radius: 32px;
+}
+
+.c-incentive-pc-badge-modal .badge-detail-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.c-incentive-pc-badge-modal .badge-detail-title-row h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #16324f;
+}
+
+.c-incentive-pc-badge-modal .badge-detail-title-row > strong {
+  color: #0f766e !important;
+  background: #e7f8f5 !important;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 13px;
+}
+
+.c-incentive-pc-badge-modal .badge-detail-summary {
+  margin: 12px 0 0;
+  text-align: left;
+  color: #5a6d80;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.c-incentive-pc .c-incentive-pc-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 24px 28px 32px !important;
+  background: #fff !important;
+}
+
+.c-incentive-pc-profile-hero {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px 18px;
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: linear-gradient(128deg, #0f766e 0%, #14b8a6 58%, #2dd4bf 100%);
+  color: #fff;
+}
+
+.c-incentive-pc-profile-hero .employee-photo {
+  width: 72px !important;
+  height: 72px !important;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 18%);
+}
+
+.c-incentive-pc-profile-hero h2 {
+  margin: 0;
+  color: #fff !important;
+  font-size: 20px !important;
+  font-weight: 750;
+}
+
+.c-incentive-pc-profile-hero p {
+  margin: 6px 0 0;
+  color: rgb(255 255 255 / 88%) !important;
+  font-size: 14px;
+}
+
+.c-incentive-pc-profile-hero dl {
+  display: flex;
+  gap: 28px;
+  margin: 0;
+}
+
+.c-incentive-pc-profile-hero dl > div {
+  text-align: right;
+}
+
+.c-incentive-pc-profile-hero dd {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.c-incentive-pc-profile-hero dt {
+  margin-top: 4px;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.c-incentive-pc-profile-tabs {
+  display: flex;
+  gap: 8px;
+  width: fit-content;
+  padding: 4px;
+  border-radius: 10px;
+  background: #f3f6f8;
+}
+
+.c-incentive-pc-profile-tabs > button {
+  min-width: 108px;
+  height: 34px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #5a6d80;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.c-incentive-pc-profile-tabs > button.is-active {
+  background: #fff;
+  color: #0f766e;
+  box-shadow: 0 1px 4px rgb(22 50 79 / 8%);
+}
+
+.c-incentive-pc .c-incentive-pc-profile .honor-badge-category-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+
+.c-incentive-pc .c-incentive-pc-profile .honor-badge-category-head > h3 {
+  margin: 0;
+  color: #16324f !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+}
+
+.c-incentive-pc .c-incentive-pc-profile .honor-badge-category-head > span {
+  color: #5a6d80;
+  font-size: 13px;
+}
+
+.c-incentive-pc .c-incentive-pc-profile .honor-badge-grid > button {
+  padding: 14px 8px 12px;
+  border: 1px solid var(--ig-line);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.c-incentive-pc .c-incentive-pc-profile .honor-badge-grid-medal {
+  width: 128px !important;
+  height: 128px !important;
+  aspect-ratio: auto;
+  background: #f3f6f8;
+  border-color: #e3ebf0;
+  box-shadow: none;
+}
+
+.c-incentive-pc .c-incentive-pc-profile .honor-badge-grid-medal .badge-artwork-shell,
+.c-incentive-pc .c-incentive-pc-profile .honor-badge-grid-medal .badge-artwork-shell img {
+  width: 128px !important;
+  height: 128px !important;
+}
+
+.c-incentive-pc .c-incentive-pc-profile .honor-badge-grid > button:hover {
+  border-color: #9ee0d6;
+  background: #f6fbfa;
+}
+
+.c-incentive-pc .c-incentive-pc-profile .honor-badge-grid b {
+  color: #16324f !important;
+}
+
+.c-incentive-pc .c-incentive-pc-profile .honor-badge-grid > button.is-locked {
+  background: #f7fafb;
+}
+
+.c-incentive-pc .c-incentive-pc-profile .honor-badge-count-tag.ant-tag {
+  color: #0f766e !important;
+  background: #e7f8f5 !important;
+  border: 0;
+}
+
+@media (max-width: 900px) {
+  .c-incentive-pc .mobile-all-badges,
+  .c-incentive-pc .honor-badge-grid,
+  .c-incentive-pc .desktop-employee-honor-wall .employee-honor-month > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}

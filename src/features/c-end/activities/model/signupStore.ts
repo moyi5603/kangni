@@ -1,4 +1,5 @@
 import { useMemo, useSyncExternalStore } from 'react';
+import { isActivityClosed } from '../../../activities/model/activity';
 import { getActivity } from '../../../activities/model/activityStore';
 import { evaluateCheckIn, type CheckInResult } from '../../../activities/model/activityCheckIn';
 import {
@@ -17,7 +18,7 @@ import {
 export const DEMO_SIGNUP_USER = {
   name: '陈产品',
   phone: '13800001111',
-  department: '职能中心',
+  department: '华东大区',
   position: '产品经理',
 } as const;
 
@@ -146,12 +147,31 @@ export function hasSignedUp(activityId: number, phone = DEMO_SIGNUP_USER.phone):
   return visibleRows(phone).some((item) => item.activityId === activityId);
 }
 
-export function getUserSignups(phone: string = DEMO_SIGNUP_USER.phone): ClientSignup[] {
-  return visibleRows(phone).map(toClientSignup);
+function collapseVisibleRows(rows: SignupRecord[]): SignupRecord[] {
+  const rank: Record<ClientSignupStatus, number> = { 待审核: 0, 已驳回: 1, 已通过: 2 };
+  const byActivity = new Map<number, SignupRecord>();
+  rows.forEach((item) => {
+    if (!isClientStatus(item.status)) return;
+    const prev = byActivity.get(item.activityId);
+    if (!prev) {
+      byActivity.set(item.activityId, item);
+      return;
+    }
+    const prevRank = rank[prev.status as ClientSignupStatus] ?? 9;
+    const nextRank = rank[item.status];
+    if (nextRank < prevRank || (nextRank === prevRank && item.createdAt > prev.createdAt)) {
+      byActivity.set(item.activityId, item);
+    }
+  });
+  return [...byActivity.values()];
 }
 
-export function getUserSignupRecord(activityId: number, phone = DEMO_SIGNUP_USER.phone): SignupRecord | undefined {
-  return getRelatedList('signups').find(
+export function getUserSignups(phone: string = DEMO_SIGNUP_USER.phone): ClientSignup[] {
+  return collapseVisibleRows(visibleRows(phone)).map(toClientSignup);
+}
+
+export function getUserSignupRecords(activityId: number, phone = DEMO_SIGNUP_USER.phone): SignupRecord[] {
+  return getRelatedList('signups').filter(
     (item) =>
       item.activityId === activityId &&
       (item.accountPhone ?? item.phone) === phone &&
@@ -159,8 +179,17 @@ export function getUserSignupRecord(activityId: number, phone = DEMO_SIGNUP_USER
   );
 }
 
+export function getUserSignupRecord(activityId: number, phone = DEMO_SIGNUP_USER.phone): SignupRecord | undefined {
+  return getUserSignupRecords(activityId, phone)[0];
+}
+
 export function getUserSignupAnswers(activityId: number, phone = DEMO_SIGNUP_USER.phone): Record<string, string> {
-  return { ...(getUserSignupRecord(activityId, phone)?.answers ?? {}) };
+  const rows = getUserSignupRecords(activityId, phone);
+  if (!rows.length) return {};
+  const merged: Record<string, string> = { ...(rows[0].answers ?? {}) };
+  const sessionIds = rows.flatMap((item) => parseSessionIds(item.answers?.['场次']));
+  if (sessionIds.length) merged['场次'] = stringifySessionIds([...new Set(sessionIds)]);
+  return merged;
 }
 
 export function updateSignup(
@@ -171,36 +200,73 @@ export function updateSignup(
 ): 'ok' | 'missing' | 'no-type' | 'cancelled' {
   const trimmed = type.trim();
   if (!trimmed) return 'no-type';
-  const current = getUserSignupRecord(activityId);
-  if (!current) return 'missing';
+  const rows = getUserSignupRecords(activityId);
+  if (!rows.length) return 'missing';
   const activity = getActivity(activityId);
-  const extras: Record<string, string> = { ...(current.answers ?? {}) };
+  const extras: Record<string, string> = { ...(rows[0].answers ?? {}) };
   for (const [key, value] of Object.entries(answers)) {
     if (key === '姓名' || key === '手机号' || key === '部门') continue;
     if (value.trim()) extras[key] = value.trim();
     else delete extras[key];
   }
+  let nextSessionIds: string[] | undefined;
   if (activity && needsSessionPick(activity.scheduleType)) {
-    const pickable = new Set(listClientSignupSessions(activity.sessions ?? [], now).map((item) => item.id));
-    const kept = parseSessionIds(current.answers?.['场次']).filter((id) => !pickable.has(id));
-    const next = stringifySessionIds([...kept, ...parseSessionIds(answers['场次'])]);
-    if (!next) return cancelSignup(activityId, now) === 'ok' ? 'cancelled' : 'missing';
-    extras['场次'] = next;
+    const pickable = new Set(
+      listClientSignupSessions(activity.sessions ?? [], now, Number.POSITIVE_INFINITY, activity.terminatedAt).map((item) => item.id),
+    );
+    const currentIds = rows.flatMap((item) => parseSessionIds(item.answers?.['场次']));
+    const kept = currentIds.filter((id) => !pickable.has(id));
+    nextSessionIds = [...new Set([...kept, ...parseSessionIds(answers['场次'])])];
+    if (!nextSessionIds.length) {
+      const result = cancelSignup(activityId, now);
+      if (result === 'ok') return 'cancelled';
+      return 'missing';
+    }
+    delete extras['场次'];
   }
-  patchRelated('signups', (list) =>
-    list.map((item) =>
-      item.id === current.id
-        ? {
-            ...item,
-            signupType: trimmed,
-            name: answers['姓名']?.trim() || item.name,
-            phone: answers['手机号']?.trim() || item.phone,
-            department: answers['部门']?.trim() || item.department,
-            answers: Object.keys(extras).length ? extras : undefined,
-          }
-        : item,
-    ),
-  );
+  const profile = {
+    signupType: trimmed,
+    name: answers['姓名']?.trim() || rows[0].name,
+    phone: answers['手机号']?.trim() || rows[0].phone,
+    department: answers['部门']?.trim() || rows[0].department,
+  };
+  patchRelated('signups', (list) => {
+    const mineIds = new Set(rows.map((item) => item.id));
+    const others = list.filter((item) => !mineIds.has(item.id));
+    const bySession = new Map(rows.map((item) => [parseSessionIds(item.answers?.['场次'])[0] ?? '', item]));
+    let nextId = nextSignupId(list);
+    const built: SignupRecord[] = [];
+    const sessionIds = nextSessionIds ?? [parseSessionIds(rows[0].answers?.['场次'])[0] ?? ''];
+    sessionIds.forEach((sessionId) => {
+      const existing = sessionId ? bySession.get(sessionId) : rows[0];
+      const rowAnswers = sessionId ? { ...extras, 场次: sessionId } : Object.keys(extras).length ? extras : undefined;
+      if (existing) {
+        built.push({ ...existing, ...profile, answers: rowAnswers });
+        mineIds.delete(existing.id);
+        return;
+      }
+      const reuse = rows.find((item) => mineIds.has(item.id));
+      if (reuse) {
+        mineIds.delete(reuse.id);
+        built.push({ ...reuse, ...profile, answers: rowAnswers });
+        return;
+      }
+      built.push({
+        id: nextId,
+        activityId,
+        name: profile.name,
+        phone: profile.phone,
+        signupType: profile.signupType,
+        department: profile.department,
+        status: rows[0].status,
+        createdAt: formatSignupTime(new Date(now)),
+        accountPhone: rows[0].accountPhone ?? DEMO_SIGNUP_USER.phone,
+        answers: rowAnswers,
+      });
+      nextId += 1;
+    });
+    return [...built, ...others];
+  });
   return 'ok';
 }
 
@@ -227,21 +293,31 @@ export function submitSignup(
     if (key === '姓名' || key === '手机号' || key === '部门') continue;
     if (value.trim()) extras[key] = value.trim();
   }
-  patchRelated('signups', (list) => [
-    {
-      id: nextSignupId(list),
-      activityId,
-      name: answers['姓名']?.trim() || DEMO_SIGNUP_USER.name,
-      phone: answers['手机号']?.trim() || DEMO_SIGNUP_USER.phone,
-      signupType: trimmed,
-      department: answers['部门']?.trim() || DEMO_SIGNUP_USER.department,
-      status: signupStatusFor(activityId, trimmed),
-      createdAt: formatSignupTime(),
-      accountPhone: DEMO_SIGNUP_USER.phone,
-      answers: Object.keys(extras).length ? extras : undefined,
-    },
-    ...list,
-  ]);
+  const sessionIds = parseSessionIds(extras['场次']);
+  const baseExtras = { ...extras };
+  delete baseExtras['场次'];
+  const sessionKeys = sessionIds.length ? sessionIds : [''];
+  patchRelated('signups', (list) => {
+    let nextId = nextSignupId(list);
+    const created = sessionKeys.map((sessionId) => {
+      const rowAnswers = sessionId ? { ...baseExtras, 场次: sessionId } : Object.keys(baseExtras).length ? baseExtras : undefined;
+      const row: SignupRecord = {
+        id: nextId,
+        activityId,
+        name: answers['姓名']?.trim() || DEMO_SIGNUP_USER.name,
+        phone: answers['手机号']?.trim() || DEMO_SIGNUP_USER.phone,
+        signupType: trimmed,
+        department: answers['部门']?.trim() || DEMO_SIGNUP_USER.department,
+        status: signupStatusFor(activityId, trimmed),
+        createdAt: formatSignupTime(),
+        accountPhone: DEMO_SIGNUP_USER.phone,
+        answers: rowAnswers,
+      };
+      nextId += 1;
+      return row;
+    });
+    return [...created, ...list];
+  });
   return 'ok';
 }
 
@@ -249,7 +325,7 @@ export function cancelSignup(activityId: number, now = Date.now()): 'ok' | 'miss
   if (!hasSignedUp(activityId)) return 'missing';
   const activity = getActivity(activityId);
   if (!activity) return 'missing';
-  if (activity.activityStatus === '已结束') return 'closed';
+  if (isActivityClosed(activity)) return 'closed';
   const match = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(activity.signupEndAt);
   if (!match) return 'closed';
   const [, year, month, day, hour, minute] = match;
@@ -267,6 +343,12 @@ export function cancelSignup(activityId: number, now = Date.now()): 'ok' | 'miss
   return 'ok';
 }
 
+export function cancelSignupToast(result: 'ok' | 'missing' | 'closed'): string {
+  if (result === 'ok') return '已取消报名';
+  if (result === 'closed') return '报名已截止，无法取消';
+  return '取消失败';
+}
+
 export function applyActivityCheckIn(
   activityId: number,
   sessionId: string,
@@ -276,9 +358,16 @@ export function applyActivityCheckIn(
 ): CheckInResult {
   const activity = getActivity(activityId);
   if (!activity) return { ok: false, reason: 'disabled' };
-  const signup = getRelatedList('signups').find(
-    (item) => item.activityId === activityId && (item.accountPhone ?? item.phone) === phone,
-  );
+  const signup =
+    getRelatedList('signups').find(
+      (item) =>
+        item.activityId === activityId &&
+        (item.accountPhone ?? item.phone) === phone &&
+        parseSessionIds(item.answers?.['场次']).includes(sessionId),
+    ) ??
+    getRelatedList('signups').find(
+      (item) => item.activityId === activityId && (item.accountPhone ?? item.phone) === phone,
+    );
   const result = evaluateCheckIn({ activity, sessionId, token, signup, now });
   if (!result.ok || result.already || !signup) return result;
   const at = formatSignupTime(new Date(now));
@@ -301,7 +390,7 @@ export function loadDemoSignups() {
       name: item.name,
       phone: item.phone,
       signupType: item.type,
-      department: '职能中心',
+      department: '华东大区',
       status: item.status,
       createdAt: item.createdAt,
     }));

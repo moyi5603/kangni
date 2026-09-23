@@ -37,7 +37,8 @@ describe('H5 course detail', () => {
     expect(html).toContain('aria-label="点赞"');
     expect(html).toContain('aria-label="收藏"');
     expect(html).toContain('aria-label="评论"');
-    expect(html).not.toContain('aria-label="分享"');
+    expect(html).toContain('aria-label="分享"');
+    expect(html.indexOf('aria-label="评论"')).toBeLessThan(html.indexOf('aria-label="分享"'));
     expect(html).toContain('aria-label="快速入口"');
   });
 
@@ -55,7 +56,7 @@ describe('H5 course detail', () => {
     expect(html).not.toContain('aria-label="点赞"');
     expect(html).not.toContain('aria-label="收藏"');
     expect(html).not.toContain('aria-label="评论"');
-    expect(html).not.toContain('aria-label="分享"');
+    expect(html).toContain('aria-label="分享"');
     expect(html).toContain('aria-label="快速入口"');
   });
 

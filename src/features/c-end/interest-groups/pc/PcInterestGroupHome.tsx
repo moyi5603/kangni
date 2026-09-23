@@ -4,7 +4,7 @@ import '../h5/groupHome.css';
 
 export function PcInterestGroupHome() {
   return (
-    <IgProvider>
+    <IgProvider surface="pc">
       <InterestGroupHome surface="pc" />
     </IgProvider>
   );

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  App,
   Breadcrumb,
   Button,
   Card,
@@ -17,12 +18,16 @@ import {
 } from 'antd';
 import { InterestGroupFormDrawer } from '../components/InterestGroupFormDrawer';
 import { getInterestGroupCategoryLabel } from '../model/interestGroupCategory';
+import { canPublishInterestGroup } from '../model/interestGroup';
+import { interestGroupPublishStatusColor } from '../model/interestGroupActivity';
 import { InterestGroupActivityListPage } from './InterestGroupActivityListPage';
 import { InterestGroupCommentListPage } from './InterestGroupCommentListPage';
 import { InterestGroupMemberListPage } from './InterestGroupMemberListPage';
 import { InterestGroupMomentListPage } from './InterestGroupMomentListPage';
 import { computeInterestGroupDetailStats } from '../model/interestGroupStats';
 import {
+  publishInterestGroups,
+  unpublishInterestGroups,
   useInterestGroupActivities,
   useInterestGroupCategories,
   useInterestGroupComments,
@@ -53,6 +58,7 @@ type InterestGroupDetailPageProps = {
 };
 
 export function InterestGroupDetailPage({ recordId, tab, onBack, onNavigate, onTabChange }: InterestGroupDetailPageProps) {
+  const { message, modal } = App.useApp();
   const categories = useInterestGroupCategories();
   const groups = useInterestGroups();
   const activities = useInterestGroupActivities();
@@ -79,7 +85,7 @@ export function InterestGroupDetailPage({ recordId, tab, onBack, onNavigate, onT
   if (!group) {
     return (
       <div className="page-stack">
-        <Empty description="小组不存在或已删除">
+        <Empty description="兴趣圈不存在或已删除">
           <Button type="primary" onClick={onBack}>
             返回列表
           </Button>
@@ -103,7 +109,7 @@ export function InterestGroupDetailPage({ recordId, tab, onBack, onNavigate, onT
       <Breadcrumb
         separator=">"
         items={[
-          { title: <Button type="link" className="breadcrumb-link" onClick={onBack}>小组管理</Button> },
+          { title: <Button type="link" className="breadcrumb-link" onClick={onBack}>兴趣圈管理</Button> },
           { title: group.name },
         ]}
       />
@@ -112,7 +118,7 @@ export function InterestGroupDetailPage({ recordId, tab, onBack, onNavigate, onT
           <Flex align="stretch" gap={16} className="activity-detail-header-main">
             <div className="activity-detail-cover-wrap">
               {group.coverUrl ? (
-                <Image src={group.coverUrl} alt="小组封面" className="activity-detail-cover" />
+                <Image src={group.coverUrl} alt="兴趣圈封面" className="activity-detail-cover" />
               ) : (
                 <div className="activity-detail-cover-placeholder">暂无封面</div>
               )}
@@ -123,18 +129,46 @@ export function InterestGroupDetailPage({ recordId, tab, onBack, onNavigate, onT
               </Typography.Title>
               <Space wrap>
                 <Tag>{getInterestGroupCategoryLabel(group.categoryKey, categories)}</Tag>
+                <Tag color={interestGroupPublishStatusColor[group.publishStatus]}>{group.publishStatus}</Tag>
                 {group.auditStatus !== '已通过' && group.auditStatus !== '无需审核' ? (
                   <Tag color={group.auditStatus === '已驳回' ? 'error' : 'warning'}>{group.auditStatus}</Tag>
                 ) : null}
               </Space>
               <Descriptions column={1} size="small" style={{ marginTop: 12 }}>
-                <Descriptions.Item label="小组负责人">{group.leadName}</Descriptions.Item>
-                <Descriptions.Item label="活动区域">{group.area || '—'}</Descriptions.Item>
+                <Descriptions.Item label="兴趣圈负责人">{group.leadName}</Descriptions.Item>
                 <Descriptions.Item label="简介">{group.intro || '—'}</Descriptions.Item>
               </Descriptions>
             </div>
           </Flex>
           <Space>
+            {canPublishInterestGroup(group) ? (
+              <Button
+                type="primary"
+                onClick={() => {
+                  publishInterestGroups([group.id]);
+                  message.success(`已发布「${group.name}」`);
+                }}
+              >
+                发布
+              </Button>
+            ) : (
+              <Button
+                onClick={() => {
+                  modal.confirm({
+                    title: `确认撤销「${group.name}」的发布？`,
+                    content: '撤销后兴趣圈不再对其他员工可见。',
+                    okText: '确认',
+                    cancelText: '取消',
+                    onOk: () => {
+                      unpublishInterestGroups([group.id]);
+                      message.success(`已撤销「${group.name}」`);
+                    },
+                  });
+                }}
+              >
+                撤销
+              </Button>
+            )}
             <Button onClick={() => setEditorOpen(true)}>编辑</Button>
           </Space>
         </Flex>

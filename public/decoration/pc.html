@@ -1,0 +1,1518 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PC 页面装修 · 默认门户</title>
+  <style>
+    :root{
+      --bg:#eef0f4; --card:#fff; --line:#e6e8ee; --text:#333; --muted:#8a8f99;
+      --primary:#2f6fed; --green:#07c160; --save:#f5a623; --red:#ef4444;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;overflow:hidden}
+    body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;color:var(--text);background:var(--bg)}
+    button,input,select{font:inherit;color:inherit}
+    .app{height:100vh;display:flex;flex-direction:column}
+
+    .top{
+      height:52px;background:#fff;border-bottom:1px solid var(--line);flex-shrink:0;
+      display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 16px;z-index:20;
+    }
+    .back{display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;cursor:pointer;font-size:14px;color:#555;justify-self:start}
+    .top-ttl{font-size:16px;font-weight:600}
+    .save{justify-self:end;height:32px;padding:0 18px;border:0;border-radius:4px;background:var(--save);color:#fff;cursor:pointer;font-size:13px}
+    .save:hover{filter:brightness(.96)}
+
+    .studio{flex:1;min-height:0;display:grid;grid-template-columns:232px 1fr 392px}
+    .studio.left-off{grid-template-columns:0 1fr 392px}
+    .studio.right-off{grid-template-columns:232px 1fr 0}
+    .studio.left-off.right-off{grid-template-columns:0 1fr 0}
+    .studio > *{min-height:0;min-width:0}
+
+    .left,.right{background:#fff;display:flex;flex-direction:column;overflow:hidden}
+    .left{border-right:1px solid var(--line)}
+    .right{border-left:1px solid var(--line)}
+    .sec-h{padding:14px 14px 8px;font-size:13px;font-weight:600;color:#444}
+    .comp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:4px 12px 16px}
+    .comp{
+      display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px;
+      border:0;background:transparent;cursor:pointer;border-radius:8px;
+    }
+    .comp:hover{background:#f6f7f9}
+    .comp.on .comp-ico{box-shadow:0 0 0 2px var(--primary)}
+    .comp-ico{
+      width:44px;height:44px;border-radius:10px;display:grid;place-items:center;color:#fff;
+    }
+    .comp-ico svg{width:22px;height:22px}
+    .comp span{font-size:12px;color:#555;text-align:center;line-height:1.3}
+
+    .center{position:relative;overflow:auto;background:#dfe3ea}
+    .rail{
+      position:sticky;top:50%;z-index:8;width:22px;height:48px;border:1px solid #d0d5dd;
+      background:#fff;cursor:pointer;display:grid;place-items:center;color:#888;font-size:12px;
+    }
+    .rail.l{position:absolute;left:0;top:50%;transform:translateY(-50%);border-radius:0 6px 6px 0}
+    .rail.r{position:absolute;right:0;top:50%;transform:translateY(-50%);border-radius:6px 0 0 6px}
+
+    .pc-stage{
+      width:1080px;min-height:760px;margin:28px auto 48px;border-radius:4px;overflow:hidden;
+      background:#0f5c49;position:relative;box-shadow:0 16px 48px rgba(16,24,40,.18);
+    }
+    .pc-stage::before{
+      content:"";position:absolute;inset:0;pointer-events:none;opacity:.55;
+      background:
+        radial-gradient(circle at 12% 78%, rgba(46,160,90,.55) 0 40px, transparent 42px),
+        radial-gradient(circle at 22% 86%, rgba(30,120,70,.5) 0 54px, transparent 56px),
+        radial-gradient(circle at 78% 18%, rgba(255,255,255,.08) 0 80px, transparent 82px);
+    }
+    .pc-board{
+      position:relative;z-index:1;display:grid;grid-template-columns:220px minmax(0,1fr) 248px;
+      gap:12px;padding:16px;align-items:start;min-height:760px;
+    }
+    .col{display:flex;flex-direction:column;gap:12px}
+    .mod{
+      background:#fff;border-radius:6px;padding:12px;min-height:72px;
+      box-shadow:0 1px 4px rgba(0,0,0,.06);
+    }
+    .mod.h{min-height:0}
+    .mod.empty{background:rgba(255,255,255,.18);min-height:88px;box-shadow:none}
+    .mod-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .mod-h b{font-size:14px}
+    .mod-h .more{font-size:12px;color:#aaa}
+    .hot-item{display:flex;gap:8px;align-items:flex-start;padding:6px 0;font-size:12px;color:#555;line-height:1.4}
+    .hot-n{width:16px;height:16px;border-radius:3px;background:#eee;color:#888;font-size:11px;display:grid;place-items:center;flex-shrink:0;margin-top:1px}
+    .hot-item:nth-child(1) .hot-n,.hot-item:nth-child(2) .hot-n,.hot-item:nth-child(3) .hot-n{background:#ff6b35;color:#fff}
+    .post-banner{height:64px;border-radius:6px;background:linear-gradient(90deg,#1db954,#17a34a);color:#fff;display:flex;align-items:center;padding:0 14px;font-size:14px;font-weight:600;gap:10px}
+    .quick{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 6px;padding:4px 0}
+    .quick i{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;margin:0 auto 4px;color:#fff}
+    .quick em{display:block;font-style:normal;font-size:11px;text-align:center;color:#555}
+    .notice{height:32px;border-radius:16px;background:#f3f4f6;display:flex;align-items:center;padding:0 12px;font-size:12px;color:#666;overflow:hidden;white-space:nowrap}
+    .notice-bar{height:40px;border-radius:8px;background:#fff7ed;border:1px solid #fed7aa;display:flex;align-items:center;gap:8px;padding:0 12px;overflow:hidden}
+    .notice-bar .horn{width:18px;height:18px;flex-shrink:0;color:#f97316}
+    .notice-bar .horn svg{width:100%;height:100%;display:block}
+    .notice-bar .track{flex:1;min-width:0;overflow:hidden;white-space:nowrap;font-size:13px;color:#9a3412}
+    .notice-bar .track span{display:inline-block;padding-right:48px}
+    .notice-bar.scroll .track span{animation:notice-marquee 10s linear infinite}
+    @keyframes notice-marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+    .rank{font-size:12px;color:#666;padding:4px 0}
+    .rank b{color:#f5a623;margin-right:6px}
+
+    .art-wrap{position:relative;cursor:pointer}
+    .art-wrap[hidden]{display:none !important}
+    .art-wrap.sel .art-card{outline:2px solid var(--primary);outline-offset:0}
+    .art-ops{
+      position:absolute;left:-36px;top:8px;width:32px;background:var(--primary);border-radius:6px;
+      display:none;flex-direction:column;overflow:hidden;z-index:3;
+    }
+    .art-wrap.sel .art-ops{display:flex}
+    .art-ops button{height:32px;border:0;background:transparent;color:#fff;cursor:pointer;font-size:13px;border-bottom:1px solid rgba(255,255,255,.2)}
+    .art-ops button:last-child{border-bottom:0}
+    .art-card{background:#fff;border-radius:6px;padding:14px 14px 10px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+    .art-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+    .art-head b{font-size:16px;font-weight:700}
+    .art-head .more{font-size:13px;color:#b0b0b0}
+    .slot-hint{
+      min-height:160px;border:1px dashed rgba(255,255,255,.55);border-radius:6px;
+      color:#e7fff4;display:grid;place-items:center;font-size:13px;text-align:center;padding:16px;line-height:1.6;
+    }
+    .slot-hint[hidden]{display:none !important}
+
+    .ph-pic{background:#ececec;border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#c5c5c5}
+    .ph-pic svg{width:42%;height:42%}
+    .ph-bar{height:10px;background:#e6e6e6;border-radius:4px}
+    .ph-bar.s{width:52%;height:8px;margin-top:8px}
+    .ph-meta{display:flex;gap:8px;margin-top:8px;align-items:center}
+    .ph-meta i{width:28px;height:8px;background:#eee;border-radius:4px;display:block}
+    .ph-meta i.view{width:36px}
+    .sk-list .sk-item{padding:10px 0;border-bottom:1px solid #f3f3f3}
+    .sk-list .sk-item:last-child{border-bottom:0}
+    .sk-list .ph-bar{height:11px}
+    .sk-lr,.sk-rl{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #f0f0f0;align-items:center}
+    .sk-lr:last-child,.sk-rl:last-child{border-bottom:0}
+    .sk-lr .ph-pic,.sk-rl .ph-pic{width:148px;height:96px}
+    .sk-lr .txt,.sk-rl .txt{flex:1;min-width:0}
+    .sk-big{padding-bottom:12px}
+    .sk-big .ph-pic{width:100%;height:200px;margin-bottom:10px}
+    .sk-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding-bottom:6px}
+    .sk-cols .ph-pic{width:100%;height:110px;margin-bottom:8px}
+
+    .tabs{display:flex;border-bottom:1px solid var(--line);flex-shrink:0}
+    .tabs button{
+      flex:1;height:42px;border:0;background:transparent;color:#666;cursor:pointer;font-size:14px;
+      border-bottom:2px solid transparent;
+    }
+    .tabs button.on{color:var(--green);font-weight:600;border-bottom-color:var(--green)}
+    .pane{flex:1;min-height:0;overflow-y:auto;padding:16px 18px 48px}
+    .pane[hidden]{display:none}
+    .empty-hint{font-size:13px;color:var(--muted);padding:28px 10px;text-align:center;line-height:1.7}
+    .blk{background:#f6f7fb;border:1px solid #eef0f4;border-radius:12px;padding:14px;margin-bottom:14px}
+    .blk-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;font-size:13px;font-weight:600;color:#333}
+    .blk-h:last-child{margin-bottom:0}
+    .blk-item{margin-top:12px}
+    .blk-lab{display:block;font-size:12px;color:#8a8f99;margin-bottom:8px}
+    .inline{display:flex;align-items:center;gap:10px;min-width:0}
+    .right-col{display:flex;flex-direction:column;gap:10px}
+    .hr{height:1px;background:var(--line);margin:16px 0}
+    .switch{width:42px;height:24px;border-radius:999px;background:#d6d9e4;position:relative;border:0;cursor:pointer;margin-left:auto;flex-shrink:0}
+    .switch.on{background:var(--green)}
+    .switch::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:999px;background:#fff}
+    .switch.on::after{left:21px}
+    .color-pick{width:28px;height:28px;border-radius:4px;border:1px solid #d9dce7;background:#fff;padding:2px;cursor:pointer;flex-shrink:0}
+    .color-pick::-webkit-color-swatch-wrapper{padding:0}
+    .color-pick::-webkit-color-swatch{border:0;border-radius:3px}
+    .input{height:36px;border:1px solid #d9dce7;border-radius:8px;padding:0 12px;min-width:0;flex:1;background:#fff}
+    .input-wrap{position:relative;flex:1;min-width:0}
+    .input-wrap .input{width:100%;padding-right:48px}
+    .count{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#a0a7b7;font-size:12px;pointer-events:none}
+    input[type="radio"]{
+      -webkit-appearance:none;appearance:none;width:16px;height:16px;min-width:16px;margin:0 6px 0 0;
+      border:1px solid #d9d9d9;border-radius:50%;background:#fff;cursor:pointer;
+    }
+    input[type="radio"]:checked{border:5px solid var(--primary)}
+    .select-wrap{position:relative;width:100%}
+    .select{
+      width:100%;height:36px;border:1px solid #d9dce7;border-radius:8px;
+      display:flex;align-items:center;justify-content:space-between;padding:0 12px;
+      color:#a0a7b7;background:#fff;cursor:pointer;text-align:left;
+    }
+    .select.has-value{color:#444b5a}
+    .select.open{border-color:var(--primary)}
+    .select:disabled{cursor:not-allowed;opacity:.55}
+    .select-menu{
+      display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);
+      background:#fff;border:1px solid #d9dce7;border-radius:6px;max-height:220px;overflow:auto;
+      z-index:40;box-shadow:0 8px 24px rgba(47,54,69,.1);
+    }
+    .select-menu.show{display:block}
+    .select-option{width:100%;padding:9px 12px;border:0;background:#fff;text-align:left;cursor:pointer;font-size:13px}
+    .select-option:hover{background:#f3f4f6}
+    .radio-wrap{display:flex;flex-direction:column;gap:10px}
+    .radio-wrap.rowish{flex-direction:row;align-items:center;gap:16px;flex-wrap:wrap}
+    .radio{display:inline-flex;align-items:center;font-size:13px;cursor:pointer;white-space:nowrap}
+    .pick-latest{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .small-input{width:48px;height:32px;border:1px solid #d9dce7;border-radius:8px;padding:0 6px;text-align:center}
+    .btn{width:100%;height:38px;border:1px solid #d9dce7;border-radius:8px;background:#fff;cursor:pointer;font-size:13px}
+    .btn:hover{background:#f8fafc}
+    .field-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;font-size:14px;color:#444;border-bottom:1px solid #eef0f4}
+    .field-row:last-child{border-bottom:0;padding-bottom:2px}
+    .field-row .switch{margin-left:0}
+    .style-pick{display:flex;flex-wrap:wrap;gap:12px 10px;padding:2px 0 4px}
+    .style-opt{flex:0 0 calc((100% - 20px) / 3);max-width:none;border:0;background:transparent;cursor:pointer;padding:0;text-align:center}
+    .style-pick.one .style-opt{flex:0 0 88px;width:88px}
+    .style-thumb{
+      width:100%;height:78px;border:1px solid #e5e5e5;border-radius:8px;background:#fff;
+      padding:7px;position:relative;display:flex;flex-direction:column;justify-content:center;gap:3px;
+    }
+    .style-opt.on .style-thumb{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+    .style-opt.on .style-thumb::after{
+      content:"";position:absolute;right:3px;bottom:3px;width:14px;height:14px;border-radius:50%;
+      background:var(--primary) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2' d='M2.5 6.2 5 8.6 9.5 3.5'/%3E%3C/svg%3E") center/9px 9px no-repeat;
+    }
+    .style-opt em{display:block;font-style:normal;font-size:11px;color:#666;margin-top:6px;white-space:nowrap}
+    .mini-bar{height:4px;background:#ddd;border-radius:2px}
+    .mini-pic{background:#e4e4e4;border-radius:2px;position:relative;overflow:hidden}
+    .mini-pic::after{
+      content:"";position:absolute;inset:28% 30% 32% 30%;
+      background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23c8c8c8' d='M4 18l5-7 3 4 4-6 4 9H4z'/%3E%3Ccircle cx='16.5' cy='7.5' r='2' fill='%23c8c8c8'/%3E%3C/svg%3E") center/contain no-repeat;
+    }
+    .pg-row{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+    .pg-row .lab{font-size:13px;font-weight:600;min-width:72px}
+    .link{border:0;background:transparent;color:var(--primary);cursor:pointer;font-size:13px}
+    .bg-thumb{width:72px;height:96px;border-radius:6px;background:#0f5c49;position:relative;overflow:hidden;border:1px solid #e5e5e5}
+    .bg-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+    .bg-x{
+      position:absolute;right:4px;top:4px;width:18px;height:18px;border:0;border-radius:50%;
+      background:rgba(0,0,0,.45);color:#fff;cursor:pointer;font-size:11px;line-height:18px;
+    }
+    .toast{
+      position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1f2328;color:#fff;
+      padding:10px 20px;border-radius:8px;font-size:13px;z-index:80;opacity:0;transition:.2s;pointer-events:none;
+    }
+    .toast.show{opacity:1}
+    .rel-card{padding:18px 20px 14px;border-radius:10px}
+    .rel-user{display:flex;align-items:center;gap:12px}
+    .rel-avatar{
+      width:52px;height:52px;border-radius:50%;flex-shrink:0;overflow:hidden;background:#d8e4f4;
+    }
+    .rel-avatar svg,.rel-avatar img{width:100%;height:100%;display:block}
+    .rel-name{font-size:20px;font-weight:700;color:#3d2c22;line-height:1.2}
+    .rel-sub{font-size:12px;color:#a39486;margin-top:4px}
+    .rel-line{height:1px;background:#eee8e2;margin:16px 0 12px}
+    .rel-stats{display:grid;text-align:center;gap:8px}
+    .rel-stat b{display:block;font-size:28px;line-height:1.15;color:#e36b24;font-weight:700}
+    .rel-stat em{display:block;margin-top:4px;font-style:normal;font-size:13px;color:#4a3728}
+    .rel-empty{font-size:13px;color:#98a2b3;text-align:center;padding:8px 8px 12px}
+    .blk-hint{margin:-4px 0 10px;font-size:12px;color:#8a8f99;font-weight:400}
+    .switch.locked{opacity:.4;cursor:not-allowed}
+    .sk-fill-btn{font-size:12px;color:var(--primary);border:1px solid #d6e4ff;background:#f5f8ff;border-radius:4px;padding:2px 8px;white-space:nowrap}
+    .sk-qrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}
+    .sk-qrow .ph-bar.s{margin-top:0}
+    .sk-tabs{display:flex;gap:14px;margin:0 0 10px;font-size:13px;color:#667085}
+    .sk-tabs .on{color:var(--primary);font-weight:600}
+    .btn-add-art{height:32px;padding:0 14px;border:0;border-radius:4px;background:var(--primary);color:#fff;cursor:pointer;font-size:13px}
+    .custom-pick-row{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+    .picked-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+    .picked-card{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid #eef0f4;border-radius:6px;padding:8px 10px;background:#fafbfc}
+    .picked-card .ttl{font-size:13px;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .picked-card .del{border:0;background:none;color:#f43f5e;cursor:pointer;font-size:12px;flex-shrink:0}
+    .pick-mask{
+      display:none;position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.45);
+      align-items:center;justify-content:center;padding:16px;
+    }
+    .pick-mask.show{display:flex}
+    .pick-modal{
+      width:min(1280px,calc(100vw - 32px));
+      height:min(720px,calc(100vh - 32px));
+      max-height:calc(100vh - 32px);
+      background:#fff;border-radius:8px;
+      display:flex;flex-direction:column;overflow:hidden;box-shadow:0 16px 48px rgba(0,0,0,.18);
+    }
+    .pick-modal.full{width:100vw;height:100vh;max-width:none;border-radius:0}
+    .pick-hd{
+      height:52px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;
+      border-bottom:1px solid var(--line);flex-shrink:0;
+    }
+    .pick-hd h3{font-size:16px;font-weight:600}
+    .pick-hd-ops{display:flex;gap:2px}
+    .pick-ico{
+      width:32px;height:32px;border:0;background:transparent;cursor:pointer;color:#666;
+      display:grid;place-items:center;border-radius:4px;
+    }
+    .pick-ico:hover{background:#f5f5f5}
+    .pick-body{flex:1;min-height:0;display:grid;grid-template-columns:220px minmax(0,1fr) 260px;overflow:hidden}
+    .pick-body.is-flat{grid-template-columns:minmax(0,1fr) 260px}
+    .pick-side{border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0;background:#fff}
+    .pick-side-search{padding:12px;display:flex;gap:8px;border-bottom:1px solid #f3f3f3}
+    .pick-side-search input{flex:1;height:32px;border:1px solid #d9dce7;border-radius:4px;padding:0 10px;min-width:0;font-size:13px}
+    .pick-side-search button{
+      height:32px;padding:0 12px;border:0;border-radius:4px;background:var(--primary);color:#fff;cursor:pointer;font-size:13px;
+    }
+    .pick-tree{flex:1;overflow:auto;padding:6px 0}
+    .tree-row{display:flex;align-items:stretch}
+    .tree-caret{
+      width:28px;flex-shrink:0;border:0;background:transparent;color:#999;cursor:pointer;font-size:10px;
+    }
+    .tree-item{
+      flex:1;border:0;background:transparent;text-align:left;padding:8px 12px 8px 0;
+      font-size:13px;cursor:pointer;color:#333;
+    }
+    .tree-item:hover,.tree-caret:hover{background:#f5f8ff}
+    .tree-item.on{background:#e8f1ff;color:var(--primary);font-weight:600}
+    .tree-children{display:none;flex-direction:column;width:100%}
+    .tree-children.open{display:flex}
+    .tree-item.child{display:block;width:100%;flex:none;padding:8px 12px 8px 36px;color:#555}
+    .pick-main{min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding:12px 16px 4px}
+    .pick-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+    .pick-filters .fl{display:flex;align-items:center;gap:8px;font-size:13px;color:#555;white-space:nowrap}
+    .pick-filters input,.pick-filters select{
+      height:32px;border:1px solid #d9dce7;border-radius:4px;padding:0 10px;background:#fff;min-width:132px;font-size:13px;
+    }
+    .pick-filters select{min-width:108px}
+    .btn-pri{height:32px;padding:0 14px;border:0;border-radius:4px;background:var(--primary);color:#fff;cursor:pointer;font-size:13px}
+    .btn-pri:disabled{opacity:.45;cursor:not-allowed}
+    .btn-ghost{height:32px;padding:0 14px;border:1px solid #d9dce7;border-radius:4px;background:#fff;cursor:pointer;font-size:13px}
+    .sort-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+    .sort-pill{
+      height:28px;padding:0 12px;border:1px solid #e5e5e5;border-radius:999px;background:#fff;
+      font-size:12px;color:#666;cursor:pointer;
+    }
+    .sort-pill.on{border-color:var(--primary);color:var(--primary);background:#f3f7ff}
+    .pick-batch{margin-bottom:10px}
+    .pick-table-wrap{flex:1;min-height:0;overflow:auto;border:1px solid #f0f0f0;border-radius:4px}
+    .pick-table{width:100%;border-collapse:collapse;font-size:13px}
+    .pick-table th,.pick-table td{padding:10px 8px;border-bottom:1px solid #f3f3f3;text-align:left;white-space:nowrap;vertical-align:middle}
+    .pick-table th[hidden]{display:none}
+    .pick-table th{background:#fafafa;color:#666;font-weight:500;position:sticky;top:0;z-index:1}
+    .pick-table td.ttl{max-width:168px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default}
+    .link-add{border:0;background:none;color:var(--primary);cursor:pointer;padding:0;font-size:13px}
+    .link-add:disabled{color:#bbb;cursor:default}
+    .st-dot{display:inline-flex;align-items:center;gap:6px}
+    .st-dot i{width:6px;height:6px;border-radius:50%;background:#22c55e}
+    .st-dot.off i{background:#d1d5db}
+    .pick-empty{padding:48px 16px;text-align:center;color:#999;font-size:13px}
+    .pick-pager{
+      display:flex;align-items:center;justify-content:flex-end;gap:8px;
+      padding:10px 0 8px;margin-top:2px;font-size:13px;color:#666;
+      flex-shrink:0;flex-wrap:nowrap;min-height:52px;background:#fff;
+    }
+    .pick-sel{border-left:1px solid var(--line);display:flex;flex-direction:column;min-width:0;background:#fafbfc}
+    .pick-sel-h{
+      height:44px;padding:0 14px;display:flex;align-items:center;justify-content:space-between;
+      font-size:13px;font-weight:600;border-bottom:1px solid #f0f0f0;flex-shrink:0;
+    }
+    .pick-sel-h button{border:0;background:none;color:var(--primary);cursor:pointer;font-size:12px;font-weight:400}
+    .pick-sel-list{flex:1;overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+    .pick-sel-item{
+      background:#fff;border:1px solid #eef0f4;border-radius:6px;padding:10px 8px 10px 12px;
+      display:flex;align-items:flex-start;gap:8px;
+    }
+    .pick-sel-item .meta{flex:1;min-width:0}
+    .pick-sel-item .t{font-size:13px;color:#222;line-height:1.4}
+    .pick-sel-item .s{font-size:12px;color:#999;margin-top:4px}
+    .pick-sel-item .x{width:20px;height:20px;border:0;background:none;color:#f43f5e;cursor:pointer;font-size:16px;line-height:18px;flex-shrink:0}
+    .pick-sel-empty{padding:24px 8px;text-align:center;color:#bbb;font-size:12px}
+    .pick-ft{
+      height:56px;padding:0 16px;display:flex;align-items:center;justify-content:flex-end;gap:10px;
+      border-top:1px solid var(--line);flex-shrink:0;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <button type="button" class="back" id="btnBack">‹ 返回</button>
+    <div class="top-ttl">默认门户</div>
+    <button type="button" class="save" id="btnSave">保存</button>
+  </header>
+
+  <div class="studio" id="studio">
+    <aside class="left" id="leftPane">
+      <div class="sec-h">基础组件</div>
+      <div class="comp-grid" id="baseLib"></div>
+      <div class="sec-h">应用组件</div>
+      <div class="comp-grid" id="appLib"></div>
+    </aside>
+
+    <main class="center" id="center">
+      <button type="button" class="rail l" id="toggleLeft">‹</button>
+      <button type="button" class="rail r" id="toggleRight">›</button>
+      <div class="pc-stage" id="pcStage">
+        <div class="pc-board">
+          <div class="col">
+            <div class="mod">
+              <div class="mod-h"><b>最热话题</b><span class="more">更多 ›</span></div>
+              <div class="hot-item"><span class="hot-n">1</span>困难帮扶政策解读与申报指引</div>
+              <div class="hot-item"><span class="hot-n">2</span>元旦启新程 · 一起向未来</div>
+              <div class="hot-item"><span class="hot-n">3</span>新春祝福合集上线</div>
+              <div class="hot-item"><span class="hot-n">4</span>单位动态速递</div>
+            </div>
+            <div class="mod empty"></div>
+            <div class="mod empty"></div>
+          </div>
+          <div class="col">
+            <div class="mod empty" id="topEmpty"></div>
+            <div class="slot-hint" id="artSlot">点击左侧组件，添加到预览区</div>
+            <div class="art-wrap" id="noticeWrap" hidden>
+              <div class="art-ops">
+                <button type="button" title="复制" data-act="copy">⧉</button>
+                <button type="button" title="删除" data-act="del">✕</button>
+              </div>
+              <div class="art-card" id="noticePreview" style="padding:8px"></div>
+            </div>
+            <div class="art-wrap" id="relWrap" hidden>
+              <div class="art-ops">
+                <button type="button" title="复制" data-act="copy">⧉</button>
+                <button type="button" title="删除" data-act="del">✕</button>
+              </div>
+              <div class="art-card rel-card" id="relPreview"></div>
+            </div>
+            <div class="art-wrap" id="surveyWrap" hidden>
+              <div class="art-ops">
+                <button type="button" title="复制" data-act="copy">⧉</button>
+                <button type="button" title="删除" data-act="del">✕</button>
+              </div>
+              <div class="art-card" id="surveyPreview"></div>
+            </div>
+            <div class="art-wrap" id="artWrap" hidden>
+              <div class="art-ops">
+                <button type="button" title="复制" data-act="copy">⧉</button>
+                <button type="button" title="删除" data-act="del">✕</button>
+              </div>
+              <div class="art-card" id="artPreview"></div>
+            </div>
+            <div class="art-wrap" id="activityWrap" hidden>
+              <div class="art-ops">
+                <button type="button" title="复制" data-act="copy">⧉</button>
+                <button type="button" title="删除" data-act="del">✕</button>
+              </div>
+              <div class="art-card" id="activityPreview"></div>
+            </div>
+            <div class="art-wrap" id="momentsWrap" hidden>
+              <div class="art-ops">
+                <button type="button" title="复制" data-act="copy">⧉</button>
+                <button type="button" title="删除" data-act="del">✕</button>
+              </div>
+              <div class="art-card" id="momentsPreview"></div>
+            </div>
+            <div class="art-wrap" id="groupsWrap" hidden>
+              <div class="art-ops">
+                <button type="button" title="复制" data-act="copy">⧉</button>
+                <button type="button" title="删除" data-act="del">✕</button>
+              </div>
+              <div class="art-card" id="groupsPreview"></div>
+            </div>
+            <div class="art-wrap" id="voteWrap" hidden>
+              <div class="art-ops">
+                <button type="button" title="复制" data-act="copy">⧉</button>
+                <button type="button" title="删除" data-act="del">✕</button>
+              </div>
+              <div class="art-card" id="votePreview"></div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="post-banner">✎ 立即发帖</div>
+            <div class="mod">
+              <div class="quick">
+                <div><i style="background:#34c759">互</i><em>互动</em></div>
+                <div><i style="background:#f5a623">誉</i><em>荣誉</em></div>
+                <div><i style="background:#2f6fed">活</i><em>活动</em></div>
+                <div><i style="background:#07c160">今</i><em>今日点赞</em></div>
+                <div><i style="background:#8b7cf6">积</i><em>积分</em></div>
+                <div><i style="background:#ec4899">关</i><em>关怀</em></div>
+              </div>
+            </div>
+            <div class="notice">公告 · 本周五下午工会活动报名截止</div>
+            <div class="mod">
+              <div class="mod-h"><b>企业内刊</b><span class="more">更多 ›</span></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div class="ph-pic" style="height:64px"><svg viewBox="0 0 48 48" fill="currentColor"><path d="M6 36l12-16 7 9 8-11 9 18H6z"/><circle cx="34" cy="14" r="5"/></svg></div>
+                <div class="ph-pic" style="height:64px"><svg viewBox="0 0 48 48" fill="currentColor"><path d="M6 36l12-16 7 9 8-11 9 18H6z"/><circle cx="34" cy="14" r="5"/></svg></div>
+              </div>
+            </div>
+            <div class="mod">
+              <div class="mod-h"><b>本月积分榜</b></div>
+              <div class="rank"><b>1</b>张三　1280</div>
+              <div class="rank"><b>2</b>李四　960</div>
+              <div class="rank"><b>3</b>王五　870</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="right" id="rightPane">
+      <div class="tabs">
+        <button type="button" class="on" data-tab="comp">组件设置</button>
+        <button type="button" data-tab="page">页面设置</button>
+      </div>
+
+      <div class="pane" id="paneEmpty">
+        <div class="empty-hint">请选择预览区中的组件<br/>或从左侧添加「公告」「与我相关」「文章」等</div>
+      </div>
+
+      <div class="pane" id="paneNotice" hidden>
+        <div class="blk">
+          <div class="blk-h">公告内容</div>
+          <div class="blk-item" style="margin-top:0">
+            <div class="input-wrap">
+              <input class="input" id="noticeText" maxlength="60" value="本周五下午工会活动报名截止" />
+              <span class="count" id="noticeCount">14/60</span>
+            </div>
+          </div>
+        </div>
+        <div class="blk">
+          <div class="blk-h">显示设置</div>
+          <div class="field-row"><span>滚动播放</span><button class="switch on" id="noticeScroll" type="button"></button></div>
+          <div class="field-row"><span>显示图标</span><button class="switch on" id="noticeIcon" type="button"></button></div>
+        </div>
+      </div>
+
+      <div class="pane" id="paneRelated" hidden>
+        <div class="blk">
+          <div class="blk-h">显示内容</div>
+          <p class="blk-hint">最多同时开启 3 项</p>
+          <div class="field-row"><span>积分</span><button class="switch on" id="relPoints" type="button" title="积分"></button></div>
+          <div class="field-row"><span>报名活动</span><button class="switch on" id="relEvent" type="button" title="报名活动"></button></div>
+          <div class="field-row"><span>待填问卷</span><button class="switch on" id="relSurvey" type="button" title="待填问卷"></button></div>
+          <div class="field-row"><span>我的考试</span><button class="switch" id="relExam" type="button" title="我的考试"></button></div>
+        </div>
+      </div>
+
+      <div class="pane" id="paneComp" hidden>
+        <div class="blk">
+          <div class="blk-h">标题栏<button class="switch on" id="titleSwitch" type="button"></button></div>
+          <div class="blk-item">
+            <span class="blk-lab">标题名称</span>
+            <div class="inline">
+              <input class="color-pick" id="titleColor" type="color" value="#111111" />
+              <div class="input-wrap">
+                <input class="input" id="titleName" maxlength="40" value="文章" />
+                <span class="count" id="titleCount">2/40</span>
+              </div>
+            </div>
+          </div>
+          <div class="blk-item" id="moreRow">
+            <span class="blk-lab">查看更多</span>
+            <div class="inline">
+              <input class="color-pick" id="moreColor" type="color" value="#b0b0b0" />
+              <button class="switch on" id="moreSwitch" type="button"></button>
+            </div>
+          </div>
+        </div>
+        <div class="blk" id="jumpRow">
+          <div class="blk-h">跳转链接</div>
+          <div class="right-col" id="jumpChain"></div>
+        </div>
+        <div class="blk">
+          <div class="blk-h">展示样式</div>
+          <div class="style-pick" id="stylePick"></div>
+        </div>
+        <div class="blk">
+          <div class="blk-h">选择文章</div>
+          <div class="right-col" id="newsChain"></div>
+          <div class="blk-item">
+            <span class="blk-lab">选择方式</span>
+            <div class="right-col">
+              <div class="pick-latest">
+                <label class="radio"><input type="radio" name="pickMode" value="latest" checked />展示最新</label>
+                <input class="small-input" id="latestN" value="2" />
+                <span style="font-size:13px;color:#666">篇文章</span>
+              </div>
+              <div class="custom-pick-row">
+                <label class="radio"><input type="radio" name="pickMode" value="custom" />自定义</label>
+                <button class="btn-add-art" type="button" id="addNews" hidden>添加文章</button>
+              </div>
+              <div class="picked-list" id="pickedNews" hidden></div>
+            </div>
+          </div>
+        </div>
+        <div class="blk">
+          <div class="blk-h">字段设置</div>
+          <div class="field-row"><span>标题</span><button class="switch on" id="fTitle" type="button"></button></div>
+          <div class="field-row"><span>创建时间</span><button class="switch on" id="fTime" type="button"></button></div>
+          <div class="field-row"><span>阅读量</span><button class="switch on" id="fViews" type="button"></button></div>
+          <div class="field-row"><span>互动数</span><button class="switch on" id="fInteract" type="button"></button></div>
+        </div>
+      </div>
+
+      <div class="pane" id="paneSurvey" hidden>
+        <div class="blk">
+          <div class="blk-h">标题栏<button class="switch on" id="sTitleSwitch" type="button"></button></div>
+          <div class="blk-item">
+            <span class="blk-lab">标题名称</span>
+            <div class="inline">
+              <input class="color-pick" id="sTitleColor" type="color" value="#111111" />
+              <div class="input-wrap">
+                <input class="input" id="sTitleName" maxlength="40" value="调查问卷" />
+                <span class="count" id="sTitleCount">5/40</span>
+              </div>
+            </div>
+          </div>
+          <div class="blk-item" id="sMoreRow">
+            <span class="blk-lab">查看更多</span>
+            <div class="inline">
+              <input class="color-pick" id="sMoreColor" type="color" value="#b0b0b0" />
+              <button class="switch on" id="sMoreSwitch" type="button"></button>
+            </div>
+          </div>
+        </div>
+        <div class="blk" id="sJumpRow">
+          <div class="blk-h">跳转链接</div>
+          <div class="select-wrap">
+            <button type="button" class="select"><span>请选择</span><span>﹀</span></button>
+          </div>
+        </div>
+        <div class="blk">
+          <div class="blk-h">展示样式</div>
+          <div class="style-pick one" id="sStylePick"></div>
+        </div>
+        <div class="blk">
+          <div class="blk-h">选择调查问卷</div>
+          <div class="blk-item" style="margin-top:0">
+            <span class="blk-lab">选择方式</span>
+            <div class="radio-wrap">
+              <div class="pick-latest">
+                <label class="radio"><input type="radio" name="sPickMode" value="latest" />展示最新</label>
+                <input class="small-input" id="sLatestN" value="2" />
+                <span style="font-size:13px;color:#666">份问卷</span>
+              </div>
+              <label class="radio"><input type="radio" name="sPickMode" value="custom" checked />自定义</label>
+            </div>
+          </div>
+          <div class="blk-item" id="sAddRow">
+            <button class="btn" type="button" id="addSurvey">添加调查问卷</button>
+          </div>
+        </div>
+        <div class="blk">
+          <div class="blk-h">字段设置</div>
+          <div class="field-row"><span>标题</span><button class="switch on" id="sFTitle" type="button"></button></div>
+          <div class="field-row"><span>题目数量</span><button class="switch on" id="sFCount" type="button"></button></div>
+          <div class="field-row"><span>创建时间</span><button class="switch on" id="sFTime" type="button"></button></div>
+          <div class="field-row"><span>填写/查看</span><button class="switch on" id="sFAction" type="button"></button></div>
+        </div>
+      </div>
+
+      <div class="pane" id="paneApp" hidden></div>
+
+      <div class="pane" id="panePage" hidden>
+        <div class="blk">
+          <div class="pg-row" style="margin-bottom:0">
+            <span class="lab">背景颜色</span>
+            <input class="color-pick" id="pageBg" type="color" value="#0f5c49" />
+            <button type="button" class="link" id="pageBgReset">重置</button>
+          </div>
+        </div>
+        <div class="blk">
+          <div class="pg-row" style="align-items:flex-start;margin-bottom:0">
+            <span class="lab">背景图片</span>
+            <div>
+              <div class="bg-thumb" id="bgThumb">
+                <button type="button" class="bg-x" id="bgClear">×</button>
+              </div>
+              <input type="file" id="bgFile" accept="image/*" hidden />
+              <button type="button" class="link" id="bgPick" style="margin-top:8px;display:block">更换图片</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="article-picker.js"></script>
+<script src="activity-picker.js"></script>
+<script>
+  const ICO = {
+    carousel: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 12h8"/></svg>`,
+    image: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 16l5-5 4 4 3-3 4 4"/><circle cx="9" cy="9" r="1.4"/></svg>`,
+    nav: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="13" width="7" height="7" rx="1.5"/><rect x="14" y="13" width="7" height="7" rx="1.5"/></svg>`,
+    list: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="6" height="5" rx="1"/><path d="M13 7h7M13 17h7"/><rect x="4" y="14" width="6" height="5" rx="1"/></svg>`,
+    article: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>`,
+    survey: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h.01M8 12h.01M8 16h.01M11 8h5M11 12h5M11 16h4"/></svg>`,
+    course: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V6l8-3 8 3v13"/><path d="M12 8v11"/><path d="M4 19c2 1 5 1 8 0 3 1 6 1 8 0"/></svg>`,
+    activity: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>`,
+    group: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><circle cx="16" cy="9" r="2.4"/><path d="M3.5 19c.6-3 3-5 5.5-5s4.9 2 5.5 5M14 14.2c2.2.2 4.2 1.8 4.8 4.3"/></svg>`,
+    related: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3"/><path d="M5 19c.8-3.4 3.4-5.5 7-5.5s6.2 2.1 7 5.5"/><path d="M17.5 7.5 19 6l1.5 1.5M18 6.2V4"/></svg>`,
+    moments: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 16l5-5 4 4 3-3 4 4"/><circle cx="9" cy="9" r="1.4"/></svg>`,
+    vote: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h.01M8 12h.01M8 16h.01M11 8h5M11 12h5M11 16h4"/></svg>`,
+    notice: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10v4h3l6 4V6L7 10H4z"/><path d="M17 9.5a3.5 3.5 0 0 1 0 5"/><path d="M19.2 7.5a6 6 0 0 1 0 9"/></svg>`
+  };
+  const BASE = [
+    { name: "轮播图", color: "#4d8fff", ico: ICO.carousel },
+    { name: "图片", color: "#34c759", ico: ICO.image },
+    { name: "图文导航", color: "#07c160", ico: ICO.nav },
+    { name: "图文列表", color: "#f5a623", ico: ICO.list },
+    { name: "公告", color: "#f97316", ico: ICO.notice }
+  ];
+  const APPS = [
+    { name: "与我相关", color: "#07c160", ico: ICO.related },
+    { name: "文章", color: "#2f6fed", ico: ICO.article },
+    { name: "调查问卷", color: "#14b8a6", ico: ICO.survey },
+    { name: "课程", color: "#6366f1", ico: ICO.course },
+    { name: "活动", color: "#ec4899", ico: ICO.activity },
+    { name: "兴趣圈", color: "#f97316", ico: ICO.group },
+    { name: "精彩瞬间", color: "#8b7cf6", ico: ICO.moments },
+    { name: "投票", color: "#0ea5e9", ico: ICO.vote }
+  ];
+
+  const APP_BLOCKS = [
+    {
+      id: "activity", lib: "活动", title: "活动", more: "查看全部", titleBar: true, showMore: true,
+      style: "big", count: 3, max: 20, unit: "个活动",
+      fields: [["showPinned","置顶"],["showCategoryTag","分类"],["showHoldMode","举办方式"],["showStatusTag","状态"],["showLikes","点赞"],["showTitle","标题"],["showTime","活动时间"],["showPlace","活动地点"],["showSignupProgress","报名进度"],["showSignupButton","报名按钮"]]
+    },
+    {
+      id: "moments", lib: "精彩瞬间", title: "往期精彩回顾", more: "查看全部", titleBar: true, showMore: true,
+      style: "cols", count: 5, max: 20, unit: "个活动",
+      fields: [["showTitle","标题"],["showStatusTag","状态"]]
+    },
+    {
+      id: "groups", lib: "兴趣圈", title: "热门兴趣圈", more: "全部", titleBar: true, showMore: true,
+      style: "cols", count: 5, max: 20, unit: "个兴趣圈",
+      fields: [["showTitle","标题"],["showCategoryTag","分类"],["showIntro","描述"],["showMembers","成员"],["showJoinButton","入组按钮"]]
+    },
+    {
+      id: "vote", lib: "投票", title: "发现投票", more: "查看全部", titleBar: false, showMore: false,
+      style: "left", count: 99, max: 99, unit: "个投票",
+      fields: [["showTitle","标题"],["showStatus","状态"],["showTime","投票时间"]]
+    }
+  ];
+  const appState = Object.fromEntries(APP_BLOCKS.map((b) => [b.id, {
+    titleBar: b.titleBar, title: b.title, titleColor: "#171A1D", showMore: b.showMore, moreColor: "#747677",
+    style: b.style, count: b.count, pickMode: "latest", picked: [], pickSource: "", jumpLink: "",
+    fields: Object.fromEntries(b.fields.map(([k]) => [k, true]))
+  }]));
+
+  function toast(m){
+    const t = document.getElementById("toast");
+    t.textContent = m; t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 1800);
+  }
+  function mountLib(root, items, isApp){
+    items.forEach((it) => {
+      const el = document.createElement("button");
+      el.type = "button";
+      el.className = "comp";
+      el.dataset.name = it.name;
+      el.innerHTML = `<div class="comp-ico" style="background:${it.color}">${it.ico}</div><span>${it.name}</span>`;
+      el.addEventListener("click", () => {
+        document.querySelectorAll(".comp").forEach((c) => c.classList.toggle("on", c === el));
+        if (it.name === "与我相关") placeRelated();
+        else if (it.name === "文章") placeArticle();
+        else if (it.name === "调查问卷") placeSurvey();
+        else if (it.name === "公告") placeNotice();
+        else if (it.name === "活动") placeApp("activity");
+        else if (it.name === "兴趣圈") placeApp("groups");
+        else if (it.name === "精彩瞬间") placeApp("moments");
+        else if (it.name === "投票") placeApp("vote");
+        else toast(isApp ? `「${it.name}」可后续扩展` : `「${it.name}」为基础组件占位`);
+      });
+      root.appendChild(el);
+    });
+  }
+  mountLib(document.getElementById("baseLib"), BASE, false);
+  mountLib(document.getElementById("appLib"), APPS, true);
+
+  const studio = document.getElementById("studio");
+  document.getElementById("toggleLeft").onclick = () => {
+    studio.classList.toggle("left-off");
+    document.getElementById("toggleLeft").textContent = studio.classList.contains("left-off") ? "›" : "‹";
+  };
+  document.getElementById("toggleRight").onclick = () => {
+    studio.classList.toggle("right-off");
+    document.getElementById("toggleRight").textContent = studio.classList.contains("right-off") ? "‹" : "›";
+  };
+  document.getElementById("btnBack").onclick = () => {
+    if (history.length > 1) history.back();
+    else location.href = encodeURI("PC页面装修.html");
+  };
+  document.getElementById("btnSave").onclick = () => toast("已保存");
+
+  const artWrap = document.getElementById("artWrap");
+  const relWrap = document.getElementById("relWrap");
+  const surveyWrap = document.getElementById("surveyWrap");
+  const noticeWrap = document.getElementById("noticeWrap");
+  const appWraps = Object.fromEntries(APP_BLOCKS.map((b) => [b.id, document.getElementById(b.id + "Wrap")]));
+  const artSlot = document.getElementById("artSlot");
+  const paneEmpty = document.getElementById("paneEmpty");
+  const paneComp = document.getElementById("paneComp");
+  const paneSurvey = document.getElementById("paneSurvey");
+  const paneRelated = document.getElementById("paneRelated");
+  const paneNotice = document.getElementById("paneNotice");
+  const paneApp = document.getElementById("paneApp");
+  const panePage = document.getElementById("panePage");
+  const LIB_NAME = { related: "与我相关", survey: "调查问卷", article: "文章", notice: "公告", activity: "活动", moments: "精彩瞬间", groups: "兴趣圈", vote: "投票" };
+  let rightTab = "comp";
+  let selected = "";
+  let listStyle = "title";
+
+  function updateSlot(){
+    const anyApp = APP_BLOCKS.some((b) => !appWraps[b.id].hidden);
+    artSlot.hidden = !relWrap.hidden || !surveyWrap.hidden || !artWrap.hidden || !noticeWrap.hidden || anyApp;
+  }
+  function showRight(){
+    paneEmpty.hidden = true;
+    paneComp.hidden = true;
+    paneSurvey.hidden = true;
+    paneRelated.hidden = true;
+    paneNotice.hidden = true;
+    paneApp.hidden = true;
+    panePage.hidden = true;
+    if (rightTab === "page") panePage.hidden = false;
+    else if (selected === "article") paneComp.hidden = false;
+    else if (selected === "survey") paneSurvey.hidden = false;
+    else if (selected === "related") paneRelated.hidden = false;
+    else if (selected === "notice") paneNotice.hidden = false;
+    else if (APP_BLOCKS.some((b) => b.id === selected)) {
+      fillAppPane(selected);
+      paneApp.hidden = false;
+    }
+    else paneEmpty.hidden = false;
+  }
+  document.querySelector(".tabs").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-tab]");
+    if (!btn) return;
+    rightTab = btn.dataset.tab;
+    document.querySelectorAll(".tabs button").forEach((x) => x.classList.toggle("on", x === btn));
+    showRight();
+  });
+
+  function highlightLib(name){
+    document.querySelectorAll(".comp").forEach((c) => c.classList.toggle("on", c.dataset.name === name));
+  }
+  function selectWidget(type){
+    selected = type;
+    relWrap.classList.toggle("sel", type === "related");
+    surveyWrap.classList.toggle("sel", type === "survey");
+    artWrap.classList.toggle("sel", type === "article");
+    noticeWrap.classList.toggle("sel", type === "notice");
+    APP_BLOCKS.forEach((b) => appWraps[b.id].classList.toggle("sel", type === b.id));
+    highlightLib(LIB_NAME[type] || "");
+    rightTab = "comp";
+    document.querySelectorAll(".tabs button").forEach((x) => x.classList.toggle("on", x.dataset.tab === "comp"));
+    showRight();
+  }
+  function fallbackSelect(except){
+    const order = ["notice", "related", "survey", "article", "activity", "moments", "groups", "vote"];
+    const wraps = { notice: noticeWrap, related: relWrap, survey: surveyWrap, article: artWrap, activity: appWraps.activity, moments: appWraps.moments, groups: appWraps.groups, vote: appWraps.vote };
+    for (const t of order) {
+      if (t !== except && !wraps[t].hidden) { selectWidget(t); return; }
+    }
+    selected = "";
+    highlightLib("");
+    showRight();
+  }
+  function placeRelated(){
+    relWrap.hidden = false;
+    updateSlot();
+    selectWidget("related");
+    renderRelatedPreview();
+  }
+  function placeSurvey(){
+    surveyWrap.hidden = false;
+    updateSlot();
+    selectWidget("survey");
+    renderSurveyPreview();
+  }
+  function placeArticle(){
+    artWrap.hidden = false;
+    updateSlot();
+    selectWidget("article");
+    renderPreview();
+  }
+  function placeNotice(){
+    noticeWrap.hidden = false;
+    updateSlot();
+    selectWidget("notice");
+    renderNoticePreview();
+  }
+  function bindWidget(wrap, type, copyLabel){
+    wrap.addEventListener("click", (e) => {
+      if (e.target.closest("[data-act]")) return;
+      selectWidget(type);
+    });
+    wrap.querySelector("[data-act=del]").onclick = (e) => {
+      e.stopPropagation();
+      wrap.hidden = true;
+      wrap.classList.remove("sel");
+      updateSlot();
+      if (selected === type) fallbackSelect(type);
+    };
+    wrap.querySelector("[data-act=copy]").onclick = (e) => {
+      e.stopPropagation();
+      toast("已复制" + copyLabel);
+    };
+  }
+  bindWidget(relWrap, "related", "与我相关组件");
+  bindWidget(surveyWrap, "survey", "调查问卷组件");
+  bindWidget(artWrap, "article", "文章组件");
+  bindWidget(noticeWrap, "notice", "公告组件");
+  APP_BLOCKS.forEach((b) => bindWidget(appWraps[b.id], b.id, b.lib + "组件"));
+  function placeApp(id){
+    appWraps[id].hidden = false;
+    updateSlot();
+    selectWidget(id);
+    renderAppPreview(id);
+  }
+
+  const noticeText = document.getElementById("noticeText");
+  const noticeCount = document.getElementById("noticeCount");
+  const noticeScroll = document.getElementById("noticeScroll");
+  const noticeIcon = document.getElementById("noticeIcon");
+  const NOTICE_HORN = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10v4h3l6 4V6L7 10H4z"/><path d="M17 9.5a3.5 3.5 0 0 1 0 5"/><path d="M19.2 7.5a6 6 0 0 1 0 9"/></svg>`;
+  function renderNoticePreview(){
+    const text = (noticeText.value || "暂无公告").trim() || "暂无公告";
+    const scroll = noticeScroll.classList.contains("on");
+    const showIcon = noticeIcon.classList.contains("on");
+    const loop = scroll ? `${text}　　${text}` : text;
+    document.getElementById("noticePreview").innerHTML = `<div class="notice-bar${scroll ? " scroll" : ""}">${showIcon ? `<span class="horn">${NOTICE_HORN}</span>` : ""}<div class="track"><span>${loop.replace(/</g, "&lt;")}</span></div></div>`;
+  }
+  noticeText.addEventListener("input", () => {
+    noticeCount.textContent = noticeText.value.length + "/60";
+    renderNoticePreview();
+  });
+  noticeScroll.onclick = () => { noticeScroll.classList.toggle("on"); renderNoticePreview(); };
+  noticeIcon.onclick = () => { noticeIcon.classList.toggle("on"); renderNoticePreview(); };
+
+  const PH_PIC = `<div class="ph-pic"><svg viewBox="0 0 48 48" fill="currentColor"><path d="M6 36l12-16 7 9 8-11 9 18H6z"/><circle cx="34" cy="14" r="5"/></svg></div>`;
+  const STYLES = [
+    { id: "title", name: "标题列表", thumb: `<div class="mini-bar"></div><div class="mini-bar" style="width:80%"></div><div class="mini-bar" style="width:60%"></div>` },
+    { id: "big", name: "大图模式", thumb: `<div class="mini-pic" style="height:34px"></div><div class="mini-bar"></div><div class="mini-bar" style="width:55%;height:4px"></div>` },
+    { id: "cols", name: "一行多列", thumb: `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px"><div class="mini-pic" style="height:28px"></div><div class="mini-pic" style="height:28px"></div><div class="mini-pic" style="height:28px"></div></div><div class="mini-bar" style="width:70%"></div>` },
+    { id: "left", name: "左图右文", thumb: `<div style="display:flex;gap:4px;align-items:center"><div class="mini-pic" style="width:22px;height:18px"></div><div style="flex:1"><div class="mini-bar"></div><div class="mini-bar" style="width:60%;margin-top:3px"></div></div></div>` },
+    { id: "right", name: "左文右图", thumb: `<div style="display:flex;gap:4px;align-items:center"><div style="flex:1"><div class="mini-bar"></div><div class="mini-bar" style="width:60%;margin-top:3px"></div></div><div class="mini-pic" style="width:22px;height:18px"></div></div>` }
+  ];
+  const stylePick = document.getElementById("stylePick");
+  STYLES.forEach((s) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "style-opt" + (s.id === "title" ? " on" : "");
+    btn.dataset.style = s.id;
+    btn.innerHTML = `<div class="style-thumb">${s.thumb}</div><em>${s.name}</em>`;
+    btn.onclick = () => {
+      listStyle = s.id;
+      stylePick.querySelectorAll(".style-opt").forEach((x) => x.classList.toggle("on", x === btn));
+      renderPreview();
+    };
+    stylePick.appendChild(btn);
+  });
+  const sTitleStyle = STYLES.find((s) => s.id === "title");
+  const sStyleBtn = document.createElement("button");
+  sStyleBtn.type = "button";
+  sStyleBtn.className = "style-opt on";
+  sStyleBtn.innerHTML = `<div class="style-thumb">${sTitleStyle.thumb}</div><em>${sTitleStyle.name}</em>`;
+  document.getElementById("sStylePick").appendChild(sStyleBtn);
+
+  const titleSwitch = document.getElementById("titleSwitch");
+  const moreSwitch = document.getElementById("moreSwitch");
+  const moreRow = document.getElementById("moreRow");
+  const jumpRow = document.getElementById("jumpRow");
+  const titleName = document.getElementById("titleName");
+  const titleColor = document.getElementById("titleColor");
+  const moreColor = document.getElementById("moreColor");
+  const titleCount = document.getElementById("titleCount");
+  const latestN = document.getElementById("latestN");
+  const addNewsBtn = document.getElementById("addNews");
+  const fTitle = document.getElementById("fTitle");
+  const fTime = document.getElementById("fTime");
+  const fInteract = document.getElementById("fInteract");
+  const fViews = document.getElementById("fViews");
+
+  function bars(){
+    let h = "";
+    if (fTitle.classList.contains("on")) h += `<div class="ph-bar"></div>`;
+    if (fTime.classList.contains("on")) h += `<div class="ph-bar s"></div>`;
+    if (fInteract.classList.contains("on") || fViews.classList.contains("on")) {
+      h += `<div class="ph-meta">${fInteract.classList.contains("on") ? `<i></i><i></i><i></i>` : ""}${fViews.classList.contains("on") ? `<i class="view"></i>` : ""}</div>`;
+    }
+    return h || `<div class="ph-bar" style="opacity:.25"></div>`;
+  }
+  function renderPreview(){
+    const showTitle = titleSwitch.classList.contains("on");
+    const showMore = moreSwitch.classList.contains("on");
+    const n = Math.max(1, Math.min(6, parseInt(latestN.value, 10) || 2));
+    let html = "";
+    if (showTitle) {
+      html += `<div class="art-head"><b style="color:${titleColor.value}">${titleName.value || "文章"}</b>${showMore ? `<span class="more" style="color:${moreColor.value}">更多 &gt;</span>` : ""}</div>`;
+    }
+    if (listStyle === "title") {
+      html += `<div class="sk-list">${Array.from({ length: n }, () => `<div class="sk-item">${bars()}</div>`).join("")}</div>`;
+    } else if (listStyle === "big") {
+      html += Array.from({ length: n }, () => `<div class="sk-big">${PH_PIC}${bars()}</div>`).join("");
+    } else if (listStyle === "cols") {
+      html += `<div class="sk-cols">${Array.from({ length: Math.max(n, 3) }, () => `<div>${PH_PIC}${bars()}</div>`).join("")}</div>`;
+    } else if (listStyle === "right") {
+      html += Array.from({ length: n }, () => `<div class="sk-rl"><div class="txt">${bars()}</div>${PH_PIC}</div>`).join("");
+    } else {
+      html += Array.from({ length: n }, () => `<div class="sk-lr">${PH_PIC}<div class="txt">${bars()}</div></div>`).join("");
+    }
+    document.getElementById("artPreview").innerHTML = html;
+  }
+
+  const sTitleSwitch = document.getElementById("sTitleSwitch");
+  const sMoreSwitch = document.getElementById("sMoreSwitch");
+  const sMoreRow = document.getElementById("sMoreRow");
+  const sJumpRow = document.getElementById("sJumpRow");
+  const sTitleName = document.getElementById("sTitleName");
+  const sTitleColor = document.getElementById("sTitleColor");
+  const sMoreColor = document.getElementById("sMoreColor");
+  const sTitleCount = document.getElementById("sTitleCount");
+  const sLatestN = document.getElementById("sLatestN");
+  const sAddRow = document.getElementById("sAddRow");
+  const sFTitle = document.getElementById("sFTitle");
+  const sFCount = document.getElementById("sFCount");
+  const sFTime = document.getElementById("sFTime");
+  const sFAction = document.getElementById("sFAction");
+
+  function surveyBars(){
+    let h = "";
+    if (sFTitle.classList.contains("on")) h += `<div class="ph-bar"></div>`;
+    const countOn = sFCount.classList.contains("on");
+    const actionOn = sFAction.classList.contains("on");
+    if (countOn || actionOn) {
+      h += `<div class="sk-qrow">${countOn ? `<div class="ph-bar s" style="width:28%"></div>` : `<span></span>`}${actionOn ? `<span class="sk-fill-btn">填写/查看</span>` : ""}</div>`;
+    }
+    if (sFTime.classList.contains("on")) h += `<div class="ph-bar s"></div>`;
+    return h || `<div class="ph-bar" style="opacity:.25"></div>`;
+  }
+  function renderSurveyPreview(){
+    const showTitle = sTitleSwitch.classList.contains("on");
+    const showMore = sMoreSwitch.classList.contains("on");
+    const n = Math.max(1, Math.min(6, parseInt(sLatestN.value, 10) || 2));
+    let html = "";
+    if (showTitle) {
+      html += `<div class="art-head"><b style="color:${sTitleColor.value}">${sTitleName.value || "调查问卷"}</b>${showMore ? `<span class="more" style="color:${sMoreColor.value}">更多 &gt;</span>` : ""}</div>`;
+    }
+    html += `<div class="sk-list">${Array.from({ length: n }, () => `<div class="sk-item">${surveyBars()}</div>`).join("")}</div>`;
+    document.getElementById("surveyPreview").innerHTML = html;
+  }
+  function syncSurveyTitleBlock(){
+    const on = sTitleSwitch.classList.contains("on");
+    sMoreRow.style.display = on ? "" : "none";
+    sJumpRow.style.display = on ? "" : "none";
+    renderSurveyPreview();
+  }
+
+  const RELATE = [
+    { id: "points", name: "积分", label: "积分", num: "7", sw: "relPoints" },
+    { id: "event", name: "报名活动", label: "活动", num: "2", sw: "relEvent" },
+    { id: "survey", name: "待填问卷", label: "待填问卷", num: "1", sw: "relSurvey" },
+    { id: "exam", name: "我的考试", label: "考试", num: "1", sw: "relExam" }
+  ];
+  const REL_AVATAR = `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="40" fill="#d5e3f4"/><path d="M18 80c3-18 10-28 22-28s19 10 22 28" fill="#234a7a"/><path d="M34 54l6 22 6-22" fill="#cfd9ea"/><ellipse cx="40" cy="28" rx="17" ry="15" fill="#5a3d2b"/><ellipse cx="40" cy="34" rx="13" ry="14" fill="#efc8a6"/><rect x="24" y="32" width="32" height="3.2" rx="1.4" fill="#3c3c3c"/><circle cx="32" cy="34" r="5.2" fill="none" stroke="#3c3c3c" stroke-width="2"/><circle cx="48" cy="34" r="5.2" fill="none" stroke="#3c3c3c" stroke-width="2"/><ellipse cx="32.2" cy="34.2" rx="2.2" ry="2.4" fill="#3a2a22"/><ellipse cx="48.2" cy="34.2" rx="2.2" ry="2.4" fill="#3a2a22"/><path d="M36 42c1.4 2 6.6 2 8 0" fill="none" stroke="#c48a6a" stroke-width="1.4" stroke-linecap="round"/></svg>`;
+  function relatedOnCount(){
+    return RELATE.filter((it) => document.getElementById(it.sw).classList.contains("on")).length;
+  }
+  function syncRelSwitches(){
+    const full = relatedOnCount() >= 3;
+    RELATE.forEach((it) => {
+      const sw = document.getElementById(it.sw);
+      sw.classList.toggle("locked", full && !sw.classList.contains("on"));
+    });
+  }
+  function renderRelatedPreview(){
+    const items = RELATE.filter((it) => document.getElementById(it.sw).classList.contains("on"));
+    let html = `<div class="rel-user">
+      <div class="rel-avatar">${REL_AVATAR}</div>
+      <div><div class="rel-name">庄珊珊</div><div class="rel-sub">产品设计部 · WH20240018</div></div>
+    </div><div class="rel-line"></div>`;
+    if (!items.length) html += `<div class="rel-empty">暂未开启任何数据项</div>`;
+    else {
+      html += `<div class="rel-stats" style="grid-template-columns:repeat(${items.length},1fr)">${items.map((it) => `
+        <div class="rel-stat"><b>${it.num}</b><em>${it.label}</em></div>`).join("")}</div>`;
+    }
+    document.getElementById("relPreview").innerHTML = html;
+    syncRelSwitches();
+  }
+  function syncTitleBlock(){
+    const on = titleSwitch.classList.contains("on");
+    moreRow.style.display = on ? "" : "none";
+    jumpRow.style.display = on ? "" : "none";
+    renderPreview();
+  }
+  titleSwitch.onclick = () => { titleSwitch.classList.toggle("on"); syncTitleBlock(); };
+  moreSwitch.onclick = () => { moreSwitch.classList.toggle("on"); renderPreview(); };
+  titleName.addEventListener("input", () => { titleCount.textContent = titleName.value.length + "/40"; renderPreview(); });
+  titleColor.addEventListener("input", renderPreview);
+  moreColor.addEventListener("input", renderPreview);
+  latestN.addEventListener("input", renderPreview);
+  [fTitle, fTime, fInteract, fViews].forEach((sw) => sw.onclick = () => { sw.classList.toggle("on"); renderPreview(); });
+  const articlePicker = mountArticlePicker({
+    addBtn: addNewsBtn,
+    pickedBox: document.getElementById("pickedNews"),
+    isCustom: () => document.querySelector('input[name="pickMode"]:checked').value === "custom",
+    toast
+  });
+  document.querySelectorAll('input[name="pickMode"]').forEach((r) => {
+    r.addEventListener("change", () => {
+      articlePicker.renderPicked();
+      renderPreview();
+    });
+  });
+
+  sTitleSwitch.onclick = () => { sTitleSwitch.classList.toggle("on"); syncSurveyTitleBlock(); };
+  sMoreSwitch.onclick = () => { sMoreSwitch.classList.toggle("on"); renderSurveyPreview(); };
+  sTitleName.addEventListener("input", () => { sTitleCount.textContent = sTitleName.value.length + "/40"; renderSurveyPreview(); });
+  sTitleColor.addEventListener("input", renderSurveyPreview);
+  sMoreColor.addEventListener("input", renderSurveyPreview);
+  sLatestN.addEventListener("input", renderSurveyPreview);
+  [sFTitle, sFCount, sFTime, sFAction].forEach((sw) => sw.onclick = () => { sw.classList.toggle("on"); renderSurveyPreview(); });
+  document.querySelectorAll('input[name="sPickMode"]').forEach((r) => {
+    r.addEventListener("change", () => {
+      sAddRow.style.display = document.querySelector('input[name="sPickMode"]:checked').value === "custom" ? "" : "none";
+      renderSurveyPreview();
+    });
+  });
+  document.getElementById("addSurvey").onclick = () => toast("请选择要添加的调查问卷");
+  RELATE.forEach((it) => {
+    document.getElementById(it.sw).onclick = (e) => {
+      const sw = e.currentTarget;
+      if (sw.classList.contains("on")) sw.classList.remove("on");
+      else if (relatedOnCount() >= 3) { toast("最多同时开启 3 项"); return; }
+      else sw.classList.add("on");
+      renderRelatedPreview();
+    };
+  });
+
+  function appBars(st) {
+    let h = "";
+    if (st.fields.showTitle !== false) h += `<div class="ph-bar"></div>`;
+    if (st.fields.showTime !== false || st.fields.showPlace !== false || st.fields.showIntro !== false || st.fields.showStatus !== false || st.fields.showStatusTag !== false) {
+      h += `<div class="ph-bar s"></div>`;
+    }
+    if (st.fields.showSignupProgress || st.fields.showSignupButton || st.fields.showMembers || st.fields.showJoinButton) {
+      h += `<div class="ph-meta"><i></i><i></i></div>`;
+    }
+    return h || `<div class="ph-bar" style="opacity:.25"></div>`;
+  }
+  function renderAppPreview(id) {
+    const def = APP_BLOCKS.find((b) => b.id === id);
+    const st = appState[id];
+    const raw = st.pickMode === "custom" ? (st.picked.length || 1) : st.count;
+    const n = Math.min(3, Math.max(1, raw));
+    const bars = () => appBars(st);
+    let html = "";
+    if (st.titleBar) {
+      html += `<div class="art-head"><b style="color:${st.titleColor}">${st.title || def.title}</b>${st.showMore ? `<span class="more" style="color:${st.moreColor}">${def.more} &gt;</span>` : ""}</div>`;
+    }
+    if (id === "activity") html += `<div class="sk-tabs"><span class="on">全部</span><span>文化</span><span>体育</span><span>培训</span></div>`;
+    if (st.style === "big") {
+      html += Array.from({ length: n }, () => `<div class="sk-big">${PH_PIC}${bars()}</div>`).join("");
+    } else if (st.style === "cols") {
+      html += `<div class="sk-cols">${Array.from({ length: Math.max(n, 3) }, () => `<div>${PH_PIC}${bars()}</div>`).join("")}</div>`;
+    } else if (st.style === "right") {
+      html += Array.from({ length: n }, () => `<div class="sk-rl"><div class="txt">${bars()}</div>${PH_PIC}</div>`).join("");
+    } else {
+      html += Array.from({ length: n }, () => `<div class="sk-lr">${PH_PIC}<div class="txt">${bars()}</div></div>`).join("");
+    }
+    document.getElementById(id + "Preview").innerHTML = html;
+  }
+  function mountActivitySourceDrop(parent, st) {
+    parent.innerHTML = "";
+    const drop = mountDropdown(parent, {
+      placeholder: "请选择",
+      getOptions: () => [
+        { label: "活动", value: "activity" },
+        { label: "兴趣圈活动", value: "ig" }
+      ],
+      onChange: (o) => { st.pickSource = o.value; }
+    });
+    if (st.pickSource === "ig") drop.setValue("兴趣圈活动");
+    else if (st.pickSource === "activity") drop.setValue("活动");
+    else drop.reset("请选择");
+  }
+  function mountMomentsJumpDrop(parent, st) {
+    parent.innerHTML = "";
+    const drop = mountDropdown(parent, {
+      placeholder: "请选择跳转链接",
+      getOptions: () => [
+        { label: "活动-精彩瞬间", value: "activity" },
+        { label: "兴趣圈-精彩瞬间", value: "ig" }
+      ],
+      onChange: (o) => { st.jumpLink = o.value; }
+    });
+    if (st.jumpLink === "activity") drop.setValue("活动-精彩瞬间");
+    else if (st.jumpLink === "ig") drop.setValue("兴趣圈-精彩瞬间");
+  }
+  function mountActivityJumpDrop(parent, st) {
+    parent.innerHTML = "";
+    const drop = mountDropdown(parent, {
+      placeholder: "请选择跳转链接",
+      getOptions: () => [
+        { label: "活动", value: "activity" },
+        { label: "兴趣圈活动", value: "ig" }
+      ],
+      onChange: (o) => { st.jumpLink = o.value; }
+    });
+    if (st.jumpLink === "activity") drop.setValue("活动");
+    else if (st.jumpLink === "ig") drop.setValue("兴趣圈活动");
+  }
+  function fillAppPane(id) {
+    const def = APP_BLOCKS.find((b) => b.id === id);
+    const st = appState[id];
+    const noun = def.lib;
+    const custom = st.pickMode === "custom";
+    const hideJump = id === "groups";
+    const styleOpts = STYLES.filter((s) => s.id !== "title");
+    const jumpRowHtml = hideJump ? "" : `<div class="blk-item" data-app-jump-row>
+          <span class="blk-lab">跳转链接</span>
+          <div class="right-col" id="appJumpChain"></div>
+        </div>`;
+    const pickRowHtml = (id === "vote" || id === "groups") ? "" : `<div class="blk">
+        <div class="blk-h">选择${noun}</div>
+        <div class="right-col" id="appPickChain"></div>
+      </div>`;
+    paneApp.innerHTML = `
+      <div class="blk">
+        <div class="blk-h">标题栏<button class="switch${st.titleBar ? " on" : ""}" data-app="titleBar" type="button"></button></div>
+        <div class="blk-item">
+          <span class="blk-lab">标题名称</span>
+          <div class="inline">
+            <input class="color-pick" data-app="titleColor" type="color" value="${st.titleColor}" />
+            <div class="input-wrap">
+              <input class="input" data-app="title" maxlength="40" value="${st.title}" />
+              <span class="count" data-app-title-count>${st.title.length}/40</span>
+            </div>
+          </div>
+        </div>
+        <div class="blk-item" data-app-more-row>
+          <span class="blk-lab">查看更多</span>
+          <div class="inline">
+            <input class="color-pick" data-app="moreColor" type="color" value="${st.moreColor}" />
+            <button class="switch${st.showMore ? " on" : ""}" data-app="showMore" type="button"></button>
+          </div>
+        </div>
+        ${jumpRowHtml}
+      </div>
+      <div class="blk">
+        <div class="blk-h">展示样式</div>
+        <div class="style-pick" data-app-styles></div>
+      </div>
+      ${pickRowHtml}
+      <div class="blk">
+        <div class="blk-h">选择方式</div>
+        <div class="blk-item" style="margin-top:0">
+          <div class="right-col">
+            <div class="pick-latest">
+              <label class="radio"><input type="radio" name="appPickMode-${id}" value="latest"${custom ? "" : " checked"} />展示最新</label>
+              <input class="small-input" data-app="count" value="${st.count}" />
+              <span style="font-size:13px;color:#666">${def.unit}</span>
+            </div>
+            <div class="custom-pick-row">
+              <label class="radio"><input type="radio" name="appPickMode-${id}" value="custom"${custom ? " checked" : ""} />自定义</label>
+              <button class="btn-add-art" type="button" data-app-add${custom ? "" : " hidden"}>添加${noun}</button>
+            </div>
+            <div class="picked-list" data-app-picked hidden></div>
+          </div>
+        </div>
+      </div>
+      <div class="blk">
+        <div class="blk-h">字段设置</div>
+        ${def.fields.map(([key, label]) => `<div class="field-row"><span>${label}</span><button class="switch${st.fields[key] !== false ? " on" : ""}" data-field="${key}" type="button"></button></div>`).join("")}
+      </div>`;
+    const moreRowEl = paneApp.querySelector("[data-app-more-row]");
+    const jumpRowEl = paneApp.querySelector("[data-app-jump-row]");
+    function syncAppTitleBlock() {
+      moreRowEl.style.display = st.titleBar ? "" : "none";
+      if (jumpRowEl) jumpRowEl.style.display = st.titleBar ? "" : "none";
+    }
+    syncAppTitleBlock();
+    if (jumpRowEl) {
+      if (id === "moments") mountMomentsJumpDrop(document.getElementById("appJumpChain"), st);
+      else if (id === "activity") mountActivityJumpDrop(document.getElementById("appJumpChain"), st);
+      else mountCatColChain(document.getElementById("appJumpChain"));
+    }
+    if (id === "activity" || id === "moments") mountActivitySourceDrop(document.getElementById("appPickChain"), st);
+    const styleBox = paneApp.querySelector("[data-app-styles]");
+    styleOpts.forEach((s) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "style-opt" + (st.style === s.id ? " on" : "");
+      btn.innerHTML = `<div class="style-thumb">${s.thumb}</div><em>${s.name}</em>`;
+      btn.addEventListener("click", () => {
+        st.style = s.id;
+        fillAppPane(id);
+        renderAppPreview(id);
+      });
+      styleBox.appendChild(btn);
+    });
+    paneApp.querySelectorAll(".switch[data-app]").forEach((sw) => {
+      sw.addEventListener("click", () => {
+        const key = sw.dataset.app;
+        st[key] = !st[key];
+        sw.classList.toggle("on", st[key]);
+        if (key === "titleBar") syncAppTitleBlock();
+        renderAppPreview(id);
+      });
+    });
+    paneApp.querySelector("[data-app=title]").addEventListener("input", (e) => {
+      st.title = e.target.value;
+      paneApp.querySelector("[data-app-title-count]").textContent = st.title.length + "/40";
+      renderAppPreview(id);
+    });
+    paneApp.querySelector("[data-app=titleColor]").addEventListener("input", (e) => { st.titleColor = e.target.value; renderAppPreview(id); });
+    paneApp.querySelector("[data-app=moreColor]").addEventListener("input", (e) => { st.moreColor = e.target.value; renderAppPreview(id); });
+    paneApp.querySelector("[data-app=count]").addEventListener("input", (e) => {
+      st.count = Math.max(1, Math.min(def.max, parseInt(e.target.value, 10) || 1));
+      renderAppPreview(id);
+    });
+    const addBtn = paneApp.querySelector("[data-app-add]");
+    const pickedBox = paneApp.querySelector("[data-app-picked]");
+    function renderAppPicked() {
+      const isCustom = st.pickMode === "custom";
+      addBtn.hidden = !isCustom;
+      if (!isCustom || !st.picked.length) {
+        pickedBox.hidden = true;
+        pickedBox.innerHTML = "";
+        return;
+      }
+      pickedBox.hidden = false;
+      pickedBox.innerHTML = st.picked.map((r) => `<div class="picked-card"><div class="ttl">${r.title || r.name}</div><button type="button" class="del" data-id="${r.id}">删除</button></div>`).join("");
+      pickedBox.querySelectorAll(".del").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          st.picked = st.picked.filter((x) => String(x.id) !== String(btn.dataset.id));
+          renderAppPicked();
+          renderAppPreview(id);
+        });
+      });
+    }
+    paneApp.querySelectorAll(`input[name="appPickMode-${id}"]`).forEach((r) => {
+      r.addEventListener("change", () => {
+        st.pickMode = r.value;
+        renderAppPicked();
+        renderAppPreview(id);
+      });
+    });
+    addBtn.addEventListener("click", () => {
+      if (id === "activity") {
+        activityPicker.open();
+        return;
+      }
+      if (id === "moments") {
+        momentPicker.open();
+        return;
+      }
+      if (id === "vote") {
+        votePicker.open();
+        return;
+      }
+      if (id === "groups") {
+        groupPicker.open();
+        return;
+      }
+    });
+    renderAppPicked();
+    paneApp.querySelectorAll(".switch[data-field]").forEach((sw) => {
+      sw.addEventListener("click", () => {
+        const key = sw.dataset.field;
+        st.fields[key] = !st.fields[key];
+        sw.classList.toggle("on", st.fields[key]);
+        renderAppPreview(id);
+      });
+    });
+  }
+  const activityPicker = mountActivityPicker({
+    isCustom: () => appState.activity.pickMode === "custom",
+    getSource: () => appState.activity.pickSource || "",
+    getPicked: () => appState.activity.picked,
+    setPicked: (rows) => { appState.activity.picked = rows; },
+    onChange: () => {
+      if (selected === "activity") fillAppPane("activity");
+      renderAppPreview("activity");
+    }
+  });
+  const momentPicker = mountActivityPicker({
+    kind: "moments",
+    isCustom: () => appState.moments.pickMode === "custom",
+    getSource: () => appState.moments.pickSource || "",
+    getPicked: () => appState.moments.picked,
+    setPicked: (rows) => { appState.moments.picked = rows; },
+    onChange: () => {
+      if (selected === "moments") fillAppPane("moments");
+      renderAppPreview("moments");
+    }
+  });
+  const votePicker = mountVotePicker({
+    isCustom: () => appState.vote.pickMode === "custom",
+    getPicked: () => appState.vote.picked,
+    setPicked: (rows) => { appState.vote.picked = rows; },
+    onChange: () => {
+      if (selected === "vote") fillAppPane("vote");
+      renderAppPreview("vote");
+    }
+  });
+  const groupPicker = mountGroupPicker({
+    isCustom: () => appState.groups.pickMode === "custom",
+    getPicked: () => appState.groups.picked,
+    setPicked: (rows) => { appState.groups.picked = rows; },
+    onChange: () => {
+      if (selected === "groups") fillAppPane("groups");
+      renderAppPreview("groups");
+    }
+  });
+
+  const PLATES = [
+    { id: "p_dyn", name: "企业动态" },
+    { id: "p_kb", name: "知识库" },
+    { id: "p_model", name: "劳模风采" }
+  ];
+  const PLATE_TREES = {
+    p_dyn: [
+      { id: "c1", name: "通知公告", columns: [{ id: "c1a", name: "政策文件" }, { id: "c1b", name: "紧急通知" }] },
+      { id: "c2", name: "企业文化", columns: [{ id: "c2a", name: "品牌故事" }, { id: "c2b", name: "节日活动" }] },
+      { id: "c3", name: "行业资讯", columns: [{ id: "c3a", name: "航天动态" }, { id: "c3b", name: "政策解读" }] }
+    ],
+    p_kb: [
+      { id: "k1", name: "制度流程", columns: [{ id: "k1a", name: "人事制度" }, { id: "k1b", name: "财务制度" }] },
+      { id: "k2", name: "业务知识", columns: [{ id: "k2a", name: "产品手册" }, { id: "k2b", name: "常见问题" }] }
+    ],
+    p_model: [
+      { id: "m1", name: "劳模事迹", columns: [{ id: "m1a", name: "年度劳模" }, { id: "m1b", name: "工匠故事" }] },
+      { id: "m2", name: "荣誉展示", columns: [{ id: "m2a", name: "集体荣誉" }, { id: "m2b", name: "个人荣誉" }] }
+    ]
+  };
+  const chainCloseFns = [];
+  document.addEventListener("click", () => chainCloseFns.forEach((fn) => fn()));
+  function mountDropdown(parent, { placeholder, getOptions, onChange }) {
+    const wrap = document.createElement("div");
+    wrap.className = "select-wrap";
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "select";
+    const textEl = document.createElement("span"); textEl.textContent = placeholder;
+    const caret = document.createElement("span"); caret.textContent = "﹀";
+    btn.append(textEl, caret);
+    const menu = document.createElement("div"); menu.className = "select-menu";
+    wrap.append(btn, menu); parent.appendChild(wrap);
+    function closeMenu(){ menu.classList.remove("show"); btn.classList.remove("open"); }
+    chainCloseFns.push(closeMenu);
+    function openMenu(){
+      if (btn.disabled) return;
+      const opts = getOptions() || [];
+      menu.innerHTML = "";
+      opts.forEach((o) => {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "select-option"; b.textContent = o.label;
+        b.onclick = () => { textEl.textContent = o.label; btn.classList.add("has-value"); closeMenu(); onChange?.(o); };
+        menu.appendChild(b);
+      });
+      chainCloseFns.forEach((fn) => fn());
+      menu.classList.add("show"); btn.classList.add("open");
+    }
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const wasOpen = menu.classList.contains("show");
+      chainCloseFns.forEach((fn) => fn());
+      if (!wasOpen) openMenu();
+    };
+    return {
+      reset(text){ textEl.textContent = text || placeholder; btn.classList.remove("has-value"); },
+      setValue(text){ textEl.textContent = text; btn.classList.add("has-value"); },
+      setDisabled(d){ btn.disabled = d; if (d) closeMenu(); }
+    };
+  }
+  function mountCatColChain(rootEl){
+    const state = { plateId: null, scopeMode: "category" };
+    mountDropdown(rootEl, {
+      placeholder: "请选择板块",
+      getOptions: () => PLATES.map((p) => ({ label: p.name, value: p.id })),
+      onChange: (o) => { state.plateId = o.value; scopeDrop.setDisabled(false); refreshScope(); }
+    });
+    const scopeRow = document.createElement("div");
+    scopeRow.className = "radio-wrap rowish";
+    scopeRow.innerHTML = `<label class="radio"><input type="radio" name="${rootEl.id}-scope" value="category" checked/>按分类</label>
+      <label class="radio"><input type="radio" name="${rootEl.id}-scope" value="column"/>按专栏</label>`;
+    rootEl.appendChild(scopeRow);
+    const scopeDrop = mountDropdown(rootEl, {
+      placeholder: "请先选择板块",
+      getOptions: () => {
+        const tree = PLATE_TREES[state.plateId] || [];
+        if (state.scopeMode === "category") return tree.map((c) => ({ label: c.name }));
+        const out = [];
+        tree.forEach((c) => c.columns.forEach((col) => out.push({ label: c.name + " · " + col.name })));
+        return out;
+      }
+    });
+    scopeDrop.setDisabled(true);
+    function refreshScope(){
+      const ready = Boolean(state.plateId);
+      scopeDrop.setDisabled(!ready);
+      scopeDrop.reset(ready ? (state.scopeMode === "category" ? "请选择一个分类" : "请选择一个专栏") : "请先选择板块");
+    }
+    scopeRow.querySelectorAll("input").forEach((r) => {
+      r.onchange = () => { state.scopeMode = r.value; refreshScope(); };
+    });
+  }
+  mountCatColChain(document.getElementById("jumpChain"));
+  mountCatColChain(document.getElementById("newsChain"));
+
+  const DEFAULT_BG = "#0f5c49";
+  const pcStage = document.getElementById("pcStage");
+  const pageBg = document.getElementById("pageBg");
+  document.getElementById("pageBgReset").onclick = () => {
+    pageBg.value = DEFAULT_BG; pcStage.style.background = DEFAULT_BG;
+  };
+  pageBg.addEventListener("input", () => { pcStage.style.background = pageBg.value; });
+  document.getElementById("bgPick").onclick = () => document.getElementById("bgFile").click();
+  document.getElementById("bgFile").onchange = (e) => {
+    const f = e.target.files?.[0]; if (!f) return;
+    const url = URL.createObjectURL(f);
+    document.getElementById("bgThumb").style.backgroundImage = `url(${url})`;
+    document.getElementById("bgThumb").style.backgroundSize = "cover";
+    pcStage.style.backgroundImage = `url(${url})`;
+    pcStage.style.backgroundSize = "cover";
+    pcStage.style.backgroundPosition = "center";
+  };
+  document.getElementById("bgClear").onclick = () => {
+    document.getElementById("bgThumb").style.backgroundImage = "";
+    pcStage.style.backgroundImage = "";
+    pcStage.style.background = pageBg.value || DEFAULT_BG;
+  };
+
+  renderPreview();
+  renderSurveyPreview();
+  renderRelatedPreview();
+  showRight();
+</script>
+</body>
+</html>

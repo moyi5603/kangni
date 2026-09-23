@@ -8,6 +8,7 @@ import {
   signupFieldInputTypeLabels,
   removeSignupField,
   renameSignupField,
+  setGroupSignupEnabled,
   setSignupFieldCompanion,
   setSignupFieldGroups,
   setSignupFieldOptions,
@@ -97,6 +98,16 @@ describe('addSignupField', () => {
   it('ignores duplicate keys', () => {
     const once = addSignupField(defaultSignupFields(), '邮箱');
     expect(addSignupField(once, '邮箱')).toEqual(once);
+  });
+});
+
+describe('setGroupSignupEnabled', () => {
+  it('adds and removes optional 分组选择 without touching other fields', () => {
+    const withEmail = addSignupField(defaultSignupFields(), '邮箱');
+    const enabled = setGroupSignupEnabled(withEmail, true);
+    expect(enabled.map((field) => field.label)).toEqual(['姓名', '邮箱', '分组选择']);
+    expect(setGroupSignupEnabled(enabled, true)).toEqual(enabled);
+    expect(setGroupSignupEnabled(enabled, false).map((field) => field.label)).toEqual(['姓名', '邮箱']);
   });
 });
 
@@ -268,6 +279,15 @@ describe('prefill and validate signup answers', () => {
   it('rejects non-digit values for digitOnly fields', () => {
     const fields = addSignupField(defaultSignupFields(), '年龄');
     expect(validateSignupAnswers(fields, { 姓名: '陈产品', 手机号: '13800001111', 年龄: '2a' })).toBe('年龄仅允许输入数字');
+  });
+
+  it('requires 分组选择 when groups are configured', () => {
+    const fields = setSignupFieldGroups(addSignupField(defaultSignupFields(), '分组选择'), '分组选择', [
+      { name: 'A组', limit: 5 },
+      { name: 'B组', limit: 5 },
+    ]);
+    expect(validateSignupAnswers(fields, { 姓名: '陈产品' })).toBe('请选择报名分组');
+    expect(validateSignupAnswers(fields, { 姓名: '陈产品', 分组选择: '' })).toBe('请选择报名分组');
   });
 
   it('accepts multiple 分组选择 values', () => {

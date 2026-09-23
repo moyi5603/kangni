@@ -8,6 +8,10 @@ describe('H5 vote list', () => {
     const html = renderToStaticMarkup(<H5VoteList />);
     expect(html).toContain('<h1 class="c-h5-title">投票</h1>');
     expect(html).toContain('我的记录');
+    expect(html).toContain('href="#/c/h5/votes/mine"');
+    expect(html).not.toContain('c-h5-vote-mine');
+    expect(html.indexOf('aria-label="投票状态"')).toBeLessThan(html.indexOf('我的记录'));
+    expect(html.indexOf('已结束')).toBeLessThan(html.indexOf('c-vote-records'));
     expect(html).toContain('href="#/c/h5/vote-2"');
     expect(html).toContain('部门团建目的地');
     expect(html).toContain('创新项目投票');

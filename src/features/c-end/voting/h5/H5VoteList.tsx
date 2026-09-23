@@ -1,13 +1,12 @@
 import { useMemo, useState } from 'react';
 import dayjs from 'dayjs';
 import {
-  goCEndPortal,
+  goH5Back,
   toVoteDetailHash,
   toVoteRecordsHash,
   toVoteResultsHash,
   type CEndSurface,
 } from '../../../../app/navigation';
-import { IconBack } from '../../activities/components/Icons';
 import { getVoteResponses, useVotes } from '../../../voting/model/voteStore';
 import type { VoteStatus } from '../../../voting/model/voting';
 import {
@@ -18,6 +17,7 @@ import {
   remainingQuota,
   todayKey,
 } from '../model/clientVote';
+import { VoteStatusTabs } from '../VoteStatusTabs';
 import { VoteShell } from '../VoteShell';
 
 const LIST_TABS: VoteStatus[] = ['进行中', '未开始', '已结束'];
@@ -33,27 +33,15 @@ export function H5VoteList({ surface = 'h5' }: { surface?: CEndSurface }) {
       {surface === 'pc' ? (
         <div className="c-pc-section-head">
           <h2 className="c-section-title">发现投票</h2>
-          <a className="c-pc-vote-mine" href={toVoteRecordsHash(surface)}>
-            我的记录
-          </a>
         </div>
       ) : null}
-      <div className="c-tabs" role="group" aria-label="投票状态">
-        {LIST_TABS.map((item) => {
-          const active = item === tab;
-          return (
-            <button
-              key={item}
-              className={`c-tab${active ? ' is-active' : ''}`}
-              type="button"
-              aria-pressed={active}
-              onClick={() => setTab(item)}
-            >
-              {item}
-            </button>
-          );
-        })}
-      </div>
+      <VoteStatusTabs
+        tabs={LIST_TABS}
+        value={tab}
+        onChange={(next) => setTab(next as VoteStatus)}
+        recordsHref={toVoteRecordsHash(surface)}
+        ariaLabel="投票状态"
+      />
       {rows.length === 0 ? (
         <p className="c-empty">暂无投票</p>
       ) : (
@@ -90,19 +78,7 @@ export function H5VoteList({ surface = 'h5' }: { surface?: CEndSurface }) {
   }
 
   return (
-    <VoteShell
-      header={
-        <header className="c-h5-top">
-          <button className="c-icon-btn" type="button" aria-label="返回" onClick={goCEndPortal}>
-            <IconBack />
-          </button>
-          <h1 className="c-h5-title">投票</h1>
-          <a className="c-h5-vote-mine" href={toVoteRecordsHash(surface)}>
-            我的记录
-          </a>
-        </header>
-      }
-    >
+    <VoteShell title="投票" onBack={goH5Back}>
       {body}
     </VoteShell>
   );

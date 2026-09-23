@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { creditCheckinChance, grantDailyLoginChance, type LotteryChanceLedger } from './lotteryChance';
+import { remainingLotteryChance, grantDailyLoginChance, grantInitialChance, creditCheckinChance, type LotteryChanceLedger } from './lotteryChance';
 import type { LotteryRecord } from './lottery';
 
 const lottery = (partial: Partial<LotteryRecord> = {}): LotteryRecord => ({
@@ -18,10 +18,11 @@ const lottery = (partial: Partial<LotteryRecord> = {}): LotteryRecord => ({
   showRemaining: false,
   showWinners: true,
   missText: '谢谢参与',
-  visibilityEnabled: false,
-  visibilityScope: '全员',
-  visibilityDepartments: [],
-  visibilityFileName: '',
+  audienceKind: 'org',
+  orgScope: 'all',
+  audienceDepartments: [],
+  audienceFileName: '',
+  audiencePeople: [],
   enabled: true,
   participants: 0,
   prizes: [],
@@ -30,6 +31,7 @@ const lottery = (partial: Partial<LotteryRecord> = {}): LotteryRecord => ({
   gainDailyLoginEnabled: false,
   gainDailyLoginCount: 1,
   gainCheckinEnabled: true,
+  gainCheckinCount: 1,
   gainCheckinThemeIds: [2],
   ...partial,
 });
@@ -41,9 +43,8 @@ describe('creditCheckinChance', () => {
     const result = creditCheckinChance({
       themeId: 2,
       userId: 'u2',
-      amount: 1,
       at: '2026-09-10 09:00',
-      lotteries: [lottery({ id: 1 })],
+      lotteries: [lottery({ id: 1, gainCheckinCount: 3 })],
       ledger,
       now,
     });
@@ -53,7 +54,7 @@ describe('creditCheckinChance', () => {
       lotteryId: 1,
       userId: 'u2',
       source: 'checkin',
-      amount: 1,
+      amount: 3,
       at: '2026-09-10 09:00',
     });
   });
@@ -63,7 +64,6 @@ describe('creditCheckinChance', () => {
     const result = creditCheckinChance({
       themeId: 2,
       userId: 'u2',
-      amount: 1,
       at: '2026-09-10 09:00',
       lotteries: [
         lottery({ id: 1, gainCheckinThemeIds: [1] }),
@@ -118,5 +118,42 @@ describe('grantDailyLoginChance', () => {
       ledger: [],
     });
     expect(result.ledger).toHaveLength(0);
+  });
+});
+
+describe('grantInitialChance', () => {
+  it('grants once per user', () => {
+    const item = lottery({ gainInitialEnabled: true, gainInitialCount: 3 });
+    const first = grantInitialChance({ lottery: item, userId: 'u2', ledger: [], at: '2026-09-14 09:00' });
+    expect(first.ledger[0]).toMatchObject({ source: 'initial', amount: 3, userId: 'u2' });
+    const second = grantInitialChance({ lottery: item, userId: 'u2', ledger: first.ledger, at: '2026-09-14 10:00' });
+    expect(second.ledger).toHaveLength(1);
+  });
+});
+
+describe('remainingLotteryChance', () => {
+  it('subtracts draws and caps by dailyChance', () => {
+    const item = lottery({ dailyChance: 1, gainDailyLoginEnabled: true, gainDailyLoginCount: 2 });
+    const ledger = grantDailyLoginChance({ lottery: item, userId: 'u2', day: '2026-09-14', ledger: [] }).ledger;
+    expect(
+      remainingLotteryChance({
+        lottery: item,
+        userId: 'u2',
+        userName: '王磊',
+        ledger,
+        draws: [],
+        day: '2026-09-14',
+      }),
+    ).toBe(1);
+    expect(
+      remainingLotteryChance({
+        lottery: item,
+        userId: 'u2',
+        userName: '王磊',
+        ledger,
+        draws: [{ id: 1, lotteryId: 1, user: '王磊', result: '未中奖', prizeName: '', usedToday: 1, at: '2026-09-14 10:00' }],
+        day: '2026-09-14',
+      }),
+    ).toBe(0);
   });
 });

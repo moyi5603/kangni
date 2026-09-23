@@ -23,11 +23,11 @@ export function InterestGroupReviewModal({
   const decide = async (pass: boolean) => {
     const comment = String((await form.validateFields()).comment ?? '').trim();
     if (!group || !canReviewInterestGroup(group)) {
-      message.info('当前小组不可审核');
+      message.info('当前兴趣圈不可审核');
       return;
     }
     if (!reviewInterestGroup(group.id, pass, comment)) {
-      message.info('当前小组不可审核，数据未改动');
+      message.info('当前兴趣圈不可审核，数据未改动');
       return;
     }
     message.success(pass ? `已通过「${group.name}」` : `已驳回「${group.name}」`);
@@ -36,7 +36,7 @@ export function InterestGroupReviewModal({
 
   return (
     <Modal
-      title={group ? `审核「${group.name}」` : '审核小组'}
+      title={group ? `审核「${group.name}」` : '审核兴趣圈'}
       open={open}
       onCancel={onClose}
       destroyOnHidden

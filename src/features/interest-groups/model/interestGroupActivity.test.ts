@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   canDeleteInterestGroupActivity,
-  canPublishInterestGroupActivity,
-  canReviewInterestGroupActivity,
-  canSubmitInterestGroupActivity,
+  applyCloseInterestGroupSignup,
+  applyReopenInterestGroupSignup,
+  canCloseInterestGroupSignup,
+  canReopenInterestGroupSignup,
+  canRevokeInterestGroupActivity,
   canTerminateInterestGroupActivity,
   getInterestGroupLifecycleStatus,
   igActivityAlignDefaults,
@@ -55,19 +57,34 @@ describe('interest group activity rules', () => {
     expect(canDeleteInterestGroupActivity(series)).toBe(false);
   });
 
-  it('allows terminate only for upcoming', () => {
-    expect(canTerminateInterestGroupActivity({ ...base, status: 'upcoming' })).toBe(true);
-    expect(canTerminateInterestGroupActivity({ ...base, status: 'ongoing' })).toBe(false);
+  it('allows terminate only after start', () => {
+    expect(canTerminateInterestGroupActivity({ ...base, status: 'upcoming' })).toBe(false);
+    expect(canTerminateInterestGroupActivity({ ...base, status: 'ongoing' })).toBe(true);
     expect(canTerminateInterestGroupActivity({ ...base, status: 'ended' })).toBe(false);
+    expect(canTerminateInterestGroupActivity({ ...base, status: 'cancelled' })).toBe(false);
+    expect(canTerminateInterestGroupActivity({ ...base, status: 'ongoing', publishStatus: '未发布' })).toBe(false);
+  });
+
+  it('closes and reopens signup like the activities app', () => {
+    const now = '2026-05-20 10:00';
+    expect(canCloseInterestGroupSignup(base, now)).toBe(true);
+    const closed = applyCloseInterestGroupSignup(base, now);
+    expect(closed.signupClosedAt).toBe(now);
+    expect(closed.signupEndAt).toBe(now);
+    expect(canReopenInterestGroupSignup(closed)).toBe(true);
+    expect(applyReopenInterestGroupSignup(closed).signupEndAt).toBe(base.signupEndAt);
+    expect(canRevokeInterestGroupActivity(base)).toBe(true);
+    expect(canRevokeInterestGroupActivity({ ...base, status: 'ongoing' })).toBe(false);
   });
 
   it('maps lifecycle like the activities app', () => {
     expect(getInterestGroupLifecycleStatus(base)).toBe('未开始');
     expect(getInterestGroupLifecycleStatus({ ...base, publishStatus: '未发布' })).toBe('未发布');
-    expect(getInterestGroupLifecycleStatus({ ...base, status: 'cancelled' })).toBe('已结束');
+    expect(getInterestGroupLifecycleStatus({ ...base, status: 'cancelled' })).toBe('已终止');
+    expect(getInterestGroupLifecycleStatus({ ...base, status: 'ended' })).toBe('已结束');
   });
 
-  it('requires cycle range for recurring', () => {
+  it('requires weekday rules and activity window for recurring', () => {
     const values: InterestGroupActivityFormValues = {
       ...igActivityAlignDefaults(),
       coverUrl: '/x.jpg',
@@ -83,20 +100,47 @@ describe('interest group activity rules', () => {
       signupStartAt: '2026-05-01 09:00',
       signupHoursBefore: 0,
     };
-    expect(validateInterestGroupActivityForm(values, true)).toBe('请选择重复的周几');
-    expect(validateInterestGroupActivityForm({ ...values, repeatWeekday: 4 }, true)).toBe('请选择周期起止日期');
+    expect(validateInterestGroupActivityForm(values, true)).toBe('请选择活动时间');
+    expect(validateInterestGroupActivityForm({ ...values, repeatRules: [{ weekday: 4, timeStart: '19:00', timeEnd: '21:00' }] }, true)).toBe(
+      '请选择活动时间',
+    );
     expect(
-      validateInterestGroupActivityForm({ ...values, repeatWeekday: 4, cycleStart: '2026-06-01', cycleEnd: '2026-06-30' }, true),
+      validateInterestGroupActivityForm(
+        {
+          ...values,
+          startAt: '2026-06-01 19:00',
+          endAt: '2026-06-30 21:00',
+          repeatRules: [{ weekday: 4, timeStart: '19:00', timeEnd: '21:00' }],
+        },
+        true,
+      ),
     ).toBeNull();
-  });
-
-  it('gates publish and review like the activities app', () => {
-    expect(canPublishInterestGroupActivity({ auditStatus: '已通过' })).toBe(true);
-    expect(canPublishInterestGroupActivity({ auditStatus: '无需审核' })).toBe(true);
-    expect(canPublishInterestGroupActivity({ auditStatus: '待审核' })).toBe(false);
-    expect(canSubmitInterestGroupActivity({ auditStatus: '待提交' })).toBe(true);
-    expect(canSubmitInterestGroupActivity({ auditStatus: '已驳回' })).toBe(true);
-    expect(canReviewInterestGroupActivity({ auditStatus: '待审核' })).toBe(true);
-    expect(canReviewInterestGroupActivity({ auditStatus: '已通过' })).toBe(false);
+    expect(
+      validateInterestGroupActivityForm(
+        {
+          ...values,
+          visibility: '按部门',
+          startAt: '2026-06-01 19:00',
+          endAt: '2026-06-30 21:00',
+          repeatRules: [{ weekday: 4, timeStart: '19:00', timeEnd: '21:00' }],
+          notifyOnPublish: true,
+          notifyAudience: 'all',
+        },
+        true,
+      ),
+    ).toBeNull();
+    expect(
+      validateInterestGroupActivityForm(
+        {
+          ...values,
+          startAt: '2026-06-01 19:00',
+          endAt: '2026-06-30 21:00',
+          repeatRules: [{ weekday: 4, timeStart: '19:00', timeEnd: '21:00' }],
+          notifyOnPublish: true,
+          notifyAudience: undefined,
+        },
+        true,
+      ),
+    ).toBeNull();
   });
 });

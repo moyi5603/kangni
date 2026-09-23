@@ -31,9 +31,12 @@ import {
   withDisabledPeople,
   type Activity,
 } from '../model/activity';
-import { addMedal, getMedal, useMedals, type Medal } from '../model/medalLibrary';
+import { addMedal, getMedal, useMedals } from '../model/medalLibrary';
+import { MedalRewardFields } from '../../checkin/components/MedalRewardFields';
 import { downloadPrizeImportTemplate, parsePrizeImportCsv } from '../model/prizeImport';
-import { patchRelated, prizeTargetTypes, prizeTypes, useRelated, type PrizeRecord, type PrizeTargetType, type PrizeType } from '../model/related';
+import { patchRelated, prizeTypes, useRelated, type PrizeRecord, type PrizeTargetType, type PrizeType } from '../model/related';
+import { approvedSignupsInGroup, signupGroupNames, visiblePrizeTargetTypes } from '../model/prizeGrant';
+import { findGroupSignupField } from '../model/signupFields';
 
 type GrantForm = {
   type: PrizeType;
@@ -42,6 +45,7 @@ type GrantForm = {
   medalName?: string;
   medalImageUrl?: string;
   targetType: PrizeTargetType;
+  groupName?: string;
   people?: string[];
 };
 
@@ -51,47 +55,6 @@ function nowText() {
 
 function grantKey(name: string, phone: string, medalName: string) {
   return `${name}|${phone}|${medalName}`;
-}
-
-type MedalOption = { value: string; label: string; imageUrl: string };
-
-function MedalSelect({
-  value,
-  onChange,
-  medals,
-}: {
-  value?: string;
-  onChange?: (value?: string) => void;
-  medals: Medal[];
-}) {
-  const options: MedalOption[] = medals.map((medal) => ({ value: medal.id, label: medal.name, imageUrl: medal.imageUrl }));
-  return (
-    <Select
-      value={value}
-      onChange={onChange}
-      allowClear
-      showSearch={{ optionFilterProp: 'label' }}
-      placeholder="请搜索或选择勋章"
-      options={options}
-      optionRender={(option) => (
-        <Flex align="center" gap={8}>
-          <img src={(option.data as MedalOption).imageUrl} alt="" width={32} height={32} />
-          <span>{option.data.label}</span>
-        </Flex>
-      )}
-      labelRender={(props) => {
-        const medal = medals.find((item) => item.id === props.value);
-        if (!medal) return props.label;
-        return (
-          <Flex align="center" gap={8}>
-            <img src={medal.imageUrl} alt="" width={20} height={20} />
-            <span>{medal.name}</span>
-          </Flex>
-        );
-      }}
-      style={{ width: '100%' }}
-    />
-  );
 }
 
 export function ActivityPrizeListPage({ activity }: { activity: Activity }) {
@@ -111,9 +74,18 @@ export function ActivityPrizeListPage({ activity }: { activity: Activity }) {
   const medalSource = Form.useWatch('medalSource', form);
   const prizeType = Form.useWatch('type', form);
   const targetType = Form.useWatch('targetType', form);
+  const groupNameWatch = Form.useWatch('groupName', form);
   const medalId = Form.useWatch('medalId', form);
   const medalNameWatch = Form.useWatch('medalName', form);
+  const medalImageUrlWatch = Form.useWatch('medalImageUrl', form);
+  const groupNames = useMemo(() => signupGroupNames(activity.signupFields), [activity.signupFields]);
+  const groupsEnabled = Boolean(findGroupSignupField(activity.signupFields));
+  const targetOptions = useMemo(() => visiblePrizeTargetTypes(groupsEnabled), [groupsEnabled]);
   const approvedSignups = useMemo(() => signups.filter((item) => item.status === '已通过'), [signups]);
+  const approvedInSelectedGroup = useMemo(
+    () => (groupNameWatch ? approvedSignupsInGroup(approvedSignups, groupNameWatch) : []),
+    [approvedSignups, groupNameWatch],
+  );
   const activeMedalName =
     medalSource === '上传图片' ? medalNameWatch?.trim() : medals.find((item) => item.id === medalId)?.name;
   const grantedNames = useMemo(() => {
@@ -197,6 +169,20 @@ export function ActivityPrizeListPage({ activity }: { activity: Activity }) {
       approvedSignups.forEach((item) => push({ name: item.name, phone: item.phone, department: item.department }));
       return { people, skipped };
     }
+    if (values.targetType === '指定分组') {
+      const groupName = values.groupName?.trim() ?? '';
+      if (!groupName) {
+        form.setFields([{ name: 'groupName', errors: ['请选择分组'] }]);
+        return undefined;
+      }
+      const inGroup = approvedSignupsInGroup(approvedSignups, groupName);
+      if (!inGroup.length) {
+        message.info(`「${groupName}」暂无已通过报名人员，未发放`);
+        return undefined;
+      }
+      inGroup.forEach((item) => push({ name: item.name, phone: item.phone, department: item.department }));
+      return { people, skipped };
+    }
     if (values.targetType === '指定人员') {
       const names = values.people ?? [];
       if (!names.length) {
@@ -263,6 +249,7 @@ export function ActivityPrizeListPage({ activity }: { activity: Activity }) {
       medalImageUrl: savedMedal.imageUrl,
       type: values.type,
       targetType: values.targetType,
+      targetGroup: values.targetType === '指定分组' ? values.groupName : undefined,
       createdAt: nowText(),
     }));
     patchRelated('prizes', (list) => [...created, ...list]);
@@ -290,7 +277,15 @@ export function ActivityPrizeListPage({ activity }: { activity: Activity }) {
         </Flex>
       ),
     },
-    { title: '发放对象', dataIndex: 'targetType', width: 130 },
+    {
+      title: '发放对象',
+      dataIndex: 'targetType',
+      width: 160,
+      ellipsis: true,
+      render: (value: PrizeTargetType, record: PrizeRecord) => (
+        <TableEllipsisText text={record.targetGroup ? `${value}：${record.targetGroup}` : value} />
+      ),
+    },
     { title: '发放时间', dataIndex: 'createdAt', width: 180 },
   ];
 
@@ -336,7 +331,7 @@ export function ActivityPrizeListPage({ activity }: { activity: Activity }) {
           sticky
           columns={columns}
           dataSource={filtered}
-          scroll={{ x: 1080 }}
+          scroll={{ x: 1120 }}
           pagination={{
             pageSize: b2bStandards.table.pageSize,
             pageSizeOptions: [...b2bStandards.table.pageSizeOptions],
@@ -370,65 +365,73 @@ export function ActivityPrizeListPage({ activity }: { activity: Activity }) {
           </Form.Item>
           {prizeType === '勋章' || prizeType == null ? (
             <>
-          <Form.Item name="medalSource" label="勋章来源" rules={[{ required: true, message: '请选择勋章来源' }]}>
-            <Radio.Group
-              options={[
-                { value: '勋章库', label: '勋章库' },
-                { value: '上传图片', label: '上传图片' },
-              ]}
+          <Form.Item label="勋章" required>
+            <MedalRewardFields
+              medals={medals}
+              locked={false}
+              source={medalSource === '上传图片' ? '新建勋章' : '从已有选择'}
+              medalId={medalId}
+              medalName={medalNameWatch}
+              medalImageUrl={medalImageUrlWatch}
+              onChange={(patch) => {
+                if (patch.medalSource === '从已有选择') form.setFieldValue('medalSource', '勋章库');
+                if (patch.medalSource === '新建勋章') form.setFieldValue('medalSource', '上传图片');
+                if (patch.medalId !== undefined) form.setFieldValue('medalId', patch.medalId);
+                if (patch.medalName !== undefined) form.setFieldValue('medalName', patch.medalName);
+                if (patch.medalImageUrl !== undefined) {
+                  form.setFieldValue('medalImageUrl', patch.medalImageUrl);
+                  setUploadList(
+                    patch.medalImageUrl
+                      ? [{ uid: 'medal-icon', name: '勋章图标', url: patch.medalImageUrl, status: 'done' }]
+                      : [],
+                  );
+                }
+              }}
             />
           </Form.Item>
-          {medalSource !== '上传图片' ? (
-            <Form.Item name="medalId" label="选择勋章" extra="勋章较多时可输入名称搜索。" rules={[{ required: true, message: '请选择勋章' }]}>
-              <MedalSelect medals={medals} />
-            </Form.Item>
-          ) : (
-            <>
-              <Form.Item name="medalName" label="勋章名称" rules={[{ required: true, message: '请输入勋章名称' }, { max: 20, message: '勋章名称不超过 20 个字' }]}>
-                <Input maxLength={20} showCount placeholder="请输入勋章名称" />
-              </Form.Item>
-              <Form.Item label="勋章图片" extra="上传后会加入勋章库，下次可直接选用。" required>
-                <Upload
-                  accept="image/*"
-                  listType="picture-card"
-                  maxCount={1}
-                  fileList={uploadList}
-                  beforeUpload={() => false}
-                  onChange={({ fileList }) => {
-                    const file = fileList[0];
-                    setUploadList(fileList.slice(-1));
-                    if (file?.originFileObj) {
-                      const reader = new FileReader();
-                      reader.onload = () => form.setFieldValue('medalImageUrl', String(reader.result));
-                      reader.readAsDataURL(file.originFileObj);
-                    } else {
-                      form.setFieldValue('medalImageUrl', file?.url ?? '');
-                    }
-                  }}
-                >
-                  {uploadList.length ? null : (
-                    <button type="button" className="cover-upload-trigger">
-                      <PlusOutlined />
-                      <span>上传</span>
-                    </button>
-                  )}
-                </Upload>
-              </Form.Item>
-              <Form.Item name="medalImageUrl" hidden rules={[{ required: true, message: '请上传勋章图片' }]}>
-                <Input />
-              </Form.Item>
-            </>
-          )}
+          <Form.Item name="medalSource" hidden>
+            <Input />
+          </Form.Item>
+          <Form.Item name="medalId" hidden rules={medalSource === '上传图片' ? [] : [{ required: true, message: '请选择勋章' }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="medalName" hidden>
+            <Input />
+          </Form.Item>
+          <Form.Item name="medalImageUrl" hidden rules={medalSource === '上传图片' ? [{ required: true, message: '请上传勋章图标' }] : []}>
+            <Input />
+          </Form.Item>
             </>
           ) : null}
           <Form.Item
             name="targetType"
             label="发放对象"
-            extra={targetType === '全部报名人员' ? `发给本活动已通过报名人员，当前 ${approvedSignups.length} 人。已获得该勋章的人会跳过。` : undefined}
+            extra={
+              targetType === '全部报名人员'
+                ? `发给本活动已通过报名人员，当前 ${approvedSignups.length} 人。已获得该勋章的人会跳过。`
+                : targetType === '指定分组'
+                  ? `发给所选分组已通过报名人员，当前 ${approvedInSelectedGroup.length} 人。已获得该勋章的人会跳过。`
+                  : undefined
+            }
             rules={[{ required: true, message: '请选择发放对象' }]}
           >
-            <Radio.Group orientation="vertical" options={prizeTargetTypes.map((value) => ({ value, label: value }))} />
+            <Radio.Group
+              orientation="vertical"
+              options={targetOptions.map((value) => ({ value, label: value }))}
+              onChange={() => form.setFieldValue('groupName', undefined)}
+            />
           </Form.Item>
+          {targetType === '指定分组' ? (
+            <Form.Item name="groupName" label="选择分组" rules={[{ required: true, message: '请选择分组' }]}>
+              <Select
+                allowClear
+                showSearch={{ optionFilterProp: 'label' }}
+                placeholder="请选择分组名称"
+                options={groupNames.map((name) => ({ value: name, label: name }))}
+                style={{ width: 240 }}
+              />
+            </Form.Item>
+          ) : null}
           {targetType === '指定人员' ? (
             <Form.Item name="people" label="选择人员" rules={[{ required: true, type: 'array', min: 1, message: '请选择发放人员' }]}>
               <TreeSelect

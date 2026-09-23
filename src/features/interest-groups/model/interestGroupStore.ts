@@ -4,8 +4,11 @@ import { orgPeopleByName } from '../../activities/model/activity';
 import {
   INTEREST_GROUP_MOCK_VERSION,
   canReviewInterestGroup,
+  canPublishInterestGroup,
+  canRevokeInterestGroup,
+  formatInterestGroupLeadName,
   initialInterestGroups,
-  normalizeInterestGroupTags,
+  normalizeInterestGroupLeadIds,
   type InterestGroup,
   type InterestGroupFormValues,
   type InterestGroupSource,
@@ -23,18 +26,22 @@ import {
 import {
   INTEREST_GROUP_ACTIVITY_MOCK_VERSION,
   canDeleteInterestGroupActivity,
-  canPublishInterestGroupActivity,
-  canReviewInterestGroupActivity,
-  canSubmitInterestGroupActivity,
+  applyCloseInterestGroupSignup,
+  applyReopenInterestGroupSignup,
+  canCloseInterestGroupSignup,
+  canReopenInterestGroupSignup,
+  canRevokeInterestGroupActivity,
   canTerminateInterestGroupActivity,
   countGroupActivities,
   groupHasOngoingActivity,
   igActivityAlignDefaults,
   initialInterestGroupActivities,
+  lockInterestGroupActivityPolicy,
   validateInterestGroupActivityForm,
   type InterestGroupActivity,
   type InterestGroupActivityFormValues,
 } from './interestGroupActivity';
+import { applyPinToggle, movePinSortItem, nextCustomSortIndex } from './pinSort';
 import {
   initialInterestGroupMembers,
   type InterestGroupMember,
@@ -42,12 +49,14 @@ import {
 } from './interestGroupMember';
 import { INTEREST_GROUP_COMMENT_MOCK_VERSION, initialInterestGroupComments, type InterestGroupComment } from './interestGroupComment';
 import {
+  coerceRepeatRules,
   generateRecurringSessions,
   needsSessionPick,
-  syncSessionBounds,
   syncSignupEndAt,
   createSessionId,
 } from '../../activities/model/activitySchedule';
+import { ensureSessionCheckInTokens } from '../../activities/model/activityCheckIn';
+import { evaluateInterestGroupCheckIn } from './interestGroupCheckIn';
 import { removeCommentsAndDescendants } from '../../activities/model/commentTree';
 import type { CommentRecord } from '../../activities/model/related';
 import {
@@ -64,8 +73,9 @@ import {
   type InterestGroupSignup,
   type InterestGroupSignupStatus,
 } from './interestGroupSignup';
-import { employeeCreatedGroupAuditStatus } from './interestGroupSettings';
+import { canMemberCreateInterestGroupActivity, employeeCreatedGroupAuditStatus } from './interestGroupSettings';
 import { getInterestGroupSettings } from './interestGroupSettingsStore';
+import { getInterestGroupPointRules } from './interestGroupPointRulesStore';
 
 let mockVersion = INTEREST_GROUP_MOCK_VERSION;
 let categoryMockVersion = INTEREST_GROUP_CATEGORY_MOCK_VERSION;
@@ -220,7 +230,7 @@ export function removeInterestGroupMembers(groupId: number, employeeIds: string[
       continue;
     }
     if (current.role === 'lead') {
-      skipped.push(`${current.name}是小组负责人`);
+      skipped.push(`${current.name}是兴趣圈负责人`);
       continue;
     }
     drop.add(employeeId);
@@ -315,6 +325,27 @@ export function addInterestGroupSignup(input: AddInterestGroupSignupInput): Inte
   if (occupiesInterestGroupSignupSlot(created.status)) adjustSignedCount(input.activityId, input.sessionId, 1);
   emit();
   return created;
+}
+
+export function applyInterestGroupCheckIn(
+  activityId: number,
+  sessionId: string,
+  token: string,
+  now = Date.now(),
+  viewerName: string,
+) {
+  syncMockData();
+  const activity = activities.find((item) => item.id === activityId);
+  if (!activity) return { ok: false as const, reason: 'disabled' as const };
+  const signup = signups.find((item) => item.activityId === activityId && item.name === viewerName);
+  const result = evaluateInterestGroupCheckIn(activity, sessionId, token, signup, now);
+  if (!result.ok || result.already || !signup) return result;
+  const at = dayjs(now).format('YYYY-MM-DD HH:mm:ss');
+  signups = signups.map((item) =>
+    item.id === signup.id ? { ...item, checkIns: { ...item.checkIns, [sessionId]: at } } : item,
+  );
+  emit();
+  return result;
 }
 
 export function setInterestGroupSignupStatus(
@@ -459,98 +490,135 @@ export function moveInterestGroupCategory(key: string, dir: -1 | 1): boolean {
 
 export type UpsertInterestGroupOptions = { source?: InterestGroupSource };
 
+function syncGroupLeadMembers(groupId: number, leadIds: string[], joinedAt: string) {
+  const groupMembers = members.filter((item) => item.groupId === groupId);
+  const others = members.filter((item) => item.groupId !== groupId);
+  const byId = new Map(groupMembers.map((item) => [item.employeeId, item]));
+  const nextGroup: InterestGroupMember[] = [];
+
+  for (const id of leadIds) {
+    const person = orgPeopleByName[id];
+    const name = person?.name ?? id;
+    const existing = byId.get(name) ?? byId.get(id);
+    if (existing) {
+      nextGroup.push({
+        ...existing,
+        employeeId: name,
+        name,
+        department: person?.department ?? existing.department,
+        role: 'lead',
+        status: '已通过',
+      });
+      byId.delete(existing.employeeId);
+    } else {
+      nextGroup.push({
+        groupId,
+        employeeId: name,
+        name,
+        department: person?.department ?? '—',
+        role: 'lead',
+        status: '已通过',
+        joinedAt,
+      });
+    }
+  }
+
+  for (const leftover of byId.values()) {
+    nextGroup.push(leftover.role === 'lead' ? { ...leftover, role: 'member' } : leftover);
+  }
+
+  members = [...nextGroup, ...others];
+  const approvedCount = nextGroup.filter((item) => item.status === '已通过').length;
+  groups = groups.map((group) => (group.id === groupId ? { ...group, memberCount: approvedCount } : group));
+}
+
 export function upsertInterestGroup(
   values: InterestGroupFormValues,
   id?: number,
   options?: UpsertInterestGroupOptions,
 ): InterestGroup {
   syncMockData();
-  const employee = orgPeopleByName[values.leadEmployeeId];
+  const leadEmployeeIds = normalizeInterestGroupLeadIds(values.leadEmployeeIds);
+  const leadName = formatInterestGroupLeadName(
+    leadEmployeeIds.map((leadId) => orgPeopleByName[leadId]?.name ?? leadId),
+  );
   const payload = {
     name: values.name.trim(),
     categoryKey: values.categoryKey,
-    leadEmployeeId: values.leadEmployeeId,
-    leadName: employee?.name ?? values.leadEmployeeId,
-    joinMode: 'free',
-    area: values.area.trim(),
-    tags: normalizeInterestGroupTags(values.tags),
+    leadEmployeeIds,
+    leadName,
+    joinMode: 'free' as const,
     intro: values.intro.trim(),
     coverUrl: values.coverUrl,
   };
 
   if (id != null) {
     const current = groups.find((group) => group.id === id);
-    if (!current) throw new Error('小组不存在');
-    const next: InterestGroup = { ...current, ...payload };
+    if (!current) throw new Error('兴趣圈不存在');
+    const next: InterestGroup = {
+      ...current,
+      ...payload,
+    };
     groups = groups.map((group) => (group.id === id ? next : group));
     members = members.map((member) => {
       if (member.groupId !== id) return member;
-      if (member.role === 'lead') {
-        return {
-          ...member,
-          name: next.leadName,
-          employeeId: next.leadEmployeeId,
-          department: employee?.department ?? member.department,
-          status: '已通过' as const,
-        };
-      }
       if (next.joinMode === 'free' && member.status === '待审核') {
         return { ...member, status: '已通过' as const };
       }
       return member;
     });
+    syncGroupLeadMembers(id, leadEmployeeIds, current.createdAt);
     emit();
-    return next;
+    return getInterestGroup(id) ?? next;
   }
 
   const nextId = Math.max(0, ...groups.map((group) => group.id)) + 1;
   const createdAt = dayjs().format('YYYY-MM-DD HH:mm:ss');
   const source = options?.source ?? 'admin';
+  const auditStatus =
+    source === 'employee' ? employeeCreatedGroupAuditStatus(getInterestGroupSettings()) : '无需审核';
+  const autoPublish = source === 'employee' && auditStatus === '无需审核';
   const created: InterestGroup = {
     id: nextId,
     ...payload,
-    memberCount: 1,
+    area: '',
+    tags: [],
+    memberCount: leadEmployeeIds.length,
     activityCount: 0,
     createdAt,
     source,
-    auditStatus: source === 'employee' ? employeeCreatedGroupAuditStatus(getInterestGroupSettings()) : '无需审核',
+    auditStatus,
+    publishStatus: autoPublish ? '已发布' : '未发布',
+    pinned: false,
+    sortIndex: nextCustomSortIndex(groups),
   };
   groups = [created, ...groups];
-  members = [
-    {
-      groupId: nextId,
-      employeeId: created.leadEmployeeId,
-      name: created.leadName,
-      department: employee?.department ?? '—',
-      role: 'lead',
-      status: '已通过',
-      joinedAt: createdAt,
-    },
-    ...members,
-  ];
+  syncGroupLeadMembers(nextId, leadEmployeeIds, createdAt);
   emit();
-  return created;
+  return getInterestGroup(nextId) ?? created;
 }
 
 function buildActivityFromForm(values: InterestGroupActivityFormValues, current?: InterestGroupActivity): InterestGroupActivity {
+  values = lockInterestGroupActivityPolicy(values, getInterestGroupPointRules());
   const group = groups.find((item) => item.id === values.groupId);
   const align = igActivityAlignDefaults();
   let sessions = current?.sessions ?? [];
   if (values.type === 'once') {
     sessions = [];
-  } else if (values.type === 'recurring' && values.repeatWeekday != null && values.timeStart && values.timeEnd && values.cycleStart && values.cycleEnd) {
-    sessions = generateRecurringSessions({
-      repeatWeekday: values.repeatWeekday,
-      timeStart: values.timeStart,
-      timeEnd: values.timeEnd,
-      cycleStart: values.cycleStart,
-      cycleEnd: values.cycleEnd,
-    }).map((session, index) => ({
-      ...session,
-      capacity: values.capacity,
-      signedCount: current?.sessions?.[index]?.signedCount ?? 0,
-      status: current?.sessions?.[index]?.status ?? ('upcoming' as const),
-    }));
+  } else if (values.type === 'recurring') {
+    const rules = coerceRepeatRules(values);
+    if (values.startAt && values.endAt && rules.length) {
+      sessions = generateRecurringSessions({
+        rules,
+        windowStart: values.startAt,
+        windowEnd: values.endAt,
+      }).map((session, index) => ({
+        ...session,
+        capacity: values.capacity,
+        signedCount: current?.sessions?.[index]?.signedCount ?? 0,
+        status: current?.sessions?.[index]?.status ?? ('upcoming' as const),
+      }));
+    }
   } else if (values.type === 'series') {
     sessions = (values.sessions ?? []).map((session, index) => ({
       id: current?.sessions?.[index]?.id ?? createSessionId(session.startAt, index),
@@ -561,7 +629,18 @@ function buildActivityFromForm(values: InterestGroupActivityFormValues, current?
       status: current?.sessions?.[index]?.status ?? ('upcoming' as const),
     }));
   }
-  const bounds = syncSessionBounds(sessions.map(({ id, startAt, endAt }) => ({ id, startAt, endAt })));
+  if (sessions.length) {
+    const tokens = ensureSessionCheckInTokens(
+      sessions.map((session) => ({ id: session.id, startAt: session.startAt, endAt: session.endAt, checkInToken: session.checkInToken })),
+      (current?.sessions ?? []).map((session) => ({
+        id: session.id,
+        startAt: session.startAt,
+        endAt: session.endAt,
+        checkInToken: session.checkInToken,
+      })),
+    );
+    sessions = sessions.map((session, index) => ({ ...session, checkInToken: tokens[index]?.checkInToken }));
+  }
   return {
     ...align,
     ...current,
@@ -578,34 +657,47 @@ function buildActivityFromForm(values: InterestGroupActivityFormValues, current?
     status: current?.status ?? 'upcoming',
     detailHtml: values.detailHtml,
     likeCount: current?.likeCount ?? 0,
-    startAt: values.type === 'once' ? values.startAt : bounds.startAt || current?.startAt,
-    endAt: values.type === 'once' ? values.endAt : bounds.endAt || current?.endAt,
-    repeatWeekday: values.type === 'recurring' ? values.repeatWeekday : undefined,
-    timeStart: values.type === 'recurring' ? values.timeStart : undefined,
-    timeEnd: values.type === 'recurring' ? values.timeEnd : undefined,
-    cycleStart: values.type === 'recurring' ? values.cycleStart : undefined,
-    cycleEnd: values.type === 'recurring' ? values.cycleEnd : undefined,
+    startAt: values.startAt || current?.startAt,
+    endAt: values.endAt || current?.endAt,
+    repeatRules: values.type === 'recurring' ? coerceRepeatRules(values) : undefined,
     sessions,
     signupStartAt: values.signupStartAt,
-    signupEndAt: values.type === 'once' ? values.signupEndAt : values.signupEndAt || current?.signupEndAt || align.signupEndAt,
+    signupEndAt: current?.signupClosedAt
+      ? current.signupEndAt
+      : values.type === 'once'
+        ? values.signupEndAt
+        : values.signupEndAt || current?.signupEndAt || align.signupEndAt,
     signupHoursBefore: values.type === 'once' ? 0 : values.signupHoursBefore ?? 0,
+    signupClosedAt: current?.signupClosedAt,
+    signupEndAtBeforeClose: current?.signupEndAtBeforeClose,
+    terminatedAt: current?.terminatedAt,
     visibility: values.visibility,
     departments: values.departments,
     customPeople: values.customPeople,
     importFileName: values.importFileName,
     importedPeople: values.importedPeople,
     notifyOnPublish: values.notifyOnPublish,
+    notifyAudience: values.notifyAudience,
     needAudit: false,
     minSeniorityYears: undefined,
     signupApprovalNodes: [],
     signupFields: values.signupFields,
     signupPoints: values.signupPoints,
     signupPointsEnabled: values.signupPointsEnabled,
+    checkInEnabled: values.checkInEnabled,
+    checkInOpenMode: values.checkInOpenMode,
+    checkInOpenMinutesBefore: values.checkInOpenMinutesBefore,
+    checkInValidAfterStart: values.checkInValidAfterStart,
+    checkInValidAfterStartUnit: values.checkInValidAfterStartUnit,
+    checkInDynamicQr: values.checkInDynamicQr,
+    checkInToken: current?.checkInToken ?? `ck-once-${current?.id ?? 'new'}`,
     pinned: current?.pinned ?? false,
+    sortIndex: current?.sortIndex ?? nextCustomSortIndex(activities),
     createdAt: current?.createdAt ?? dayjs().format('YYYY-MM-DD HH:mm:ss'),
-    auditStatus: current?.auditStatus ?? '待提交',
-    publishStatus: current?.publishStatus ?? '未发布',
-    publishedAt: current?.publishedAt ?? '',
+    creator: current?.creator ?? '陈产品',
+    auditStatus: '无需审核',
+    publishStatus: current?.publishStatus ?? '已发布',
+    publishedAt: current?.publishedAt ?? (current ? '' : dayjs().format('YYYY-MM-DD HH:mm:ss')),
     rejectReason: current?.rejectReason,
   };
 }
@@ -641,6 +733,40 @@ export function patchInterestGroupActivities(updater: (list: InterestGroupActivi
   emit();
 }
 
+export function toggleInterestGroupPin(id: number): boolean {
+  syncMockData();
+  if (!groups.some((item) => item.id === id)) return false;
+  groups = applyPinToggle(groups, id);
+  emit();
+  return true;
+}
+
+export function moveInterestGroup(id: number, direction: 'up' | 'down', visible: InterestGroup[]): boolean {
+  syncMockData();
+  const next = movePinSortItem(groups, visible, id, direction);
+  if (!next) return false;
+  groups = next;
+  emit();
+  return true;
+}
+
+export function toggleInterestGroupActivityPin(id: number): boolean {
+  syncMockData();
+  if (!activities.some((item) => item.id === id)) return false;
+  activities = applyPinToggle(activities, id);
+  emit();
+  return true;
+}
+
+export function moveInterestGroupActivity(id: number, direction: 'up' | 'down', visible: InterestGroupActivity[]): boolean {
+  syncMockData();
+  const next = movePinSortItem(activities, visible, id, direction);
+  if (!next) return false;
+  activities = next;
+  emit();
+  return true;
+}
+
 export function reviewInterestGroup(id: number, pass: boolean, comment: string): boolean {
   syncMockData();
   const current = groups.find((item) => item.id === id);
@@ -658,34 +784,30 @@ export function reviewInterestGroup(id: number, pass: boolean, comment: string):
   return true;
 }
 
-export function submitInterestGroupActivities(ids: number[]): number {
+export function publishInterestGroups(ids: number[]): number {
   syncMockData();
   const idSet = new Set(ids);
   let done = 0;
-  activities = activities.map((item) => {
-    if (!idSet.has(item.id) || !canSubmitInterestGroupActivity(item)) return item;
+  groups = groups.map((item) => {
+    if (!idSet.has(item.id) || !canPublishInterestGroup(item)) return item;
     done += 1;
-    return { ...item, auditStatus: '待审核', rejectReason: undefined };
+    return { ...item, publishStatus: '已发布' };
   });
   if (done) emit();
   return done;
 }
 
-export function reviewInterestGroupActivity(id: number, pass: boolean, comment: string): boolean {
+export function unpublishInterestGroups(ids: number[]): number {
   syncMockData();
-  const current = activities.find((item) => item.id === id);
-  if (!current || !canReviewInterestGroupActivity(current)) return false;
-  activities = activities.map((item) =>
-    item.id === id
-      ? {
-          ...item,
-          auditStatus: pass ? '已通过' : '已驳回',
-          rejectReason: pass ? undefined : normalizeRejectReason(comment),
-        }
-      : item,
-  );
-  emit();
-  return true;
+  const idSet = new Set(ids);
+  let done = 0;
+  groups = groups.map((item) => {
+    if (!idSet.has(item.id) || !canRevokeInterestGroup(item)) return item;
+    done += 1;
+    return { ...item, publishStatus: '未发布' };
+  });
+  if (done) emit();
+  return done;
 }
 
 export function publishInterestGroupActivities(ids: number[]): number {
@@ -694,7 +816,7 @@ export function publishInterestGroupActivities(ids: number[]): number {
   const stamp = dayjs().format('YYYY-MM-DD HH:mm:ss');
   let done = 0;
   activities = activities.map((item) => {
-    if (!idSet.has(item.id) || item.publishStatus === '已发布' || !canPublishInterestGroupActivity(item)) return item;
+    if (!idSet.has(item.id) || item.publishStatus === '已发布') return item;
     done += 1;
     return { ...item, publishStatus: '已发布', publishedAt: item.publishedAt || stamp };
   });
@@ -707,9 +829,9 @@ export function unpublishInterestGroupActivities(ids: number[]): number {
   const idSet = new Set(ids);
   let done = 0;
   activities = activities.map((item) => {
-    if (!idSet.has(item.id) || item.publishStatus !== '已发布') return item;
+    if (!idSet.has(item.id) || !canRevokeInterestGroupActivity(item)) return item;
     done += 1;
-    return { ...item, publishStatus: '未发布', publishedAt: '' };
+    return { ...item, publishStatus: '未发布' };
   });
   if (done) emit();
   return done;
@@ -740,10 +862,35 @@ export function terminateInterestGroupActivity(id: number): TerminateActivityRes
       ? {
           ...item,
           status: 'cancelled',
-          sessions: item.sessions?.map((session) => ({ ...session, status: 'cancelled' as const })),
+          terminatedAt: dayjs().format('YYYY-MM-DD HH:mm'),
+          sessions: item.sessions?.map((session) =>
+            session.status === 'upcoming' ? { ...session, status: 'cancelled' as const } : session,
+          ),
         }
       : item,
   );
+  emit();
+  return { ok: true };
+}
+
+export function closeInterestGroupSignup(id: number): { ok: true } | { ok: false; reason: 'not-found' | 'not-allowed' } {
+  syncMockData();
+  const current = activities.find((item) => item.id === id);
+  if (!current) return { ok: false, reason: 'not-found' };
+  if (!canCloseInterestGroupSignup(current)) return { ok: false, reason: 'not-allowed' };
+  const next = applyCloseInterestGroupSignup(current);
+  activities = activities.map((item) => (item.id === id ? next : item));
+  emit();
+  return { ok: true };
+}
+
+export function reopenInterestGroupSignup(id: number): { ok: true } | { ok: false; reason: 'not-found' | 'not-allowed' } {
+  syncMockData();
+  const current = activities.find((item) => item.id === id);
+  if (!current) return { ok: false, reason: 'not-found' };
+  if (!canReopenInterestGroupSignup(current)) return { ok: false, reason: 'not-allowed' };
+  const next = applyReopenInterestGroupSignup(current);
+  activities = activities.map((item) => (item.id === id ? next : item));
   emit();
   return { ok: true };
 }
@@ -761,7 +908,16 @@ export function joinInterestGroupAsEmployee(
   if (!group) return 'missing';
   const existing = members.find((item) => item.groupId === groupId && (item.employeeId === employeeName || item.name === employeeName));
   if (existing?.status === '已通过') return 'already';
-  if (existing?.status === '待审核') return 'pending';
+  if (existing) {
+    members = members.map((item) =>
+      item.groupId === groupId && (item.employeeId === employeeName || item.name === employeeName)
+        ? { ...item, status: '已通过', rejectReason: undefined }
+        : item,
+    );
+    groups = groups.map((item) => (item.id === groupId ? { ...item, memberCount: item.memberCount + (existing.status === '已通过' ? 0 : 1) } : item));
+    emit();
+    return 'joined';
+  }
   const person = orgPeopleByName[employeeName];
   const status: InterestGroupMemberStatus = '已通过';
   members = [
@@ -776,18 +932,15 @@ export function joinInterestGroupAsEmployee(
     },
     ...members,
   ];
-  if (status === '已通过') {
-    groups = groups.map((item) => (item.id === groupId ? { ...item, memberCount: item.memberCount + 1 } : item));
-  }
+  groups = groups.map((item) => (item.id === groupId ? { ...item, memberCount: item.memberCount + 1 } : item));
   emit();
-  return status === '已通过' ? 'joined' : 'pending';
+  return 'joined';
 }
 
 export function leaveInterestGroupAsEmployee(groupId: number, employeeName: string): 'left' | 'lead' | 'missing' {
   syncMockData();
   const current = members.find((item) => item.groupId === groupId && (item.employeeId === employeeName || item.name === employeeName));
   if (!current) return 'missing';
-  if (current.role === 'lead') return 'lead';
   const wasApproved = current.status === '已通过';
   members = members.filter((item) => !(item.groupId === groupId && (item.employeeId === employeeName || item.name === employeeName)));
   if (wasApproved) {
@@ -841,6 +994,7 @@ export function setInterestGroupViewerSessions(
         occupiesInterestGroupSignupSlot(item.status),
     );
     if (want.has(session.id) && !occupying) {
+      if (session.status === 'cancelled' || activity.status === 'cancelled' || activity.signupClosedAt) continue;
       addInterestGroupSignup({ activityId, name, department, sessionId: session.id });
     } else if (!want.has(session.id) && occupying) {
       cancelInterestGroupViewerSignups(activityId, name, session.id);
@@ -864,9 +1018,18 @@ export function toggleInterestGroupActivityLike(activityId: number, name: string
   return !liked;
 }
 
-export function addInterestGroupComment(activityId: number, author: string, content: string): InterestGroupComment | null {
+export function addInterestGroupComment(
+  activityId: number,
+  author: string,
+  content: string,
+  parentId?: number,
+): InterestGroupComment | null {
   syncMockData();
   if (!activities.some((item) => item.id === activityId)) return null;
+  if (parentId != null) {
+    const parent = comments.find((item) => item.id === parentId);
+    if (!parent || parent.activityId !== activityId) return null;
+  }
   const created: InterestGroupComment = {
     id: Math.max(0, ...comments.map((item) => item.id)) + 1,
     activityId,
@@ -874,6 +1037,7 @@ export function addInterestGroupComment(activityId: number, author: string, cont
     content,
     likedBy: [],
     createdAt: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+    ...(parentId != null ? { parentId } : {}),
   };
   comments = [created, ...comments];
   emit();
@@ -915,6 +1079,9 @@ export function addEmployeeInterestGroupMoment(input: {
 }): InterestGroupMoment | null {
   syncMockData();
   if (!groups.some((item) => item.id === input.groupId)) return null;
+  if (input.activityId == null) return null;
+  const activity = activities.find((item) => item.id === input.activityId);
+  if (!activity || activity.groupId !== input.groupId) return null;
   const stamp = nowText();
   const created: InterestGroupMoment = {
     id: Math.max(0, ...moments.map((item) => item.id)) + 1,
@@ -939,25 +1106,16 @@ export function addEmployeeInterestGroupMoment(input: {
 function employeeActivitySignupEndAt(
   input: Pick<
     InterestGroupActivityFormValues,
-    'type' | 'signupEndAt' | 'repeatWeekday' | 'timeStart' | 'timeEnd' | 'cycleStart' | 'cycleEnd' | 'sessions' | 'signupHoursBefore'
+    'type' | 'signupEndAt' | 'startAt' | 'endAt' | 'repeatRules' | 'repeatWeekday' | 'timeStart' | 'timeEnd' | 'sessions' | 'signupHoursBefore'
   >,
 ): string {
   if (!needsSessionPick(input.type)) return input.signupEndAt;
-  if (
-    input.type === 'recurring' &&
-    input.repeatWeekday != null &&
-    input.timeStart &&
-    input.timeEnd &&
-    input.cycleStart &&
-    input.cycleEnd
-  ) {
+  if (input.type === 'recurring' && input.startAt && input.endAt) {
     return syncSignupEndAt(
       generateRecurringSessions({
-        repeatWeekday: input.repeatWeekday,
-        timeStart: input.timeStart,
-        timeEnd: input.timeEnd,
-        cycleStart: input.cycleStart,
-        cycleEnd: input.cycleEnd,
+        rules: coerceRepeatRules(input),
+        windowStart: input.startAt,
+        windowEnd: input.endAt,
       }),
       input.signupHoursBefore ?? 0,
     );
@@ -973,13 +1131,20 @@ function employeeActivitySignupEndAt(
 }
 
 export function createEmployeeInterestGroupActivity(
-  input: Omit<InterestGroupActivityFormValues, 'visibility' | 'departments' | 'customPeople' | 'importFileName' | 'importedPeople' | 'notifyOnPublish' | 'needAudit' | 'signupApprovalNodes' | 'signupFields' | 'signupPoints' | 'signupPointsEnabled' | 'minSeniorityYears'> & {
+  input: Omit<InterestGroupActivityFormValues, 'visibility' | 'departments' | 'customPeople' | 'importFileName' | 'importedPeople' | 'needAudit' | 'signupApprovalNodes' | 'signupFields' | 'signupPoints' | 'signupPointsEnabled' | 'minSeniorityYears'> & {
     hostName: string;
   },
 ): InterestGroupActivity | null {
   syncMockData();
   const group = groups.find((item) => item.id === input.groupId);
   if (!group) return null;
+  const host = members.find(
+    (item) =>
+      item.groupId === input.groupId &&
+      item.status === '已通过' &&
+      (item.employeeId === input.hostName || item.name === input.hostName),
+  );
+  if (!canMemberCreateInterestGroupActivity(getInterestGroupSettings(), host?.role)) return null;
   const { hostName, ...form } = input;
   const align = igActivityAlignDefaults();
   const payload: InterestGroupActivityFormValues = {
@@ -994,26 +1159,26 @@ export function createEmployeeInterestGroupActivity(
     customPeople: [],
     importFileName: '',
     importedPeople: [],
-    notifyOnPublish: false,
+    notifyOnPublish: input.notifyOnPublish,
+    notifyAudience: input.notifyAudience ?? 'members',
     needAudit: false,
     signupApprovalNodes: [],
-    signupFields: align.signupFields,
+    signupFields: [],
     signupPoints: align.signupPoints,
     signupPointsEnabled: align.signupPointsEnabled,
   };
   if (validateInterestGroupActivityForm(payload, true)) return null;
   const created = upsertInterestGroupActivity(payload);
-  const audit = '待审核' as const;
-  const publish = '未发布' as const;
   const stamp = dayjs().format('YYYY-MM-DD HH:mm:ss');
   activities = activities.map((item) =>
     item.id === created.id
       ? {
           ...item,
           hostName,
-          auditStatus: audit,
-          publishStatus: publish,
-          publishedAt: '',
+          creator: hostName,
+          auditStatus: '无需审核',
+          publishStatus: '已发布',
+          publishedAt: stamp,
         }
       : item,
   );
