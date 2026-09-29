@@ -158,6 +158,9 @@ describe('ActivityDetailPage', () => {
       </App>,
     );
     expect(quality).toContain('报名分组设置');
+    const titleAt = quality.indexOf('分组标题');
+    expect(titleAt).toBeGreaterThan(-1);
+    expect(quality.slice(titleAt, titleAt + 120)).toContain('报名分组');
     expect(quality).toContain('质量组（限 20 人）');
     expect(quality).toContain('工艺组（限 20 人）');
     expect(quality).toContain('活动已结束，不能编辑');

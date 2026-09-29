@@ -120,6 +120,13 @@
 
     .ph-pic{background:#ececec;border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#c5c5c5}
     .ph-pic svg{width:42%;height:42%}
+    .ph-avatar,.ph-icon{background:#d9e4ff;flex-shrink:0}
+    .ph-avatar{border-radius:50%}
+    .ph-icon{border-radius:8px}
+    .sk-lr .ph-avatar,.sk-lr .ph-icon,.sk-rl .ph-avatar,.sk-rl .ph-icon{width:56px;height:56px}
+    .sk-big .ph-avatar{width:160px;height:160px;margin:0 auto 10px}
+    .sk-big .ph-icon{width:100%;height:200px;margin-bottom:10px;border-radius:12px}
+    .sk-cols .ph-avatar,.sk-cols .ph-icon{width:56px;height:56px;margin:0 auto 8px}
     .ph-bar{height:10px;background:#e6e6e6;border-radius:4px}
     .ph-bar.s{width:52%;height:8px;margin-top:8px}
     .ph-meta{display:flex;gap:8px;margin-top:8px;align-items:center}
@@ -449,6 +456,41 @@
               </div>
               <div class="art-card" id="votePreview"></div>
             </div>
+            <div class="art-wrap" id="careWrap" hidden>
+              <div class="art-ops">
+                <button type="button" title="复制" data-act="copy">⧉</button>
+                <button type="button" title="删除" data-act="del">✕</button>
+              </div>
+              <div class="art-card" id="carePreview"></div>
+            </div>
+            <div class="art-wrap" id="incentiveWrap" hidden>
+              <div class="art-ops">
+                <button type="button" title="复制" data-act="copy">⧉</button>
+                <button type="button" title="删除" data-act="del">✕</button>
+              </div>
+              <div class="art-card" id="incentivePreview"></div>
+            </div>
+            <div class="art-wrap" id="medalRankWrap" hidden>
+              <div class="art-ops">
+                <button type="button" title="复制" data-act="copy">⧉</button>
+                <button type="button" title="删除" data-act="del">✕</button>
+              </div>
+              <div class="art-card" id="medalRankPreview"></div>
+            </div>
+            <div class="art-wrap" id="forumWrap" hidden>
+              <div class="art-ops">
+                <button type="button" title="复制" data-act="copy">⧉</button>
+                <button type="button" title="删除" data-act="del">✕</button>
+              </div>
+              <div class="art-card" id="forumPreview"></div>
+            </div>
+            <div class="art-wrap" id="mailboxWrap" hidden>
+              <div class="art-ops">
+                <button type="button" title="复制" data-act="copy">⧉</button>
+                <button type="button" title="删除" data-act="del">✕</button>
+              </div>
+              <div class="art-card" id="mailboxPreview"></div>
+            </div>
           </div>
           <div class="col">
             <div class="post-banner">✎ 立即发帖</div>
@@ -676,6 +718,11 @@
     related: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3"/><path d="M5 19c.8-3.4 3.4-5.5 7-5.5s6.2 2.1 7 5.5"/><path d="M17.5 7.5 19 6l1.5 1.5M18 6.2V4"/></svg>`,
     moments: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 16l5-5 4 4 3-3 4 4"/><circle cx="9" cy="9" r="1.4"/></svg>`,
     vote: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h.01M8 12h.01M8 16h.01M11 8h5M11 12h5M11 16h4"/></svg>`,
+    care: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20s-7-4.4-7-9a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 4.6-7 9-7 9z"/></svg>`,
+    incentive: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3"/><path d="M5 19c.8-3.2 3.2-5 7-5s6.2 1.8 7 5"/><path d="M16.5 3.5 18 2l1.5 1.5"/></svg>`,
+    medalRank: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 4h8l-1 4H9z"/><path d="M9 8l-3 8 6 4 6-4-3-8"/><path d="M8 20h8"/></svg>`,
+    forum: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 6h14v9H8l-3 3z"/></svg>`,
+    mailbox: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10h16v8H4z"/><path d="M4 10l8 5 8-5"/><path d="M12 3v4"/></svg>`,
     notice: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10v4h3l6 4V6L7 10H4z"/><path d="M17 9.5a3.5 3.5 0 0 1 0 5"/><path d="M19.2 7.5a6 6 0 0 1 0 9"/></svg>`
   };
   const BASE = [
@@ -693,7 +740,12 @@
     { name: "活动", color: "#ec4899", ico: ICO.activity },
     { name: "兴趣圈", color: "#f97316", ico: ICO.group },
     { name: "精彩瞬间", color: "#8b7cf6", ico: ICO.moments },
-    { name: "投票", color: "#0ea5e9", ico: ICO.vote }
+    { name: "投票", color: "#0ea5e9", ico: ICO.vote },
+    { name: "关怀", color: "#ef5b5b", ico: ICO.care },
+    { name: "即时激励", color: "#f5a623", ico: ICO.incentive },
+    { name: "勋章排行", color: "#f59e0b", ico: ICO.medalRank },
+    { name: "论坛", color: "#6366f1", ico: ICO.forum },
+    { name: "信箱", color: "#14b8a6", ico: ICO.mailbox }
   ];
 
   const APP_BLOCKS = [
@@ -716,13 +768,41 @@
       id: "vote", lib: "投票", title: "发现投票", more: "查看全部", titleBar: false, showMore: false,
       style: "left", count: 99, max: 99, unit: "个投票",
       fields: [["showTitle","标题"],["showStatus","状态"],["showTime","投票时间"]]
+    },
+    {
+      id: "care", lib: "关怀", title: "关怀", more: "查看全部", titleBar: true, showMore: true,
+      style: "left", count: 3, max: 20, unit: "个关怀",
+      fields: [["showType","类型"],["showBlessing","祝福"],["showDate","日期"]]
+    },
+    {
+      id: "incentive", lib: "即时激励", title: "认可动态", more: "查看全部", titleBar: true, showMore: true,
+      style: "left", count: 5, max: 20, unit: "条动态",
+      fields: [["showMedal","勋章"],["showGiver","认可人"],["showReceiver","被认可人"],["showReason","原因"],["showTime","时间"]]
+    },
+    {
+      id: "medalRank", lib: "勋章排行", title: "勋章排行", more: "查看全部", titleBar: true, showMore: true,
+      style: "left", count: 5, max: 20, unit: "条",
+      fields: [["showRank","排名"],["showMedal","勋章"],["showName","姓名"],["showGainCount","获得次数"]]
+    },
+    {
+      id: "forum", lib: "论坛", title: "论坛", more: "查看全部", titleBar: true, showMore: true,
+      style: "left", count: 5, max: 20, unit: "个帖子",
+      fields: [["showPostTitle","帖子名称"],["showDesc","描述"],["showAuthor","发帖人"],["showTime","时间"],["showCommentCount","评论数"],["showLikeCount","点赞数"],["showFavoriteCount","收藏数"],["showViewCount","浏览数"]]
+    },
+    {
+      id: "mailbox", lib: "信箱", title: "信箱", more: "查看全部", titleBar: true, showMore: true,
+      style: "left", count: 5, max: 20, unit: "个信箱",
+      fields: [["showName","名称"],["showHandler","负责人"],["showTags","标签"],["showIntro","简介"]]
     }
   ];
+  const APP_JUMP = { care: "关怀", incentive: "即时激励", medalRank: "勋章排行", forum: "论坛", mailbox: "信箱" };
+  const MEDIA_APPS = ["care", "incentive", "medalRank", "forum", "mailbox"];
   const appState = Object.fromEntries(APP_BLOCKS.map((b) => [b.id, {
     titleBar: b.titleBar, title: b.title, titleColor: "#171A1D", showMore: b.showMore, moreColor: "#747677",
     style: b.style, count: b.count, pickMode: "latest", picked: [], pickSource: "", jumpLink: "",
     fields: Object.fromEntries(b.fields.map(([k]) => [k, true]))
   }]));
+  Object.entries(APP_JUMP).forEach(([id, label]) => { appState[id].jumpLink = label; });
 
   function toast(m){
     const t = document.getElementById("toast");
@@ -746,6 +826,7 @@
         else if (it.name === "兴趣圈") placeApp("groups");
         else if (it.name === "精彩瞬间") placeApp("moments");
         else if (it.name === "投票") placeApp("vote");
+        else if (APP_BLOCKS.some((b) => b.lib === it.name)) placeApp(APP_BLOCKS.find((b) => b.lib === it.name).id);
         else toast(isApp ? `「${it.name}」可后续扩展` : `「${it.name}」为基础组件占位`);
       });
       root.appendChild(el);
@@ -1118,7 +1199,7 @@
   function appBars(st) {
     let h = "";
     if (st.fields.showTitle !== false) h += `<div class="ph-bar"></div>`;
-    if (st.fields.showTime !== false || st.fields.showPlace !== false || st.fields.showIntro !== false || st.fields.showStatus !== false || st.fields.showStatusTag !== false) {
+    if (st.fields.showTime !== false || st.fields.showPlace !== false || st.fields.showIntro !== false || st.fields.showStatus !== false || st.fields.showStatusTag !== false || st.fields.showType || st.fields.showBlessing || st.fields.showDate || st.fields.showMedal || st.fields.showGiver || st.fields.showReceiver || st.fields.showReason || st.fields.showRank || st.fields.showGainCount || st.fields.showName || st.fields.showPostCount || st.fields.showPostTitle || st.fields.showDesc || st.fields.showAuthor || st.fields.showCommentCount || st.fields.showLikeCount || st.fields.showFavoriteCount || st.fields.showViewCount || st.fields.showHandler || st.fields.showTags) {
       h += `<div class="ph-bar s"></div>`;
     }
     if (st.fields.showSignupProgress || st.fields.showSignupButton || st.fields.showMembers || st.fields.showJoinButton) {
@@ -1126,27 +1207,50 @@
     }
     return h || `<div class="ph-bar" style="opacity:.25"></div>`;
   }
+  function appMedia(id, style) {
+    if (style === "title") return "";
+    if (id === "forum") return `<div class="ph-icon"></div>`;
+    if (id === "care" || id === "incentive" || id === "medalRank" || id === "mailbox") return `<div class="ph-avatar"></div>`;
+    return PH_PIC;
+  }
   function renderAppPreview(id) {
     const def = APP_BLOCKS.find((b) => b.id === id);
     const st = appState[id];
     const raw = st.pickMode === "custom" ? (st.picked.length || 1) : st.count;
     const n = Math.min(3, Math.max(1, raw));
     const bars = () => appBars(st);
+    const media = appMedia(id, st.style);
     let html = "";
     if (st.titleBar) {
       html += `<div class="art-head"><b style="color:${st.titleColor}">${st.title || def.title}</b>${st.showMore ? `<span class="more" style="color:${st.moreColor}">${def.more} &gt;</span>` : ""}</div>`;
     }
     if (id === "activity") html += `<div class="sk-tabs"><span class="on">全部</span><span>文化</span><span>体育</span><span>培训</span></div>`;
-    if (st.style === "big") {
-      html += Array.from({ length: n }, () => `<div class="sk-big">${PH_PIC}${bars()}</div>`).join("");
+    if (st.style === "title") {
+      html += `<div class="sk-list">${Array.from({ length: n }, () => `<div class="sk-item">${bars()}</div>`).join("")}</div>`;
+    } else if (st.style === "big") {
+      html += Array.from({ length: n }, () => `<div class="sk-big">${media}${bars()}</div>`).join("");
     } else if (st.style === "cols") {
-      html += `<div class="sk-cols">${Array.from({ length: Math.max(n, 3) }, () => `<div>${PH_PIC}${bars()}</div>`).join("")}</div>`;
+      html += `<div class="sk-cols">${Array.from({ length: Math.max(n, 3) }, () => `<div>${media}${bars()}</div>`).join("")}</div>`;
     } else if (st.style === "right") {
-      html += Array.from({ length: n }, () => `<div class="sk-rl"><div class="txt">${bars()}</div>${PH_PIC}</div>`).join("");
+      html += Array.from({ length: n }, () => `<div class="sk-rl"><div class="txt">${bars()}</div>${media}</div>`).join("");
     } else {
-      html += Array.from({ length: n }, () => `<div class="sk-lr">${PH_PIC}<div class="txt">${bars()}</div></div>`).join("");
+      html += Array.from({ length: n }, () => `<div class="sk-lr">${media}<div class="txt">${bars()}</div></div>`).join("");
     }
     document.getElementById(id + "Preview").innerHTML = html;
+  }
+  function mountCareSourceDrop(parent, st) {
+    parent.innerHTML = "";
+    const drop = mountDropdown(parent, {
+      placeholder: "请选择",
+      getOptions: () => [
+        { label: "生日关怀", value: "生日关怀" },
+        { label: "周年关怀", value: "周年关怀" },
+        { label: "入党关怀", value: "入党关怀" }
+      ],
+      onChange: (o) => { st.pickSource = o.value; }
+    });
+    if (st.pickSource) drop.setValue(st.pickSource);
+    else drop.reset("请选择");
   }
   function mountActivitySourceDrop(parent, st) {
     parent.innerHTML = "";
@@ -1175,6 +1279,16 @@
     if (st.jumpLink === "activity") drop.setValue("活动-精彩瞬间");
     else if (st.jumpLink === "ig") drop.setValue("兴趣圈-精彩瞬间");
   }
+  function mountAppJumpDrop(parent, st, label) {
+    parent.innerHTML = "";
+    const drop = mountDropdown(parent, {
+      placeholder: "请选择跳转链接",
+      getOptions: () => [{ label, value: label }],
+      onChange: (o) => { st.jumpLink = o.value; }
+    });
+    drop.setValue(st.jumpLink || label);
+    if (!st.jumpLink) st.jumpLink = label;
+  }
   function mountActivityJumpDrop(parent, st) {
     parent.innerHTML = "";
     const drop = mountDropdown(parent, {
@@ -1193,13 +1307,13 @@
     const st = appState[id];
     const noun = def.lib;
     const custom = st.pickMode === "custom";
-    const hideJump = id === "groups";
-    const styleOpts = STYLES.filter((s) => s.id !== "title");
+    const hideJump = id === "groups" || id === "incentive" || id === "medalRank";
+    const styleOpts = MEDIA_APPS.includes(id) ? STYLES : STYLES.filter((s) => s.id !== "title");
     const jumpRowHtml = hideJump ? "" : `<div class="blk-item" data-app-jump-row>
           <span class="blk-lab">跳转链接</span>
           <div class="right-col" id="appJumpChain"></div>
         </div>`;
-    const pickRowHtml = (id === "vote" || id === "groups") ? "" : `<div class="blk">
+    const pickRowHtml = (id === "vote" || id === "groups" || id === "incentive" || id === "medalRank" || id === "forum" || id === "mailbox") ? "" : `<div class="blk">
         <div class="blk-h">选择${noun}</div>
         <div class="right-col" id="appPickChain"></div>
       </div>`;
@@ -1261,9 +1375,11 @@
     if (jumpRowEl) {
       if (id === "moments") mountMomentsJumpDrop(document.getElementById("appJumpChain"), st);
       else if (id === "activity") mountActivityJumpDrop(document.getElementById("appJumpChain"), st);
+      else if (APP_JUMP[id]) mountAppJumpDrop(document.getElementById("appJumpChain"), st, APP_JUMP[id]);
       else mountCatColChain(document.getElementById("appJumpChain"));
     }
     if (id === "activity" || id === "moments") mountActivitySourceDrop(document.getElementById("appPickChain"), st);
+    else if (id === "care") mountCareSourceDrop(document.getElementById("appPickChain"), st);
     const styleBox = paneApp.querySelector("[data-app-styles]");
     styleOpts.forEach((s) => {
       const btn = document.createElement("button");
@@ -1341,6 +1457,26 @@
         groupPicker.open();
         return;
       }
+      if (id === "care") {
+        carePicker.open();
+        return;
+      }
+      if (id === "incentive") {
+        incentivePicker.open();
+        return;
+      }
+      if (id === "medalRank") {
+        medalRankPicker.open();
+        return;
+      }
+      if (id === "forum") {
+        forumPicker.open();
+        return;
+      }
+      if (id === "mailbox") {
+        mailboxPicker.open();
+        return;
+      }
     });
     renderAppPicked();
     paneApp.querySelectorAll(".switch[data-field]").forEach((sw) => {
@@ -1391,6 +1527,23 @@
       renderAppPreview("groups");
     }
   });
+  function mountContentAppPicker(id, mount) {
+    return mount({
+      isCustom: () => appState[id].pickMode === "custom",
+      getSource: () => appState[id].pickSource || "",
+      getPicked: () => appState[id].picked,
+      setPicked: (rows) => { appState[id].picked = rows; },
+      onChange: () => {
+        if (selected === id) fillAppPane(id);
+        renderAppPreview(id);
+      }
+    });
+  }
+  const carePicker = mountContentAppPicker("care", mountCarePicker);
+  const incentivePicker = mountContentAppPicker("incentive", mountIncentivePicker);
+  const medalRankPicker = mountContentAppPicker("medalRank", mountMedalRankPicker);
+  const forumPicker = mountContentAppPicker("forum", mountForumPicker);
+  const mailboxPicker = mountContentAppPicker("mailbox", mountMailboxPicker);
 
   const PLATES = [
     { id: "p_dyn", name: "企业动态" },

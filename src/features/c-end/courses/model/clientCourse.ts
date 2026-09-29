@@ -197,6 +197,36 @@ export function listPublishedClientCourses(): ClientCourse[] {
     .map((item) => toClientCourse(item, resolveCategoryName(item.categoryId)));
 }
 
+export type CourseRecordTab = 'learning' | 'done';
+
+export type ClientCourseRecord = {
+  course: ClientCourse;
+  progress: number;
+  meta: string;
+  cta: string;
+};
+
+const MY_COURSE_RECORDS: Record<CourseRecordTab, Array<{ id: number; progress: number; meta: string; cta: string }>> = {
+  learning: [
+    { id: 2, progress: 40, meta: '已学 7:33', cta: '继续学' },
+    { id: 8, progress: 0, meta: '未完成 · 0%', cta: '去学习' },
+  ],
+  done: [
+    { id: 3, progress: 100, meta: '2026-08-12 学完', cta: '再看一遍' },
+    { id: 7, progress: 100, meta: '2026-07-28 学完', cta: '再看一遍' },
+    { id: 4, progress: 100, meta: '2026-07-04 学完', cta: '再看一遍' },
+  ],
+};
+
+export function listMyCourseRecords(tab: CourseRecordTab, courses = listPublishedClientCourses()): ClientCourseRecord[] {
+  const byId = new Map(courses.map((course) => [course.id, course]));
+  return MY_COURSE_RECORDS[tab].flatMap((item) => {
+    const course = byId.get(item.id);
+    if (!course) return [];
+    return [{ course, progress: item.progress, meta: item.meta, cta: item.cta }];
+  });
+}
+
 export function getClientCourseCategoryTree(): CourseCategoryNode[] {
   return getCourseCategoryTree();
 }

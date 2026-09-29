@@ -120,16 +120,17 @@ describe('VoteV2PhonePreview', () => {
     expect(html).not.toContain('data-cols="4"');
   });
 
-  it('uses three columns when homeColumns is 3, including form string values', () => {
-    expect(renderToStaticMarkup(<VoteV2PhonePreview {...base} homeColumns={3} />)).toContain('data-cols="3"');
+  it('clamps retired mobile three columns to two, including form string values', () => {
+    expect(renderToStaticMarkup(<VoteV2PhonePreview {...base} homeColumns={3} />)).toContain('data-cols="2"');
     expect(renderToStaticMarkup(<VoteV2PhonePreview {...base} homeColumns={'3' as unknown as number} />)).toContain(
-      'data-cols="3"',
+      'data-cols="2"',
     );
   });
 
-  it('uses five PC columns when surface is pc', () => {
+  it('clamps retired five PC columns to four', () => {
     const html = renderToStaticMarkup(<VoteV2PhonePreview {...base} surface="pc" homeColumns={5} />);
-    expect(html).toContain('data-cols="5"');
+    expect(html).toContain('data-cols="4"');
+    expect(html).not.toContain('data-cols="5"');
     expect(html).toContain('vote-v2-phone-card-actions is-stack');
   });
 

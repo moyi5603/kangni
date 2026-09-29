@@ -1,13 +1,11 @@
 import {
-  toCEndPortalHash,
-  toH5ContestDetailHash,
-  toH5ContestDocsHash,
-  toH5ContestEventsHash,
+  toH5ContestArchivesHash,
   toH5ContestWrongHash,
-  toH5CourseListHash,
+  toH5CourseRecordsHash,
   toH5CourseNotesHash,
   toH5FavoritesHash,
-  toH5HonorHash,
+  toH5ContestCertsHash,
+  toH5SetupHash,
 } from '../../../../app/navigation';
 import { useChallengeDayLogs, useContestSignups, useContests } from '../../../skills-contest/model/contestStore';
 import { contestRankBoard, DEMO_CONTEST_USER } from '../model/clientContest';
@@ -105,7 +103,7 @@ export function H5ContestMine() {
   useChallengeDayLogs(contests[0]?.id ?? 0);
   const featured = contests[0];
   const me = featured ? contestRankBoard(featured.id).find((row) => row.isMe) : undefined;
-  const archiveHref = featured ? toH5ContestDetailHash(featured.id) : toH5ContestEventsHash();
+  const archiveHref = toH5ContestArchivesHash();
 
   return (
     <H5ContestShell header={null} tab="mine" className="is-contest-mine">
@@ -144,7 +142,7 @@ export function H5ContestMine() {
             <h3>我的学习</h3>
             <ul>
               <li>
-                <a href={toH5CourseListHash()}>
+                <a href={toH5CourseRecordsHash()}>
                   <IconClock />
                   学习记录
                 </a>
@@ -174,7 +172,7 @@ export function H5ContestMine() {
             <h3>学习成就</h3>
             <ul>
               <li>
-                <a href={toH5HonorHash()}>
+                <a href={toH5ContestCertsHash()}>
                   <IconCert />
                   证书
                 </a>
@@ -188,11 +186,7 @@ export function H5ContestMine() {
             </ul>
           </section>
 
-          <a className="c-mine-row" href={toH5ContestDocsHash()}>
-            建议反馈
-            <Chevron />
-          </a>
-          <a className="c-mine-row" href={toCEndPortalHash()}>
+          <a className="c-mine-row" href={toH5SetupHash()}>
             设置
             <Chevron />
           </a>

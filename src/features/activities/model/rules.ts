@@ -12,8 +12,8 @@ export const assigneeModeLabels: Record<AssigneeMode, string> = {
 };
 
 export const assigneeModeHints: Record<Exclude<AssigneeMode, 'people'>, string> = {
-  sameLevelLeader: '由前一节点的本级部门负责人审核。',
-  parentLevelLeader: '由前一节点的上级部门负责人审核。',
+  sameLevelLeader: '按锚点的本部门负责人审核。第 1 节点锚点是报名人。',
+  parentLevelLeader: '按锚点主部门的上级部门负责人审核。已经到组织顶层时自动跳过。',
 };
 
 export type SignupLadder = {

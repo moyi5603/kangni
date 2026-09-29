@@ -73,6 +73,7 @@ describe('LotteryFormPage', () => {
     expect(html).not.toContain('下载导入模板');
     expect(html).not.toContain('员工工号列');
     expect(html).toContain('每人最多中奖');
+    expect(html).not.toContain('中奖占用次数');
     expect(html).toContain('未中奖文案');
   });
 
@@ -84,6 +85,19 @@ describe('LotteryFormPage', () => {
     );
     expect(html).toContain('活动进行中，奖品名称、数量与概率不可修改。');
     expect(html).toContain('disabled');
+  });
+
+  it('shows prize field titles on every prize row', () => {
+    const html = renderToStaticMarkup(
+      <App>
+        <LotteryFormPage mode="edit" recordId="1" onBack={noop} onSaved={noop} />
+      </App>,
+    );
+    const prizeCount = getLotteries().find((item) => item.id === 1)?.prizes.length ?? 0;
+    expect(prizeCount).toBeGreaterThan(1);
+    expect(html.match(/title="奖品名称"/g)?.length).toBe(prizeCount);
+    expect(html.match(/title="数量"/g)?.length).toBe(prizeCount);
+    expect(html.match(/title="中奖概率\(%\)"/g)?.length).toBe(prizeCount);
   });
 
   it('shows 每次打卡可得 when checkin source is enabled', () => {

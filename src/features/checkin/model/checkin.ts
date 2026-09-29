@@ -1,3 +1,5 @@
+import type { ShareCardRule } from './share';
+
 export type CheckinStatus = '未开始' | '进行中' | '已结束';
 export type CheckinOwnerApp = 'culture' | 'skills-contest';
 export const CHECKIN_MOODS = ['平静', '惊喜', '幸福', '担忧', '愤怒', '悲伤'] as const;
@@ -45,6 +47,9 @@ export type CheckinTheme = {
   startAt: string;
   endAt: string;
   rules: RewardRule[];
+  shareEnabled?: boolean;
+  shareCardRule?: ShareCardRule;
+  shareImages?: string[];
 };
 
 export type CheckinLog = {
@@ -86,6 +91,10 @@ export function checkinStatusOf(theme: Pick<CheckinTheme, 'startAt' | 'endAt'>, 
 
 export function calendarDayKey(value: string): string {
   return value.slice(0, 10);
+}
+
+export function canEditCheckinMood(day: string, today: string): boolean {
+  return day === today;
 }
 
 export function shanghaiYmd(ms: number = Date.now()): string {
@@ -221,6 +230,12 @@ export function submitCheckinResult(input: {
     }
   }
   return { ok: true, log, grants };
+}
+
+export function grantedCheckinPoints(grants: Pick<RewardGrant, 'rewardKind' | 'content' | 'status'>[]): number {
+  return grants
+    .filter((item) => item.rewardKind === '积分' && item.status !== '失败')
+    .reduce((sum, item) => sum + (Number(item.content) || 0), 0);
 }
 
 export function checkinRewardLines(

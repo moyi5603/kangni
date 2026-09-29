@@ -58,8 +58,8 @@ describe('workbench H5 装修 应用组件', () => {
     expect(html).not.toMatch(/function fillAppPane\([\s\S]*activity-deco-count/);
   });
 
-  it('仅兴趣圈 omits 跳转链接; 活动/精彩瞬间均有', () => {
-    expect(html).toMatch(/const hideJump = id === "groups"/);
+  it('兴趣圈、即时激励、勋章排行省略跳转链接; 活动/精彩瞬间均有', () => {
+    expect(html).toMatch(/const hideJump = id === "groups" \|\| id === "incentive" \|\| id === "medalRank"/);
     expect(html).not.toMatch(/hideJump = id === "activity"/);
     expect(html).toMatch(/const jumpRowHtml = hideJump \? "" :[\s\S]{0,220}跳转链接/);
     expect(html).toMatch(/if \(jumpRowEl\) \{\s*if \(id === "moments"\) mountMomentsJumpDrop/);
@@ -168,14 +168,16 @@ describe('workbench H5 装修 应用组件', () => {
   });
 
   it('投票 inspector omits 选择投票 row; 添加投票 opens vote list modal', () => {
-    expect(html).toMatch(/const pickRowHtml = \(id === "vote" \|\| id === "groups"\) \? "" :/);
+    expect(html).toMatch(/const pickRowHtml = \(id === "vote" \|\| id === "groups" \|\| id === "incentive" \|\| id === "medalRank" \|\| id === "forum" \|\| id === "mailbox"\) \? "" :/);
+    expect(html).not.toContain('选择内容');
+    expect(html).not.toContain('mountIncentiveSourceDrop');
     expect(html).toMatch(/if \(id === "vote"\) \{\s*votePicker\.open\(\);\s*return;\s*\}/);
     expect(html).toContain('const votePicker = mountVotePicker({');
     expect(html).toContain('appState.vote.picked');
   });
 
   it('兴趣圈 inspector omits 跳转链接 and 选择兴趣圈; 添加兴趣圈 opens group list modal', () => {
-    expect(html).toMatch(/const hideJump = id === "groups"/);
+    expect(html).toMatch(/const hideJump = id === "groups" \|\| id === "incentive" \|\| id === "medalRank"/);
     expect(html).toMatch(/if \(id === "groups"\) \{\s*groupPicker\.open\(\);\s*return;\s*\}/);
     expect(html).toContain('const groupPicker = mountGroupPicker({');
     expect(html).toContain('appState.groups.picked');
@@ -236,5 +238,100 @@ describe('workbench H5 装修 应用组件', () => {
     expect(momentBlock).toContain('timeText: "2026-06-04 19:30 ~ 2026-09-24 21:00 · 共 17 场"');
     expect(momentBlock).toContain('timeText: "2026-08-31 09:00 ~ 2026-09-10 16:00 · 共 2 场"');
     expect(momentBlock).not.toContain('startAt: "2026-04-12 10:20:00"');
+  });
+
+  it('adds 关怀 即时激励 论坛 信箱 after 投票 with list defaults', () => {
+    expect(html).toMatch(/items:\s*\[.*"文章".*"调查问卷".*"课程".*"活动".*"精彩瞬间".*"兴趣圈".*"投票".*"关怀".*"即时激励".*"勋章排行".*"论坛".*"信箱".*\]/);
+    expect(html).toMatch(/id:\s*"care"[\s\S]*?lib:\s*"关怀"[\s\S]*?title:\s*"关怀"[\s\S]*?more:\s*"查看全部"[\s\S]*?style:\s*"left"[\s\S]*?count:\s*3[\s\S]*?max:\s*20/);
+    expect(html).toMatch(/id:\s*"incentive"[\s\S]*?title:\s*"认可动态"[\s\S]*?style:\s*"left"[\s\S]*?count:\s*5[\s\S]*?max:\s*20/);
+    expect(html).toMatch(/id:\s*"medalRank"[\s\S]*?lib:\s*"勋章排行"[\s\S]*?title:\s*"勋章排行"[\s\S]*?style:\s*"left"[\s\S]*?count:\s*5/);
+    expect(html).toMatch(/id:\s*"forum"[\s\S]*?title:\s*"论坛"[\s\S]*?style:\s*"left"[\s\S]*?count:\s*5/);
+    expect(html).toMatch(/id:\s*"mailbox"[\s\S]*?title:\s*"信箱"[\s\S]*?style:\s*"left"[\s\S]*?count:\s*5/);
+    for (const id of ['care', 'incentive', 'medalRank', 'forum', 'mailbox']) {
+      expect(html).toContain(`id="${id}Wrap"`);
+      expect(html).toContain(`id="${id}Preview"`);
+    }
+  });
+
+  it('keeps 封面 and 头像 out of field settings and shows them from style', () => {
+    const care = html.slice(html.indexOf('id: "care"'), html.indexOf('id: "incentive"'));
+    const incentive = html.slice(html.indexOf('id: "incentive"'), html.indexOf('id: "forum"'));
+    const forum = html.slice(html.indexOf('id: "forum"'), html.indexOf('id: "mailbox"'));
+    const mailbox = html.slice(html.indexOf('id: "mailbox"'), html.indexOf('];', html.indexOf('id: "mailbox"')));
+    expect(care).toContain('["showType","类型"]');
+    expect(care).toContain('["showBlessing","祝福"]');
+    expect(care).toContain('["showDate","日期"]');
+    expect(care).not.toContain('发送人');
+    expect(care).not.toContain('时间');
+    expect(incentive).toContain('["showMedal","勋章"]');
+    expect(incentive).toContain('["showReceiver","被认可人"]');
+    expect(forum).toContain('["showPostTitle","帖子名称"],["showDesc","描述"],["showAuthor","发帖人"],["showTime","时间"],["showCommentCount","评论数"],["showLikeCount","点赞数"],["showFavoriteCount","收藏数"],["showViewCount","浏览数"]');
+    expect(forum).not.toContain('帖子数');
+    expect(forum).not.toContain('简介');
+    expect(mailbox).toContain('["showHandler","负责人"]');
+    for (const block of [care, incentive, forum, mailbox]) {
+      expect(block).not.toContain('头像');
+      expect(block).not.toContain('封面');
+      expect(block).not.toContain('图标');
+    }
+    expect(html).toContain('function appMedia');
+    expect(html).toMatch(/if \(style === "title"\) return ""/);
+    expect(html).toContain('ph-avatar');
+    expect(html).toContain('ph-icon');
+    expect(html).toMatch(/id === "forum"[\s\S]{0,80}ph-icon/);
+  });
+
+  it('关怀 picker only lists the three personal care types', () => {
+    const picker = readFileSync(join(dir, '../../../../public/decoration/activity-picker.js'), 'utf8');
+    const care = picker.slice(picker.indexOf('const CARE_CATALOG'), picker.indexOf('const INCENTIVE_CATALOG'));
+    expect(care).toContain('生日关怀');
+    expect(care).toContain('周年关怀');
+    expect(care).not.toContain('周年庆关怀');
+    expect(care).toContain('入党关怀');
+    expect(care).not.toContain('节日关怀');
+    expect(care).not.toContain('节气关怀');
+    expect(care).not.toContain('天气关怀');
+    expect(care).toContain('date: "2026-08-26"');
+    expect(care).not.toMatch(/\d{2}:\d{2}/);
+    const carePicker = picker.slice(picker.indexOf('function mountCarePicker'), picker.indexOf('function mountIncentivePicker'));
+    expect(carePicker).toContain('{ key: "date", label: "日期" }');
+    expect(carePicker).not.toContain('发送人');
+    expect(carePicker).not.toContain('时间');
+    const forumPicker = picker.slice(picker.indexOf('function mountForumPicker'), picker.indexOf('function mountMailboxPicker'));
+    expect(forumPicker).toContain('{ key: "postTitle", label: "帖子名称" }');
+    expect(forumPicker).toContain('{ key: "desc", label: "描述" }');
+    expect(forumPicker).toContain('{ key: "author", label: "发帖人" }');
+    expect(forumPicker).toContain('{ key: "time", label: "时间" }');
+    expect(forumPicker).toContain('{ key: "commentCount", label: "评论数" }');
+    expect(forumPicker).toContain('{ key: "likeCount", label: "点赞数" }');
+    expect(forumPicker).toContain('{ key: "favoriteCount", label: "收藏数" }');
+    expect(forumPicker).toContain('{ key: "viewCount", label: "浏览数" }');
+    expect(forumPicker).not.toContain('帖子数');
+    expect(picker).toContain('function mountCarePicker');
+    expect(picker).toContain('global.mountCarePicker = mountCarePicker');
+    expect(html).toContain('carePicker.open()');
+    expect(html).toContain('function mountCareSourceDrop');
+    expect(html).toMatch(/mountCareSourceDrop\(document\.getElementById\("appPickChain"\), st\)/);
+    expect(html).toMatch(/label: "生日关怀", value: "生日关怀"/);
+    expect(html).toMatch(/label: "周年关怀", value: "周年关怀"/);
+    expect(html).toMatch(/label: "入党关怀", value: "入党关怀"/);
+    const incentiveCatalog = picker.slice(picker.indexOf('const INCENTIVE_CATALOG'), picker.indexOf('const MEDAL_RANK_CATALOG'));
+    expect(incentiveCatalog).not.toContain('勋章排行');
+    const rankCatalog = picker.slice(picker.indexOf('const MEDAL_RANK_CATALOG'), picker.indexOf('const FORUM_CATALOG'));
+    expect(rankCatalog).toContain('rank: "1"');
+    expect(rankCatalog).toContain('medal: "协作之星"');
+    expect(rankCatalog).toContain('person: "陈晨"');
+    expect(rankCatalog).toContain('count: "12"');
+    const rankPicker = picker.slice(picker.indexOf('function mountMedalRankPicker'), picker.indexOf('function mountForumPicker'));
+    expect(rankPicker).toContain('{ key: "rank", label: "排名" }');
+    expect(rankPicker).toContain('{ key: "medal", label: "勋章" }');
+    expect(rankPicker).toContain('{ key: "person", label: "姓名" }');
+    expect(rankPicker).toContain('{ key: "count", label: "获得次数" }');
+    expect(html).toContain('medalRankPicker.open()');
+    const rankBlock = html.slice(html.indexOf('id: "medalRank"'), html.indexOf('id: "forum"'));
+    expect(rankBlock).toContain('["showRank","排名"],["showMedal","勋章"],["showName","姓名"],["showGainCount","获得次数"]');
+    expect(html).toContain('incentivePicker.open()');
+    expect(html).toContain('forumPicker.open()');
+    expect(html).toContain('mailboxPicker.open()');
   });
 });

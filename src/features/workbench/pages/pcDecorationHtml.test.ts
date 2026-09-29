@@ -32,8 +32,8 @@ describe('PC 装修工作台应用组件', () => {
     expect(html).toMatch(/id: "vote", lib: "投票"/);
   });
 
-  it('仅兴趣圈省略跳转链接；活动/精彩瞬间跳转链接为固定下拉', () => {
-    expect(html).toMatch(/const hideJump = id === "groups"/);
+  it('兴趣圈、即时激励、勋章排行省略跳转链接；活动/精彩瞬间跳转链接为固定下拉', () => {
+    expect(html).toMatch(/const hideJump = id === "groups" \|\| id === "incentive" \|\| id === "medalRank"/);
     expect(html).toContain('function mountMomentsJumpDrop');
     expect(html).toContain('活动-精彩瞬间');
     expect(html).toContain('兴趣圈-精彩瞬间');
@@ -60,7 +60,13 @@ describe('PC 装修工作台应用组件', () => {
   });
 
   it('投票/兴趣圈省略选择xx行；活动/精彩瞬间使用来源下拉', () => {
-    expect(html).toMatch(/const pickRowHtml = \(id === "vote" \|\| id === "groups"\) \? "" :/);
+    expect(html).toMatch(/const pickRowHtml = \(id === "vote" \|\| id === "groups" \|\| id === "incentive" \|\| id === "medalRank" \|\| id === "forum" \|\| id === "mailbox"\) \? "" :/);
+    expect(html).not.toContain('选择内容');
+    expect(html).not.toContain('mountIncentiveSourceDrop');
+    expect(html).toContain('function mountCareSourceDrop');
+    expect(html).toMatch(/label: "生日关怀", value: "生日关怀"/);
+    expect(html).toMatch(/label: "周年关怀", value: "周年关怀"/);
+    expect(html).toMatch(/label: "入党关怀", value: "入党关怀"/);
     expect(html).toContain('function mountActivitySourceDrop');
     expect(html).toContain('兴趣圈活动');
   });
@@ -80,6 +86,35 @@ describe('PC 装修工作台应用组件', () => {
     ['activity', 'moments', 'vote', 'groups'].forEach((id) => {
       expect(html).toContain(`appState.${id}.picked`);
     });
+  });
+
+  it('adds 关怀 即时激励 论坛 信箱 with the same list defaults as H5', () => {
+    for (const name of ['关怀', '即时激励', '勋章排行', '论坛', '信箱']) {
+      expect(html).toContain(`{ name: "${name}"`);
+    }
+    expect(html).toMatch(/id: "care", lib: "关怀"[\s\S]*?title: "关怀"[\s\S]*?style: "left"[\s\S]*?count: 3/);
+    const care = html.slice(html.indexOf('id: "care"'), html.indexOf('id: "incentive"'));
+    expect(care).toContain('["showDate","日期"]');
+    expect(care).not.toContain('发送人');
+    expect(care).not.toContain('时间');
+    expect(html).toMatch(/id: "incentive"[\s\S]*?title: "认可动态"[\s\S]*?style: "left"[\s\S]*?count: 5/);
+    expect(html).toMatch(/id: "medalRank", lib: "勋章排行"[\s\S]*?title: "勋章排行"[\s\S]*?style: "left"[\s\S]*?count: 5/);
+    const rank = html.slice(html.indexOf('id: "medalRank"'), html.indexOf('id: "forum"'));
+    expect(rank).toContain('["showRank","排名"],["showMedal","勋章"],["showName","姓名"],["showGainCount","获得次数"]');
+    expect(html).toMatch(/id: "forum"[\s\S]*?title: "论坛"[\s\S]*?style: "left"[\s\S]*?count: 5/);
+    const forum = html.slice(html.indexOf('id: "forum"'), html.indexOf('id: "mailbox"'));
+    expect(forum).toContain('["showPostTitle","帖子名称"],["showDesc","描述"],["showAuthor","发帖人"],["showTime","时间"],["showCommentCount","评论数"],["showLikeCount","点赞数"],["showFavoriteCount","收藏数"],["showViewCount","浏览数"]');
+    expect(forum).not.toContain('帖子数');
+    expect(html).toMatch(/id: "mailbox"[\s\S]*?title: "信箱"[\s\S]*?style: "left"[\s\S]*?count: 5/);
+    for (const id of ['care', 'incentive', 'medalRank', 'forum', 'mailbox']) {
+      expect(html).toContain(`id="${id}Wrap"`);
+      expect(html).toContain(`id="${id}Preview"`);
+      expect(html).toContain(`${id}Picker.open()`);
+    }
+    expect(html).toContain('function appMedia');
+    expect(html).toContain('ph-avatar');
+    expect(html).toContain('ph-icon');
+    expect(html).toMatch(/if \(style === "title"\) return ""/);
   });
 
   it('提供 picker 弹窗所需样式', () => {

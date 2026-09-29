@@ -12,6 +12,7 @@ export type MedalRecord = {
   id: string;
   name: string;
   imageUrl: string;
+  unobtainedIconUrl?: string;
   app: MedalApp;
   description: string;
   status: MedalStatus;
@@ -24,6 +25,7 @@ export type MedalRecord = {
 export type MedalDraft = {
   name: string;
   imageUrl: string;
+  unobtainedIconUrl?: string;
   app: MedalApp | '';
   description: string;
   incentiveType?: MedalIncentiveType | '';

@@ -16,13 +16,16 @@ export function approvalNodeReviewerLabel(node: ApprovalNode): string {
 
 export function currentSignupAudit(
   activity: Pick<Activity, 'signupApprovalNodes'>,
-  signup: Pick<SignupRecord, 'status' | 'currentNodeIndex'> | undefined,
+  signup: Pick<SignupRecord, 'status' | 'currentNodeIndex' | 'currentReviewerIds' | 'flowSnapshot'> | undefined,
 ): SignupAuditView | undefined {
   if (!signup || signup.status !== '待审核') return undefined;
-  const nodes = activity.signupApprovalNodes ?? [];
+  const nodes = signup.flowSnapshot?.length ? signup.flowSnapshot : activity.signupApprovalNodes ?? [];
   if (!nodes.length) return { nodeIndex: 0, totalNodes: 0, reviewerLabel: '' };
   const nodeIndex = Math.min(signup.currentNodeIndex ?? 0, nodes.length - 1);
-  return { nodeIndex, totalNodes: nodes.length, reviewerLabel: approvalNodeReviewerLabel(nodes[nodeIndex]) };
+  const reviewerLabel = signup.currentReviewerIds?.length
+    ? signup.currentReviewerIds.join('、')
+    : approvalNodeReviewerLabel(nodes[nodeIndex]);
+  return { nodeIndex, totalNodes: nodes.length, reviewerLabel };
 }
 
 export function signupAuditText(view: SignupAuditView): string {

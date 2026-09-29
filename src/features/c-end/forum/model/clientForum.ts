@@ -129,15 +129,26 @@ export function sortClientTopicComments(comments: ForumTopicComment[], sort: For
   });
 }
 
+function topicLastReplyAt(topic: ForumTopic): string {
+  let latest = '';
+  for (const comment of topic.comments) {
+    if (comment.createdAt > latest) latest = comment.createdAt;
+    for (const reply of comment.replies) {
+      if (reply.createdAt > latest) latest = reply.createdAt;
+    }
+  }
+  return latest || topic.publishedAt;
+}
+
 export function sortClientForumTopics(topics: ForumTopic[], sort: 'reply' | 'publish'): ForumTopic[] {
   return [...topics].sort((left, right) => {
     const pin = Number(isTopicPinned(right)) - Number(isTopicPinned(left));
     if (pin) return pin;
     if (sort === 'reply') {
-      const replies = topicReplyCount(right) - topicReplyCount(left);
-      if (replies) return replies;
+      const replyAt = topicLastReplyAt(right).localeCompare(topicLastReplyAt(left));
+      if (replyAt) return replyAt;
     }
-    return right.publishedAt.localeCompare(left.publishedAt);
+    return right.publishedAt.localeCompare(left.publishedAt) || right.id - left.id;
   });
 }
 

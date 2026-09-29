@@ -125,13 +125,14 @@ describe('voteV2 domain', () => {
     expect(sample.voteUnit).toBe('票');
     expect(sample.homeColumns).toBe(2);
     expect(sample.pcHomeColumns).toBe(3);
-    expect(voteV2HomeColumnOptions).toEqual([1, 2, 3]);
-    expect(voteV2PcHomeColumnOptions).toEqual([3, 4, 5]);
-    expect(clampVoteV2HomeColumns(3)).toBe(3);
-    expect(clampVoteV2HomeColumns('3' as unknown as number)).toBe(3);
+    expect(voteV2HomeColumnOptions).toEqual([1, 2]);
+    expect(voteV2PcHomeColumnOptions).toEqual([3, 4]);
+    expect(clampVoteV2HomeColumns(1)).toBe(1);
+    expect(clampVoteV2HomeColumns(3)).toBe(2);
+    expect(clampVoteV2HomeColumns('3' as unknown as number)).toBe(2);
     expect(clampVoteV2PcHomeColumns(4)).toBe(4);
-    expect(clampVoteV2PcHomeColumns(5)).toBe(5);
-    expect(clampVoteV2PcHomeColumns('5' as unknown as number)).toBe(5);
+    expect(clampVoteV2PcHomeColumns(5)).toBe(4);
+    expect(clampVoteV2PcHomeColumns('5' as unknown as number)).toBe(4);
     expect(clampVoteV2PcHomeColumns(2)).toBe(3);
     expect(defaultVoteV2Campaign({
       id: 1,
@@ -141,7 +142,7 @@ describe('voteV2 domain', () => {
       createdAt: '2026-08-01 09:00:00',
       homeColumns: '3' as unknown as number,
       pcHomeColumns: '4' as unknown as number,
-    })).toMatchObject({ homeColumns: 3, pcHomeColumns: 4 });
+    })).toMatchObject({ homeColumns: 2, pcHomeColumns: 4 });
     const split = defaultVoteV2Campaign({
       id: 2,
       name: '分端',
@@ -152,7 +153,7 @@ describe('voteV2 domain', () => {
       pcHomeColumns: 5,
     });
     expect(resolveVoteV2HomeColumns(split, 'h5')).toBe(1);
-    expect(resolveVoteV2HomeColumns(split, 'pc')).toBe(5);
+    expect(resolveVoteV2HomeColumns(split, 'pc')).toBe(4);
     expect(voteV2ContestantNounPresets).toEqual(['选手', '作品']);
     expect(voteV2ContestantNounMax).toBe(4);
     expect(voteV2GroupNameMax).toBe(20);

@@ -9,6 +9,21 @@ describe('H5 exam list', () => {
 
     expect(html).toContain('class="c-h5-shell is-exam is-mall"');
     expect(html).toContain('<h1 class="c-h5-title">考试列表</h1>');
+    expect(html).toContain('全部考试');
+    expect(html).toContain('我的记录');
+    expect(html.indexOf('全部考试')).toBeLessThan(html.indexOf('搜索考试'));
+    expect(html).toContain('role="tablist" aria-label="考试记录"');
+    expect(html).toContain('待考试');
+    expect(html).toContain('已完成');
+    expect(html).toContain('去考试');
+    const records = html.split('class="records-panel"')[1] ?? '';
+    expect(records).toContain('总分值：');
+    expect(records).toContain('总时长：');
+    expect(records).toContain('开考时间：');
+    expect(records).toContain('结束时间：');
+    expect(records).toContain('>测试考试</h2>');
+    expect(records).not.toContain('提交于');
+    expect(records).not.toContain('已结束 · 未参考');
     expect(html).toContain('placeholder="全部"');
     expect(html).toContain('aria-label="考试分类"');
     expect(html).toContain('aria-pressed="true">全部</button>');
@@ -21,7 +36,8 @@ describe('H5 exam list', () => {
     expect(html).toContain('项目管理考试');
     expect(html).toContain('需求分析与PRD撰写能力考核');
     expect(html).toContain('绩效薪酬体系设计考核');
-    expect(html).not.toContain('>测试考试</h2>');
+    const catalog = html.split('aria-label="考试列表"')[1]?.split('class="records-panel"')[0] ?? '';
+    expect(catalog).not.toContain('测试考试');
     expect(html).not.toContain('点击开始准备');
     expect(html).not.toContain('成绩已生成');
     expect(html).not.toContain('成绩页即将开放');

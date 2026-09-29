@@ -197,7 +197,7 @@ export const GROUPS: Group[] = [
   { id: 'g2', name: '周末徒步野行', cat: 'sport', lead: '苏曼', members: 96, acts: 18, join: 'free', joined: true, tags: ['周末出行', '装备互助', 'AA 拼车'], area: '近郊 · 多线路', intro: '逃离工位,走进山野。每月 2-3 条线路,从溪谷轻徒步到登顶看日出,领队持证、全程保障。' },
   { id: 'g3', name: '深夜读书会', cat: 'learning', lead: '周棠', members: 64, acts: 31, join: 'free', joined: false, tags: ['双周一次', '主题共读', '不打卡不焦虑'], area: '总部 · 三楼书吧', intro: '一本书、一杯茶、一群不催进度的人。每期共读一本,线下围读 + 自由发言,读得慢也没关系。' },
   { id: 'g4', name: '周五观影会', cat: 'movie', lead: '许墨', members: 73, acts: 17, join: 'free', joined: false, tags: ['每周放映', '影乐分享', '偶尔开麦'], area: '总部 · 多功能厅', intro: '下班留下来,一起看场电影、聊聊配乐。从经典老片到话题新作,也有同事的现场弹唱开放麦。' },
-  { id: 'g5', name: '桌游电竞局', cat: 'game', lead: '沈星', members: 142, acts: 40, join: 'free', joined: true, tags: ['每周开局', '新手教学', '五黑常驻'], area: '总部 · 休闲区', intro: '桌游电竞局欢迎所有想玩的人来坐一坐。剧本杀、阿瓦隆、狼人杀、德式桌游、休闲卡牌和五黑排位都能开，午休半小时可以来一局快杀，下班后也能留下来打长本。新手有人带教学，老玩家也能找到同水平对手。场地在总部休闲区，零食饮料可自备或现场拼单。我们不卷段位、不嘲讽菜鸡，快乐第一、胜负其次。想开局就在群里喊一声，凑齐人立刻开始，错过这周还有下周固定局。欢迎带同事和朋友一起来，人多更好玩。随时都有空位，等你入座。', hot: true },
+    { id: 'g5', name: '桌游电竞局', cat: 'game', lead: '沈星', members: 142, acts: 40, join: 'free', joined: true, createdByMe: true, tags: ['每周开局', '新手教学', '五黑常驻'], area: '总部 · 休闲区', intro: '桌游电竞局欢迎所有想玩的人来坐一坐。剧本杀、阿瓦隆、狼人杀、德式桌游、休闲卡牌和五黑排位都能开，午休半小时可以来一局快杀，下班后也能留下来打长本。新手有人带教学，老玩家也能找到同水平对手。场地在总部休闲区，零食饮料可自备或现场拼单。我们不卷段位、不嘲讽菜鸡，快乐第一、胜负其次。想开局就在群里喊一声，凑齐人立刻开始，错过这周还有下周固定局。欢迎带同事和朋友一起来，人多更好玩。随时都有空位，等你入座。', hot: true },
   { id: 'g6', name: '职场成长营', cat: 'career', lead: '何夕', members: 58, acts: 16, join: 'free', joined: false, tags: ['双周一次', '经验分享', '简历互助'], area: '总部 · 学习室', intro: '把同事的经验变成你的捷径。每期一个主题:汇报表达、向上沟通、项目复盘,老带新少走弯路。' },
   { id: 'g7', name: '暖心公益志愿队', cat: 'volunteer', lead: '顾乔', members: 110, acts: 29, join: 'free', joined: false, tags: ['月度活动', '工会支持', '人人可参与'], area: '城市 · 各公益点', intro: '用业余时间做点暖心的事。社区助老、山区捐书、公益义卖,工会提供保障,报名即可参与。' },
   { id: 'g8', name: '羽毛球俱乐部', cat: 'sport', lead: '叶蓁', members: 87, acts: 35, join: 'free', joined: false, tags: ['每周二四', '场地已包', '拍可借'], area: '总部 · 体育馆', intro: '已包下体育馆 4 片场地,周二周四晚常态开打。从娱乐双打到水平局,都能找到对手。' },
@@ -216,7 +216,7 @@ export const ACTS: Act[] = [
   {
     id: 'a19', gid: 'g5', title: '通宵桌游马拉松 · 周五不眠局', cat: 'game', type: 'recurring',
     when: '6/6 22:00 → 6/7 02:00', dateKey: 606, daysBadge: '共 2 天', loc: '总部 · 休闲区', host: '沈星',
-    signed: 11, cap: 16, likes: 34, joinedByMe: true, recReason: '跨天通宵局 · 场次展示示例', status: 'upcoming',
+    signed: 11, cap: 16, likes: 34, joinedByMe: true, createdByMe: true, recReason: '跨天通宵局 · 场次展示示例', status: 'upcoming',
     desc: '周五下班留下来，阿瓦隆 / 剧本杀 / 狼人杀轮转。零食饮料自带，零点后有宵夜拼单。',
     tags: ['通宵', '桌游', '跨天'],
     sessions: sessions('a19', ['06月06日', '06月13日', '06月20日', '06月27日', '07月04日'], '22:00 - 02:00', 16, 11, true),

@@ -3,11 +3,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { CEndApp } from '../../../../app/CEndApp';
 import { defaultCourseCommentConfig } from '../../../training/model/training';
 import { updateCourseCommentConfig } from '../../../training/model/trainingStore';
+import { __resetCourseNotesForTests } from '../model/clientCourseNotes';
 import { H5CourseDetail } from './H5CourseDetail';
 
 describe('H5 course detail', () => {
   afterEach(() => {
     updateCourseCommentConfig(1, defaultCourseCommentConfig());
+    __resetCourseNotesForTests();
   });
 
   it('renders the learning chrome, catalog, comments, and engage bar', () => {
@@ -39,7 +41,8 @@ describe('H5 course detail', () => {
     expect(html).toContain('aria-label="评论"');
     expect(html).toContain('aria-label="分享"');
     expect(html.indexOf('aria-label="评论"')).toBeLessThan(html.indexOf('aria-label="分享"'));
-    expect(html).toContain('aria-label="快速入口"');
+    expect(html).not.toContain('aria-label="快速入口"');
+    expect(html).not.toContain('快捷入口待开发');
   });
 
   it('hides comment like and favorite when disabled in comment config', () => {
@@ -57,7 +60,7 @@ describe('H5 course detail', () => {
     expect(html).not.toContain('aria-label="收藏"');
     expect(html).not.toContain('aria-label="评论"');
     expect(html).toContain('aria-label="分享"');
-    expect(html).toContain('aria-label="快速入口"');
+    expect(html).not.toContain('aria-label="快速入口"');
   });
 
   it('mounts from CEndApp course-detail page', () => {
@@ -73,5 +76,17 @@ describe('H5 course detail', () => {
     expect(html).not.toContain('员工活动');
     expect(html).not.toContain('发现活动');
     expect(html).toContain('课程学习');
+  });
+
+  it('lists notes for this course and offers a new note', () => {
+    const html = renderToStaticMarkup(<H5CourseDetail id={2} />);
+    expect(html).toContain('aria-label="课程笔记"');
+    expect(html).toContain('开场破冰话术');
+    expect(html).toContain('08-22 16:40');
+    expect(html).toContain('写笔记');
+    expect(html).not.toContain('c-course-note-form');
+    expect(html).not.toContain('先问客户当前最急的一件事');
+    expect(html).not.toContain('结构化表达三步');
+    expect(html).not.toContain('role="dialog"');
   });
 });

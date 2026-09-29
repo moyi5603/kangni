@@ -13,22 +13,13 @@ import { formatCEndDateTime } from '../../formatDateTime';
 import { toggleCourseFavorite, toggleCourseLike, useCourseEngagement } from '../../../training/model/courseEngagementStore';
 import { useCourseCommentConfig } from '../../../training/model/trainingStore';
 import { getClientCourse, getCourseLearning } from '../model/clientCourse';
+import { CourseNotesSection } from '../components/CourseNotesSection';
 
 function IconPencil() {
   return (
     <svg viewBox="0 0 24 24" className="c-icon" aria-hidden>
       <path d="M4 20h4.4L19 9.4 14.6 5 4 15.6V20Z" />
       <path d="m13.8 6.8 3.4 3.4" />
-    </svg>
-  );
-}
-
-function IconRocket() {
-  return (
-    <svg viewBox="0 0 24 24" className="c-icon" aria-hidden>
-      <path d="M14 4c3 2 6 7 6 11a4 4 0 0 1-4 4c-4 0-9-3-11-6l5-5" />
-      <path d="M9 15 5 19" />
-      <circle cx="15" cy="9" r="1.2" />
     </svg>
   );
 }
@@ -134,14 +125,6 @@ export function H5CourseDetail({ id }: { id: number }) {
           >
             <IconShare />
           </button>
-          <button
-            className="c-h5-course-rocket"
-            type="button"
-            aria-label="快速入口"
-            onClick={() => toast.show('快捷入口待开发')}
-          >
-            <IconRocket />
-          </button>
         </div>
       }
     >
@@ -206,6 +189,8 @@ export function H5CourseDetail({ id }: { id: number }) {
             })}
           </ul>
         </section>
+
+        <CourseNotesSection courseId={id} layout="h5" />
 
         {showComment ? (
           <section className="c-h5-course-comments" id="course-comments" aria-label="评论">

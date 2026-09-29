@@ -21,6 +21,7 @@ const MEDAL_IMAGE_ACCEPT = '.png,.jpeg,.jpg';
 type FormValues = {
   name: string;
   imageUrl: string;
+  unobtainedIconUrl?: string;
   app: MedalApp;
   description: string;
   incentiveType?: MedalIncentiveType;
@@ -33,7 +34,7 @@ function toFileList(url: string): UploadFile[] {
 }
 
 function emptyDraft(): FormValues {
-  return { name: '', imageUrl: '', app: '通用', description: '', incentiveType: undefined, categoryId: undefined };
+  return { name: '', imageUrl: '', unobtainedIconUrl: '', app: '通用', description: '', incentiveType: undefined, categoryId: undefined };
 }
 
 export function MedalFormModal({
@@ -56,6 +57,7 @@ export function MedalFormModal({
       ? {
           name: record.name,
           imageUrl: record.imageUrl,
+          unobtainedIconUrl: record.unobtainedIconUrl,
           app: record.app,
           description: record.description,
           incentiveType: record.incentiveType,
@@ -63,6 +65,7 @@ export function MedalFormModal({
         }
       : emptyDraft();
   const [fileList, setFileList] = useState<UploadFile[]>(() => toFileList(initialValues.imageUrl));
+  const [unobtainedFileList, setUnobtainedFileList] = useState<UploadFile[]>(() => toFileList(initialValues.unobtainedIconUrl ?? ''));
   const [saving, setSaving] = useState(false);
   const appValue = Form.useWatch('app', form) ?? initialValues.app;
   const incentiveType = Form.useWatch('incentiveType', form) ?? initialValues.incentiveType;
@@ -77,16 +80,19 @@ export function MedalFormModal({
       form.setFieldsValue({
         name: record.name,
         imageUrl: record.imageUrl,
+        unobtainedIconUrl: record.unobtainedIconUrl,
         app: record.app,
         description: record.description,
         incentiveType: record.incentiveType,
         categoryId: record.categoryId,
       });
       setFileList(toFileList(record.imageUrl));
+      setUnobtainedFileList(toFileList(record.unobtainedIconUrl ?? ''));
       return;
     }
     form.setFieldsValue(emptyDraft());
     setFileList([]);
+    setUnobtainedFileList([]);
   }, [open, mode, record, form]);
 
   const submit = () => {
@@ -94,6 +100,7 @@ export function MedalFormModal({
     const draft: MedalDraft = {
       name: values.name ?? '',
       imageUrl: values.imageUrl ?? '',
+      unobtainedIconUrl: values.unobtainedIconUrl,
       app: values.app ?? '',
       description: values.description ?? '',
       incentiveType: values.incentiveType,
@@ -114,6 +121,7 @@ export function MedalFormModal({
         updateMedal(record.id, {
           name: draft.name,
           imageUrl: draft.imageUrl,
+          unobtainedIconUrl: draft.unobtainedIconUrl || undefined,
           app: draft.app,
           description: draft.description,
           incentiveType: draft.app === '即时激励' ? draft.incentiveType : undefined,
@@ -124,6 +132,7 @@ export function MedalFormModal({
         createMedal({
           name: draft.name,
           imageUrl: draft.imageUrl,
+          unobtainedIconUrl: draft.unobtainedIconUrl || undefined,
           app: draft.app,
           description: draft.description,
           incentiveType: draft.incentiveType,
@@ -173,6 +182,38 @@ export function MedalFormModal({
           }}
         >
           {fileList.length ? null : (
+            <button type="button" className="cover-upload-trigger" style={{ width: 96, height: 96 }}>
+              <PlusOutlined />
+              <span>上传</span>
+            </button>
+          )}
+        </Upload>
+      </Form.Item>
+      <Form.Item name="unobtainedIconUrl" label="未获得图标" extra={MEDAL_IMAGE_HINT}>
+        <Upload
+          accept={MEDAL_IMAGE_ACCEPT}
+          listType="picture-card"
+          maxCount={1}
+          fileList={unobtainedFileList}
+          beforeUpload={(file) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const unobtainedIconUrl = String(reader.result);
+              form.setFieldValue('unobtainedIconUrl', unobtainedIconUrl);
+              setUnobtainedFileList([{ uid: file.uid, name: file.name, status: 'done', url: unobtainedIconUrl }]);
+            };
+            reader.readAsDataURL(file);
+            return false;
+          }}
+          onChange={({ fileList: next }) => {
+            const latest = next.slice(-1);
+            if (!latest[0]) {
+              setUnobtainedFileList([]);
+              form.setFieldValue('unobtainedIconUrl', '');
+            }
+          }}
+        >
+          {unobtainedFileList.length ? null : (
             <button type="button" className="cover-upload-trigger" style={{ width: 96, height: 96 }}>
               <PlusOutlined />
               <span>上传</span>

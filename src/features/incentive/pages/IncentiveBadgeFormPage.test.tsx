@@ -15,6 +15,8 @@ describe('IncentiveBadgeFormPage', () => {
     );
     expect(html).toContain('新建勋章');
     expect(html).toContain('勋章图标');
+    expect(html.indexOf('勋章图标')).toBeLessThan(html.indexOf('未获得图标'));
+    expect(html).not.toContain('未获得时的勋章图标');
     expect(html).toContain('建议比例1:1');
     expect(html).toContain('勋章归属');
     expect(html).toContain('勋章名称');

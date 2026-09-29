@@ -43,6 +43,8 @@ describe('forum admin pages', () => {
     const thead = html.match(/<thead[\s\S]*?<\/thead>/)?.[0] ?? '';
     expect(thead).not.toContain('匿名');
     expect(thead).not.toContain('可见范围');
+    expect(html).not.toContain('批量停用');
+    expect(html).not.toContain('ant-table-selection');
   });
 
   it('renders forum detail with header cover and grouped copy', () => {
@@ -324,6 +326,9 @@ describe('forum admin pages', () => {
     );
     expect(html).toContain('新建论坛');
     expect(html).toContain('论坛名称');
+    expect(html).toContain('maxLength="200"');
+    expect(html).toContain('0 / 200');
+    expect(html).not.toContain('maxLength="100"');
     expect(html).not.toContain('论坛规则');
     expect(html).not.toContain('请输入发帖与互动规则');
     expect(html).toContain('允许匿名');
@@ -373,6 +378,9 @@ describe('forum admin pages', () => {
     expect(html).toContain('表示已占用，不可再选');
     expect(html).not.toContain('信箱负责人');
     expect(html).toContain('信箱简介');
+    expect(html).toContain('maxLength="100"');
+    expect(html).toContain('0 / 100');
+    expect(html).not.toContain('maxLength="200"');
     expect(html).not.toContain('宗旨');
     expect(html).toContain('标签');
     expect(html).not.toContain('信箱标签');

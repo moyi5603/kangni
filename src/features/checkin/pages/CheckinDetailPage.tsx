@@ -9,9 +9,7 @@ import {
   DatePicker,
   Descriptions,
   Empty,
-  Form,
   Input,
-  Modal,
   Select,
   Space,
   Table,
@@ -33,7 +31,6 @@ import {
 import {
   distinctCheckinUsers,
   getTheme,
-  submitUserCheckin,
   useCheckinGrants,
   useCheckinLogs,
   useCheckinThemes,
@@ -93,9 +90,6 @@ export function CheckinDetailPage({ recordId, onBack, onEdit }: CheckinDetailPag
   const [grantKind, setGrantKind] = useState<RewardKind | 'all'>('all');
   const [grantQuery, setGrantQuery] = useState<RewardKind | 'all'>('all');
 
-  const [simOpen, setSimOpen] = useState(false);
-  const [simForm] = Form.useForm<{ user: string; department: string; account: string; at: Dayjs }>();
-
   const filteredLogs = useMemo(
     () =>
       logs.filter((item) => {
@@ -134,7 +128,6 @@ export function CheckinDetailPage({ recordId, onBack, onEdit }: CheckinDetailPag
   const logColumns: TableColumnsType<CheckinLog> = [
     { title: '姓名', dataIndex: 'user', width: 120 },
     { title: '部门', dataIndex: 'department', ellipsis: true },
-    { title: '工号/账号', dataIndex: 'account', width: 140 },
     { title: '打卡时间', dataIndex: 'checkedAt', width: 180 },
   ];
 
@@ -154,8 +147,8 @@ export function CheckinDetailPage({ recordId, onBack, onEdit }: CheckinDetailPag
     }
     downloadCsv(
       `${theme.title}-打卡记录.csv`,
-      ['user', 'department', 'account', 'checkedAt'],
-      filteredLogs.map((item) => [item.user, item.department, item.account, item.checkedAt]),
+      ['user', 'department', 'checkedAt'],
+      filteredLogs.map((item) => [item.user, item.department, item.checkedAt]),
     );
     message.success(`已导出 ${filteredLogs.length} 条打卡记录`);
   };
@@ -178,26 +171,6 @@ export function CheckinDetailPage({ recordId, onBack, onEdit }: CheckinDetailPag
       ]),
     );
     message.success(`已导出 ${filteredGrants.length} 条获奖记录`);
-  };
-
-  const submitSim = async () => {
-    const values = await simForm.validateFields();
-    const account = values.account.trim();
-    const result = submitUserCheckin({
-      themeId: theme.id,
-      userId: account || values.user.trim(),
-      user: values.user.trim(),
-      department: values.department.trim(),
-      account,
-      at: values.at.format(TIME_FORMAT),
-    });
-    if (!result.ok) {
-      message.warning(result.reason);
-      return;
-    }
-    message.success('打卡成功');
-    setSimOpen(false);
-    simForm.resetFields();
   };
 
   return (
@@ -281,12 +254,9 @@ export function CheckinDetailPage({ recordId, onBack, onEdit }: CheckinDetailPag
                   </SearchPanel>
                   <ListTableCard
                     toolbar={
-                      <Space>
-                        <Button onClick={() => setSimOpen(true)}>模拟打卡</Button>
-                        <Button icon={<DownloadOutlined />} onClick={exportLogs}>
-                          导出
-                        </Button>
-                      </Space>
+                      <Button icon={<DownloadOutlined />} onClick={exportLogs}>
+                        导出
+                      </Button>
                     }
                   >
                     <Table<CheckinLog>
@@ -338,30 +308,6 @@ export function CheckinDetailPage({ recordId, onBack, onEdit }: CheckinDetailPag
           ]}
         />
       </Card>
-      <Modal
-        title="模拟打卡"
-        open={simOpen}
-        onCancel={() => setSimOpen(false)}
-        onOk={submitSim}
-        okText="提交"
-        cancelText="取消"
-        destroyOnHidden
-      >
-        <Form form={simForm} layout="vertical" initialValues={{ at: dayjs() }}>
-          <Form.Item name="user" label="姓名" rules={[{ required: true, message: '请输入姓名' }]}>
-            <Input placeholder="请输入姓名" />
-          </Form.Item>
-          <Form.Item name="department" label="部门" rules={[{ required: true, message: '请输入部门' }]}>
-            <Input placeholder="请输入部门" />
-          </Form.Item>
-          <Form.Item name="account" label="工号/账号" rules={[{ required: true, message: '请输入工号/账号' }]}>
-            <Input placeholder="请输入工号/账号" />
-          </Form.Item>
-          <Form.Item name="at" label="打卡时间" rules={[{ required: true, message: '请选择打卡时间' }]}>
-            <DatePicker showTime format={TIME_FORMAT} style={{ width: '100%' }} />
-          </Form.Item>
-        </Form>
-      </Modal>
     </div>
   );
 }

@@ -1,15 +1,10 @@
-export const REWARD_RULES_MOCK_VERSION = 1;
-
-export const rewardModes = ['fixed', 'duration'] as const;
-export type RewardMode = (typeof rewardModes)[number];
+export const REWARD_RULES_MOCK_VERSION = 3;
 
 export type RewardKindRule = {
   enabled: boolean;
-  mode: RewardMode | null;
+  mode: 'fixed' | null;
   fixedPoints: number | null;
-  intervalMinutes: number | null;
-  pointsPerInterval: number | null;
-  lessonCap: number | null;
+  dailyCapEnabled: boolean;
   dailyCap: number | null;
 };
 
@@ -23,9 +18,7 @@ export function emptyKindRule(): RewardKindRule {
     enabled: false,
     mode: null,
     fixedPoints: null,
-    intervalMinutes: null,
-    pointsPerInterval: null,
-    lessonCap: null,
+    dailyCapEnabled: false,
     dailyCap: null,
   };
 }
@@ -44,25 +37,12 @@ export const initialRewardRules: TrainingRewardRules = {
 
 export function prepareKindForSave(rule: RewardKindRule): RewardKindRule {
   if (!rule.enabled) return emptyKindRule();
-  if (rule.mode === 'fixed') {
-    return {
-      enabled: true,
-      mode: 'fixed',
-      fixedPoints: rule.fixedPoints,
-      intervalMinutes: null,
-      pointsPerInterval: null,
-      lessonCap: rule.lessonCap,
-      dailyCap: rule.dailyCap,
-    };
-  }
   return {
     enabled: true,
-    mode: 'duration',
-    fixedPoints: null,
-    intervalMinutes: rule.intervalMinutes,
-    pointsPerInterval: rule.pointsPerInterval,
-    lessonCap: rule.lessonCap,
-    dailyCap: rule.dailyCap,
+    mode: 'fixed',
+    fixedPoints: rule.fixedPoints,
+    dailyCapEnabled: rule.dailyCapEnabled,
+    dailyCap: rule.dailyCapEnabled ? rule.dailyCap : null,
   };
 }
 
@@ -75,16 +55,8 @@ export function prepareRewardRulesForSave(rules: TrainingRewardRules): TrainingR
 
 export function validateKindRule(rule: RewardKindRule, label: string): string | null {
   if (!rule.enabled) return null;
-  if (rule.mode !== 'fixed' && rule.mode !== 'duration') return `请选择${label}发放方式`;
-  if (rule.mode === 'fixed') {
-    if (rule.fixedPoints == null || rule.fixedPoints < 1) return `请输入${label}每课程固定分`;
-  } else {
-    if (rule.intervalMinutes == null || rule.intervalMinutes < 1) return `请输入${label}分钟间隔`;
-    if (rule.pointsPerInterval == null || rule.pointsPerInterval < 1) return `请输入${label}每区间分值`;
-  }
-  if (rule.lessonCap == null || rule.lessonCap < 1) return `请输入${label}每节课上限`;
-  if (rule.dailyCap == null || rule.dailyCap < 1) return `请输入${label}每日上限`;
-  if (rule.dailyCap < rule.lessonCap) return `${label}每日上限不能小于每节课上限`;
+  if (rule.fixedPoints == null || rule.fixedPoints < 1) return `请输入${label}整节课得分`;
+  if (rule.dailyCapEnabled && (rule.dailyCap == null || rule.dailyCap < 1)) return `请输入${label}每日上限`;
   return null;
 }
 

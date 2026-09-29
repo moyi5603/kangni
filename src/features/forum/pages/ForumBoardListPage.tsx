@@ -1,4 +1,4 @@
-import { useMemo, useState, type Key } from 'react';
+import { useMemo, useState } from 'react';
 import { PlusOutlined } from '@ant-design/icons';
 import { App, Badge, Button, Empty, Flex, Space, Table, Tag, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
@@ -11,7 +11,7 @@ import {
   type ForumBoard,
   type ForumKind,
 } from '../model/forum';
-import { setForumBoardStatus, setForumBoardStatuses, moveForumBoard, useForumBoards } from '../model/forumStore';
+import { setForumBoardStatus, moveForumBoard, useForumBoards } from '../model/forumStore';
 import { ForumEllipsis, ForumIconThumb } from './ForumEllipsis';
 import { ForumLinkModal } from '../components/ForumLinkModal';
 import { currentForumBoardClientUrl } from '../model/forumClientLink';
@@ -26,7 +26,6 @@ export function ForumBoardListPage({
 }) {
   const { message, modal } = App.useApp();
   const rows = useForumBoards();
-  const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [linkTarget, setLinkTarget] = useState<{ title: string; url: string }>();
   const mailbox = kind === 'mailbox';
   const noun = mailbox ? '信箱' : '论坛';
@@ -43,26 +42,6 @@ export function ForumBoardListPage({
       onOk: () => {
         setForumBoardStatus(record.id, enable ? 'enabled' : 'disabled');
         message.success(enable ? '已启用' : '已停用');
-      },
-    });
-  };
-
-  const batchDisable = () => {
-    const targets = filtered.filter((item) => selectedRowKeys.includes(item.id) && item.status === 'enabled');
-    if (!targets.length) {
-      message.warning('请选择已启用的记录');
-      return;
-    }
-    modal.confirm({
-      title: `批量停用${noun}`,
-      content: `将停用已选 ${targets.length} 个${noun}，停用后前台不可访问，历史数据保留。`,
-      okText: '确认停用',
-      cancelText: '取消',
-      okButtonProps: { danger: true },
-      onOk: () => {
-        setForumBoardStatuses(targets.map((item) => item.id), 'disabled');
-        setSelectedRowKeys([]);
-        message.success(`已停用 ${targets.length} 个${noun}`);
       },
     });
   };
@@ -192,15 +171,8 @@ export function ForumBoardListPage({
       <ListTableCard
         toolbar={
           <>
-            <Typography.Text type="secondary">
-              共 {filtered.length} 条{!mailbox && selectedRowKeys.length ? `，已选择 ${selectedRowKeys.length} 项` : ''}
-            </Typography.Text>
+            <Typography.Text type="secondary">共 {filtered.length} 条</Typography.Text>
             <Space>
-              {!mailbox && selectedRowKeys.length ? (
-                <Button danger onClick={batchDisable}>
-                  批量停用
-                </Button>
-              ) : null}
               <Button type="primary" icon={<PlusOutlined />} onClick={() => onNavigate(mailbox ? 'mailbox-create' : 'forum-create')}>
                 {mailbox ? '新建信箱' : '新建论坛'}
               </Button>
@@ -214,7 +186,6 @@ export function ForumBoardListPage({
           dataSource={filtered}
           tableLayout={mailbox ? 'fixed' : undefined}
           scroll={mailbox ? undefined : { x: 1180 }}
-          rowSelection={mailbox ? undefined : { selectedRowKeys, onChange: setSelectedRowKeys }}
           locale={{ emptyText: <Empty description={`暂无${noun}`} /> }}
           pagination={{
             pageSize: b2bStandards.table.pageSize,

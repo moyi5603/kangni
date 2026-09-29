@@ -9,6 +9,7 @@ import {
   removeSignupField,
   renameSignupField,
   setGroupSignupEnabled,
+  setGroupSignupTitle,
   setSignupFieldCompanion,
   setSignupFieldGroups,
   setSignupFieldOptions,
@@ -106,8 +107,26 @@ describe('setGroupSignupEnabled', () => {
     const withEmail = addSignupField(defaultSignupFields(), '邮箱');
     const enabled = setGroupSignupEnabled(withEmail, true);
     expect(enabled.map((field) => field.label)).toEqual(['姓名', '邮箱', '分组选择']);
+    expect(enabled.find((field) => field.inputType === 'group')?.groupTitle).toBe('报名分组');
     expect(setGroupSignupEnabled(enabled, true)).toEqual(enabled);
     expect(setGroupSignupEnabled(enabled, false).map((field) => field.label)).toEqual(['姓名', '邮箱']);
+  });
+});
+
+describe('setGroupSignupTitle', () => {
+  it('stores a custom group title and rejects a blank one', () => {
+    const enabled = setGroupSignupEnabled(defaultSignupFields(), true);
+    const renamed = setGroupSignupTitle(enabled, '意向组别');
+    expect(renamed.find((field) => field.inputType === 'group')?.groupTitle).toBe('意向组别');
+    const blank = setGroupSignupTitle(renamed, '   ');
+    const groups = [
+      { name: 'A', limit: 4 },
+      { name: 'B', limit: 6 },
+    ];
+    const filled = setSignupFieldGroups(blank, '分组选择', groups);
+    expect(validateSignupFields(filled, { signupTotalLimit: 10 })).toBe('请输入分组标题');
+    const tooLong = setSignupFieldGroups(setGroupSignupTitle(enabled, '一二三四五六七八九十一二三四五六七八九十一'), '分组选择', groups);
+    expect(validateSignupFields(tooLong, { signupTotalLimit: 10 })).toBe('分组标题不超过 20 个字');
   });
 });
 
@@ -297,6 +316,8 @@ describe('prefill and validate signup answers', () => {
     ]);
     expect(validateSignupAnswers(fields, { 姓名: '陈产品', 分组选择: 'A组、B组' })).toBeUndefined();
     expect(validateSignupAnswers(fields, { 姓名: '陈产品', 分组选择: 'C组' })).toBe('请选择有效的分组选择');
+    const titled = setGroupSignupTitle(fields, '意向组别');
+    expect(validateSignupAnswers(titled, { 姓名: '陈产品', 分组选择: '' })).toBe('请选择意向组别');
   });
 
   it('validates companion answers', () => {

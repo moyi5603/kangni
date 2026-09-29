@@ -38,7 +38,6 @@ export type LotteryRecord = {
   totalChanceEnabled: boolean;
   totalChance: number;
   maxWins: number;
-  consumeChanceOnWin: boolean;
   showRemaining: boolean;
   showWinners: boolean;
   missText: string;
@@ -321,7 +320,6 @@ export const initialLotteries: LotteryRecord[] = [
     totalChanceEnabled: true,
     totalChance: 3,
     maxWins: 1,
-    consumeChanceOnWin: true,
     showRemaining: false,
     showWinners: true,
     missText: '谢谢参与',
@@ -357,7 +355,6 @@ export const initialLotteries: LotteryRecord[] = [
     totalChanceEnabled: false,
     totalChance: 0,
     maxWins: 1,
-    consumeChanceOnWin: true,
     showRemaining: true,
     showWinners: true,
     missText: '谢谢参与',
@@ -392,7 +389,6 @@ export const initialLotteries: LotteryRecord[] = [
     totalChanceEnabled: false,
     totalChance: 0,
     maxWins: 1,
-    consumeChanceOnWin: true,
     showRemaining: false,
     showWinners: true,
     missText: '再接再厉',

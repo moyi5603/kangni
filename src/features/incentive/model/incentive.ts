@@ -116,6 +116,7 @@ export type Badge = {
   name: string;
   points: number;
   iconUrl: string;
+  unobtainedIconUrl?: string;
   orgIds: string[];
   enabled: boolean;
   definition: string;

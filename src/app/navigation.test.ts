@@ -14,6 +14,7 @@ import {
   toCEndPortalHash,
   goH5Back,
   toH5CourseListHash,
+  toH5CourseRecordsHash,
   toH5ExamListHash,
   toH5PracticeBankHash,
   toH5PracticeQuizHash,
@@ -72,6 +73,7 @@ import {
   toH5LotteryPlayHash,
   toH5ContestHomeHash,
   toH5ContestMineHash,
+  toH5ContestArchivesHash,
   toH5ContestEventsHash,
   toH5ContestDocsHash,
   toH5ContestDetailHash,
@@ -79,6 +81,8 @@ import {
   toH5ContestChallengeHash,
   toH5ContestRankHash,
   toH5ContestWrongHash,
+  toH5ContestCertsHash,
+  toH5SetupHash,
   toH5CourseNotesHash,
   toH5CourseNoteHash,
   toH5HonorAdminHash,
@@ -406,6 +410,15 @@ describe('C-end navigation', () => {
 
   it('builds the H5 course list hash', () => {
     expect(toH5CourseListHash()).toBe('#/c/h5/courses');
+  });
+
+  it('parses the H5 course records page', () => {
+    expect(parseCEndHash('#/c/h5/courses/records')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'course-records',
+    });
+    expect(toH5CourseRecordsHash()).toBe('#/c/h5/courses/records');
   });
 
   it('parses the H5 exam list page', () => {
@@ -817,6 +830,18 @@ describe('C-end navigation', () => {
       h5Page: 'contest-wrong',
     });
     expect(toH5ContestWrongHash()).toBe('#/c/h5/skills-contest/wrong');
+    expect(parseCEndHash('#/c/h5/skills-contest/certs')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'contest-certs',
+    });
+    expect(toH5ContestCertsHash()).toBe('#/c/h5/skills-contest/certs');
+    expect(parseCEndHash('#/c/h5/setup')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'setup',
+    });
+    expect(toH5SetupHash()).toBe('#/c/h5/setup');
     expect(parseCEndHash('#/c/h5/notes')).toEqual({
       kind: 'c-end',
       surface: 'h5',
@@ -880,6 +905,12 @@ describe('C-end navigation', () => {
     expect(toH5LotteryPlayHash(1)).toBe('#/c/h5/lottery/1');
     expect(toH5ContestHomeHash()).toBe('#/c/h5/skills-contest');
     expect(toH5ContestMineHash()).toBe('#/c/h5/skills-contest/mine');
+    expect(parseCEndHash('#/c/h5/skills-contest/archives')).toEqual({
+      kind: 'c-end',
+      surface: 'h5',
+      h5Page: 'contest-archives',
+    });
+    expect(toH5ContestArchivesHash()).toBe('#/c/h5/skills-contest/archives');
     expect(toH5ContestDetailHash(1)).toBe('#/c/h5/contest-1');
     expect(toH5ContestSignupHash(1)).toBe('#/c/h5/contest-1/signup');
     expect(toH5ContestChallengeHash(1)).toBe('#/c/h5/contest-1/challenge');

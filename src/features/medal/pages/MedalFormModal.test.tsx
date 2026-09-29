@@ -13,6 +13,8 @@ describe('MedalFormModal', () => {
     );
     expect(html).toContain('创建勋章');
     expect(html).toContain('勋章图片');
+    expect(html.indexOf('勋章图片')).toBeLessThan(html.indexOf('未获得图标'));
+    expect(html).not.toContain('未获得时的勋章图标');
     expect(html).toContain('勋章名称');
     expect(html).toContain('所属应用');
     expect(html).toContain('勋章描述');

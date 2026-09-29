@@ -67,10 +67,75 @@ function toCourseNote(item: CourseNoteSeed): CourseNote {
   };
 }
 
+const NOTE_TAGS = new Set(['b', 'strong', 'i', 'em', 'u', 's', 'strike', 'del', 'br', 'p', 'div', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'img']);
+
+function escapeText(value: string) {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function escapeAttr(value: string) {
+  return escapeText(value).replace(/"/g, '&quot;');
+}
+
+function isSafeImageSrc(src: string) {
+  return /^data:image\/[a-z0-9.+-]+;base64,/i.test(src) || /^https?:\/\//i.test(src);
+}
+
+export function sanitizeNoteHtml(html: string): string {
+  const source = html
+    .trim()
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '');
+  if (!source) return '';
+  if (!/<[a-z!/]/i.test(source)) return escapeText(source);
+  return source.replace(/<\/?([a-z0-9]+)([^>]*)>/gi, (full, rawTag: string, attrs: string) => {
+    const tag = rawTag.toLowerCase();
+    if (!NOTE_TAGS.has(tag)) return '';
+    if (full.startsWith('</')) return tag === 'br' || tag === 'img' ? '' : `</${tag}>`;
+    if (tag === 'br') return '<br>';
+    if (tag === 'img') {
+      const matched = /src\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(attrs);
+      const src = matched?.[1] ?? matched?.[2] ?? '';
+      if (!isSafeImageSrc(src)) return '';
+      return `<img src="${escapeAttr(src)}" alt="">`;
+    }
+    return `<${tag}>`;
+  });
+}
+
+export function notePlainText(content: string): string {
+  return sanitizeNoteHtml(content)
+    .replace(/<img\b[^>]*>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|h2|h3|li|blockquote)>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+export function noteContentIsEmpty(content: string): boolean {
+  const html = sanitizeNoteHtml(content);
+  return !/<img\b/i.test(html) && notePlainText(html).length === 0;
+}
+
+function formatNoteCreatedAt(date = new Date()) {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export function listCourseNotes(): CourseNote[] {
   return notes
     .map(toCourseNote)
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : b.id - a.id));
+}
+
+export function listCourseNotesByCourse(courseId: number): CourseNote[] {
+  return listCourseNotes().filter((item) => item.courseId === courseId);
 }
 
 export function getCourseNote(id: number): CourseNote | undefined {
@@ -80,13 +145,30 @@ export function getCourseNote(id: number): CourseNote | undefined {
 
 export function updateCourseNote(id: number, patch: { title: string; content: string }): boolean {
   const title = patch.title.trim();
-  const content = patch.content.trim();
-  if (!title || !content) return false;
+  const content = sanitizeNoteHtml(patch.content);
+  if (!title || noteContentIsEmpty(content)) return false;
   const index = notes.findIndex((item) => item.id === id);
   if (index < 0) return false;
   notes[index] = { ...notes[index], title, content };
   emit();
   return true;
+}
+
+export function createCourseNote(input: { courseId: number; title: string; content: string }): CourseNote | null {
+  const title = input.title.trim();
+  const content = sanitizeNoteHtml(input.content);
+  if (!title || noteContentIsEmpty(content) || !getClientCourse(input.courseId)) return null;
+  const id = notes.reduce((max, item) => Math.max(max, item.id), 0) + 1;
+  const seed: CourseNoteSeed = {
+    id,
+    title,
+    content,
+    createdAt: formatNoteCreatedAt(),
+    courseId: input.courseId,
+  };
+  notes = [seed, ...notes];
+  emit();
+  return toCourseNote(seed);
 }
 
 export function deleteCourseNote(id: number): boolean {

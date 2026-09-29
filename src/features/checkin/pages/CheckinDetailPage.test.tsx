@@ -20,6 +20,8 @@ describe('CheckinDetailPage', () => {
     expect(html).toContain('获奖记录');
     expect(html).toContain('周洁');
     expect(html).toContain('导出');
+    expect(html).not.toContain('模拟打卡');
+    expect(html).not.toContain('工号/账号');
   });
 
   it('shows grants on skills theme', () => {

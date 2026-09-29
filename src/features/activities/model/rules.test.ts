@@ -88,8 +88,8 @@ describe('formatApprovalNodeSummary', () => {
     expect(
       formatApprovalNodeSummary({ id: '3', assigneeMode: 'parentLevelLeader', reviewerIds: [] }),
     ).toBe('上级部门负责人');
-    expect(assigneeModeHints.sameLevelLeader).toBe('由前一节点的本级部门负责人审核。');
-    expect(assigneeModeHints.parentLevelLeader).toBe('由前一节点的上级部门负责人审核。');
+    expect(assigneeModeHints.sameLevelLeader).toBe('按锚点的本部门负责人审核。第 1 节点锚点是报名人。');
+    expect(assigneeModeHints.parentLevelLeader).toBe('按锚点主部门的上级部门负责人审核。已经到组织顶层时自动跳过。');
   });
 });
 

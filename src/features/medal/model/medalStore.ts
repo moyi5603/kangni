@@ -41,6 +41,7 @@ export function createMedal(draft: Omit<MedalDraft, 'app'> & { app: MedalApp }):
     id: `m-${Date.now()}`,
     name: draft.name.trim(),
     imageUrl: draft.imageUrl,
+    unobtainedIconUrl: draft.unobtainedIconUrl || undefined,
     app: draft.app,
     description: draft.description.trim(),
     status: '有效',
@@ -56,7 +57,7 @@ export function createMedal(draft: Omit<MedalDraft, 'app'> & { app: MedalApp }):
 
 export function updateMedal(
   id: string,
-  patch: Partial<Pick<MedalRecord, 'name' | 'imageUrl' | 'app' | 'description' | 'incentiveType' | 'categoryId'>>,
+  patch: Partial<Pick<MedalRecord, 'name' | 'imageUrl' | 'unobtainedIconUrl' | 'app' | 'description' | 'incentiveType' | 'categoryId'>>,
 ) {
   medals = medals.map((item) => {
     if (item.id !== id) return item;

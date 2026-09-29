@@ -56,6 +56,36 @@ describe('client forum helpers', () => {
     expect(rows[0]?.title).toContain('人体工学椅');
   });
 
+  it('pins first, then sorts latest-reply by reply time and latest-publish by publish time', () => {
+    const base = initialTopics[0]!;
+    const topic = (id: number, publishedAt: string, pinScope: '' | 'board', replyAt?: string, nestedAt?: string) => ({
+      ...base,
+      id,
+      title: String(id),
+      publishedAt,
+      pinScope,
+      commentCount: 0,
+      comments: replyAt
+        ? [{
+            id: 1,
+            author: '王涛',
+            content: '回',
+            createdAt: replyAt,
+            replies: nestedAt ? [{ id: 2, author: '周敏', content: '再回', createdAt: nestedAt, replyTo: '王涛' }] : [],
+          }]
+        : [],
+    });
+    const topics = [
+      topic(1, '2026-08-01 10:00:00', '', '2026-08-03 12:00'),
+      topic(2, '2026-08-04 10:00:00', '', '2026-08-02 09:00'),
+      topic(3, '2026-07-01 10:00:00', 'board'),
+      topic(4, '2026-08-05 10:00:00', ''),
+      topic(5, '2026-08-01 08:00:00', '', '2026-08-01 09:00', '2026-08-06 08:00'),
+    ];
+    expect(sortClientForumTopics(topics, 'reply').map((item) => item.id)).toEqual([3, 5, 4, 1, 2]);
+    expect(sortClientForumTopics(topics, 'publish').map((item) => item.id)).toEqual([3, 4, 2, 1, 5]);
+  });
+
   it('caps list thumbs at 3 by default and can show 5 with extras on the last cell', () => {
     expect(topicListThumbs([])).toEqual([]);
     expect(topicListThumbs(['a', 'b'])).toEqual([

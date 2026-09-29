@@ -14,6 +14,7 @@ import {
   getExamStartCta,
   getClientExamPrep,
   hasExamDescriptionHtml,
+  listMyExamMall,
   listPublishedClientExams,
   maxExamCategoryDepth,
   pathAfterSelectingExamL1,
@@ -38,6 +39,14 @@ describe('client exam catalog', () => {
     expect(list.find((item) => item.title === '入职测评')).toBeUndefined();
     expect(list.find((item) => item.title === '项目管理认证')?.result).toBe('passed');
     expect(list.find((item) => item.title === '项目管理考试')?.result).toBeNull();
+    const mine = listMyExamMall(list);
+    expect(mine.pending.map((item) => item.title)).toEqual([
+      '项目管理考试',
+      '需求分析与PRD撰写能力考核',
+      '绩效薪酬体系设计考核',
+      '20260808',
+    ]);
+    expect(mine.done.map((item) => item.note)).toEqual(['保留最高分作为最终分数', '未通过', '已结束 · 未参考']);
   });
 
   it('builds prep copy for the PRD exam matching the start screen', () => {

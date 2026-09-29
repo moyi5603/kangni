@@ -26,16 +26,18 @@ export function H5CourseCard({ course, href }: { course: ClientCourse; href: str
     <a
       className="c-h5-course-card"
       href={href}
-      aria-label={`${course.title}，${course.tag}，${course.views} 次观看，时长 ${course.duration}，开始学习`}
+      aria-label={`${course.title}，${course.tag}，${course.views}人观看，时长 ${course.duration}，开始学习`}
     >
       <CourseCover course={course} />
       <div className="c-h5-course-copy">
         <h2 className="c-h5-course-title">{course.title}</h2>
-        <span className="c-h5-course-tag">{course.tag}</span>
+        <div className="c-h5-course-jobs">
+          <span className="c-h5-course-tag">{course.tag}</span>
+        </div>
         <div className="c-h5-course-foot">
           <span className="c-h5-course-views">
             <IconEye />
-            {course.views}
+            {course.views}人观看
           </span>
           <span className="c-h5-course-cta">开始学习</span>
         </div>

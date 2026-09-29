@@ -60,7 +60,7 @@ describe('PC vote v2 pages', () => {
   it('uses PC column settings on vote homes', () => {
     expect(renderToStaticMarkup(<CEndApp surface="pc" h5Page="vote-v2-home" voteV2Id={2} />)).toContain('data-cols="3"');
     expect(renderToStaticMarkup(<CEndApp surface="pc" h5Page="vote-v2-home" voteV2Id={4} />)).toContain('data-cols="4"');
-    expect(renderToStaticMarkup(<CEndApp surface="pc" h5Page="vote-v2-home" voteV2Id={8} />)).toContain('data-cols="5"');
+    expect(renderToStaticMarkup(<CEndApp surface="pc" h5Page="vote-v2-home" voteV2Id={8} />)).toContain('data-cols="4"');
   });
 
   it('opens option detail with the vote CTA in the PC side column', () => {

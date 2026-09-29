@@ -29,7 +29,7 @@ import { formatActivityPointGrant } from '../model/activityPointRules';
 import { formatCheckInRuleSummary } from '../model/activityCheckIn';
 import { ActivitySessionsDetailCard } from '../components/ActivitySessionsDetailCard';
 import { activityScheduleTypeLabels, needsSessionPick, signupQuotaLabel } from '../model/activitySchedule';
-import { signupFieldInputTypeLabels, findGroupSignupField, withoutGroupSignupField } from '../model/signupFields';
+import { signupFieldInputTypeLabels, findGroupSignupField, signupGroupTitle, withoutGroupSignupField } from '../model/signupFields';
 import { ActivityMomentListPage } from './ActivityMomentListPage';
 import { ActivityPrizeListPage } from './ActivityPrizeListPage';
 import { ActivityQrCheckInPage } from './ActivityQrCheckInPage';
@@ -381,6 +381,10 @@ export function ActivityDetailPage({ recordId, tab, onBack, onEdit, onCopy, onTa
                       },
                       ...(groupSignupField
                         ? [
+                            {
+                              label: '分组标题',
+                              children: signupGroupTitle(groupSignupField),
+                            },
                             {
                               label: '分组',
                               children: formatSignupFieldConfig(groupSignupField),

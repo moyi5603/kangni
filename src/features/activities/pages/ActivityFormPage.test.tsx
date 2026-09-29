@@ -39,6 +39,20 @@ describe('ActivityFormPage', () => {
     expect(html.slice(paletteStart, paletteEnd)).not.toContain('报名分组设置');
   });
 
+  it('shows a group title input defaulting to 报名分组 when groups are enabled', () => {
+    const html = renderToStaticMarkup(
+      <App>
+        <ActivityFormPage mode="edit" recordId="2" onBack={() => undefined} />
+      </App>,
+    );
+    const card = html.slice(html.indexOf('报名分组设置'), html.indexOf('advanced-settings-collapse'));
+    const inputAt = card.indexOf('value="报名分组"');
+    expect(card).toContain('分组标题');
+    expect(card.slice(Math.max(0, inputAt - 400), inputAt + 80)).toContain('activity-group-title');
+    expect(card).toContain('value="报名分组"');
+    expect(card).toContain(' / 20');
+  });
+
   it('selects recurring weekdays like interest-group create, not checkbox group', () => {
     const html = renderToStaticMarkup(
       <App>

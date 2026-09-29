@@ -20,6 +20,7 @@ import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { addMedal, useMedals, type Medal } from '../../activities/model/medalLibrary';
 import { MedalRewardFields, medalScopeOf, type MedalPickSource } from '../components/MedalRewardFields';
+import { ShareConfigFields } from '../components/ShareConfigFields';
 import {
   CHECKIN_OWNER_APP_LABEL,
   checkinStatusOf,
@@ -31,6 +32,7 @@ import {
   type RewardTrigger,
 } from '../model/checkin';
 import { getTheme, nextThemeId, saveTheme, useCheckinThemes } from '../model/checkinStore';
+import { shareSlotPlan, validateCultureShare, visibleShareImages, type ShareCardRule } from '../model/share';
 
 const { RangePicker } = DatePicker;
 const TIME_FORMAT = 'YYYY-MM-DD HH:mm';
@@ -287,12 +289,20 @@ export function CheckinFormPage({
   const [ruleRows, setRuleRows] = useState<RuleForm[]>(() =>
     mode === 'edit' ? (getTheme(Number(recordId))?.rules.map(toRuleForm) ?? []) : [emptyRule()],
   );
+  const [shareEnabled, setShareEnabled] = useState(() => Boolean(editing?.shareEnabled));
+  const [shareCardRule, setShareCardRule] = useState<ShareCardRule>(editing?.shareCardRule ?? 'daily');
+  const [shareImages, setShareImages] = useState<string[]>(editing?.shareImages ?? []);
 
   const status = editing ? checkinStatusOf(editing) : undefined;
   const formLocked = status === '已结束';
+  const watchedOwner = Form.useWatch('ownerApp', form);
+  const watchedRange = Form.useWatch('timeRange', form);
 
   useEffect(() => {
     if (mode === 'edit') setRuleRows(editing?.rules.map(toRuleForm) ?? []);
+    setShareEnabled(Boolean(editing?.shareEnabled));
+    setShareCardRule(editing?.shareCardRule ?? 'daily');
+    setShareImages(editing?.shareImages ?? []);
   }, [editing, recordId, mode]);
 
   const initialValues = useMemo<Partial<FormValues>>(
@@ -308,6 +318,8 @@ export function CheckinFormPage({
   );
 
   const pageTitle = mode === 'create' ? '新建打卡' : '编辑打卡';
+  const ownerApp = watchedOwner === undefined ? initialValues.ownerApp : watchedOwner;
+  const timeRange = watchedRange === undefined ? initialValues.timeRange : watchedRange;
 
   const patchRule = (index: number, patch: Partial<RuleForm>) => {
     setRuleRows((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
@@ -331,6 +343,25 @@ export function CheckinFormPage({
       message.error('同所属应用内主题名称不可重复');
       return;
     }
+    const startAt = values.timeRange[0].format(TIME_FORMAT);
+    const endAt = values.timeRange[1].format(TIME_FORMAT);
+    const culture = values.ownerApp === 'culture';
+    const plan = culture ? shareSlotPlan(startAt, endAt, shareCardRule) : null;
+    const fitted = plan ? visibleShareImages(shareImages, plan.count) : [];
+    if (culture && shareEnabled) {
+      const shareError = validateCultureShare({
+        ownerApp: values.ownerApp,
+        startAt,
+        endAt,
+        shareEnabled,
+        cardRule: shareCardRule,
+        images: fitted,
+      });
+      if (shareError) {
+        message.error(shareError);
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       const id = editing?.id ?? nextThemeId();
@@ -339,9 +370,12 @@ export function CheckinFormPage({
         title,
         ownerApp: values.ownerApp,
         tags: values.tags ?? [],
-        startAt: values.timeRange[0].format(TIME_FORMAT),
-        endAt: values.timeRange[1].format(TIME_FORMAT),
+        startAt,
+        endAt,
         rules,
+        shareEnabled: culture ? shareEnabled : undefined,
+        shareCardRule: culture ? shareCardRule : undefined,
+        shareImages: culture ? (shareEnabled ? fitted : shareImages) : undefined,
       };
       saveTheme(record);
       const savedStatus = checkinStatusOf(record);
@@ -410,6 +444,19 @@ export function CheckinFormPage({
           <Form.Item name="timeRange" label="起止时间" rules={[{ required: true, message: '请选择开始与结束时间' }]}>
             <RangePicker showTime={{ format: 'HH:mm' }} format={TIME_FORMAT} placeholder={['开始', '结束']} />
           </Form.Item>
+          {ownerApp === 'culture' ? (
+            <ShareConfigFields
+              locked={formLocked}
+              enabled={shareEnabled}
+              cardRule={shareCardRule}
+              images={shareImages}
+              startAt={timeRange?.[0]?.format(TIME_FORMAT)}
+              endAt={timeRange?.[1]?.format(TIME_FORMAT)}
+              onEnabled={setShareEnabled}
+              onCardRule={setShareCardRule}
+              onImages={setShareImages}
+            />
+          ) : null}
         </Card>
         <Card title="奖励规则" style={{ marginTop: 16 }}>
           <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>

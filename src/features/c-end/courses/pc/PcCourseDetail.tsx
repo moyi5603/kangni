@@ -14,6 +14,7 @@ import { formatCEndDateTime } from '../../formatDateTime';
 import { toggleCourseFavorite, toggleCourseLike, useCourseEngagement } from '../../../training/model/courseEngagementStore';
 import { useCourseCommentConfig } from '../../../training/model/trainingStore';
 import { getClientCourse, getCourseLearning } from '../model/clientCourse';
+import { CourseNotesSection } from '../components/CourseNotesSection';
 
 function emphasizeIntro(text: string) {
   const parts = text.split(/(沟通方式不对|非能力不足)/);
@@ -111,6 +112,7 @@ export function PcCourseDetail({ id }: { id: number }) {
                 ))}
               </div>
             </section>
+            <CourseNotesSection courseId={id} layout="pc" />
             {showComment ? (
               <section className="c-activity-comments" id="course-comments" aria-labelledby="course-comments-title">
                 <div className="c-activity-comments-head">

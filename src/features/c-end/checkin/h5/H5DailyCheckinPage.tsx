@@ -6,7 +6,9 @@ import {
   CHECKIN_MOOD_COLOR,
   CHECKIN_MOODS,
   calendarDayKey,
+  canEditCheckinMood,
   checkinRewardLines,
+  grantedCheckinPoints,
   checkinStatusOf,
   nextStreak,
   shanghaiYmd,
@@ -125,18 +127,35 @@ function MoodFace({ mood }: { mood: CheckinMood }) {
   );
 }
 
-export function CheckinRewardSheet({ lines, onClose }: { lines: string[]; onClose: () => void }) {
+export function CheckinRewardSheet({
+  lines,
+  points = 0,
+  onClose,
+}: {
+  lines: string[];
+  points?: number;
+  onClose: () => void;
+}) {
+  const extras = lines.filter((line) => !line.startsWith('积分'));
   return (
     <div className="c-mood-sheet is-reward" role="dialog" aria-label="获得奖励">
       <button className="c-mood-mask" type="button" aria-label="关闭" onClick={onClose} />
       <div className="c-reward-panel">
         <p className="c-mood-sheet-kicker">打卡成功</p>
         <h2 className="c-mood-sheet-title">恭喜获得</h2>
-        <ul className="c-reward-list">
-          {lines.map((line) => (
-            <li key={line}>{line}</li>
-          ))}
-        </ul>
+        {points > 0 ? (
+          <p className="c-reward-points">
+            <strong>+{points}</strong>
+            <span>积分</span>
+          </p>
+        ) : null}
+        {extras.length ? (
+          <ul className="c-reward-list">
+            {extras.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        ) : null}
         <button className="c-btn c-btn-primary c-reward-ok" type="button" onClick={onClose}>
           知道了
         </button>
@@ -148,7 +167,10 @@ export function CheckinRewardSheet({ lines, onClose }: { lines: string[]; onClos
 export function H5DailyCheckinPage() {
   const toast = useCEndToast();
   const themes = useCheckinThemes();
-  const theme = themes.find((item) => item.id === 1) ?? themes[0];
+  const theme =
+    themes.find((item) => item.ownerApp === 'skills-contest' && checkinStatusOf(item) === '进行中') ??
+    themes.find((item) => item.ownerApp === 'skills-contest') ??
+    themes[0];
   const logs = usePreviewList(useCheckinLogs(theme?.id ?? 0));
   const mine = logs.filter((item) => item.userId === VIEWER.userId);
   const today = shanghaiYmd();
@@ -159,6 +181,7 @@ export function H5DailyCheckinPage() {
   const [cursor, setCursor] = useState({ year: todayParts[0] ?? 2026, month: todayParts[1] ?? 9 });
   const [sheetLogId, setSheetLogId] = useState<number>();
   const [rewardLines, setRewardLines] = useState<string[]>();
+  const [rewardPoints, setRewardPoints] = useState(0);
   const cells = useMemo(() => monthCells(cursor.year, cursor.month), [cursor.year, cursor.month]);
   const byDay = new Map(mine.map((item) => [calendarDayKey(item.checkedAt), item]));
 
@@ -184,8 +207,10 @@ export function H5DailyCheckinPage() {
       medalName: (id) => getMedal(id)?.name ?? id,
       lotteryChance: result.lotteryChance,
     });
+    const points = grantedCheckinPoints(result.grants);
     setSheetLogId(result.log.id);
-    if (lines.length) {
+    if (points > 0 || lines.length) {
+      setRewardPoints(points);
       setRewardLines(lines);
     }
   }
@@ -198,6 +223,7 @@ export function H5DailyCheckinPage() {
     }
     const log = byDay.get(ymd);
     if (log) {
+      if (!canEditCheckinMood(ymd, today)) return;
       openMood(log.id);
       return;
     }
@@ -210,9 +236,10 @@ export function H5DailyCheckinPage() {
 
   function pickMood(mood: CheckinMood) {
     if (sheetLogId == null) return;
+    const log = mine.find((item) => item.id === sheetLogId);
+    if (!log || !canEditCheckinMood(calendarDayKey(log.checkedAt), today)) return;
     setCheckinMood(sheetLogId, mood);
     setSheetLogId(undefined);
-    toast.show(`已记录「${mood}」`);
   }
 
   const sheetLog = mine.find((item) => item.id === sheetLogId);
@@ -224,7 +251,14 @@ export function H5DailyCheckinPage() {
       onBack={goH5Back}
       overlay={
         rewardLines?.length ? (
-          <CheckinRewardSheet lines={rewardLines} onClose={() => setRewardLines(undefined)} />
+          <CheckinRewardSheet
+            lines={rewardLines}
+            points={rewardPoints}
+            onClose={() => {
+              setRewardLines(undefined);
+              setRewardPoints(0);
+            }}
+          />
         ) : sheetLog ? (
           <div className="c-mood-sheet" role="dialog" aria-label="记录心情">
             <button className="c-mood-mask" type="button" aria-label="关闭" onClick={() => setSheetLogId(undefined)} />
@@ -251,9 +285,6 @@ export function H5DailyCheckinPage() {
     >
       <div className="c-daily-checkin">
         <section className="c-daily-hero">
-          <p className="c-daily-kicker">{theme?.title ?? '打卡'}</p>
-          <h2 className="c-daily-hello">嗨，{VIEWER.user}</h2>
-          <p className="c-daily-sub">点一下完成今日打卡。有奖励会立刻弹出。</p>
           <button
             className={`c-daily-stamp${todayLog ? ' is-done' : ''}`}
             type="button"
@@ -327,7 +358,6 @@ export function H5DailyCheckinPage() {
               );
             })}
           </div>
-          <p className="c-daily-cal-hint">点已打卡的日期，可以记录心情</p>
           <ul className="c-daily-legend">
             {CHECKIN_MOODS.map((mood) => (
               <li key={mood}>

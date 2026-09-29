@@ -70,7 +70,6 @@ type LotteryFormValues = {
   gainCheckinCount: number;
   gainCheckinThemeIds: number[];
   maxWins: number;
-  consumeChanceOnWin: boolean;
   showRemaining: boolean;
   showWinners: boolean;
   missText: string;
@@ -175,7 +174,6 @@ export function LotteryFormPage({ mode, recordId, onBack, onSaved }: LotteryForm
       gainCheckinCount: chanceSources.gainCheckinCount,
       gainCheckinThemeIds: chanceSources.gainCheckinThemeIds,
       maxWins: editing?.maxWins ?? 1,
-      consumeChanceOnWin: editing?.consumeChanceOnWin ?? true,
       showRemaining: editing?.showRemaining ?? false,
       showWinners: editing?.showWinners ?? true,
       missText: editing?.missText ?? '谢谢参与',
@@ -246,7 +244,6 @@ export function LotteryFormPage({ mode, recordId, onBack, onSaved }: LotteryForm
         totalChanceEnabled: values.totalChanceEnabled,
         totalChance: values.totalChanceEnabled ? values.totalChance ?? values.dailyChance : 0,
         maxWins: values.maxWins,
-        consumeChanceOnWin: values.consumeChanceOnWin,
         showRemaining: values.showRemaining,
         showWinners: values.showWinners,
         missText: values.missText.trim(),
@@ -429,7 +426,7 @@ export function LotteryFormPage({ mode, recordId, onBack, onSaved }: LotteryForm
                     <Form.Item
                       {...field}
                       name={[field.name, 'name']}
-                      label={index === 0 ? '奖品名称' : ' '}
+                      label="奖品名称"
                       rules={[{ required: true, message: '请输入奖品名称' }]}
                       style={{ marginBottom: 0, minWidth: 200 }}
                     >
@@ -438,7 +435,7 @@ export function LotteryFormPage({ mode, recordId, onBack, onSaved }: LotteryForm
                     <Form.Item
                       {...field}
                       name={[field.name, 'quantity']}
-                      label={index === 0 ? '数量' : ' '}
+                      label="数量"
                       rules={[{ required: true, message: '请输入数量' }]}
                       style={{ marginBottom: 0 }}
                     >
@@ -447,13 +444,13 @@ export function LotteryFormPage({ mode, recordId, onBack, onSaved }: LotteryForm
                     <Form.Item
                       {...field}
                       name={[field.name, 'probability']}
-                      label={index === 0 ? '中奖概率(%)' : ' '}
+                      label="中奖概率(%)"
                       rules={[{ required: true, message: '请输入概率' }]}
                       style={{ marginBottom: 0 }}
                     >
                       <InputNumber min={0} max={100} step={0.1} disabled={prizeLocked} style={{ width: 120 }} />
                     </Form.Item>
-                    <Space style={{ paddingTop: index === 0 ? 30 : 0 }}>
+                    <Space style={{ paddingTop: 30 }}>
                       <Button type="link" size="small" disabled={prizeLocked || index === 0} onClick={() => move(index, index - 1)}>
                         上移
                       </Button>
@@ -573,9 +570,6 @@ export function LotteryFormPage({ mode, recordId, onBack, onSaved }: LotteryForm
         <Card title="其他规则" style={{ marginTop: 16 }}>
           <Form.Item name="maxWins" label="每人最多中奖" rules={[{ required: true, message: '请输入最多中奖次数' }]}>
             <InputNumber min={1} max={99} precision={0} style={{ width: 160 }} />
-          </Form.Item>
-          <Form.Item name="consumeChanceOnWin" label="中奖占用次数" valuePropName="checked">
-            <Switch />
           </Form.Item>
           <Form.Item name="showRemaining" label="展示剩余奖品" valuePropName="checked">
             <Switch />

@@ -188,8 +188,8 @@ function campaignFormValues(editing: VoteV2Campaign): FormValues {
     contestantNoun: editing.contestantNoun,
     voteButtonNoun: editing.voteButtonNoun,
     voteUnit: editing.voteUnit,
-    homeColumns: editing.homeColumns,
-    pcHomeColumns: editing.pcHomeColumns,
+    homeColumns: clampVoteV2HomeColumns(editing.homeColumns),
+    pcHomeColumns: clampVoteV2PcHomeColumns(editing.pcHomeColumns),
     pageDisplayKeys: voteV2PageDisplayKeys(editing.pageDisplay),
     signupEnabled: editing.signupEnabled,
     signupLimit: editing.signupLimit,
@@ -819,7 +819,7 @@ export function VoteV2FormPage({ mode, recordId, tab, onBack, onNavigate, onTabC
             disabled={styleLocked}
             options={voteV2HomeColumnOptions.map((value) => ({
               value,
-              label: value === 1 ? '一列' : value === 2 ? '二列' : '三列',
+              label: value === 1 ? '一列' : '二列',
             }))}
           />
         </Form.Item>
@@ -828,7 +828,7 @@ export function VoteV2FormPage({ mode, recordId, tab, onBack, onNavigate, onTabC
             disabled={styleLocked}
             options={voteV2PcHomeColumnOptions.map((value) => ({
               value,
-              label: value === 3 ? '三列' : value === 4 ? '四列' : '五列',
+              label: value === 4 ? '四列' : '三列',
             }))}
           />
         </Form.Item>

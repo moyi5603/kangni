@@ -151,18 +151,50 @@ describe('skills contest H5', () => {
     expect(html).toContain('学习成就');
     expect(html).toContain('证书');
     expect(html).toContain('档案');
-    expect(html).toContain('建议反馈');
+    expect(html).not.toContain('建议反馈');
     expect(html).toContain('设置');
+    expect(html).toContain('href="#/c/h5/setup"');
     expect(html).toContain('学分');
     expect(html).toContain('学习时长');
     expect(html).toContain('积分');
     expect(html).toContain('href="#/c/h5/skills-contest/notes"');
     expect(html).toContain('href="#/c/h5/skills-contest/wrong"');
-    expect(html).toContain('href="#/c/h5/courses"');
+    expect(html).toContain('href="#/c/h5/courses/records"');
     expect(html).toContain('href="#/c/h5/favorites"');
-    expect(html).toContain('href="#/c/h5/honor"');
+    expect(html).toContain('href="#/c/h5/skills-contest/certs"');
+    expect(html).not.toContain('href="#/c/h5/honor"');
+    expect(html).toContain('href="#/c/h5/skills-contest/archives"');
     expect(html).not.toContain('去打卡领积分');
     expect(html).not.toContain('已报名');
+  });
+
+  it('learning archive follows 学习档案 sections', () => {
+    const html = renderToStaticMarkup(<CEndApp surface="h5" h5Page="contest-archives" />);
+    expect(html).toContain('学习档案');
+    expect(html).toContain('学习时长');
+    expect(html).not.toContain('线上学时');
+    expect(html).not.toContain('线下学时');
+    expect(html).toContain('个人荣誉');
+    expect(html).toContain('项荣誉');
+    expect(html).toContain('张证书');
+    expect(html).toContain('枚勋章');
+    expect(html).toContain('超过 82% 的人');
+    expect(html).toContain('>学习<');
+    expect(html).toContain('直播');
+    expect(html).not.toContain('微课');
+    expect(html).not.toContain('面授课');
+    expect(html).toContain('考试');
+    expect(html).toContain('全部');
+    expect(html).toContain('通过');
+    expect(html).toContain('未通过');
+    expect(html).not.toContain('考试任务');
+    expect(html).not.toContain('测试考试');
+    expect(html).not.toContain('>培训<');
+    expect(html).not.toContain('学习圈');
+    expect(html).not.toContain('发布帖子');
+    expect(html).not.toContain('暂无评价');
+    expect(html).not.toContain('查看我的档案');
+    expect(html).toContain('href="#/c/h5/courses"');
   });
 
   it('wrong book hub shows stats and practice entries', () => {

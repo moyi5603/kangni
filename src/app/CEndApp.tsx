@@ -36,7 +36,10 @@ import { H5ContestSignup } from '../features/c-end/skills-contest/h5/H5ContestSi
 import { H5ContestChallenge } from '../features/c-end/skills-contest/h5/H5ContestChallenge';
 import { H5ContestRank } from '../features/c-end/skills-contest/h5/H5ContestRank';
 import { H5ContestMine } from '../features/c-end/skills-contest/h5/H5ContestMine';
+import { H5LearningArchive } from '../features/c-end/skills-contest/h5/H5LearningArchive';
 import { H5ContestWrongBook } from '../features/c-end/skills-contest/h5/H5ContestWrongBook';
+import { H5MyCertificates } from '../features/c-end/skills-contest/h5/H5MyCertificates';
+import { H5SetupPage } from '../features/c-end/skills-contest/h5/H5SetupPage';
 import { H5LotteryList } from '../features/c-end/lottery/h5/H5LotteryList';
 import { H5LotteryPlay } from '../features/c-end/lottery/h5/H5LotteryPlay';
 import { H5InterestGroupHome } from '../features/c-end/interest-groups/h5/H5InterestGroupHome';
@@ -131,6 +134,8 @@ export function CEndApp(props: CEndAppProps) {
         <H5MySignups />
       ) : h5Page === 'courses' ? (
         <H5CourseMall />
+      ) : h5Page === 'course-records' ? (
+        <H5CourseMall initialView="records" />
       ) : h5Page === 'course-detail' ? (
         <H5CourseDetail id={courseId ?? -1} />
       ) : h5Page === 'course-notes' ? (
@@ -187,8 +192,14 @@ export function CEndApp(props: CEndAppProps) {
         <H5ContestRank id={contestId ?? -1} />
       ) : h5Page === 'contest-mine' ? (
         <H5ContestMine />
+      ) : h5Page === 'contest-archives' ? (
+        <H5LearningArchive />
       ) : h5Page === 'contest-wrong' ? (
         <H5ContestWrongBook />
+      ) : h5Page === 'contest-certs' ? (
+        <H5MyCertificates />
+      ) : h5Page === 'setup' ? (
+        <H5SetupPage />
       ) : h5Page === 'lottery' ? (
         <H5LotteryList />
       ) : h5Page === 'lottery-play' ? (

@@ -38,6 +38,7 @@ type FormValues = {
   name: string;
   points: number;
   iconUrl?: string;
+  unobtainedIconUrl?: string;
   orgIds: string[];
   enabled: boolean;
   description: string;
@@ -70,6 +71,7 @@ export function IncentiveBadgeFormPage({
         name: editing.name,
         points: editing.points,
         iconUrl: editing.iconUrl,
+        unobtainedIconUrl: editing.unobtainedIconUrl,
         orgIds: editing.orgIds,
         enabled: editing.enabled,
         description: formatBadgeDescription(editing),
@@ -80,12 +82,14 @@ export function IncentiveBadgeFormPage({
         name: '',
         points: 1,
         iconUrl: '',
+        unobtainedIconUrl: '',
         orgIds: DEFAULT_BADGE_ORG_IDS,
         enabled: true,
         description: DEFAULT_BADGE_DESCRIPTION,
       };
 
   const [iconList, setIconList] = useState<UploadFile[]>(toFileList(initialValues.iconUrl ?? ''));
+  const [unobtainedIconList, setUnobtainedIconList] = useState<UploadFile[]>(toFileList(initialValues.unobtainedIconUrl ?? ''));
   const [dirty, setDirty] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const scopeId = Form.useWatch('scopeId', form) ?? initialValues.scopeId;
@@ -132,6 +136,7 @@ export function IncentiveBadgeFormPage({
       name: values.name.trim(),
       points: values.points,
       iconUrl: values.iconUrl ?? '',
+      unobtainedIconUrl: values.unobtainedIconUrl || undefined,
       orgIds: values.orgIds,
       enabled: values.enabled,
       definition: parsed.definition,
@@ -196,6 +201,37 @@ export function IncentiveBadgeFormPage({
           hidden
           rules={mode === 'create' ? [{ required: true, message: '请上传勋章图标' }] : undefined}
         >
+          <Input />
+        </Form.Item>
+        <Form.Item label="未获得图标" extra={SQUARE_IMAGE_UPLOAD_HINT}>
+          <Upload
+            accept={IMAGE_UPLOAD_ACCEPT}
+            listType="picture-card"
+            maxCount={1}
+            fileList={unobtainedIconList}
+            beforeUpload={() => false}
+            onChange={({ fileList }) => {
+              const file = fileList[0];
+              setUnobtainedIconList(fileList.slice(-1));
+              setDirty(true);
+              if (file?.originFileObj) {
+                const reader = new FileReader();
+                reader.onload = () => form.setFieldValue('unobtainedIconUrl', String(reader.result));
+                reader.readAsDataURL(file.originFileObj);
+              } else {
+                form.setFieldValue('unobtainedIconUrl', file?.url ?? '');
+              }
+            }}
+          >
+            {unobtainedIconList.length ? null : (
+              <button type="button" className="cover-upload-trigger">
+                <PlusOutlined />
+                <span>上传图标</span>
+              </button>
+            )}
+          </Upload>
+        </Form.Item>
+        <Form.Item name="unobtainedIconUrl" hidden>
           <Input />
         </Form.Item>
         <Form.Item name="scopeId" label="勋章归属" rules={[{ required: true, message: '请选择勋章归属' }]}>

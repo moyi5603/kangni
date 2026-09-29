@@ -1211,7 +1211,280 @@
     return { open, close };
   }
 
+  const CARE_CATALOG = [
+    { id: "care-1", title: "陈晨的生日关怀", type: "生日关怀", blessing: "生日快乐，愿你岁岁欢喜", date: "2026-08-26" },
+    { id: "care-2", title: "李明的周年关怀", type: "周年关怀", blessing: "入职五周年，感谢同行", date: "2026-09-01" },
+    { id: "care-3", title: "王芳的入党关怀", type: "入党关怀", blessing: "政治生日，初心如磐", date: "2026-07-01" },
+    { id: "care-4", title: "赵磊的生日关怀", type: "生日关怀", blessing: "新的一岁，工作顺利", date: "2026-09-12" }
+  ];
+  const INCENTIVE_CATALOG = [
+    { id: "inc-1", title: "协作之星", medal: "协作之星", giver: "张敏", receiver: "陈晨", reason: "跨部门项目按期交付", time: "2026-09-18 14:20" },
+    { id: "inc-2", title: "攻坚先锋", medal: "攻坚先锋", giver: "李强", receiver: "王芳", reason: "产线异常当晚恢复", time: "2026-09-16 18:05" },
+    { id: "inc-3", title: "服务之星", medal: "服务之星", giver: "赵磊", receiver: "周衡", reason: "客户投诉一次解决", time: "2026-09-10 11:30" }
+  ];
+  const MEDAL_RANK_CATALOG = [
+    { id: "rank-1", title: "陈晨", rank: "1", medal: "协作之星", person: "陈晨", count: "12" },
+    { id: "rank-2", title: "王芳", rank: "2", medal: "攻坚先锋", person: "王芳", count: "9" },
+    { id: "rank-3", title: "周衡", rank: "3", medal: "服务之星", person: "周衡", count: "7" }
+  ];
+  const FORUM_CATALOG = [
+    { id: "forum-1", title: "产线异常怎么快速定位", postTitle: "产线异常怎么快速定位", desc: "夜班遇到停线，整理一套排查顺序", author: "陈晨", time: "2026-09-18 14:20", commentCount: "12", likeCount: "36", favoriteCount: "8", viewCount: "420" },
+    { id: "forum-2", title: "食堂新品试吃反馈", postTitle: "食堂新品试吃反馈", desc: "这周新窗口的口味和排队情况", author: "李敏", time: "2026-09-16 12:05", commentCount: "27", likeCount: "54", favoriteCount: "15", viewCount: "860" },
+    { id: "forum-3", title: "园区通勤班车建议", postTitle: "园区通勤班车建议", desc: "早班拥挤，希望增加一趟", author: "王强", time: "2026-09-12 08:40", commentCount: "9", likeCount: "21", favoriteCount: "4", viewCount: "310" }
+  ];
+  const MAILBOX_CATALOG = [
+    { id: "mb-1", title: "总经理信箱", name: "总经理信箱", handler: "周衡", tags: "建议,投诉", intro: "直接向总经理反映问题" },
+    { id: "mb-2", title: "工会信箱", name: "工会信箱", handler: "李敏", tags: "福利,活动", intro: "职工权益和活动建议" },
+    { id: "mb-3", title: "纪检信箱", name: "纪检信箱", handler: "王强", tags: "监督,举报", intro: "接受作风和纪律反映" }
+  ];
+
+  function mountContentPicker({ title, catalog, columns, searchKeys, emptyText, isCustom, getSource, getPicked, setPicked, onChange, toast }) {
+    const showToast = toast || defaultToast;
+    let draft = [];
+    let keyword = "";
+    let page = 1;
+    const pageSize = 6;
+    let full = false;
+    const mask = document.createElement("div");
+    mask.className = "pick-mask";
+    const q = (sel) => mask.querySelector(sel);
+    const head = columns.map((col) => `<th>${col.label}</th>`).join("");
+    mask.innerHTML = `
+      <div class="pick-modal" role="dialog" aria-label="${escapeHtml(title)}">
+        <div class="pick-hd">
+          <h3>${escapeHtml(title)}</h3>
+          <div class="pick-hd-ops">
+            <button type="button" class="pick-ico" data-act="full" aria-label="全屏">⛶</button>
+            <button type="button" class="pick-ico" data-act="close" aria-label="关闭">×</button>
+          </div>
+        </div>
+        <div class="pick-body is-flat">
+          <div class="pick-main">
+            <div class="pick-filters">
+              <label class="fl">关键词 <input data-el="kw" placeholder="请输入关键词" /></label>
+              <button type="button" class="btn-pri" data-el="query">查询</button>
+              <button type="button" class="btn-ghost" data-el="reset">重置</button>
+            </div>
+            <div class="pick-table-wrap">
+              <table class="pick-table">
+                <thead><tr>${head}<th>操作</th></tr></thead>
+                <tbody data-el="tbody"></tbody>
+              </table>
+              <div class="pick-empty" data-el="empty" hidden>${escapeHtml(emptyText)}</div>
+            </div>
+            <div class="pick-pager" data-el="pager"></div>
+          </div>
+          <aside class="pick-sel">
+            <div class="pick-sel-h">已选 <span data-el="selCount">0</span><button type="button" data-el="clear">清空</button></div>
+            <div class="pick-sel-list" data-el="selList"></div>
+          </aside>
+        </div>
+        <div class="pick-ft">
+          <button type="button" class="btn-ghost" data-act="close">取消</button>
+          <button type="button" class="btn-pri" data-el="ok">确定</button>
+        </div>
+      </div>`;
+    document.body.appendChild(mask);
+    const modal = mask.querySelector(".pick-modal");
+
+    function filteredRows() {
+      let rows = catalog.slice();
+      const source = typeof getSource === "function" ? getSource() : "";
+      if (source) rows = rows.filter((row) => row.type === source);
+      if (keyword) {
+        rows = rows.filter((row) => searchKeys.some((key) => String(row[key] || "").includes(keyword)));
+      }
+      return rows;
+    }
+
+    function renderTable() {
+      const rows = filteredRows();
+      const pages = Math.max(1, Math.ceil(rows.length / pageSize));
+      if (page > pages) page = pages;
+      const slice = rows.slice((page - 1) * pageSize, page * pageSize);
+      const tbody = q('[data-el="tbody"]');
+      const empty = q('[data-el="empty"]');
+      tbody.innerHTML = "";
+      empty.hidden = slice.length > 0;
+      slice.forEach((row) => {
+        const tr = document.createElement("tr");
+        const added = draft.some((item) => item.id === row.id);
+        const cells = columns.map((col) => `<td>${escapeHtml(row[col.key] || "")}</td>`).join("");
+        tr.innerHTML = `${cells}<td><button type="button" class="link-add" ${added ? "disabled" : ""} data-id="${row.id}">${added ? "已添加" : "添加"}</button></td>`;
+        tbody.appendChild(tr);
+      });
+      tbody.querySelectorAll(".link-add").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const row = catalog.find((item) => item.id === btn.dataset.id);
+          if (!row || draft.some((item) => item.id === row.id)) return;
+          draft.push(row);
+          renderTable();
+          renderSel();
+        });
+      });
+      const pager = q('[data-el="pager"]');
+      pager.innerHTML = `<span>共 ${rows.length} 条</span>
+        <button type="button" class="btn-ghost" data-el="prev" ${page <= 1 ? "disabled" : ""}>上一页</button>
+        <span>${page}/${pages}</span>
+        <button type="button" class="btn-ghost" data-el="next" ${page >= pages ? "disabled" : ""}>下一页</button>`;
+      q('[data-el="prev"]').onclick = () => { if (page > 1) { page -= 1; renderTable(); } };
+      q('[data-el="next"]').onclick = () => { if (page < pages) { page += 1; renderTable(); } };
+    }
+
+    function renderSel() {
+      const list = q('[data-el="selList"]');
+      q('[data-el="selCount"]').textContent = String(draft.length);
+      if (!draft.length) {
+        list.innerHTML = `<div class="pick-sel-empty">尚未选择</div>`;
+        return;
+      }
+      list.innerHTML = draft.map((row) => `<div class="pick-sel-item">
+          <div class="meta"><div class="t">${escapeHtml(row.title)}</div></div>
+          <button type="button" class="x" data-id="${row.id}">×</button>
+        </div>`).join("");
+      list.querySelectorAll(".x").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          draft = draft.filter((item) => item.id !== btn.dataset.id);
+          renderTable();
+          renderSel();
+        });
+      });
+    }
+
+    function open() {
+      if (typeof isCustom === "function" && !isCustom()) {
+        showToast("请先选择自定义");
+        return;
+      }
+      draft = (typeof getPicked === "function" ? getPicked() : []).slice();
+      page = 1;
+      mask.classList.add("show");
+      renderTable();
+      renderSel();
+    }
+
+    function close() {
+      mask.classList.remove("show");
+      modal.classList.remove("full");
+      full = false;
+    }
+
+    mask.addEventListener("click", (e) => { if (e.target === mask) close(); });
+    mask.querySelectorAll("[data-act=close]").forEach((btn) => btn.addEventListener("click", close));
+    mask.querySelector("[data-act=full]").addEventListener("click", () => {
+      full = !full;
+      modal.classList.toggle("full", full);
+    });
+    q('[data-el="query"]').addEventListener("click", () => {
+      keyword = q('[data-el="kw"]').value.trim();
+      page = 1;
+      renderTable();
+    });
+    q('[data-el="reset"]').addEventListener("click", () => {
+      q('[data-el="kw"]').value = "";
+      keyword = "";
+      page = 1;
+      renderTable();
+    });
+    q('[data-el="clear"]').addEventListener("click", () => {
+      draft = [];
+      renderTable();
+      renderSel();
+    });
+    q('[data-el="ok"]').addEventListener("click", () => {
+      if (typeof setPicked === "function") setPicked(draft.slice());
+      if (typeof onChange === "function") onChange();
+      close();
+    });
+
+    return { open, close };
+  }
+
+  function mountCarePicker(opts) {
+    return mountContentPicker(Object.assign({
+      title: "选择关怀",
+      catalog: CARE_CATALOG,
+      columns: [
+        { key: "type", label: "类型" },
+        { key: "blessing", label: "祝福" },
+        { key: "date", label: "日期" }
+      ],
+      searchKeys: ["title", "type", "blessing", "date"],
+      emptyText: "暂无关怀"
+    }, opts));
+  }
+
+  function mountIncentivePicker(opts) {
+    return mountContentPicker(Object.assign({
+      title: "选择认可动态",
+      catalog: INCENTIVE_CATALOG,
+      columns: [
+        { key: "medal", label: "勋章" },
+        { key: "giver", label: "认可人" },
+        { key: "receiver", label: "被认可人" },
+        { key: "reason", label: "原因" },
+        { key: "time", label: "时间" }
+      ],
+      searchKeys: ["title", "medal", "giver", "receiver", "reason"],
+      emptyText: "暂无认可动态"
+    }, opts));
+  }
+
+  function mountMedalRankPicker(opts) {
+    return mountContentPicker(Object.assign({
+      title: "选择勋章排行",
+      catalog: MEDAL_RANK_CATALOG,
+      columns: [
+        { key: "rank", label: "排名" },
+        { key: "medal", label: "勋章" },
+        { key: "person", label: "姓名" },
+        { key: "count", label: "获得次数" }
+      ],
+      searchKeys: ["title", "medal", "person"],
+      emptyText: "暂无勋章排行"
+    }, opts));
+  }
+
+  function mountForumPicker(opts) {
+    return mountContentPicker(Object.assign({
+      title: "选择帖子",
+      catalog: FORUM_CATALOG,
+      columns: [
+        { key: "postTitle", label: "帖子名称" },
+        { key: "desc", label: "描述" },
+        { key: "author", label: "发帖人" },
+        { key: "time", label: "时间" },
+        { key: "commentCount", label: "评论数" },
+        { key: "likeCount", label: "点赞数" },
+        { key: "favoriteCount", label: "收藏数" },
+        { key: "viewCount", label: "浏览数" }
+      ],
+      searchKeys: ["title", "postTitle", "desc", "author"],
+      emptyText: "暂无帖子"
+    }, opts));
+  }
+
+  function mountMailboxPicker(opts) {
+    return mountContentPicker(Object.assign({
+      title: "选择信箱",
+      catalog: MAILBOX_CATALOG,
+      columns: [
+        { key: "name", label: "名称" },
+        { key: "handler", label: "负责人" },
+        { key: "tags", label: "标签" },
+        { key: "intro", label: "简介" }
+      ],
+      searchKeys: ["title", "name", "handler", "tags", "intro"],
+      emptyText: "暂无信箱"
+    }, opts));
+  }
+
   global.mountActivityPicker = mountActivityPicker;
   global.mountVotePicker = mountVotePicker;
   global.mountGroupPicker = mountGroupPicker;
+  global.mountCarePicker = mountCarePicker;
+  global.mountIncentivePicker = mountIncentivePicker;
+  global.mountMedalRankPicker = mountMedalRankPicker;
+  global.mountForumPicker = mountForumPicker;
+  global.mountMailboxPicker = mountMailboxPicker;
 })(window);

@@ -33,27 +33,6 @@
   text-align: center;
 }
 
-.c-daily-kicker {
-  margin: 0;
-  color: #ff7f24;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
-.c-daily-hello {
-  margin: 6px 0 0;
-  font-size: 22px;
-  line-height: 1.3;
-}
-
-.c-daily-sub {
-  margin: 6px 0 18px;
-  color: #71717a;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
 .c-daily-stamp {
   display: flex;
   flex-direction: column;
@@ -224,14 +203,6 @@
   background: #ff7f24;
 }
 
-.c-daily-cal-hint {
-  margin: 12px 4px 0;
-  color: #a16207;
-  font-size: 12px;
-  line-height: 1.45;
-  text-align: center;
-}
-
 .c-daily-legend {
   display: flex;
   flex-wrap: wrap;
@@ -340,6 +311,18 @@
   text-align: center;
 }
 
+.c-reward-points {
+  margin: 0 0 16px;
+  color: #9a3412;
+}
+.c-reward-points strong {
+  display: block;
+  font-size: 40px;
+  line-height: 1.1;
+}
+.c-reward-points span {
+  font-size: 14px;
+}
 .c-reward-list {
   margin: 0 0 16px;
   padding: 0;

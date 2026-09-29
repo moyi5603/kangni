@@ -5,6 +5,7 @@ import {
   needsSignupForm,
   parseCompanionPeople,
   prefillSignupAnswers,
+  signupGroupTitle,
   stringifyCompanionPeople,
   validateSignupAnswers,
   withoutGroupSignupField,
@@ -234,9 +235,9 @@ export function SignupForm({
       {showGroups && groupField ? (
         <section className="c-signup-card" aria-labelledby="signup-card-groups">
           <h3 id="signup-card-groups" className="c-signup-card-title">
-            报名分组 *
+            {signupGroupTitle(groupField)} *
           </h3>
-          <div className="c-signup-options" role="group" aria-label="报名分组">
+          <div className="c-signup-options" role="group" aria-label={signupGroupTitle(groupField)}>
             {groupOptions.map((option) => {
               const picked = (answers[groupField.key] ?? '')
                 .split('、')

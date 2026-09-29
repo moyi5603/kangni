@@ -15,6 +15,17 @@ describe('medalStore', () => {
     });
     expect(listMedals()[0].id).toBe(created.id);
     expect(created.status).toBe('有效');
+    expect(created.unobtainedIconUrl).toBeUndefined();
+    const withLocked = createMedal({
+      name: '未获得图标勋章',
+      imageUrl: 'data:image/svg+xml,got',
+      unobtainedIconUrl: 'data:image/svg+xml,locked',
+      app: '通用',
+      description: 'd',
+    });
+    expect(getMedal(withLocked.id)?.unobtainedIconUrl).toBe('data:image/svg+xml,locked');
+    updateMedal(withLocked.id, { unobtainedIconUrl: 'data:image/svg+xml,locked-2' });
+    expect(getMedal(withLocked.id)?.unobtainedIconUrl).toBe('data:image/svg+xml,locked-2');
     expect(created.creator).toBe('北玛三十度');
     const incentive = createMedal({
       name: '激励勋章',

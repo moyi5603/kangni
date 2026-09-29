@@ -289,8 +289,20 @@ export function ForumBoardFormPage({
           <Form.Item name="name" label={mailbox ? '名称' : `${noun}名称`} rules={[{ required: true, message: mailbox ? '请输入名称' : `请输入${noun}名称` }]}>
             <Input placeholder={mailbox ? '请输入名称' : `请输入${noun}名称`} style={{ maxWidth: 360 }} />
           </Form.Item>
-          <Form.Item name="description" label={`${noun}简介`} rules={[{ required: true, message: `请输入${noun}简介` }]}>
-            <Input.TextArea rows={3} placeholder={`请输入${noun}简介`} />
+          <Form.Item
+            name="description"
+            label={`${noun}简介`}
+            rules={[
+              { required: true, message: `请输入${noun}简介` },
+              { max: mailbox ? 100 : 200, message: mailbox ? '信箱简介不超过 100 个字' : '论坛简介不超过 200 个字' },
+            ]}
+          >
+            <Input.TextArea
+              rows={3}
+              maxLength={mailbox ? 100 : 200}
+              showCount
+              placeholder={`请输入${noun}简介`}
+            />
           </Form.Item>
           <Form.Item name="visibility" label="可见范围" rules={[{ required: true, message: '请选择可见范围' }]}>
             <Radio.Group options={optionsOf(FORUM_VISIBILITY_OPTIONS)} />

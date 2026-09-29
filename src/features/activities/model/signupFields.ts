@@ -36,6 +36,8 @@ export type SignupField = {
   digitOnly?: boolean;
   /** 分组选择 */
   groups?: SignupGroupOption[];
+  /** 员工报名时看到的分组区块标题，默认「报名分组」 */
+  groupTitle?: string;
   totalLimit?: number;
   /** 同行人 */
   companionMax?: number;
@@ -140,6 +142,18 @@ export function setSignupFieldGroups(fields: SignupField[], key: string, groups:
   return fields.map((field) => (field.key === key && field.inputType === 'group' ? { ...field, groups, totalLimit: undefined } : field));
 }
 
+export const DEFAULT_SIGNUP_GROUP_TITLE = '报名分组';
+export const SIGNUP_GROUP_TITLE_MAX = 20;
+
+export function signupGroupTitle(field?: Pick<SignupField, 'groupTitle'>): string {
+  const title = field?.groupTitle?.trim();
+  return title || DEFAULT_SIGNUP_GROUP_TITLE;
+}
+
+export function setGroupSignupTitle(fields: SignupField[], title: string): SignupField[] {
+  return fields.map((field) => (field.inputType === 'group' ? { ...field, groupTitle: title } : field));
+}
+
 export function findGroupSignupField(fields: SignupField[]): SignupField | undefined {
   return fields.find((field) => field.inputType === 'group');
 }
@@ -152,7 +166,7 @@ export function setGroupSignupEnabled(fields: SignupField[], enabled: boolean): 
   const current = findGroupSignupField(fields);
   if (enabled) {
     if (current) return fields;
-    return addSignupField(fields, '分组选择');
+    return setGroupSignupTitle(addSignupField(fields, '分组选择'), DEFAULT_SIGNUP_GROUP_TITLE);
   }
   return withoutGroupSignupField(fields);
 }
@@ -210,6 +224,11 @@ export function validateSignupFields(
         return `自定义文本字数限制须为 ${CUSTOM_TEXT_MAX_LENGTH_MIN}～${CUSTOM_TEXT_MAX_LENGTH_MAX} 的整数`;
       }
     } else if (field.inputType === 'group') {
+      if (field.groupTitle != null) {
+        const title = field.groupTitle.trim();
+        if (!title) return '请输入分组标题';
+        if (title.length > SIGNUP_GROUP_TITLE_MAX) return `分组标题不超过 ${SIGNUP_GROUP_TITLE_MAX} 个字`;
+      }
       const groups = field.groups ?? [];
       if (groups.length < 2) return '分组选择至少需要 2 个分组';
       for (const group of groups) {
@@ -296,7 +315,7 @@ export function validateSignupAnswers(fields: SignupField[], answers: SignupAnsw
       continue;
     }
     if (field.required && !value) return `${label}不能为空`;
-    if (field.inputType === 'group' && !value) return '请选择报名分组';
+    if (field.inputType === 'group' && !value) return `请选择${signupGroupTitle(field)}`;
     if (field.inputType === 'text') {
       if (field.digitOnly && value && digitsOnly(value) !== value) return `${label}仅允许输入数字`;
       if (field.maxLength != null && value.length > field.maxLength) return `${label}不能超过 ${field.maxLength} 字`;

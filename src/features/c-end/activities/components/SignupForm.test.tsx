@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { addSignupField, defaultSignupFields, setSignupFieldGroups } from '../../../activities/model/signupFields';
+import { addSignupField, defaultSignupFields, setGroupSignupTitle, setSignupFieldGroups } from '../../../activities/model/signupFields';
 import { initialActivities } from '../../../activities/model/activity';
 import { SignupForm } from './SignupForm';
 
@@ -25,6 +25,21 @@ describe('SignupForm', () => {
     expect(html).toContain('value="华东大区"');
     expect(html).toContain('邮箱');
     expect(html).not.toContain('报名类型');
+  });
+
+  it('renders 中秋员工晚会 checkbox collection inside 报名信息, not as 分组选择', () => {
+    const party = initialActivities.find((item) => item.id === 9)!;
+    expect(party.signupFields.some((field) => field.inputType === 'group')).toBe(false);
+    const html = renderToStaticMarkup(
+      <SignupForm types={['个人报名']} fields={party.signupFields} onCancel={() => undefined} onConfirm={() => undefined} />,
+    );
+    const info = html.slice(html.indexOf('报名信息'));
+    expect(info).toContain('感兴趣的环节');
+    expect(info).toContain('type="checkbox"');
+    expect(info).toContain('节目汇演');
+    expect(info).toContain('抽奖');
+    expect(info).toContain('家书');
+    expect(info).not.toContain('分组选择');
   });
 
   it('renders 分组选择 as checkboxes', () => {
@@ -75,6 +90,22 @@ describe('SignupForm', () => {
     );
     expect(html).not.toContain('报名分组');
     expect(html).not.toContain('signup-card-groups');
+  });
+
+  it('uses a custom group title on the signup form', () => {
+    const fields = setGroupSignupTitle(
+      setSignupFieldGroups(addSignupField(defaultSignupFields(), '分组选择'), '分组选择', [
+        { name: 'A组', limit: 5 },
+        { name: 'B组', limit: 5 },
+      ]),
+      '意向组别',
+    );
+    const html = renderToStaticMarkup(
+      <SignupForm types={['个人报名']} fields={fields} onCancel={() => undefined} onConfirm={() => undefined} />,
+    );
+    expect(html).toContain('意向组别 *');
+    expect(html).toContain('aria-label="意向组别"');
+    expect(html).not.toContain('报名分组');
   });
 
   it('asks which sessions to attend for series activities', () => {

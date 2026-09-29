@@ -428,7 +428,85 @@ const IG_COVER: Record<string, string> = {
   volunteer: '/activities/checkup.jpg',
 };
 
+type MineActItem = {
+  kind: 'act' | 'ig';
+  tag: string;
+  title: string;
+  cover: string;
+  start: string;
+  signedAt: string;
+  status: MineLife;
+  tone: string;
+  href: string;
+};
+
+function igMineAct(act: Act): MineActItem {
+  const status = igLife(act);
+  return {
+    kind: 'ig',
+    tag: '【兴趣圈活动】',
+    title: act.title,
+    cover: act.cover || IG_COVER[act.cat] || '/activities/open-day.jpg',
+    start: igSessionStart(act),
+    signedAt: igSignedAt(act),
+    status,
+    tone: lifeTone(status),
+    href: toPcInterestGroupsHash(),
+  };
+}
+
+function MineActRows({ items, empty }: { items: MineActItem[]; empty: string }) {
+  if (!items.length) return <div className="empty">{empty}</div>;
+  return (
+    <div className="list">
+      {items.map((item) => (
+        <a className="item mine-act-row" key={`${item.kind}-${item.title}-${item.href}`} href={item.href}>
+          {item.cover ? <img className="mine-act-cover" src={item.cover} alt="" /> : <span className="mine-act-cover" />}
+          <div className="mine-act-copy">
+            <div className="mine-act-head">
+              <span className={`mine-act-tag is-${item.kind}`}>{item.tag}</span>
+              <h3>{item.title}</h3>
+            </div>
+            {item.start ? <p className="mine-act-time">{item.start}</p> : null}
+          </div>
+          <div className={`status ${item.tone}`}>{item.status}</div>
+        </a>
+      ))}
+    </div>
+  );
+}
+
+function PaneTabs<T extends string>({
+  label,
+  value,
+  onChange,
+  items,
+}: {
+  label: string;
+  value: T;
+  onChange: (next: T) => void;
+  items: { id: T; label: string }[];
+}) {
+  return (
+    <div className="ix-sub" role="tablist" aria-label={label}>
+      {items.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          role="tab"
+          aria-selected={value === item.id}
+          className={value === item.id ? 'on' : ''}
+          onClick={() => onChange(item.id)}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function ActivitiesPane() {
+  const [tab, setTab] = useState<'joined' | 'created'>('joined');
   const live = useUserSignups();
   const activities = getActivities();
   const rows = mineCompanySignups(live, activities);
@@ -447,47 +525,36 @@ function ActivitiesPane() {
       href: activity ? toCEndHash('pc', activity.id) : '#',
     };
   });
-  const ig = ACTS.filter((act) => act.joinedByMe && !act.createdByMe).map((act) => {
-    const status = igLife(act);
-    return {
-      kind: 'ig' as const,
-      tag: '【兴趣圈活动】',
-      title: act.title,
-      cover: act.cover || IG_COVER[act.cat] || '/activities/open-day.jpg',
-      start: igSessionStart(act),
-      signedAt: igSignedAt(act),
-      status,
-      tone: lifeTone(status),
-      href: toPcInterestGroupsHash(),
-    };
-  });
-  const list = usePreviewList(
-    [...company, ...ig].sort((left, right) => right.signedAt.localeCompare(left.signedAt)),
+  const joined = usePreviewList(
+    [...company, ...ACTS.filter((act) => act.joinedByMe && !act.createdByMe).map(igMineAct)].sort((left, right) =>
+      right.signedAt.localeCompare(left.signedAt),
+    ),
+  );
+  const created = usePreviewList(
+    ACTS.filter((act) => act.createdByMe)
+      .map(igMineAct)
+      .sort((left, right) => right.signedAt.localeCompare(left.signedAt)),
   );
   return (
     <section className="card">
       <div className="card-head">
         <h2>我的活动</h2>
       </div>
-      {list.length ? (
-        <div className="list">
-          {list.map((item) => (
-            <a className="item mine-act-row" key={`${item.kind}-${item.title}-${item.href}`} href={item.href}>
-              {item.cover ? <img className="mine-act-cover" src={item.cover} alt="" /> : <span className="mine-act-cover" />}
-              <div className="mine-act-copy">
-                <div className="mine-act-head">
-                  <span className={`mine-act-tag is-${item.kind}`}>{item.tag}</span>
-                  <h3>{item.title}</h3>
-                </div>
-                {item.start ? <p className="mine-act-time">{item.start}</p> : null}
-              </div>
-              <div className={`status ${item.tone}`}>{item.status}</div>
-            </a>
-          ))}
-        </div>
-      ) : (
-        <div className="empty">还没有参加过活动</div>
-      )}
+      <PaneTabs
+        label="我的活动分类"
+        value={tab}
+        onChange={setTab}
+        items={[
+          { id: 'joined', label: '我参加的活动' },
+          { id: 'created', label: '我创建的活动' },
+        ]}
+      />
+      <div data-panel="joined" hidden={tab !== 'joined'}>
+        <MineActRows items={joined} empty="还没有参加过活动" />
+      </div>
+      <div data-panel="created" hidden={tab !== 'created'}>
+        <MineActRows items={created} empty="还没有创建兴趣圈活动" />
+      </div>
     </section>
   );
 }
@@ -539,30 +606,48 @@ function CarePane() {
 }
 
 function CirclesPane() {
-  const groups = usePreviewList(GROUPS.filter((group) => group.joined));
+  const [tab, setTab] = useState<'joined' | 'created'>('joined');
+  const joined = usePreviewList(GROUPS.filter((group) => group.joined && !group.createdByMe));
+  const created = usePreviewList(GROUPS.filter((group) => group.createdByMe));
+  const renderGroups = (groups: typeof joined, empty: string, status: string) =>
+    groups.length ? (
+      <div className="list">
+        {groups.map((group) => (
+          <a className="item mine-act-row" key={group.id} href={toPcInterestGroupsHash()}>
+            <img className="mine-act-cover" src={IG_COVER[group.cat] || '/activities/open-day.jpg'} alt="" />
+            <div className="mine-act-copy">
+              <div className="mine-act-head">
+                <h3>{group.name}</h3>
+              </div>
+              <p className="mine-act-time">{group.members} 人</p>
+            </div>
+            <div className="status done">{status}</div>
+          </a>
+        ))}
+      </div>
+    ) : (
+      <div className="empty">{empty}</div>
+    );
   return (
     <section className="card">
       <div className="card-head">
         <h2>我的兴趣圈</h2>
       </div>
-      {groups.length ? (
-        <div className="list">
-          {groups.map((group) => (
-            <a className="item mine-act-row" key={group.id} href={toPcInterestGroupsHash()}>
-              <img className="mine-act-cover" src={IG_COVER[group.cat] || '/activities/open-day.jpg'} alt="" />
-              <div className="mine-act-copy">
-                <div className="mine-act-head">
-                  <h3>{group.name}</h3>
-                </div>
-                <p className="mine-act-time">{group.members} 人</p>
-              </div>
-              <div className="status done">已加入</div>
-            </a>
-          ))}
-        </div>
-      ) : (
-        <div className="empty">还没有加入兴趣圈</div>
-      )}
+      <PaneTabs
+        label="我的兴趣圈分类"
+        value={tab}
+        onChange={setTab}
+        items={[
+          { id: 'joined', label: '我加入的兴趣圈' },
+          { id: 'created', label: '我创建的兴趣圈' },
+        ]}
+      />
+      <div data-panel="joined" hidden={tab !== 'joined'}>
+        {renderGroups(joined, '还没有加入兴趣圈', '已加入')}
+      </div>
+      <div data-panel="created" hidden={tab !== 'created'}>
+        {renderGroups(created, '还没有创建兴趣圈', '已创建')}
+      </div>
     </section>
   );
 }

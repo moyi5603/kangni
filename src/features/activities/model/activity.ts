@@ -28,7 +28,7 @@ const openDayImg = '/activities/open-day.jpg';
 const shareImg = '/activities/share.jpg';
 const webinarImg = '/activities/webinar.jpg';
 
-export const ACTIVITY_MOCK_VERSION = 40;
+export const ACTIVITY_MOCK_VERSION = 41;
 export type { SignupField } from './signupFields';
 export const activityTypes = ['公司活动', '疗休养活动', '体检活动', '项目活动'] as const;
 export const visibilityOptions = ['全员', '按部门', '自定义人群', '导入人群'] as const;
@@ -712,7 +712,17 @@ export const initialActivities: Activity[] = [
     checkInValidAfterStart: 1,
     checkInToken: checkInTokenForSession({ id: CHECK_IN_ONCE_SESSION_ID }),
     signupSettings: [{ type: '个人报名', limit: 120, needAudit: false }],
-    signupFields: companionSignupFields(2, ['姓名', '手机号'], ['性别']),
+    signupFields: [
+      ...companionSignupFields(2, ['姓名', '手机号'], ['性别']),
+      {
+        key: 'custom-interest',
+        label: '感兴趣的环节',
+        source: 'custom',
+        inputType: 'checkbox',
+        required: false,
+        options: ['节目汇演', '抽奖', '家书'],
+      },
+    ],
     detailHtml: detailBlock(openDayImg, '中秋员工晚会', '中秋节员工晚会含节目汇演、抽奖和家书环节，欢迎携家属观演。', ['18:00 签到入场', '18:30 节目演出', '20:30 抽奖与合影'], '请提前在线上领取电子门票。'),
   }),
   publishedClient({

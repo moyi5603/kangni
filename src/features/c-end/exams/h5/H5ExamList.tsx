@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { goH5Back, toH5ExamPrepHash } from '../../../../app/navigation';
+import { goH5Back, toH5ExamPrepHash, toH5ExamResultHash } from '../../../../app/navigation';
 import { H5ActivityShell } from '../../activities/h5/H5ActivityShell';
 import { useExamCategoryTree, useExams } from '../../../exams/model/examStore';
 import {
@@ -8,48 +8,123 @@ import {
   examL3Options,
   filterClientExams,
   formatExamCardTime,
+  listMyExamMall,
   listPublishedClientExams,
   pathAfterSelectingExamL1,
   resolveExamFilterId,
   type ClientExam,
+  type MyExamDoneRecord,
 } from '../model/clientExam';
+
+function IconRecords() {
+  return (
+    <svg className="ico" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M8 7h8M8 12h8M8 17h5" />
+      <rect x="4.5" y="3.5" width="15" height="17" rx="2.5" />
+    </svg>
+  );
+}
 
 function formatScore(score: number | null): string {
   return score == null ? '-' : `${score}分`;
 }
 
-function ExamCard({ exam }: { exam: ClientExam }) {
-  const passed = exam.result === 'passed';
+function ExamCardFace({
+  title,
+  totalScore,
+  durationMinutes,
+  startAt,
+  endAt,
+  passed,
+  action,
+}: {
+  title: string;
+  totalScore: number | null;
+  durationMinutes: number;
+  startAt: string;
+  endAt: string;
+  passed?: boolean;
+  action?: string;
+}) {
   return (
-    <a href={toH5ExamPrepHash(exam.id)} className={`c-h5-exam-card${passed ? ' has-action' : ''}`}>
+    <>
       {passed ? (
         <span className="c-h5-exam-badge">
           <span className="c-h5-exam-badge-hook" aria-hidden="true" />
           <span className="c-h5-exam-badge-tag">已通过</span>
         </span>
       ) : null}
-      <h2 className="c-h5-exam-title">{exam.title}</h2>
+      <h2 className="c-h5-exam-title">{title}</h2>
       <p className="c-h5-exam-stats">
         <span>
           <em>总分值：</em>
-          {formatScore(exam.totalScore)}
+          {formatScore(totalScore)}
         </span>
         <span>
           <em>总时长：</em>
-          {exam.durationMinutes}分钟
+          {durationMinutes}分钟
         </span>
       </p>
       <div className="c-h5-exam-times">
         <p>
           <em>开考时间：</em>
-          {formatExamCardTime(exam.startAt)}
+          {formatExamCardTime(startAt)}
         </p>
         <p>
           <em>结束时间：</em>
-          {formatExamCardTime(exam.endAt)}
+          {formatExamCardTime(endAt)}
         </p>
       </div>
-      {passed ? <span className="c-h5-exam-score">看成绩</span> : null}
+      {action ? <span className="c-h5-exam-score">{action}</span> : null}
+    </>
+  );
+}
+
+function ExamCard({ exam }: { exam: ClientExam }) {
+  const passed = exam.result === 'passed';
+  return (
+    <a href={toH5ExamPrepHash(exam.id)} className={`c-h5-exam-card${passed ? ' has-action' : ''}`}>
+      <ExamCardFace
+        title={exam.title}
+        totalScore={exam.totalScore}
+        durationMinutes={exam.durationMinutes}
+        startAt={exam.startAt}
+        endAt={exam.endAt}
+        passed={passed}
+        action={passed ? '看成绩' : undefined}
+      />
+    </a>
+  );
+}
+
+function PendingExamCard({ exam }: { exam: ClientExam }) {
+  return (
+    <a className="c-h5-exam-card has-action" href={toH5ExamPrepHash(exam.id)}>
+      <ExamCardFace
+        title={exam.title}
+        totalScore={exam.totalScore}
+        durationMinutes={exam.durationMinutes}
+        startAt={exam.startAt}
+        endAt={exam.endAt}
+        action="去考试"
+      />
+    </a>
+  );
+}
+
+function DoneExamCard({ record }: { record: MyExamDoneRecord }) {
+  const href = record.score == null ? toH5ExamPrepHash(record.examId) : toH5ExamResultHash(record.examId);
+  return (
+    <a className={`c-h5-exam-card${record.score == null ? '' : ' has-action'}`} href={href}>
+      <ExamCardFace
+        title={record.title}
+        totalScore={record.totalScore}
+        durationMinutes={record.durationMinutes}
+        startAt={record.startAt}
+        endAt={record.endAt}
+        passed={record.passed}
+        action={record.score == null ? undefined : '看成绩'}
+      />
     </a>
   );
 }
@@ -63,6 +138,8 @@ export function H5ExamList() {
   const [l2Id, setL2Id] = useState<number | 'all'>('all');
   const [l3Id, setL3Id] = useState<number | 'all'>('all');
   const [hideEnded, setHideEnded] = useState(true);
+  const [view, setView] = useState<'catalog' | 'records'>('catalog');
+  const [recordTab, setRecordTab] = useState<'pending' | 'done'>('pending');
   const published = useMemo(() => listPublishedClientExams(), [exams]);
   const l1Pills = useMemo(() => examL1Pills(tree), [tree]);
   const secondTabs = examL2Tabs(l1Id, tree);
@@ -72,6 +149,7 @@ export function H5ExamList() {
     () => filterClientExams(published, { keyword, categoryId, hideEnded }),
     [published, keyword, categoryId, hideEnded],
   );
+  const mine = useMemo(() => listMyExamMall(published), [published]);
 
   const selectL1 = (id: number | null) => {
     const next = pathAfterSelectingExamL1(id);
@@ -81,9 +159,30 @@ export function H5ExamList() {
   };
 
   return (
-    <H5ActivityShell className="is-exam is-mall" title="考试列表" onBack={goH5Back}>
-      <div className="c-h5-exam-mall">
+    <H5ActivityShell
+      className="is-exam is-mall"
+      title={view === 'records' ? '我的记录' : '考试列表'}
+      onBack={view === 'records' ? () => setView('catalog') : goH5Back}
+    >
+      <div className={`c-h5-exam-mall${view === 'records' ? ' is-records' : ''}`}>
         <div className="c-h5-exam-mall-head">
+          <div className="mall-hero">
+            <button className="all" type="button" onClick={() => setView('catalog')}>
+              全部考试
+            </button>
+            <button
+              className={`records${view === 'records' ? ' is-on' : ''}`}
+              type="button"
+              onClick={() => {
+                setRecordTab('pending');
+                setView('records');
+              }}
+            >
+              <IconRecords />
+              我的记录
+              <span className="go">›</span>
+            </button>
+          </div>
           <form
             className="c-h5-exam-search"
             onSubmit={(event) => {
@@ -196,6 +295,44 @@ export function H5ExamList() {
                 </ul>
               )}
             </div>
+          </div>
+        </div>
+        <div className="records-panel">
+          <div className="rec-tabs" role="tablist" aria-label="考试记录">
+            {(
+              [
+                ['pending', '待考试'],
+                ['done', '已完成'],
+              ] as const
+            ).map(([id, label]) => {
+              const on = recordTab === id;
+              return (
+                <button
+                  key={id}
+                  className={`rec-tab${on ? ' is-on' : ''}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={on}
+                  onClick={() => setRecordTab(id)}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="rec-list" hidden={recordTab !== 'pending'}>
+            {mine.pending.length === 0 ? (
+              <p className="c-h5-exam-empty">这会儿没有要考的</p>
+            ) : (
+              mine.pending.map((exam) => <PendingExamCard key={exam.id} exam={exam} />)
+            )}
+          </div>
+          <div className="rec-list" hidden={recordTab !== 'done'}>
+            {mine.done.length === 0 ? (
+              <p className="c-h5-exam-empty">还没有完成的考试</p>
+            ) : (
+              mine.done.map((record, index) => <DoneExamCard key={`${record.examId}-${record.submittedAt}-${index}`} record={record} />)
+            )}
           </div>
         </div>
       </div>

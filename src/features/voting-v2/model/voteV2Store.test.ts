@@ -65,7 +65,7 @@ describe('voteV2Store', () => {
       homeColumns: 1,
       themeColor: '#31cab1',
     });
-    expect(byName['食堂本周菜品']).toMatchObject({ homeColumns: 3, pcHomeColumns: 4, themeColor: '#ff8939', groupingEnabled: false });
+    expect(byName['食堂本周菜品']).toMatchObject({ homeColumns: 2, pcHomeColumns: 4, themeColor: '#ff8939', groupingEnabled: false });
     expect(byName['班组擂台赛']).toMatchObject({
       groupingEnabled: true,
       showAllGroups: false,
@@ -88,7 +88,7 @@ describe('voteV2Store', () => {
     expect(getVoteV2Contestants(5).some((item) => item.locked)).toBe(true);
     expect(byName['一线匠心人物']).toMatchObject({
       homeColumns: 1,
-      pcHomeColumns: 5,
+      pcHomeColumns: 4,
       groupingEnabled: false,
       visibility: '全员',
       themeColor: '#1dc47b',

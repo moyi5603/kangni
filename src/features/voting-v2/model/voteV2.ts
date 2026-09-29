@@ -267,8 +267,8 @@ export const voteV2ContestantNounMax = 4;
 export const voteV2GroupNameMax = 20;
 export const voteV2ButtonNounMax = 2;
 export const voteV2VoteUnitMax = 1;
-export const voteV2HomeColumnOptions = [1, 2, 3] as const;
-export const voteV2PcHomeColumnOptions = [3, 4, 5] as const;
+export const voteV2HomeColumnOptions = [1, 2] as const;
+export const voteV2PcHomeColumnOptions = [3, 4] as const;
 
 export const voteV2PageDisplayItems = [
   { key: 'activityName', label: '活动名称' },
@@ -309,15 +309,13 @@ export function voteV2PageDisplayFromKeys(keys: readonly string[]): VoteV2PageDi
   return Object.fromEntries(voteV2PageDisplayItems.map((item) => [item.key, selected.has(item.key)])) as VoteV2PageDisplay;
 }
 
-export function clampVoteV2HomeColumns(value: number): 1 | 2 | 3 {
-  const columns = Number(value);
-  if (columns === 1 || columns === 3) return columns;
-  return 2;
+export function clampVoteV2HomeColumns(value: number): 1 | 2 {
+  return Number(value) === 1 ? 1 : 2;
 }
 
-export function clampVoteV2PcHomeColumns(value: number): 3 | 4 | 5 {
+export function clampVoteV2PcHomeColumns(value: number): 3 | 4 {
   const columns = Number(value);
-  if (columns === 4 || columns === 5) return columns;
+  if (columns === 4 || columns === 5) return 4;
   return 3;
 }
 

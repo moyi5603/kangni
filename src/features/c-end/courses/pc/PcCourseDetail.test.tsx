@@ -3,11 +3,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { CEndApp } from '../../../../app/CEndApp';
 import { defaultCourseCommentConfig } from '../../../training/model/training';
 import { updateCourseCommentConfig } from '../../../training/model/trainingStore';
+import { __resetCourseNotesForTests } from '../model/clientCourseNotes';
 import { PcCourseDetail } from './PcCourseDetail';
 
 describe('PC course detail', () => {
   afterEach(() => {
     updateCourseCommentConfig(1, defaultCourseCommentConfig());
+    __resetCourseNotesForTests();
   });
 
   it('keeps a two-column activity PC layout with CTA in the aside', () => {
@@ -61,5 +63,17 @@ describe('PC course detail', () => {
     expect(html).toContain('1.课件20260708');
     expect(html).toContain('c-pc-detail');
     expect(html).not.toContain('发现活动');
+  });
+
+  it('lists notes for this course and offers a new note', () => {
+    const html = renderToStaticMarkup(<PcCourseDetail id={2} />);
+    expect(html).toContain('aria-label="课程笔记"');
+    expect(html).toContain('开场破冰话术');
+    expect(html).toContain('08-22 16:40');
+    expect(html).toContain('写笔记');
+    expect(html).not.toContain('c-course-note-form');
+    expect(html).not.toContain('先问客户当前最急的一件事');
+    expect(html).not.toContain('结构化表达三步');
+    expect(html).not.toContain('role="dialog"');
   });
 });

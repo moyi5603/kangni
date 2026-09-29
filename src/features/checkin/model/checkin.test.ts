@@ -4,7 +4,9 @@ import {
   CHECKIN_OWNER_APP_LABEL,
   applyCheckinMood,
   canDeleteCheckinTheme,
+  canEditCheckinMood,
   checkinRewardLines,
+  grantedCheckinPoints,
   checkinStatusOf,
   calendarDayKey,
   nextStreak,
@@ -240,6 +242,18 @@ describe('submitCheckinResult', () => {
   });
 });
 
+describe('grantedCheckinPoints', () => {
+  it('sums successful point grants', () => {
+    expect(
+      grantedCheckinPoints([
+        { rewardKind: '积分', content: '+5', status: '成功' },
+        { rewardKind: '勋章', content: 'attend', status: '成功' },
+        { rewardKind: '积分', content: '+2', status: '失败' },
+      ]),
+    ).toBe(5);
+  });
+});
+
 describe('checkinRewardLines', () => {
   it('lists points, medal names and lottery chances', () => {
     expect(
@@ -279,6 +293,13 @@ describe('checkinRewardLines', () => {
 
   it('returns empty when nothing was granted', () => {
     expect(checkinRewardLines([])).toEqual([]);
+  });
+});
+
+describe('canEditCheckinMood', () => {
+  it('allows mood edits only on the same calendar day', () => {
+    expect(canEditCheckinMood('2026-09-23', '2026-09-23')).toBe(true);
+    expect(canEditCheckinMood('2026-09-10', '2026-09-23')).toBe(false);
   });
 });
 

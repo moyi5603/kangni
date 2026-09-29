@@ -447,6 +447,10 @@ describe('forum domain', () => {
     };
     expect(validateBoardDraft({ ...base, responseSlaEnabled: true })).toEqual({ responseSla: '请选择响应时效' });
     expect(validateBoardDraft({ ...base, responseSlaEnabled: true, responseSla: '24h' })).toEqual({});
+    expect(validateBoardDraft({ ...base, description: '字'.repeat(100) })).toEqual({});
+    expect(validateBoardDraft({ ...base, description: '字'.repeat(101) }).description).toBe('信箱简介不超过 100 个字');
+    expect(validateBoardDraft({ ...base, kind: 'forum', managers: ['王涛'], description: '字'.repeat(200) }).description).toBeUndefined();
+    expect(validateBoardDraft({ ...base, kind: 'forum', managers: ['王涛'], description: '字'.repeat(201) }).description).toBe('论坛简介不超过 200 个字');
     const saved = boardFromDraft({ ...base, responseSlaEnabled: true, responseSla: '一周' }, 11, '2026-09-16 14:10');
     expect(saved.responseSlaEnabled).toBe(true);
     expect(saved.responseSla).toBe('一周');

@@ -42,7 +42,16 @@ import {
   type SignupField,
   type Visibility,
 } from '../model/activity';
-import { defaultSignupFields, findGroupSignupField, setGroupSignupEnabled, setSignupFieldGroups, validateSignupFields } from '../model/signupFields';
+import {
+  DEFAULT_SIGNUP_GROUP_TITLE,
+  SIGNUP_GROUP_TITLE_MAX,
+  defaultSignupFields,
+  findGroupSignupField,
+  setGroupSignupEnabled,
+  setGroupSignupTitle,
+  setSignupFieldGroups,
+  validateSignupFields,
+} from '../model/signupFields';
 import {
   formatDateTimeRange,
   toDateTimeRange,
@@ -320,8 +329,17 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
   const showSignupApproval = needAudit ?? editing?.signupSettings[0]?.needAudit ?? copySource?.signupSettings[0]?.needAudit ?? false;
   const hasSeniorityLimit = Form.useWatch('hasSeniorityLimit', form);
   const signupTotalLimit = Form.useWatch('signupTotalLimit', form);
-  const signupFields = Form.useWatch('signupFields', form) ?? [];
+  const watchedSignupFields = Form.useWatch('signupFields', form);
+  const signupFields = watchedSignupFields ?? editing?.signupFields ?? copySource?.signupFields ?? defaultSignupFields();
   const groupSignupField = findGroupSignupField(signupFields);
+  const groupTitleError =
+    groupSignupField?.groupTitle == null
+      ? undefined
+      : !groupSignupField.groupTitle.trim()
+        ? '请输入分组标题'
+        : groupSignupField.groupTitle.trim().length > SIGNUP_GROUP_TITLE_MAX
+          ? `分组标题不超过 ${SIGNUP_GROUP_TITLE_MAX} 个字`
+          : undefined;
   const signupPointsEnabled = Form.useWatch('signupPointsEnabled', form);
   const checkInEnabled = Form.useWatch('checkInEnabled', form);
   const scheduleType = Form.useWatch('scheduleType', form) ?? (editing ? editing.scheduleType : undefined) ?? 'once';
@@ -408,7 +426,11 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
       signupTotalLimit: values.signupTotalLimit,
     });
     // 分组人数不符时，提示只保留「报名分组设置」下方文案，此处仅拦截保存
-    if (groupSumHint?.startsWith('各组人数合计要等于报名总人数')) {
+    if (
+      groupSumHint?.startsWith('各组人数合计要等于报名总人数') ||
+      groupSumHint === '请输入分组标题' ||
+      groupSumHint === `分组标题不超过 ${SIGNUP_GROUP_TITLE_MAX} 个字`
+    ) {
       return;
     }
     const pointRulesForSave = getActivityPointRules();
@@ -1011,22 +1033,42 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
             />
           </Form.Item>
           {groupSignupField ? (
-            <Form.Item label="分组">
-              <SignupGroupsEditor
-                groups={groupSignupField.groups ?? []}
-                signupTotalLimit={typeof signupTotalLimit === 'number' ? signupTotalLimit : undefined}
-                onChange={(groups) => {
-                  form.setFieldValue(
-                    'signupFields',
-                    setSignupFieldGroups(
-                      form.getFieldValue('signupFields') ?? defaultSignupFields(),
-                      groupSignupField.key,
-                      groups,
-                    ),
-                  );
-                }}
-              />
-            </Form.Item>
+            <>
+              <Form.Item label="分组标题" required validateStatus={groupTitleError ? 'error' : undefined} help={groupTitleError}>
+                <Input
+                  className="activity-group-title"
+                  value={groupSignupField.groupTitle ?? DEFAULT_SIGNUP_GROUP_TITLE}
+                  maxLength={SIGNUP_GROUP_TITLE_MAX}
+                  showCount
+                  placeholder="请输入分组标题"
+                  onChange={(event) => {
+                    form.setFieldValue(
+                      'signupFields',
+                      setGroupSignupTitle(
+                        form.getFieldValue('signupFields') ?? defaultSignupFields(),
+                        event.target.value,
+                      ),
+                    );
+                  }}
+                />
+              </Form.Item>
+              <Form.Item label="分组">
+                <SignupGroupsEditor
+                  groups={groupSignupField.groups ?? []}
+                  signupTotalLimit={typeof signupTotalLimit === 'number' ? signupTotalLimit : undefined}
+                  onChange={(groups) => {
+                    form.setFieldValue(
+                      'signupFields',
+                      setSignupFieldGroups(
+                        form.getFieldValue('signupFields') ?? defaultSignupFields(),
+                        groupSignupField.key,
+                        groups,
+                      ),
+                    );
+                  }}
+                />
+              </Form.Item>
+            </>
           ) : null}
         </Card>
 
@@ -1161,7 +1203,13 @@ export function ActivityFormPage({ mode, recordId, onBack }: ActivityFormPagePro
                               });
                               if (!error) return;
                               // 与「报名分组设置」下方提示重复，不在 Form.Item 再展示
-                              if (error.startsWith('各组人数合计要等于报名总人数')) return;
+                              if (
+                                error.startsWith('各组人数合计要等于报名总人数') ||
+                                error === '请输入分组标题' ||
+                                error === `分组标题不超过 ${SIGNUP_GROUP_TITLE_MAX} 个字`
+                              ) {
+                                return;
+                              }
                               throw new Error(error);
                             },
                           },

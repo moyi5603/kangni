@@ -124,6 +124,14 @@ describe('PC personal center', () => {
   it('lists company activities and interest-group activities on 我的活动', () => {
     const html = renderToStaticMarkup(<PcProfileCenter tab="activities" />);
     expect(html).toContain('>我的活动<');
+    expect(html).toContain('aria-label="我的活动分类"');
+    expect(html).toContain('>我参加的活动<');
+    expect(html).toContain('>我创建的活动<');
+    expect(html).toMatch(/aria-selected="true"[^>]*>我参加的活动</);
+    expect(html).toMatch(/aria-selected="false"[^>]*>我创建的活动</);
+    const joinedActs = html.slice(html.indexOf('data-panel="joined"'), html.indexOf('data-panel="created"'));
+    const createdActs = html.slice(html.indexOf('data-panel="created"'));
+    expect(createdActs.startsWith('data-panel="created" hidden=""') || createdActs.includes('hidden=""')).toBe(true);
     expect(html).toContain('class="mine-act-tag is-act"');
     expect(html).toContain('【活动】');
     expect(html).toContain('class="mine-act-tag is-ig"');
@@ -158,10 +166,15 @@ describe('PC personal center', () => {
     expect(html).not.toContain('class="nav-dead">我的活动<');
     expect(html).not.toContain('活动统计');
     expect(html).not.toContain('>活动报名<');
-    const titles = [...html.matchAll(/class="item mine-act-row"[\s\S]*?<h3>([^<]*)<\/h3>/g)].map((match) => match[1]);
+    expect(joinedActs).toContain('滨江 8K 夜跑');
+    expect(joinedActs).not.toContain('通宵桌游马拉松');
+    expect(createdActs).toContain('通宵桌游马拉松');
+    expect(createdActs).not.toContain('新员工入职训练营');
+    const titles = [...joinedActs.matchAll(/class="item mine-act-row"[\s\S]*?<h3>([^<]*)<\/h3>/g)].map((match) => match[1]);
     expect(titles.indexOf('公益植树日')).toBeLessThan(titles.indexOf('新员工入职训练营'));
     expect(titles.indexOf('周四篮球夜')).toBeLessThan(titles.indexOf('新员工入职训练营'));
-    expect(titles.indexOf('通宵桌游马拉松')).toBeLessThan(titles.indexOf('春季员工开放日'));
+    expect(titles).not.toContain('通宵桌游马拉松');
+    expect(titles).toContain('春季员工开放日');
   });
 
   it('lists my posts, medals, and care on their tabs', () => {
@@ -209,9 +222,17 @@ describe('PC personal center', () => {
     expect(care).not.toContain('class="card-head"><h2>关怀</h2>');
     const circles = renderToStaticMarkup(<PcProfileCenter tab="circles" />);
     expect(circles).toContain('>我的兴趣圈<');
-    expect(circles).toContain('城市夜跑团');
-    expect(circles).toContain('周末徒步野行');
-    expect(circles).toContain('桌游电竞局');
+    expect(circles).toContain('aria-label="我的兴趣圈分类"');
+    expect(circles).toContain('>我加入的兴趣圈<');
+    expect(circles).toContain('>我创建的兴趣圈<');
+    const joinedCircles = circles.slice(circles.indexOf('data-panel="joined"'), circles.indexOf('data-panel="created"'));
+    const createdCircles = circles.slice(circles.indexOf('data-panel="created"'));
+    expect(joinedCircles).toContain('城市夜跑团');
+    expect(joinedCircles).toContain('周末徒步野行');
+    expect(joinedCircles).not.toContain('桌游电竞局');
+    expect(createdCircles).toContain('桌游电竞局');
+    expect(createdCircles).toContain('>已创建<');
+    expect(joinedCircles).toContain('>已加入<');
     expect(circles).toContain('class="mine-act-cover"');
     expect(circles).toContain('src="/activities/basketball.jpg"');
     expect(circles).toContain('src="/activities/share.jpg"');

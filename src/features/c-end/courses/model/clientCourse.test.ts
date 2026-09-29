@@ -6,6 +6,7 @@ import {
   getCourseLearning,
   l2Tabs,
   l3Options,
+  listMyCourseRecords,
   listPublishedClientCourses,
   maxCategoryDepth,
   pathAfterSelectingL1,
@@ -29,6 +30,15 @@ function titles(categoryId: number | null, keyword = '') {
 describe('client course catalog', () => {
   it('caps the admin tree at three levels', () => {
     expect(maxCategoryDepth(tree)).toBe(3);
+  });
+
+  it('splits my course records into learning and finished', () => {
+    expect(listMyCourseRecords('learning').map((item) => item.course.title)).toEqual([
+      '快速上手销售技巧',
+      '产品需求分析实战',
+    ]);
+    expect(listMyCourseRecords('learning')[0]).toMatchObject({ progress: 40, cta: '继续学' });
+    expect(listMyCourseRecords('done').map((item) => item.cta)).toEqual(['再看一遍', '再看一遍', '再看一遍']);
   });
 
   it('maps published courses from trainingStore', () => {

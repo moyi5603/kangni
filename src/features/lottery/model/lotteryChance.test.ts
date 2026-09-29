@@ -14,7 +14,6 @@ const lottery = (partial: Partial<LotteryRecord> = {}): LotteryRecord => ({
   totalChanceEnabled: false,
   totalChance: 0,
   maxWins: 1,
-  consumeChanceOnWin: true,
   showRemaining: false,
   showWinners: true,
   missText: '谢谢参与',

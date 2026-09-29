@@ -2,7 +2,7 @@ import { collectCategoryIds, findCategoryNode, type CategoryNode } from '../../.
 import { formatCEndDateTime } from '../../formatDateTime';
 import { calculateExamTotalScore, type ExamRecord, type ExamStatus } from '../../../exams/model/exam';
 import { getExam, getExamCategoryTree, getExams } from '../../../exams/model/examStore';
-import { getClientExamResult } from './clientExamResult';
+import { getClientExamRecordBoard, getClientExamResult } from './clientExamResult';
 import { getClientExamPaper } from './clientExamSession';
 
 export type ClientExamResult = 'passed' | null;
@@ -208,6 +208,61 @@ export function formatExamCardTime(value: string, now = new Date()): string {
 
 export function formatExamCardRange(startAt: string, endAt: string): string {
   return `${formatExamCardTime(startAt)} ~ ${formatExamCardTime(endAt)}`;
+}
+
+export type MyExamDoneRecord = {
+  examId: number;
+  title: string;
+  totalScore: number | null;
+  durationMinutes: number;
+  startAt: string;
+  endAt: string;
+  score: number | null;
+  submittedAt: string;
+  note: string;
+  passed: boolean;
+};
+
+export function listMyExamMall(exams: ClientExam[]): { pending: ClientExam[]; done: MyExamDoneRecord[] } {
+  const pending = exams.filter((item) => item.examStatus !== '已结束' && item.result !== 'passed');
+  const done: MyExamDoneRecord[] = [];
+  for (const exam of exams) {
+    const board = getClientExamRecordBoard(exam.id);
+    const passScore = getExam(exam.id)?.passScore ?? 60;
+    if (board && board.records.length > 0) {
+      for (const item of board.records) {
+        const passed = item.score >= passScore;
+        done.push({
+          examId: exam.id,
+          title: item.title,
+          totalScore: exam.totalScore,
+          durationMinutes: exam.durationMinutes,
+          startAt: exam.startAt,
+          endAt: exam.endAt,
+          score: item.score,
+          submittedAt: item.submittedAt,
+          note: passed ? '保留最高分作为最终分数' : '未通过',
+          passed,
+        });
+      }
+      continue;
+    }
+    if (exam.examStatus === '已结束') {
+      done.push({
+        examId: exam.id,
+        title: exam.title,
+        totalScore: exam.totalScore,
+        durationMinutes: exam.durationMinutes,
+        startAt: exam.startAt,
+        endAt: exam.endAt,
+        score: null,
+        submittedAt: exam.endAt,
+        note: '已结束 · 未参考',
+        passed: false,
+      });
+    }
+  }
+  return { pending, done };
 }
 
 export function filterClientExams(list: ClientExam[], query: ClientExamQuery): ClientExam[] {

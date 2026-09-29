@@ -2,7 +2,7 @@ import { App } from 'antd';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { CheckinFormPage } from './CheckinFormPage';
-import { __resetCheckinStoreForTests } from '../model/checkinStore';
+import { __resetCheckinStoreForTests, getTheme, saveTheme } from '../model/checkinStore';
 
 const noop = () => {};
 
@@ -76,5 +76,46 @@ describe('CheckinFormPage', () => {
     expect((skills.match(/规则 1/g) ?? []).length).toBe(1);
     expect(skills).toContain('积分');
     expect(skills).not.toContain('抽奖次数');
+    expect(skills).not.toContain('可分享');
+  });
+
+  it('shows the share switch for culture and hides the card fields until it is on', () => {
+    const html = renderToStaticMarkup(
+      <App>
+        <CheckinFormPage mode="create" onBack={noop} onSaved={noop} />
+      </App>,
+    );
+    expect(html).toContain('可分享');
+    expect(html).toContain('开启后，用户可将打卡成果分享至朋友圈/好友');
+    expect(html).not.toContain('卡片展示规则');
+  });
+
+  it('shows day image slots when a culture theme can be shared', () => {
+    const current = getTheme(1);
+    if (!current) throw new Error('missing theme');
+    saveTheme({
+      ...current,
+      startAt: '2026-09-19 00:00',
+      endAt: '2026-09-24 23:59',
+      shareEnabled: true,
+      shareCardRule: 'daily',
+      shareImages: [],
+    });
+    const html = renderToStaticMarkup(
+      <App>
+        <CheckinFormPage mode="edit" recordId="1" onBack={noop} onSaved={noop} />
+      </App>,
+    );
+    expect(html).toContain('卡片展示规则');
+    expect(html).toContain('一天一张');
+    expect(html).toContain('一周一张');
+    expect(html).toContain('图片尺寸为：1000×1470 像素；支持 JPG、PNG，单张小于 2MB；拖动可交换图片顺序');
+    expect(html).toContain('2026-09-19');
+    expect(html).toContain('2026-09-24');
+    expect(html).toContain('包含首尾日期');
+    expect(html).toContain('第1天');
+    expect(html).toContain('第6天');
+    expect(html).not.toContain('第7天');
+    expect(html).toContain('已配置 0 / 6 张');
   });
 });

@@ -3,6 +3,8 @@ import { PlusOutlined } from '@ant-design/icons';
 import { App, Button, Form, Modal, Radio, Space, TreeSelect, Typography } from 'antd';
 import { b2bStandards } from '../../../shared/design-system/generated/b2b-standards.generated';
 import { orgPeoplePickerTree } from '../model/activity';
+import { approvalNodeLimit, validateApprovalNodes, warnConsecutiveParentNodes } from '../model/signupApprovalFlow';
+import { orgMaxParentHops } from '../model/signupOrg';
 import { createApprovalNode, formatApprovalNodeSummary, type ApprovalNode, type AssigneeMode, assigneeModeHints, assigneeModeLabels } from '../model/rules';
 
 type NodeModalValues = {
@@ -17,7 +19,7 @@ type SignupApprovalNodesEditorProps = {
 };
 
 export function SignupApprovalNodesEditor({ value, onChange }: SignupApprovalNodesEditorProps) {
-  const { modal } = App.useApp();
+  const { modal, message } = App.useApp();
   const [modalForm] = Form.useForm<NodeModalValues>();
   const [open, setOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -31,6 +33,10 @@ export function SignupApprovalNodesEditor({ value, onChange }: SignupApprovalNod
   };
 
   const openCreate = () => {
+    if (nodes.length >= approvalNodeLimit) {
+      message.warning(`审批节点最多 ${approvalNodeLimit} 个`);
+      return;
+    }
     setEditingIndex(null);
     modalForm.setFieldsValue({ assigneeMode: 'people', reviewerIds: [], departmentId: undefined });
     setOpen(true);
@@ -59,7 +65,14 @@ export function SignupApprovalNodesEditor({ value, onChange }: SignupApprovalNod
     const next = [...nodes];
     if (editingIndex != null) next[editingIndex] = row;
     else next.push(row);
+    const error = validateApprovalNodes(next);
+    if (error) {
+      message.error(error);
+      return;
+    }
     onChange?.(next);
+    const warning = warnConsecutiveParentNodes(next, orgMaxParentHops());
+    if (warning) message.warning(warning);
     closeModal();
   };
 

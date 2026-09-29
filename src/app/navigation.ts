@@ -320,6 +320,7 @@ export type CEndSurface = 'h5' | 'pc';
 export type H5Page =
   | 'my'
   | 'courses'
+  | 'course-records'
   | 'course-detail'
   | 'favorites'
   | 'signup'
@@ -347,7 +348,10 @@ export type H5Page =
   | 'contest-challenge'
   | 'contest-rank'
   | 'contest-mine'
+  | 'contest-archives'
   | 'contest-wrong'
+  | 'contest-certs'
+  | 'setup'
   | 'course-notes'
   | 'course-note-detail'
   | 'lottery'
@@ -479,6 +483,9 @@ function parseCEndHashPath(hash: string): CEndLocation {
   if (rawId === 'list') return { kind: 'c-end', surface, h5Page: 'activity-list' };
   if (rawId === 'moments') return { kind: 'c-end', surface, h5Page: 'past-moments' };
   if (rawId === 'courses' || rawId === 'courses-mall') {
+    if (extra === 'records') {
+      return { kind: 'c-end', surface, h5Page: 'course-records' };
+    }
     if (extra) {
       const courseId = Number(extra);
       if (Number.isFinite(courseId)) {
@@ -490,6 +497,7 @@ function parseCEndHashPath(hash: string): CEndLocation {
   if (rawId === 'favorites') return { kind: 'c-end', surface, h5Page: 'favorites' };
   if (rawId === 'honor-admin') return { kind: 'c-end', surface, h5Page: 'honor-admin' };
   if (rawId === 'honor') return { kind: 'c-end', surface, h5Page: 'honor' };
+  if (rawId === 'setup') return { kind: 'c-end', surface, h5Page: 'setup' };
   if (rawId === 'incentive') return { kind: 'c-end', surface, h5Page: 'incentive' };
   if (rawId === 'daily-checkin') return { kind: 'c-end', surface, h5Page: 'daily-checkin' };
   if (rawId === 'learning-plans') return { kind: 'c-end', surface, h5Page: 'learning-plans' };
@@ -520,9 +528,11 @@ function parseCEndHashPath(hash: string): CEndLocation {
   }
   if (rawId === 'skills-contest') {
     if (extra === 'mine') return { kind: 'c-end', surface, h5Page: 'contest-mine' };
+    if (extra === 'archives') return { kind: 'c-end', surface, h5Page: 'contest-archives' };
     if (extra === 'events') return { kind: 'c-end', surface, h5Page: 'contest-events' };
     if (extra === 'docs') return { kind: 'c-end', surface, h5Page: 'contest-docs' };
     if (extra === 'wrong') return { kind: 'c-end', surface, h5Page: 'contest-wrong' };
+    if (extra === 'certs') return { kind: 'c-end', surface, h5Page: 'contest-certs' };
     if (extra === 'notes') {
       const noteId = Number(tail);
       if (tail && Number.isFinite(noteId)) {
@@ -719,6 +729,10 @@ export function goH5MySignups() {
 
 export function toH5CourseListHash(): string {
   return '#/c/h5/courses';
+}
+
+export function toH5CourseRecordsHash(): string {
+  return '#/c/h5/courses/records';
 }
 
 export function toH5ExamListHash(): string {
@@ -1047,8 +1061,20 @@ export function toH5ContestMineHash(): string {
   return '#/c/h5/skills-contest/mine';
 }
 
+export function toH5ContestArchivesHash(): string {
+  return '#/c/h5/skills-contest/archives';
+}
+
 export function toH5ContestWrongHash(): string {
   return '#/c/h5/skills-contest/wrong';
+}
+
+export function toH5ContestCertsHash(): string {
+  return '#/c/h5/skills-contest/certs';
+}
+
+export function toH5SetupHash(): string {
+  return '#/c/h5/setup';
 }
 
 export function toH5CourseNotesHash(): string {

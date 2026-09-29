@@ -44,14 +44,14 @@ describe('H5VoteV2Home', () => {
     expect(html).toContain('href="#/c/h5/vote-v2-8/option-21"');
   });
 
-  it('keeps cafeteria mock at three mobile columns', () => {
+  it('keeps cafeteria mock at two mobile columns', () => {
     const html = renderToStaticMarkup(
       <CEndToastProvider>
         <H5VoteV2Home id={4} />
       </CEndToastProvider>,
     );
     expect(html).toContain('食堂本周菜品');
-    expect(html).toContain('data-cols="3"');
+    expect(html).toContain('data-cols="2"');
     expect(html).toContain('红烧排骨');
     expect(html).toContain('黄焖鸡米饭');
     expect(html).toContain('红油抄手');

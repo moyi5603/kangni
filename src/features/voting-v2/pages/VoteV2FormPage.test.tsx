@@ -95,7 +95,7 @@ describe('VoteV2FormPage', () => {
     expect(html).toContain('二列');
     expect(html).toContain('三列');
     expect(html).toContain('四列');
-    expect(html).toContain('五列');
+    expect(html).not.toContain('五列');
     expect(html).toContain('移动端列数');
     expect(html).toContain('PC端列数');
     expect(html).not.toContain('4列');

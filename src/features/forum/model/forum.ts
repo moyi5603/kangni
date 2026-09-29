@@ -756,6 +756,8 @@ export function validateBoardDraft(
   > = {};
   if (!draft.name.trim()) errors.name = draft.kind === 'mailbox' ? '请输入名称' : `请输入${noun}名称`;
   if (!draft.description.trim()) errors.description = `请输入${noun}简介`;
+  else if (draft.kind === 'mailbox' && draft.description.length > 100) errors.description = '信箱简介不超过 100 个字';
+  else if (draft.kind === 'forum' && draft.description.length > 200) errors.description = '论坛简介不超过 200 个字';
   const visibility = draft.visibility ?? '全员';
   if (visibility === '按部门' && !(draft.departments ?? []).length) errors.departments = '请选择部门';
   if (visibility === '自定义人群' && !(draft.customPeople ?? []).length) errors.customPeople = '请选择人员';
